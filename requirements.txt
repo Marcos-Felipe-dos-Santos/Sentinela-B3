@@ -1,0 +1,25 @@
+# Sentinela B3 — dependências pinadas
+# Gerado em: 2026-02
+# Para atualizar: pip freeze | grep -E "streamlit|pandas|yfinance|..." > requirements.txt
+
+streamlit>=1.32.0,<2.0.0
+pandas>=2.2.0,<3.0.0
+numpy>=1.26.4,<2.0.0
+scipy>=1.12.0,<2.0.0
+
+# Dados de mercado
+yfinance>=0.2.50,<0.3.0
+requests>=2.31.0,<3.0.0
+beautifulsoup4>=4.12.3,<5.0.0
+
+# Configuração
+python-dotenv>=1.0.1,<2.0.0
+
+# IA
+groq>=0.7.0,<1.0.0
+google-genai>=0.5.0,<1.0.0
+
+# Visualização e relatórios
+plotly>=5.19.0,<6.0.0
+reportlab>=4.1.0,<5.0.0
+openpyxl>=3.1.2,<4.0.0

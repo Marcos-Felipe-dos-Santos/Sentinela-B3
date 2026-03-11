@@ -1,0 +1,43 @@
+# ==========================================
+# SENTINELA B3 - VARIÁVEIS DE AMBIENTE
+# ==========================================
+# 
+# INSTRUÇÕES:
+# 1. Renomeie este arquivo para .env.example
+# 2. Copie para .env: cp .env.example .env
+# 3. Preencha com suas chaves reais
+#
+# IMPORTANTE: O arquivo .env está no .gitignore e NÃO será versionado
+
+# ── IA / LLM ────────────────────────────
+# Groq (Inferência LLM rápida - llama-3.3-70b)
+# Obter chave em: https://console.groq.com/keys
+GROQ_API_KEY=gsk_SuaChaveAqui
+
+# Google Gemini (Fallback IA - gemini-2.0-flash)
+# Obter chave em: https://makersuite.google.com/app/apikey
+GEMINI_API_KEY=AIzaSuaChaveAqui
+
+# ── NOTAS ───────────────────────────────
+# 
+# 1. Se NÃO tiver chaves de API:
+#    O sistema funcionará normalmente usando Ollama local
+#    (necessário ter Ollama instalado: https://ollama.ai)
+#
+# 2. Ordem de fallback da IA:
+#    Groq → Gemini → Ollama
+#
+# 3. Modelos usados:
+#    - Groq: llama-3.3-70b-versatile
+#    - Gemini: gemini-2.0-flash
+#    - Ollama: llama3 (local)
+#
+# 4. Custos (estimados):
+#    - Groq: Grátis (com rate limits)
+#    - Gemini: Grátis (tier gratuito generoso)
+#    - Ollama: Grátis (roda localmente)
+#
+# 5. Para usar sem chaves:
+#    - Instale Ollama: https://ollama.ai
+#    - Execute: ollama pull llama3
+#    - O sistema detectará automaticamente
