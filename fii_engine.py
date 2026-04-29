@@ -9,7 +9,7 @@ class FIIEngine:
             return None
 
         p   = float(dados.get('preco_atual', 0) or 0)
-        pvp = float(dados.get('pvp', 0) or 0)
+        pvp = float(dados.get('pvp', 1.0) or 1.0)
 
         if p == 0:
             return None
@@ -56,10 +56,16 @@ class FIIEngine:
 
         # Score
         score = 50
-        if pvp < 0.85:               score += 15
-        elif pvp > 1.15:             score -= 15
         if dy > selic:               score += 20
         elif dy < (selic * 0.7):     score -= 20
+        pvp = float(dados.get('pvp', 1.0) or 1.0)
+        if pvp > 1.15:
+            score -= 15  # pagando prêmio excessivo sobre o patrimônio
+        elif pvp > 1.05:
+            score -= 7  # prêmio moderado
+        elif pvp < 0.85:
+            score += 10  # desconto relevante = margem de segurança
+        score = max(0, min(100, score))
 
         # Heurística de tipo por P/VP
         tipo = "TIJOLO" if (pvp < 0.95 or pvp > 1.05) else "PAPEL"
@@ -71,7 +77,7 @@ class FIIEngine:
         return {
             'fair_value':    round(preco_justo, 2),
             'upside':        round(upside * 100, 1),
-            'score_final':   int(max(0, min(100, score))),
+            'score_final':   int(score),
             'recomendacao':  rec,
             'tipo':          tipo,
             'perfil':        'FII',
