@@ -92,7 +92,8 @@ class ValuationEngine:
             retencao = 1 - payout_ratio
             g = roe * retencao
             g = min(g, 0.25)
-            pl_justo = 2 * (g * 100)
+            pl_justo = 1.5 * (g * 100)
+            pl_justo = min(pl_justo, 35)
             metodos['Lynch'] = lpa * pl_justo
 
         # ── 4. GORDON ─────────────────────────────────────────────────────────

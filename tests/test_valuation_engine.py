@@ -120,8 +120,8 @@ def test_lynch_desconta_payout() -> None:
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
         resultado = ValuationEngine().processar(dados)
 
-    assert resultado['fair_value'] == pytest.approx(240.0, abs=0.01)
-    assert 'Lynch: R$240.00' in resultado['metodos_usados']
+    assert resultado['fair_value'] == pytest.approx(180.0, abs=0.01)
+    assert 'Lynch: R$180.00' in resultado['metodos_usados']
 
 
 def test_fii_score_penaliza_pvp_alto() -> None:
