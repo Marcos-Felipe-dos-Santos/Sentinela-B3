@@ -74,19 +74,19 @@ class ValuationEngine:
             metodos['Graham'] = (22.5 * lpa_adj * vpa) ** 0.5
 
         # ── 2. BAZIN ─────────────────────────────────────────────────────────
-        # Só para RENDA com DY confiável; usa taxa mínima aceitável = Selic × 0.85
+        # Só para RENDA com DY confiável; usa taxa mínima = max(selic, 5%)
         if not is_growth and dy > 0 and dy_confiavel:
-            taxa_minima = selic * 0.85
+            taxa_minima = max(selic, 0.05)
             metodos['Bazin'] = (dy * p) / taxa_minima
 
         # ── 3. PETER LYNCH ───────────────────────────────────────────────────
         # Só para CRESCIMENTO com DY confiável
         if is_growth and pl > 0 and dy_confiavel:
-            # Taxa de crescimento sustentável real = ROE × retenção
             payout_ratio = min((dy * p) / lpa, 0.95) if lpa > 0 else 0.5
-            retencao = 1 - payout_ratio
-            g_real = min(roe * retencao * 100, 30)
-            metodos['Lynch'] = lpa * g_real
+            g = roe * (1 - payout_ratio)
+            g = min(g, 0.30)
+            pl_justo = 2 * (g * 100)
+            metodos['Lynch'] = lpa * pl_justo
 
         # ── 4. GORDON ─────────────────────────────────────────────────────────
         # Modelo de dividendos; exige DY confiável e real (>4%) e ROE sólido

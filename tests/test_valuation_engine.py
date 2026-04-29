@@ -20,8 +20,8 @@ def test_dy_normalization_percentual() -> None:
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
         resultado = ValuationEngine().processar(dados)
 
-    assert resultado['fair_value'] == pytest.approx(146.71, abs=0.01)
-    assert resultado['metodos_usados'] == 'Bazin: R$146.71'
+    assert resultado['fair_value'] == pytest.approx(124.7, abs=0.01)
+    assert resultado['metodos_usados'] == 'Bazin: R$124.70'
 
 
 def test_dy_invalido_acima_25pct() -> None:
@@ -62,7 +62,7 @@ def test_recomendacao_compra_forte_exige_upside() -> None:
         resultado = ValuationEngine().processar(dados)
 
     assert resultado['score_final'] >= 75
-    assert resultado['upside'] == pytest.approx(-20.0, abs=0.1)
+    assert resultado['upside'] == pytest.approx(-32.0, abs=0.1)
     assert resultado['recomendacao'] == 'VENDA'
 
 
@@ -74,7 +74,7 @@ def test_recomendacao_qualidade_aguardar() -> None:
         'roe': 0.10,
         'pl': 30.0,
         'pvp': 4.0,
-        'dy': 0.0765,
+        'dy': 0.09,
     }
 
     with (
@@ -120,8 +120,8 @@ def test_lynch_desconta_payout() -> None:
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
         resultado = ValuationEngine().processar(dados)
 
-    assert resultado['fair_value'] == pytest.approx(120.0, abs=0.01)
-    assert 'Lynch: R$120.00' in resultado['metodos_usados']
+    assert resultado['fair_value'] == pytest.approx(240.0, abs=0.01)
+    assert 'Lynch: R$240.00' in resultado['metodos_usados']
 
 
 def test_fii_score_penaliza_pvp_alto() -> None:
