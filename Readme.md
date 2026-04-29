@@ -28,12 +28,15 @@ O projeto foi desenvolvido com foco em:
   * Bazin
   * Gordon
   * Lynch
+* Cálculo de Confiança da IA e sinalização de Riscos
 * Score automático do ativo
 * Classificação (valor, renda ou crescimento)
 
 ### 📈 Análise Técnica
 
 * RSI (Índice de Força Relativa)
+* MACD (Convergência e Divergência de Médias Móveis)
+* Bandas de Bollinger
 * Médias móveis (MA50 / MA200)
 * Identificação de tendência
 
@@ -44,7 +47,13 @@ O projeto foi desenvolvido com foco em:
 
   * Dividend Yield
   * P/VP
+  * Ajuste de vacância em FIIs
   * Comparação com Selic
+
+### 💼 Otimização de Portfólio
+
+* Otimização baseada em Teoria de Markowitz (Máximo Sharpe Ratio)
+* Portfólio segmentado ações/FIIs (60/40) automaticamente
 
 ### 🤖 IA (Assistente)
 
@@ -84,7 +93,7 @@ git clone https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3.git
 cd Sentinela-B3
 
 python -m venv venv
-.\venv\Scripts\activate  # Windows
+.\venv\Scripts\Activate.ps1  # Windows
 # source venv/bin/activate  # Linux/Mac
 
 pip install -r requirements.txt
@@ -130,11 +139,11 @@ streamlit run app.py
 
 ## 🧪 Testes Automatizados
 
-O projeto conta com uma suíte de testes robusta utilizando `pytest` para garantir a estabilidade do sistema contra edge-cases de dados e regras financeiras sem realizar requisições à internet.
+O projeto conta com uma suíte de 28 testes automatizados utilizando `pytest` para garantir a estabilidade do sistema contra edge-cases de dados e regras financeiras sem realizar requisições à internet.
 
 ```bash
 # Executar a suíte de testes
-python -m pytest
+python -m pytest -q
 ```
 
 Para mais informações, consulte a documentação da suíte de testes em `tests/README.md`.
