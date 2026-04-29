@@ -5,7 +5,7 @@ from config import get_selic_atual
 
 class PortfolioEngine:
     def otimizar(self, dados_historicos: pd.DataFrame):
-        """Otimização de Markowitz (Máximo Sharpe Ratio)."""
+        """Otimização de Markowitz (Máximo Sharpe Ratio) segmentada."""
         if dados_historicos is None or dados_historicos.empty:
             return None
 
@@ -19,43 +19,58 @@ class PortfolioEngine:
         if retornos.empty:
             return {"erro": "Retornos vazios após limpeza."}
 
-        # CORRIGIDO: taxa livre de risco dinâmica (era RISK_FREE_RATE estático=10.75%
-        # enquanto a Selic real está em ~13.25%, inflando artificialmente o Sharpe).
-        risk_free   = get_selic_atual()
+        risk_free = get_selic_atual()
 
-        # CORRIGIDO: médias pré-computadas e reutilizadas na função objetivo.
-        # Antes: retornos.mean() era recalculado em cada uma das ~48 chamadas do SLSQP.
-        medias      = retornos.mean() * 252
-        cov_matrix  = retornos.cov() * 252
-        num_ativos  = len(medias)
+        def otimizar_grupo(cols):
+            ret = retornos[cols]
+            if ret.empty or len(cols) == 0:
+                return {}
+            if len(cols) == 1:
+                return {cols[0]: 1.0}
 
-        if num_ativos < 2:
-            return {"erro": "Mínimo de 2 ativos para otimização."}
+            medias = ret.mean() * 252
+            cov_matrix = ret.cov() * 252
+            num_ativos = len(cols)
 
-        def neg_sharpe(pesos):
-            ret_port = np.dot(medias, pesos)  # usa pré-computado
-            vol_port = np.sqrt(np.dot(pesos.T, np.dot(cov_matrix, pesos)))
-            if vol_port == 0:
-                return 0
-            return -((ret_port - risk_free) / vol_port)
+            def neg_sharpe(pesos):
+                ret_port = np.dot(medias, pesos)
+                vol_port = np.sqrt(np.dot(pesos.T, np.dot(cov_matrix, pesos)))
+                if vol_port == 0:
+                    return 0
+                return -((ret_port - risk_free) / vol_port)
 
-        cons   = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1},)
-        bounds = tuple((0.0, 1.0) for _ in range(num_ativos))
-        init   = [1.0 / num_ativos] * num_ativos
+            cons = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1},)
+            bounds = tuple((0.0, 1.0) for _ in range(num_ativos))
+            init = [1.0 / num_ativos] * num_ativos
 
-        try:
-            opt = minimize(neg_sharpe, init, method='SLSQP',
-                           bounds=bounds, constraints=cons)
+            opt = minimize(neg_sharpe, init, method='SLSQP', bounds=bounds, constraints=cons)
             if not opt.success:
-                return {"erro": f"Otimização falhou: {opt.message}"}
+                return {c: 1.0 / num_ativos for c in cols}
 
-            # Filtra pesos < 1% e renormaliza
-            pesos_brutos = {col: p for col, p in zip(df.columns, opt.x) if p > 0.01}
+            pesos_brutos = {col: p for col, p in zip(cols, opt.x) if p > 0.01}
             total = sum(pesos_brutos.values())
             if total == 0:
-                return {"erro": "Nenhum ativo selecionado após filtragem."}
+                return {c: 1.0 / num_ativos for c in cols}
 
-            return {col: round((p / total) * 100, 1) for col, p in pesos_brutos.items()}
+            return {c: p / total for c, p in pesos_brutos.items()}
 
+        try:
+            fiis = [c for c in df.columns if c.endswith('11')]
+            stocks = [c for c in df.columns if not c.endswith('11')]
+
+            if fiis and stocks:
+                pesos_fiis = otimizar_grupo(fiis)
+                pesos_stocks = otimizar_grupo(stocks)
+                resultado = {col: round(p * 40, 1) for col, p in pesos_fiis.items()}
+                resultado.update({col: round(p * 60, 1) for col, p in pesos_stocks.items()})
+                return resultado
+            elif fiis:
+                pesos_fiis = otimizar_grupo(fiis)
+                return {col: round(p * 100, 1) for col, p in pesos_fiis.items()}
+            elif stocks:
+                pesos_stocks = otimizar_grupo(stocks)
+                return {col: round(p * 100, 1) for col, p in pesos_stocks.items()}
+            else:
+                return {"erro": "Nenhum ativo para otimizar."}
         except Exception as e:
             return {"erro": f"Erro interno: {e}"}
