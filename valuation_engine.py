@@ -112,7 +112,21 @@ class ValuationEngine:
         score = max(0, min(100, score))
 
         # Ajustes de qualidade (aplicados independente do valuation)
-        if dados.get('divida_liq_ebitda', 0) > 3.0: score -= 15
+        try:
+            divida_texto = str(dados.get('divida_liq_ebitda') or 0).strip()
+            if ',' in divida_texto and '.' in divida_texto:
+                if divida_texto.rfind(',') > divida_texto.rfind('.'):
+                    divida_texto = divida_texto.replace('.', '').replace(',', '.')
+                else:
+                    divida_texto = divida_texto.replace(',', '')
+            else:
+                divida_texto = divida_texto.replace(',', '.')
+            divida_liq_ebitda = float(divida_texto)
+            if not math.isfinite(divida_liq_ebitda):
+                divida_liq_ebitda = 0.0
+        except (TypeError, ValueError):
+            divida_liq_ebitda = 0.0
+        if divida_liq_ebitda > 3.0: score -= 15
         if roe > 0.20:  score += 10
         if roe < 0.05:  score -= 15
         if not dy_confiavel: score -= 5   # penalidade leve por DY incerto
