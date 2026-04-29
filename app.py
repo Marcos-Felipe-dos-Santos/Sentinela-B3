@@ -141,30 +141,38 @@ if modo == "Terminal":
             with t3:
                 # CORREÇÃO CRÍTICA v12.1: Crash Fix (None.empty)
                 if hist is not None and not hist.empty:
-                    fig = go.Figure(data=[
-                        go.Candlestick(
-                            x=hist.index,
-                            open=hist['Open'],
-                            high=hist['High'],
-                            low=hist['Low'],
-                            close=hist['Close'],
-                            name='OHLC',
-                        ),
-                        go.Scatter(
-                            x=hist.index,
-                            y=hist['Close'].rolling(50).mean(),
-                            line=dict(color='orange', width=1),
-                            name='MA50',
-                        ),
-                        go.Scatter(
-                            x=hist.index,
-                            y=hist['Close'].rolling(200).mean(),
-                            line=dict(color='blue', width=1),
-                            name='MA200',
-                        ),
-                    ])
-                    fig.update_layout(xaxis_rangeslider_visible=False, height=400)
-                    st.plotly_chart(fig, use_container_width=True)
+                    required_columns = {'Open', 'High', 'Low', 'Close'}
+                    missing_columns = required_columns.difference(hist.columns)
+                    if missing_columns:
+                        st.warning(
+                            "Dados históricos incompletos para gráfico: "
+                            f"colunas ausentes {', '.join(sorted(missing_columns))}."
+                        )
+                    else:
+                        fig = go.Figure(data=[
+                            go.Candlestick(
+                                x=hist.index,
+                                open=hist['Open'],
+                                high=hist['High'],
+                                low=hist['Low'],
+                                close=hist['Close'],
+                                name='OHLC',
+                            ),
+                            go.Scatter(
+                                x=hist.index,
+                                y=hist['Close'].rolling(50).mean(),
+                                line=dict(color='orange', width=1),
+                                name='MA50',
+                            ),
+                            go.Scatter(
+                                x=hist.index,
+                                y=hist['Close'].rolling(200).mean(),
+                                line=dict(color='blue', width=1),
+                                name='MA200',
+                            ),
+                        ])
+                        fig.update_layout(xaxis_rangeslider_visible=False, height=400)
+                        st.plotly_chart(fig, use_container_width=True)
                 else:
                     st.warning("Sem dados históricos para gráfico.")
 
