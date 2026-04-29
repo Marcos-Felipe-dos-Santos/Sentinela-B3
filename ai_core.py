@@ -1,6 +1,9 @@
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 import logging
 import os
+
 import requests
+
 from config import GEMINI_MODEL, GROQ_MODEL, OLLAMA_URL, OLLAMA_MODEL
 
 # CORRIGIDO: removido `import html` que foi importado mas nunca usado
@@ -71,14 +74,22 @@ Responda em Português com exatamente 3 tópicos:
 
         # 2. Gemini (fallback)
         if 'gemini' in self.clients:
+            executor = ThreadPoolExecutor(max_workers=1)
+            future = executor.submit(
+                self.clients['gemini'].models.generate_content,
+                model=GEMINI_MODEL,
+                contents=prompt,
+            )
             try:
-                resp = self.clients['gemini'].models.generate_content(
-                    model=GEMINI_MODEL,
-                    contents=prompt
-                )
+                resp = future.result(timeout=15)
                 return {"content": resp.text, "model": "Gemini"}
+            except FuturesTimeout:
+                future.cancel()
+                logger.warning("Gemini timeout (15s). Falling back to Ollama.")
             except Exception as e:
                 logger.warning(f"Gemini falhou: {e}")
+            finally:
+                executor.shutdown(wait=False, cancel_futures=True)
 
         # 3. Ollama (fallback local)
         return self._call_ollama(prompt)
