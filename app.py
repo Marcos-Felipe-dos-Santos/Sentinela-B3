@@ -2,6 +2,7 @@ import time
 from typing import Any, Dict, Optional
 
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 from database import DatabaseManager
 from market_engine import MarketEngine
@@ -140,7 +141,30 @@ if modo == "Terminal":
             with t3:
                 # CORREÇÃO CRÍTICA v12.1: Crash Fix (None.empty)
                 if hist is not None and not hist.empty:
-                    st.line_chart(hist['Close'])
+                    fig = go.Figure(data=[
+                        go.Candlestick(
+                            x=hist.index,
+                            open=hist['Open'],
+                            high=hist['High'],
+                            low=hist['Low'],
+                            close=hist['Close'],
+                            name='OHLC',
+                        ),
+                        go.Scatter(
+                            x=hist.index,
+                            y=hist['Close'].rolling(50).mean(),
+                            line=dict(color='orange', width=1),
+                            name='MA50',
+                        ),
+                        go.Scatter(
+                            x=hist.index,
+                            y=hist['Close'].rolling(200).mean(),
+                            line=dict(color='blue', width=1),
+                            name='MA200',
+                        ),
+                    ])
+                    fig.update_layout(xaxis_rangeslider_visible=False, height=400)
+                    st.plotly_chart(fig, use_container_width=True)
                 else:
                     st.warning("Sem dados históricos para gráfico.")
 
