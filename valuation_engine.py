@@ -120,7 +120,10 @@ class ValuationEngine:
         rec = "NEUTRO"
         if upside > 0.15 or (is_growth and upside > 0.05): rec = "COMPRA"
         if upside < -0.15: rec = "VENDA"
-        if score >= 75:    rec = "COMPRA FORTE"
+        # COMPRA FORTE só quando há upside real E qualidade alta
+        if score >= 75 and upside > 0.05: rec = "COMPRA FORTE"
+        # Reconhecer empresa boa mas cara — não recomendar compra
+        if score >= 75 and upside <= 0: rec = "QUALIDADE — AGUARDAR"
 
         detalhes = ", ".join([f"{k}: R${v:.2f}" for k, v in metodos.items()])
 
