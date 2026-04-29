@@ -50,15 +50,17 @@ class SentinelaAI:
         perfil    = dados.get('perfil', 'GERAL')
 
         prompt = f"""
-Analise a ação {ticker} (Perfil: {perfil}).
+Você é um analista financeiro. Analise o ativo {ticker} (Perfil: {perfil}).
+Baseie-se ESTRITAMENTE nos dados fornecidos abaixo. Não invente ou presuma dados ausentes.
 
-Dados Fundamentais:
+DADOS FORNECIDOS:
 {dados_txt}
 
-Responda em Português com exatamente 3 tópicos:
-1. Qualidade da empresa (Forte / Moderada / Fraca) — justifique com os dados acima.
-2. Riscos principais — liste os 2-3 maiores riscos identificados.
-3. Veredito final (Compra / Neutro / Venda) — justifique com base no valuation e qualidade.
+Forneça uma análise estruturada, direta e em Português, contendo exatamente:
+1. Valuation: Comente o preço justo calculado e o upside.
+2. Análise Técnica: Comente os indicadores técnicos e momentum.
+3. Riscos e Confiança: Liste as bandeiras de risco e avalie o nível de confiança dos dados.
+4. Recomendação Final: Sua conclusão (Compra/Neutro/Venda/Aguardar) baseada exclusivamente nos dados acima.
 """
 
         # 1. Groq (primário)
