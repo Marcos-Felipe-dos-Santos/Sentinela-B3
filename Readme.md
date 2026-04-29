@@ -80,11 +80,11 @@ O projeto foi desenvolvido com foco em:
 ## 📦 Instalação
 
 ```bash
-git clone https://github.com/SEU-USUARIO/Sentinela-B3.git
+git clone https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3.git
 cd Sentinela-B3
 
 python -m venv venv
-venv\Scripts\activate  # Windows
+.\venv\Scripts\activate  # Windows
 # source venv/bin/activate  # Linux/Mac
 
 pip install -r requirements.txt
