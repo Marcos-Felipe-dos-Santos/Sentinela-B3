@@ -1,6 +1,8 @@
-import streamlit as st
-import pandas as pd
 import time
+from typing import Any, Dict, Optional
+
+import pandas as pd
+import streamlit as st
 from database import DatabaseManager
 from market_engine import MarketEngine
 from valuation_engine import ValuationEngine
@@ -31,6 +33,20 @@ def load_engines():
 
 db, market, val_engine, fii_engine, tech_engine, port_engine, peers_engine, ai_engine = load_engines()
 
+
+@st.cache_data(ttl=300)
+def buscar_dados_ticker_cached(ticker: str) -> Optional[Dict[str, Any]]:
+    """Busca dados de mercado com cache curto para reduzir chamadas externas.
+
+    Args:
+        ticker: Código do ativo na B3.
+
+    Returns:
+        Dados fundamentalistas e histórico do ativo, quando disponíveis.
+    """
+    return market.buscar_dados_ticker(ticker)
+
+
 st.sidebar.title("🦅 Sentinela B3")
 modo = st.sidebar.radio("Menu", ["Terminal", "Carteira", "Gestor", "Config"])
 
@@ -44,7 +60,7 @@ if modo == "Terminal":
     if st.button("Analisar") and ticker:
         with st.spinner(f"Analisando {ticker}..."):
             # A. Dados Básicos
-            dados = market.buscar_dados_ticker(ticker)
+            dados = buscar_dados_ticker_cached(ticker)
             if not dados or 'erro' in dados:
                 st.error("Ativo não encontrado."); st.stop()
             
@@ -154,7 +170,7 @@ elif modo == "Carteira":
         precos_atuais = {}
         with st.spinner("Atualizando cotações..."):
             for ticker in df['ticker']:
-                d = market.buscar_dados_ticker(ticker)
+                d = buscar_dados_ticker_cached(ticker)
                 p = d.get('preco_atual', 0) if d else 0
                 precos_atuais[ticker] = p
         
@@ -200,7 +216,7 @@ elif modo == "Gestor":
                 
                 # Busca histórico em batch
                 for t in tickers:
-                    d = market.buscar_dados_ticker(t)
+                    d = buscar_dados_ticker_cached(t)
                     if d and 'historico' in d and not d['historico'].empty:
                         df_hist[t] = d['historico']['Close']
                 
