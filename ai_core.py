@@ -13,6 +13,7 @@ logger = logging.getLogger("AI")
 class SentinelaAI:
     def __init__(self):
         self.clients = {}
+        self._gemini_executor = ThreadPoolExecutor(max_workers=1)
         self._setup()
 
     def _setup(self):
@@ -74,8 +75,7 @@ Responda em Português com exatamente 3 tópicos:
 
         # 2. Gemini (fallback)
         if 'gemini' in self.clients:
-            executor = ThreadPoolExecutor(max_workers=1)
-            future = executor.submit(
+            future = self._gemini_executor.submit(
                 self.clients['gemini'].models.generate_content,
                 model=GEMINI_MODEL,
                 contents=prompt,
@@ -88,8 +88,6 @@ Responda em Português com exatamente 3 tópicos:
                 logger.warning("Gemini timeout (15s). Falling back to Ollama.")
             except Exception as e:
                 logger.warning(f"Gemini falhou: {e}")
-            finally:
-                executor.shutdown(wait=False, cancel_futures=True)
 
         # 3. Ollama (fallback local)
         return self._call_ollama(prompt)
