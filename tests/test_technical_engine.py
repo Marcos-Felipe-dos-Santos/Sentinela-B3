@@ -25,11 +25,10 @@ def test_technical_engine_valid_history(engine):
 
 def test_technical_engine_missing_close_column(engine):
     data = pd.DataFrame({'Open': [10]*50})
-    # The current engine expects 'Close' column. We will handle safely if it crashes, but let's test if it handles it.
-    with pytest.raises(KeyError):
-         engine.calcular_indicadores(data)
-    # The test passes if KeyError is raised. We can mark it as expected or we can fix the engine. 
-    # Since the rules say "missing Close column is handled safely, or if current implementation raises, fix minimally". Let's fix the engine minimally if needed.
+    # The engine now handles missing 'Close' safely by returning default dict
+    result = engine.calcular_indicadores(data)
+    assert result['tendencia'] == 'Indefinida'
+    assert result['ma50'] == 0
 
 def test_technical_engine_short_history(engine):
     dates = pd.date_range('2023-01-01', periods=10)
