@@ -82,8 +82,11 @@ class ValuationEngine:
         # ── 3. PETER LYNCH ───────────────────────────────────────────────────
         # Só para CRESCIMENTO com DY confiável
         if is_growth and pl > 0 and dy_confiavel:
-            taxa_crescimento = min(roe * 100, 30)   # cap 30% a.a.
-            metodos['Lynch'] = lpa * taxa_crescimento
+            # Taxa de crescimento sustentável real = ROE × retenção
+            payout_ratio = min((dy * p) / lpa, 0.95) if lpa > 0 else 0.5
+            retencao = 1 - payout_ratio
+            g_real = min(roe * retencao * 100, 30)
+            metodos['Lynch'] = lpa * g_real
 
         # ── 4. GORDON ─────────────────────────────────────────────────────────
         # Modelo de dividendos; exige DY confiável e real (>4%) e ROE sólido
