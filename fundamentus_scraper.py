@@ -1,6 +1,9 @@
-import time
 import logging
-import threading  # ADICIONADO: para thread-safety do rate limiter
+import threading
+import time
+
+import requests
+from bs4 import BeautifulSoup
 
 logger = logging.getLogger("Scraper")
 
@@ -9,45 +12,45 @@ logger = logging.getLogger("Scraper")
 # Se indisponível, cai automaticamente em requests.Session (comportamento anterior)
 try:
     import cloudscraper
-    def _criar_session():
-        s = cloudscraper.create_scraper(
+except ImportError:
+    cloudscraper = None
+
+
+def _criar_session():
+    if cloudscraper is not None:
+        logger.info("[Scraper] cloudscraper disponível — usando para bypass Cloudflare")
+        session = cloudscraper.create_scraper(
             browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False}
         )
-        s.headers.update({
+        session.headers.update({
             'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
             'Accept-Encoding': 'gzip, deflate, br',
         })
-        return s
-    _USAR_CLOUDSCRAPER = True
-    logger.info("[Scraper] cloudscraper disponível — usando para bypass Cloudflare")
-except ImportError:
-    import requests
-    def _criar_session():
-        s = requests.Session()
-        s.headers.update({
-            'User-Agent': (
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-                '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-            ),
-            'Accept':           'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language':  'pt-BR,pt;q=0.9,en;q=0.8',
-            'Accept-Encoding':  'gzip, deflate, br',
-            'Connection':       'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-        })
-        return s
-    _USAR_CLOUDSCRAPER = False
-    logger.warning("[Scraper] cloudscraper NÃO instalado — usando requests.Session (pode ser bloqueado)")
-    logger.warning("[Scraper]   → Instalar com: pip install cloudscraper")
+        return session, True
 
-from bs4 import BeautifulSoup
+    logger.warning("[Scraper] cloudscraper NÃO instalado — usando requests.Session")
+    logger.warning("[Scraper]   → Instalar com: pip install cloudscraper")
+    session = requests.Session()
+    session.headers.update({
+        'User-Agent': (
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+            '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        ),
+        'Accept': (
+            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        ),
+        'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+    })
+    return session, False
 
 
 class FundamentusScraper:
     def __init__(self):
-        self.session       = _criar_session()
+        self.session, self._usando_cs = _criar_session()
         self._ultimo_req   = 0.0      # timestamp do último request
-        self._usando_cs    = _USAR_CLOUDSCRAPER
         self._lock         = threading.Lock()  # ADICIONADO: proteção contra race condition
 
     def __del__(self):
@@ -62,16 +65,20 @@ class FundamentusScraper:
 
         v = texto.strip().replace('%', '').replace(' ', '')
         try:
-            if ',' in v and '.' in v:        # 1.234,56 → 1234.56
+            if ',' in v and '.' in v:
+                # 1.234,56 -> 1234.56
                 v = v.replace('.', '').replace(',', '.')
-            elif ',' in v:                   # 15,2 → 15.2
+            elif ',' in v:
+                # 15,2 -> 15.2
                 v = v.replace(',', '.')
             elif '.' in v:
                 partes = v.split('.')
-                if len(partes) > 2:          # 12.345.678 → 12345678
+                if len(partes) > 2:
+                    # 12.345.678 -> 12345678
                     v = v.replace('.', '')
                 elif len(partes) == 2 and len(partes[1]) == 3 and len(partes[0]) >= 1:
-                    v = v.replace('.', '')   # 1.500 → 1500
+                    # 1.500 -> 1500
+                    v = v.replace('.', '')
                 # senão mantém como decimal US (3.5)
             return float(v)
         except ValueError:
@@ -97,9 +104,14 @@ class FundamentusScraper:
                 r = self.session.get(url, timeout=15)
 
                 if r.status_code == 403:
+                    detalhe_403 = (
+                        "— cloudscraper falhou também, site pode ter mudado"
+                        if self._usando_cs
+                        else "— instale cloudscraper"
+                    )
                     logger.warning(
                         f"[Fundamentus] 403 para {ticker} (tentativa {tentativa}) "
-                        f"{'— cloudscraper falhou também, site pode ter mudado' if self._usando_cs else '— instale cloudscraper'}"
+                        f"{detalhe_403}"
                     )
                     time.sleep(6 if tentativa == 1 else 10)
                     continue
@@ -138,7 +150,11 @@ class FundamentusScraper:
 
                 campos_ok = [k for k, v in dados.items() if v is not None]
                 if len(campos_ok) < 3:
-                    motivo = "cloudscraper ativo mas ainda bloqueado" if self._usando_cs else "instale cloudscraper"
+                    motivo = (
+                        "cloudscraper ativo mas ainda bloqueado"
+                        if self._usando_cs
+                        else "instale cloudscraper"
+                    )
                     logger.warning(
                         f"[Fundamentus] {len(campos_ok)} campo(s) para {ticker} "
                         f"(tentativa {tentativa}) — possível bloqueio ({motivo}). "
@@ -159,7 +175,11 @@ class FundamentusScraper:
                 if preco_elem:
                     dados['preco_atual'] = self._limpar_valor(preco_elem.text)
 
-                logger.info(f"[Fundamentus] ✓ {ticker}: {len(campos_ok)} campos | fonte: {'cloudscraper' if self._usando_cs else 'requests'}")
+                fonte = 'cloudscraper' if self._usando_cs else 'requests'
+                logger.info(
+                    f"[Fundamentus] ✓ {ticker}: {len(campos_ok)} campos | "
+                    f"fonte: {fonte}"
+                )
                 return dados
 
             except Exception as e:

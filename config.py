@@ -1,8 +1,8 @@
 import logging
 import os
+import time
 
 import requests
-import streamlit as st
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -61,11 +61,22 @@ UNITS_CONHECIDAS = {
 # SELIC DINÂMICA (lazy load com cache)
 # ==========================================
 SELIC_FALLBACK = 0.1075
+SELIC_CACHE_TTL = 86400
+_selic_cache_value = None
+_selic_cache_time = 0.0
 
 
-@st.cache_data(ttl=86400)
 def get_selic_atual() -> float:
-    """Busca a Selic diária atual via API do Banco Central do Brasil."""
+    """Busca a Selic atual via API do Banco Central do Brasil."""
+    global _selic_cache_time, _selic_cache_value
+
+    now = time.time()
+    if (
+        _selic_cache_value is not None
+        and now - _selic_cache_time < SELIC_CACHE_TTL
+    ):
+        return _selic_cache_value
+
     try:
         url = (
             "https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/"
@@ -73,8 +84,9 @@ def get_selic_atual() -> float:
         )
         resp = requests.get(url, timeout=5)
         resp.raise_for_status()
-        valor_diario = float(resp.json()[0]['valor'])
-        selic_anual = (1 + valor_diario / 100) ** 252 - 1
+        selic_anual = float(resp.json()[0]['valor']) / 100
+        _selic_cache_value = selic_anual
+        _selic_cache_time = now
         logger.info(
             f"Selic atual: {selic_anual:.4f} ({selic_anual*100:.2f}% a.a.)"
         )
@@ -84,5 +96,6 @@ def get_selic_atual() -> float:
             f"Falha ao buscar Selic do BCB: {e}. Usando fallback hardcoded."
         )
         return SELIC_FALLBACK
+
 
 RISK_FREE_RATE = SELIC_FALLBACK  # compatibilidade; use get_selic_atual() nos engines

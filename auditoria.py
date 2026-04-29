@@ -46,8 +46,12 @@ class _Tee:
         return self._buf.getvalue()
 
 # ─── cores no terminal ────────────────────────────────────────────────────────
-GRN  = "\033[32m"; RED  = "\033[31m"; YLW  = "\033[33m"
-CYN  = "\033[36m"; BLD  = "\033[1m";  RST  = "\033[0m"
+GRN = "\033[32m"
+RED = "\033[31m"
+YLW = "\033[33m"
+CYN = "\033[36m"
+BLD = "\033[1m"
+RST = "\033[0m"
 ok   = lambda s: f"{GRN}✓ {s}{RST}"
 err  = lambda s: f"{RED}✗ {s}{RST}"
 warn = lambda s: f"{YLW}⚠ {s}{RST}"
@@ -115,9 +119,11 @@ def auditar_selic():
         (resultado.get('serie_11_decimal', 0.0006), "BUGADA"),
         (resultado.get('serie_432_decimal', 0.15),  "CORRETA")
     ]:
-        p=42; dy=0.07
+        p = 42
+        dy = 0.07
         bazin  = (dy * p) / (selic_val * 0.85)
-        g_cr   = 0.04; k_cr = selic_val + 0.06
+        g_cr = 0.04
+        k_cr = selic_val + 0.06
         gordon = (dy*p*(1+g_cr))/(k_cr-g_cr) if k_cr > g_cr else 0
         exemplos.append({"label": label, "selic": selic_val,
                          "bazin_EGIE3": round(bazin,2), "gordon_EGIE3": round(gordon,2)})
@@ -174,9 +180,17 @@ def auditar_dados_scraper(ticker: str):
             elif campo in ['dy','roe','roic','margem_liquida','margem_bruta'] and isinstance(val, float):
                 # Avisar se DY parece estar em formato percentagem (não decimal)
                 if campo == 'dy' and val > 0.5:
-                    print(f"  {campo:<25}: {warn(f'{val} — FORMATO % (>50%)! Yahoo retornou em % em vez de decimal. Valuation engine vai normalizar.')}")
+                    msg = (
+                        f"{val} — FORMATO % (>50%)! Yahoo retornou em % "
+                        "em vez de decimal. Valuation engine vai normalizar."
+                    )
+                    print(f"  {campo:<25}: {warn(msg)}")
                 elif campo == 'dy' and val > 0.04:
-                    print(f"  {campo:<25}: {val*100:.2f}%  (decimal: {val:.4f})  {warn('Verificar: DY>4% sendo tratado como is_growth=False')}")
+                    msg = "Verificar: DY>4% sendo tratado como is_growth=False"
+                    print(
+                        f"  {campo:<25}: {val*100:.2f}%  "
+                        f"(decimal: {val:.4f})  {warn(msg)}"
+                    )
                 else:
                     print(f"  {campo:<25}: {val*100:.2f}%  (decimal: {val:.4f})")
             elif campo == 'preco_atual':
@@ -253,7 +267,11 @@ def auditar_valuation(ticker: str, dados: dict):
         dy = dy_raw / 100
         print(f"  {warn(f'DY={dy_raw:.4f} em % → normalizado para {dy:.4f} decimal')}")
     elif dy_raw > 0.25:
-        print(f"  {err(f'DY={dy_raw:.4f} ({dy_raw*100:.1f}%) improvável → dado suspeito (Yahoo bug) → desconsiderado')}")
+        msg = (
+            f"DY={dy_raw:.4f} ({dy_raw*100:.1f}%) improvável "
+            "→ dado suspeito (Yahoo bug) → desconsiderado"
+        )
+        print(f"  {err(msg)}")
         dy = 0.0
         dy_confiavel = False
     else:
@@ -284,7 +302,10 @@ def auditar_valuation(ticker: str, dados: dict):
     if pl > 0:
         print(f"    LPA real (P / P/L) : R$ {p/pl:.2f}")
     print(f"    dy_confiavel       : {dy_confiavel}")
-    print(f"    pl_confiavel       : {pl_confiavel}  {'(OK)' if pl_confiavel else warn('PL do Yahoo suspeito — Graham será ignorado')}")
+    pl_status = '(OK)' if pl_confiavel else warn(
+        'PL do Yahoo suspeito — Graham será ignorado'
+    )
+    print(f"    pl_confiavel       : {pl_confiavel}  {pl_status}")
     print(f"    is_growth          : {is_growth}  "
           f"({'ROE>20% AND DY<4%' if dy_confiavel else 'False (DY não confiável)'})")
     print(f"    → Perfil: {'CRESCIMENTO (Lynch)' if is_growth else 'RENDA/VALOR (Graham+Bazin+Gordon)'}")
@@ -350,7 +371,11 @@ def auditar_valuation(ticker: str, dados: dict):
         print(f"  Taxa mínima (Selic×0.85) = {selic*100:.2f}%×0.85 = {taxa_b*100:.2f}%")
         print(f"  Bazin = R${div_anual:.2f} / {taxa_b:.4f} = {ok(f'R$ {b_val:.2f}')}")
         if b_val < p:
-            print(f"  {warn(f'Bazin ({b_val:.2f}) < Preço ({p:.2f}): DY insuficiente vs Selic — correto com juros altos')}")
+            msg = (
+                f"Bazin ({b_val:.2f}) < Preço ({p:.2f}): "
+                "DY insuficiente vs Selic — correto com juros altos"
+            )
+            print(f"  {warn(msg)}")
         metodos_log['Bazin'] = {"status": "OK", "valor": round(b_val, 2),
                                  "div_anual": round(div_anual, 4), "taxa_bazin": round(taxa_b, 4)}
 
@@ -370,14 +395,23 @@ def auditar_valuation(ticker: str, dados: dict):
         metodos_log['Lynch'] = {"status": "IGNORADO", "motivo": r}
     else:
         lpa_l = p / pl
-        taxa_l = min(roe * 100, 30)
-        l_val  = lpa_l * taxa_l
+        payout_ratio = min((dy * p) / lpa_l, 0.95) if lpa_l > 0 else 0.5
+        retencao = 1 - payout_ratio
+        taxa_l = min(roe * retencao * 100, 30)
+        l_val = lpa_l * taxa_l
         metodos['Lynch'] = l_val
         print(f"  LPA real = {p:.2f} / {pl:.1f} = {lpa_l:.4f}")
-        print(f"  Taxa cresc. = min(ROE×100, 30) = min({roe*100:.1f}, 30) = {taxa_l:.1f}%")
+        print(f"  Payout = {payout_ratio*100:.1f}%")
+        print(f"  Retenção = {retencao*100:.1f}%")
+        print(
+            f"  Taxa cresc. = min(ROE×retenção×100, 30) = "
+            f"{taxa_l:.1f}%"
+        )
         print(f"  Lynch = {lpa_l:.4f} × {taxa_l:.1f} = {ok(f'R$ {l_val:.2f}')}")
         metodos_log['Lynch'] = {"status": "OK", "valor": round(l_val, 2),
-                                  "lpa": round(lpa_l, 4), "taxa_cresc": taxa_l}
+                                  "lpa": round(lpa_l, 4),
+                                  "payout_ratio": round(payout_ratio, 4),
+                                  "taxa_cresc": taxa_l}
 
     # Gordon
     print(sub("Método Gordon"))
@@ -415,7 +449,8 @@ def auditar_valuation(ticker: str, dados: dict):
     print(sub("Resultado Final"))
     vals = list(metodos.values())
     if not vals:
-        fv = p; upside = 0.0
+        fv = p
+        upside = 0.0
         print(f"  {warn('Nenhum método aplicado → Fair Value = Preço atual (Fallback)')}")
     else:
         fv     = sum(vals) / len(vals)
@@ -431,15 +466,25 @@ def auditar_valuation(ticker: str, dados: dict):
     score = max(0, min(100, score))
 
     # Ajustes de qualidade — idênticos ao valuation_engine.py de produção
-    if roe > 0.20:       score += 10  # bônus alta rentabilidade
-    if roe < 0.05:       score -= 15  # penalidade rentabilidade baixa/negativa
-    if not dy_confiavel: score -= 5   # penalidade DY incerto
-    if not pl_confiavel: score -= 5   # penalidade PL incerto (Yahoo TTM suspeito)
+    if roe > 0.20:
+        score += 10
+    if roe < 0.05:
+        score -= 15
+    if not dy_confiavel:
+        score -= 5
+    if not pl_confiavel:
+        score -= 5
     score = max(0, min(100, score))
+
     rec = "NEUTRO"
-    if upside > 0.15 or (is_growth and upside > 0.05): rec = "COMPRA"
-    if upside < -0.15: rec = "VENDA"
-    if score >= 75:    rec = "COMPRA FORTE"
+    if upside > 0.15 or (is_growth and upside > 0.05):
+        rec = "COMPRA"
+    if upside < -0.15:
+        rec = "VENDA"
+    if score >= 75 and upside > 0.05:
+        rec = "COMPRA FORTE"
+    if score >= 75 and upside <= 0:
+        rec = "QUALIDADE — AGUARDAR"
 
     cor = GRN if upside_pct > 15 else (RED if upside_pct < -15 else YLW)
     print(f"\n  Preço Atual  : R$ {p:.2f}")
@@ -631,7 +676,10 @@ def auditar_banco():
         for r in cart:
             linha = dict(r)
             cart_json.append(linha)
-            print(f"    {r['ticker']:<8} {r['quantidade']:>6} × R${r['preco_medio']:>9.2f}  (desde {r['data_aporte']})")
+            print(
+                f"    {r['ticker']:<8} {r['quantidade']:>6} × "
+                f"R${r['preco_medio']:>9.2f}  (desde {r['data_aporte']})"
+            )
     else:
         print("  Carteira vazia.")
 
@@ -812,8 +860,15 @@ def main():
                     analise = FIIEngine().analisar(dados)
                     fv     = analise.get('fair_value', dados.get('preco_atual', 0))
                     upside_val = analise.get('upside', 0)
-                    print(f"\n  FII Engine → FV=R${fv:.2f}  Upside={upside_val:+.1f}%  Rec={analise.get('recomendacao','?')}")
-                    _rel['tickers'][ticker]['valuation'] = {"perfil": "FII", "resultado": analise}
+                    rec_fii = analise.get('recomendacao', '?')
+                    print(
+                        f"\n  FII Engine → FV=R${fv:.2f}  "
+                        f"Upside={upside_val:+.1f}%  Rec={rec_fii}"
+                    )
+                    _rel['tickers'][ticker]['valuation'] = {
+                        "perfil": "FII",
+                        "resultado": analise,
+                    }
                 except Exception as e:
                     analise = {'fair_value': dados.get('preco_atual', 0), 'upside': 0,
                                'score_final': 50, 'recomendacao': 'NEUTRO', 'perfil': 'FII'}

@@ -25,8 +25,10 @@ class TechnicalEngine:
 
         # Momento
         momento = "Neutro"
-        if rsi > 70: momento = "Sobrecomprado (Alto Risco)"
-        elif rsi < 30: momento = "Sobrevendido (Oportunidade)"
+        if rsi > 70:
+            momento = "Sobrecomprado (Alto Risco)"
+        elif rsi < 30:
+            momento = "Sobrevendido (Oportunidade)"
 
         # CORRIGIDO: tendência hierárquica com NaN guard.
         # Antes: `preco > ma200` com ma200=NaN sempre retornava False → "Baixa"

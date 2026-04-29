@@ -56,8 +56,10 @@ class FIIEngine:
 
         # Score
         score = 50
-        if dy > selic:               score += 20
-        elif dy < (selic * 0.7):     score -= 20
+        if dy > selic:
+            score += 20
+        elif dy < (selic * 0.7):
+            score -= 20
         pvp = float(dados.get('pvp', 1.0) or 1.0)
         if pvp > 1.15:
             score -= 15  # pagando prêmio excessivo sobre o patrimônio
@@ -71,8 +73,10 @@ class FIIEngine:
         tipo = "TIJOLO" if (pvp < 0.95 or pvp > 1.05) else "PAPEL"
 
         rec = "NEUTRO"
-        if upside > 0.10:  rec = "COMPRA"
-        if upside < -0.10: rec = "VENDA"
+        if upside > 0.10:
+            rec = "COMPRA"
+        if upside < -0.10:
+            rec = "VENDA"
 
         return {
             'fair_value':    round(preco_justo, 2),

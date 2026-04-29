@@ -1,6 +1,7 @@
-import yfinance as yf
-import pandas as pd
 import logging
+
+import yfinance as yf
+
 from fundamentus_scraper import FundamentusScraper
 
 logger = logging.getLogger("MarketEngine")
@@ -83,5 +84,6 @@ class MarketEngine:
                 link = n.get('link', n.get('url', '#'))
                 safe_news.append({'titulo': titulo, 'link': link})
             return safe_news
-        except:
+        except Exception as e:
+            logger.warning(f"News error {ticker}: {e}")
             return []
