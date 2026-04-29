@@ -53,6 +53,7 @@ class FIIEngine:
             }
 
         ticker = dados.get('ticker', '')
+        vacancia = None
         if ticker in VACANCIA_CONHECIDA:
             vacancia = VACANCIA_CONHECIDA[ticker]
             dy_efetivo = dy * (1 - vacancia)
@@ -78,6 +79,11 @@ class FIIEngine:
             score -= 7  # prêmio moderado
         elif pvp < 0.85:
             score += 10  # desconto relevante = margem de segurança
+            
+        if vacancia is not None:
+            if vacancia > 0.15:
+                score -= int(100 * vacancia)
+                
         score = max(0, min(100, score))
 
         # Heurística removida: não é possível determinar o tipo pelo P/VP

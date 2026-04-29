@@ -149,6 +149,10 @@ class FundamentusScraper:
                                 dados[mapa[chave]] = self._limpar_valor(valor)
 
                 campos_ok = [k for k, v in dados.items() if v is not None]
+                if len(campos_ok) == 0:
+                    return {
+                        "erro_scraper": True
+                    }
                 if len(campos_ok) < 3:
                     motivo = (
                         "cloudscraper ativo mas ainda bloqueado"

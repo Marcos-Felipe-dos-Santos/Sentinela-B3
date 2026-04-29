@@ -46,6 +46,10 @@ class ValuationEngine:
         confianca = 100
         riscos = []
 
+        if dados.get("erro_scraper"):
+            confianca -= 30
+            riscos.append("Dados fundamentais indisponíveis (scraper)")
+
         # pl_confiavel: False quando Yahoo retornou PL negativo (prejuízo) ou > 80 (TTM atípico)
         # Definido em market_engine.py; padrão True para dados do Fundamentus (mais confiáveis)
         pl_confiavel = bool(dados.get('pl_confiavel', True))
