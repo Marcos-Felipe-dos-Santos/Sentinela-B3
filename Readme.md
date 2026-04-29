@@ -128,6 +128,19 @@ streamlit run app.py
 
 ---
 
+## 🧪 Testes Automatizados
+
+O projeto conta com uma suíte de testes robusta utilizando `pytest` para garantir a estabilidade do sistema contra edge-cases de dados e regras financeiras sem realizar requisições à internet.
+
+```bash
+# Executar a suíte de testes
+python -m pytest
+```
+
+Para mais informações, consulte a documentação da suíte de testes em `tests/README.md`.
+
+---
+
 ## 📌 Próximos Passos
 
 * [ ] Melhorar cobertura de testes

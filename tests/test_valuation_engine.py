@@ -137,3 +137,70 @@ def test_fii_score_penaliza_pvp_alto() -> None:
         fii_pvp_neutro = FIIEngine().analisar({**dados_base, 'pvp': 0.95})
 
     assert fii_pvp_alto['score_final'] < fii_pvp_neutro['score_final']
+
+def test_divida_liq_ebitda_none() -> None:
+    # divida_liq_ebitda=None does not crash
+    dados = {
+        'ticker': 'TEST3',
+        'preco_atual': 10.0,
+        'pvp': 1.0,
+        'pl': 10.0,
+        'dy': 0.05,
+        'roe': 0.15,
+        'divida_liq_ebitda': None
+    }
+    with patch('valuation_engine.get_selic_atual', return_value=0.10):
+        result = ValuationEngine().processar(dados)
+    assert result is not None
+    assert 'score_final' in result
+    assert 0 <= result['score_final'] <= 100
+
+def test_divida_liq_ebitda_malformed_string() -> None:
+    # divida_liq_ebitda as malformed string does not crash
+    dados = {
+        'ticker': 'TEST3',
+        'preco_atual': 10.0,
+        'pvp': 1.0,
+        'pl': 10.0,
+        'dy': 0.05,
+        'roe': 0.15,
+        'divida_liq_ebitda': "abc,def"
+    }
+    with patch('valuation_engine.get_selic_atual', return_value=0.10):
+        result = ValuationEngine().processar(dados)
+    assert result is not None
+    assert 'score_final' in result
+
+def test_divida_liq_ebitda_brazilian_format() -> None:
+    # divida_liq_ebitda as "1.234,56" parses safely
+    dados = {
+        'ticker': 'TEST3',
+        'preco_atual': 10.0,
+        'pvp': 1.0,
+        'pl': 10.0,
+        'dy': 0.05,
+        'roe': 0.15,
+        'divida_liq_ebitda': "1.234,56"
+    }
+    with patch('valuation_engine.get_selic_atual', return_value=0.10):
+        result = ValuationEngine().processar(dados)
+    assert result is not None
+    assert 0 <= result['score_final'] <= 100
+
+def test_valuation_engine_expected_keys() -> None:
+    dados = {
+        'ticker': 'TEST3',
+        'preco_atual': 25.0,
+        'pvp': 1.5,
+        'pl': 8.0,
+        'dy': 0.06,
+        'roe': 0.18,
+        'divida_liq_ebitda': 1.5
+    }
+    with patch('valuation_engine.get_selic_atual', return_value=0.10):
+        result = ValuationEngine().processar(dados)
+    assert 'fair_value' in result
+    assert 'upside' in result
+    assert 'score_final' in result
+    assert 'recomendacao' in result
+    assert result['recomendacao'] in ['COMPRA FORTE', 'COMPRA', 'NEUTRO', 'VENDA', 'QUALIDADE — AGUARDAR']
