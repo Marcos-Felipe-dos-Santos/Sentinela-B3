@@ -43,6 +43,9 @@ class ValuationEngine:
 
         selic = get_selic_atual()
 
+        confianca = 100
+        riscos = []
+
         # pl_confiavel: False quando Yahoo retornou PL negativo (prejuízo) ou > 80 (TTM atípico)
         # Definido em market_engine.py; padrão True para dados do Fundamentus (mais confiáveis)
         pl_confiavel = bool(dados.get('pl_confiavel', True))
@@ -76,6 +79,9 @@ class ValuationEngine:
         # ── 2. BAZIN ─────────────────────────────────────────────────────────
         # Só para RENDA com DY confiável; usa taxa mínima = max(selic, 5%)
         if not is_growth and dy > 0 and dy_confiavel:
+            if dy > 0.15:
+                riscos.append("DY muito alto (possível armadilha)")
+                confianca -= 10
             taxa_minima = max(selic, 0.05)
             metodos['Bazin'] = (dy * p) / taxa_minima
 
@@ -91,8 +97,11 @@ class ValuationEngine:
         # ── 4. GORDON ─────────────────────────────────────────────────────────
         # Modelo de dividendos; exige DY confiável e real (>4%) e ROE sólido
         if dy_confiavel and dy > 0.04 and roe > 0.10:
-            g = min(roe * 0.5, 0.04)
-            k = selic + 0.06
+            payout_ratio_g = min((dy * p) / lpa, 0.95) if lpa > 0 else 0.5
+            retencao_g = 1 - payout_ratio_g
+            g = roe * retencao_g
+            g = min(g, 0.08)
+            k = selic + 0.04
             if k > g:
                 div_prox = (dy * p) * (1 + g)
                 metodos['Gordon'] = div_prox / (k - g)
@@ -106,6 +115,15 @@ class ValuationEngine:
         else:
             fair_value = sum(valores_validos) / len(valores_validos)
             upside     = (fair_value / p) - 1
+            
+            if len(valores_validos) >= 2:
+                if max(valores_validos) / max(min(valores_validos), 0.01) > 2.0:
+                    riscos.append("Métodos divergentes")
+                    confianca -= 10
+
+        if pl <= 0 or pvp <= 0:
+            riscos.append("Dados incompletos")
+            confianca -= 10
 
         # ── SCORE (Sigmoid) ───────────────────────────────────────────────────
         score = 50 + 48 * (2 / (1 + math.exp(-upside * 3)) - 1)
@@ -126,26 +144,43 @@ class ValuationEngine:
                 divida_liq_ebitda = 0.0
         except (TypeError, ValueError):
             divida_liq_ebitda = 0.0
-        if divida_liq_ebitda > 3.0: score -= 15
+        if divida_liq_ebitda > 3.0: 
+            score -= 15
+            riscos.append("Dívida elevada")
+            confianca -= 15
+            
         if roe > 0.20:  score += 10
         if roe < 0.05:  score -= 15
-        if not dy_confiavel: score -= 5   # penalidade leve por DY incerto
-        if not pl_confiavel: score -= 5   # penalidade leve por PL incerto (Yahoo TTM suspeito)
+        
+        if not dy_confiavel: 
+            score -= 5
+            riscos.append("DY suspeito")
+            confianca -= 20
+            
+        if not pl_confiavel: 
+            score -= 5
+            riscos.append("PL não confiável")
+            confianca -= 20
+            
         score = max(0, min(100, score))
 
         # ── RECOMENDAÇÃO ──────────────────────────────────────────────────────
         rec = "NEUTRO"
-        if upside > 0.15 or (is_growth and upside > 0.05):
+        tecnico_negativo = dados.get('tecnico_negativo', False)
+        if tecnico_negativo:
+            riscos.append("Técnico negativo")
+            confianca -= 10
+
+        if upside > 0.15 and score >= 60 and confianca >= 50:
             rec = "COMPRA"
-        if upside < -0.15:
-            rec = "VENDA"
-            
-        # COMPRA FORTE só quando há upside real E qualidade alta
-        if score >= 75 and upside > 0.05:
-            rec = "COMPRA FORTE"
-        # Reconhecer empresa boa mas cara — não recomendar compra
-        elif score >= 75 and upside <= 0 and rec != "VENDA":
+            if score >= 75 and confianca >= 70:
+                rec = "COMPRA FORTE"
+        elif score >= 75 and upside <= 0:
             rec = "QUALIDADE — AGUARDAR"
+        elif upside < -0.15 and tecnico_negativo:
+            rec = "VENDA"
+        else:
+            rec = "NEUTRO"
 
         detalhes = ", ".join([f"{k}: R${v:.2f}" for k, v in metodos.items()])
 
@@ -164,4 +199,6 @@ class ValuationEngine:
             'metodos_usados': detalhes,
             'perfil':        'CRESCIMENTO' if is_growth else 'RENDA/VALOR',
             'pl_confiavel':  pl_confiavel,
+            'confianca':     max(0, confianca),
+            'riscos':        riscos,
         }

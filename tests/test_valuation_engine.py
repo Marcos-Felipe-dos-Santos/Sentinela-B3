@@ -63,7 +63,7 @@ def test_recomendacao_compra_forte_exige_upside() -> None:
 
     assert resultado['score_final'] >= 75
     assert resultado['upside'] == pytest.approx(-32.0, abs=0.1)
-    assert resultado['recomendacao'] == 'VENDA'
+    assert resultado['recomendacao'] == 'QUALIDADE — AGUARDAR'
 
 
 def test_recomendacao_qualidade_aguardar() -> None:
@@ -203,4 +203,41 @@ def test_valuation_engine_expected_keys() -> None:
     assert 'upside' in result
     assert 'score_final' in result
     assert 'recomendacao' in result
+    assert 'confianca' in result
+    assert 'riscos' in result
     assert result['recomendacao'] in ['COMPRA FORTE', 'COMPRA', 'NEUTRO', 'VENDA', 'QUALIDADE — AGUARDAR']
+
+def test_dy_muito_alto_penaliza_bazin() -> None:
+    """DY acima de 15% deve reduzir a confiança por ser armadilha."""
+    dados = {
+        'ticker': 'TRAP3',
+        'preco_atual': 100.0,
+        'roe': 0.10,
+        'pl': 5.0,
+        'pvp': 1.0,
+        'dy': 0.18,
+    }
+    with patch('valuation_engine.get_selic_atual', return_value=0.10):
+        resultado = ValuationEngine().processar(dados)
+    
+    assert "DY muito alto (possível armadilha)" in resultado['riscos']
+    assert resultado['confianca'] < 100
+
+def test_gordon_ignorado_k_menor_g() -> None:
+    """Gordon Growth deve ser ignorado se o custo de capital (k) for menor ou igual ao crescimento (g)."""
+    dados = {
+        'ticker': 'FAST3',
+        'preco_atual': 100.0,
+        'roe': 0.90,  # Crescimento enorme
+        'pl': 15.0,
+        'pvp': 3.0,
+        'dy': 0.05,
+    }
+    # g_uncapped = roe * retencao -> 0.90 * ~0.9 = ~0.81
+    # g_capped = 0.08
+    # k = selic + 0.04 -> 0.03 + 0.04 = 0.07
+    # k < g
+    with patch('valuation_engine.get_selic_atual', return_value=0.03):
+        resultado = ValuationEngine().processar(dados)
+    
+    assert 'Gordon' not in resultado['metodos_usados']
