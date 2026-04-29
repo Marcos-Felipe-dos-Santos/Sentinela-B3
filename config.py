@@ -1,7 +1,9 @@
-import os
 import logging
-from dotenv import load_dotenv
+import os
+
 import requests
+import streamlit as st
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -58,27 +60,29 @@ UNITS_CONHECIDAS = {
 # ==========================================
 # SELIC DINÂMICA (lazy load com cache)
 # ==========================================
-_selic_cache = None
+SELIC_FALLBACK = 0.1075
 
-def get_selic_atual():
-    """Busca a Selic atual no BCB. Usa fallback 10.75% se indisponível."""
-    global _selic_cache
-    if _selic_cache:
-        return _selic_cache
+
+@st.cache_data(ttl=86400)
+def get_selic_atual() -> float:
+    """Busca a Selic diária atual via API do Banco Central do Brasil."""
     try:
-        # CORRIGIDO: série 432 = Meta Selic anual definida pelo Copom (ex: 13.25)
-        # Série 11 era a taxa DIÁRIA (ex: 0.0476 % ao dia) → /100 dava 0.05% a.a. ERRADO
-        r = requests.get(
-            "https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json",
-            timeout=3
+        url = (
+            "https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/"
+            "dados/ultimos/1?formato=json"
         )
-        if r.status_code == 200:
-            _selic_cache = float(r.json()[0]['valor']) / 100
-            logger.info(f"Selic BCB: {_selic_cache*100:.2f}% a.a.")
-            return _selic_cache
+        resp = requests.get(url, timeout=5)
+        resp.raise_for_status()
+        valor_diario = float(resp.json()[0]['valor'])
+        selic_anual = (1 + valor_diario / 100) ** 252 - 1
+        logger.info(
+            f"Selic atual: {selic_anual:.4f} ({selic_anual*100:.2f}% a.a.)"
+        )
+        return selic_anual
     except Exception as e:
-        # CORRIGIDO: logar falha em vez de silenciar (era except: pass)
-        logger.warning(f"BCB API indisponível: {e}. Usando fallback 10.75%.")
-    return 0.1075
+        logger.warning(
+            f"Falha ao buscar Selic do BCB: {e}. Usando fallback hardcoded."
+        )
+        return SELIC_FALLBACK
 
-RISK_FREE_RATE = 0.1075  # fallback estático, use get_selic_atual() nos engines
+RISK_FREE_RATE = SELIC_FALLBACK  # compatibilidade; use get_selic_atual() nos engines
