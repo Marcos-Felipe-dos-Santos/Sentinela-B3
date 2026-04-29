@@ -86,11 +86,12 @@ class ValuationEngine:
             metodos['Bazin'] = (dy * p) / taxa_minima
 
         # ── 3. PETER LYNCH ───────────────────────────────────────────────────
-        # Só para CRESCIMENTO com DY confiável
-        if is_growth and pl > 0 and dy_confiavel:
-            payout_ratio = min((dy * p) / lpa, 0.95) if lpa > 0 else 0.5
-            g = roe * (1 - payout_ratio)
-            g = min(g, 0.30)
+        # Só para CRESCIMENTO com DY confiável e lpa > 0 e roe > 0
+        if is_growth and pl > 0 and dy_confiavel and lpa > 0 and roe > 0:
+            payout_ratio = min((dy * p) / lpa, 0.95)
+            retencao = 1 - payout_ratio
+            g = roe * retencao
+            g = min(g, 0.25)
             pl_justo = 2 * (g * 100)
             metodos['Lynch'] = lpa * pl_justo
 
