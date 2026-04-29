@@ -3,6 +3,10 @@ from config import get_selic_atual
 
 logger = logging.getLogger("FII")
 
+VACANCIA_CONHECIDA = {
+    # examples only if already relevant in tests
+}
+
 class FIIEngine:
     def analisar(self, dados: dict) -> dict:
         if not dados:
@@ -48,17 +52,24 @@ class FIIEngine:
                 'metodos_usados': 'Dados insuficientes (DY ausente ou inválido)',
             }
 
+        ticker = dados.get('ticker', '')
+        if ticker in VACANCIA_CONHECIDA:
+            vacancia = VACANCIA_CONHECIDA[ticker]
+            dy_efetivo = dy * (1 - vacancia)
+        else:
+            dy_efetivo = dy
+
         selic = get_selic_atual()
 
         # Bazin adaptado para FIIs (yield vs taxa livre de risco)
-        preco_justo = (p * dy) / selic
+        preco_justo = (p * dy_efetivo) / selic
         upside      = (preco_justo / p) - 1
 
         # Score
         score = 50
-        if dy > selic:
+        if dy_efetivo > selic:
             score += 20
-        elif dy < (selic * 0.7):
+        elif dy_efetivo < (selic * 0.7):
             score -= 20
         pvp = float(dados.get('pvp', 1.0) or 1.0)
         if pvp > 1.15:
@@ -86,4 +97,6 @@ class FIIEngine:
             'tipo':          tipo,
             'perfil':        'FII',
             'metodos_usados': f'Bazin FII: R${preco_justo:.2f}',
+            'dy':            dy,
+            'dy_efetivo':    dy_efetivo,
         }
