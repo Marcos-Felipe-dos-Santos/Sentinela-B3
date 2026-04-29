@@ -63,7 +63,7 @@ def test_recomendacao_compra_forte_exige_upside() -> None:
 
     assert resultado['score_final'] >= 75
     assert resultado['upside'] == pytest.approx(-20.0, abs=0.1)
-    assert resultado['recomendacao'] != 'COMPRA FORTE'
+    assert resultado['recomendacao'] == 'VENDA'
 
 
 def test_recomendacao_qualidade_aguardar() -> None:

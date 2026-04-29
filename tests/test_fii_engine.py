@@ -21,7 +21,7 @@ def test_fii_engine_valid_input(engine):
     assert 'score_final' in result
     assert 'recomendacao' in result
     assert 'tipo' in result
-    assert result['tipo'] in ['TIJOLO', 'PAPEL']
+    assert result['tipo'] == 'TIPO INDISPONÍVEL'
     assert 0 <= result['score_final'] <= 100
 
 def test_fii_engine_missing_optional_values(engine):

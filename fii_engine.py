@@ -69,8 +69,8 @@ class FIIEngine:
             score += 10  # desconto relevante = margem de segurança
         score = max(0, min(100, score))
 
-        # Heurística de tipo por P/VP
-        tipo = "TIJOLO" if (pvp < 0.95 or pvp > 1.05) else "PAPEL"
+        # Heurística removida: não é possível determinar o tipo pelo P/VP
+        tipo = str(dados.get('tipo') or "TIPO INDISPONÍVEL")
 
         rec = "NEUTRO"
         if upside > 0.10:
