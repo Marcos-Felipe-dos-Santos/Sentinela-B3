@@ -1,256 +1,424 @@
-# AGENTS.md — Sentinela B3
+# Seção 1 — Visão geral do projeto
 
-> Arquivo de contexto para agentes de IA (OpenAI Codex, Claude Code, Copilot Workspace).
-> Coloque este arquivo na raiz do repositório antes de iniciar qualquer sessão.
+Sentinela B3 é uma aplicação pessoal e educacional de análise de ativos da bolsa brasileira, cobrindo ações e FIIs. O README descreve o foco em valuation, análise técnica e suporte à decisão, com aviso explícito de que não constitui recomendação de investimento.
 
----
+A interface é Streamlit em `app.py`, com quatro modos no menu lateral: Terminal, Carteira, Gestor e Config. A página é configurada em `app.py:17` como `Sentinela B3 v12.1`. O README não declara uma versão numérica; ele descreve o projeto como Sentinela B3 e lista a stack.
 
-## Visão geral do projeto
+Stack técnica lida no código e no README: Python, Streamlit, SQLite, pandas, numpy, scipy, Plotly, yfinance, requests, BeautifulSoup, python-dotenv, Groq, Gemini e Ollama. A persistência local fica em SQLite via `database.py`; dados de mercado entram por yfinance, Fundamentus e Brapi opcional via `market_engine.py`; valuation de ações fica em `valuation_engine.py`; valuation de FIIs fica em `fii_engine.py`; técnica fica em `technical_engine.py`; otimização de carteira em `portfolio_engine.py`; comparação setorial em `peers_engine.py`; IA em `ai_core.py`; auditoria operacional em `auditoria.py`.
 
-**Sentinela B3** é uma plataforma de análise fundamentalista de ações e FIIs da Bolsa Brasileira (B3),
-desenvolvida para uso pessoal e portfólio profissional de um estudante de Ciência da Computação.
+Arquivos principais:
 
-- **Interface:** Streamlit (`app.py`)
-- **Banco de dados:** SQLite local via `database.py` (uso pessoal, não precisa de deploy em cloud)
-- **IA:** Fallback chain Groq → Gemini → Ollama (`ai_core.py`)
-- **Dados de mercado:** yfinance + Fundamentus scraper (`market_engine.py`, `fundamentus_scraper.py`)
-- **Linguagem:** Python 3.10+
-- **Versão atual:** v14
+- `app.py`: interface Streamlit, roteamento entre ações/FIIs, cache curto de dados, renderização de valuation, IA, técnica, peers, gráfico e carteira.
+- `config.py`: modelos de IA, parâmetros globais, listas de FIIs e Units conhecidas, tickers distressed, Selic dinâmica com cache manual.
+- `market_engine.py`: consolida dados de yfinance, Fundamentus e Brapi.
+- `valuation_engine.py`: calcula fair value de ações por Graham, Bazin, Lynch e Gordon, score, riscos, confiança e recomendação.
+- `fii_engine.py`: calcula fair value de FIIs via Bazin adaptado com DY, Selic, P/VP e vacância conhecida.
+- `database.py`: cria e acessa tabelas `analises` e `carteira_real` no SQLite local.
+- `ai_core.py`: fallback de IA Groq -> Gemini -> Ollama.
+- `auditoria.py`: script de diagnóstico que consulta Selic, banco, scraper, valuation, técnica, prompt e referência do Fundamentus.
 
----
+# Seção 2 — Arquitetura e fluxo de dados
 
-## Estrutura de arquivos
+No modo Terminal, o usuário digita um ticker em `app.py:73`. Ao clicar em Analisar, `app.py:78` chama `buscar_dados_ticker_cached()`, que usa `MarketEngine.buscar_dados_ticker()` com cache de 300 segundos.
 
-```
-sentinela-b3/
-├── app.py                  # Interface Streamlit — 4 abas: Terminal, Carteira, Gestor, Config
-├── config.py               # Constantes, SELIC hardcoded, lista de FIIs e Units conhecidos
-├── database.py             # SQLite: tabelas analises + carteira
-├── ai_core.py              # Integração LLM: Groq (primário) → Gemini → Ollama (fallback)
-├── market_engine.py        # Busca dados via yfinance + Fundamentus
-├── valuation_engine.py     # 4 métodos: Graham, Bazin, Peter Lynch, Gordon
-├── fii_engine.py           # Valuation específico para FIIs (Bazin adaptado)
-├── technical_engine.py     # RSI (14 períodos), MA50, MA200
-├── portfolio_engine.py     # Otimização Markowitz via scipy.optimize
-├── peers_engine.py         # Benchmarking setorial com 10 setores pré-cadastrados
-├── fundamentus_scraper.py  # Scraping do Fundamentus.com.br
-├── auditoria.py            # Auditoria do banco e validação de Fair Values
-├── limpar_banco.py         # Remove análises corrompidas do banco
-└── requirements.txt        # Dependências pinadas com ranges de versão
-```
+O `MarketEngine` normaliza o ticker em `market_engine.py:33` e monta um dicionário com flags de fonte e qualidade em `market_engine.py:36`. Primeiro tenta yfinance em `_buscar_yfinance()`: coleta histórico de 1 ano, preço atual, `pl`, `pvp`, `dy`, `roe`, `quote_type` e `pl_confiavel`. Depois tenta Fundamentus em `_buscar_fundamentus()`, que chama `FundamentusScraper.buscar_dados()` e, quando obtém dados válidos, sobrescreve campos fundamentalistas do yfinance mantendo preço/histórico. Se Fundamentus falhar e Brapi estiver disponível, `_buscar_brapi()` preenche campos ausentes.
 
----
+O `FundamentusScraper` monta uma sessão com cloudscraper quando disponível, ou `requests.Session` como fallback. Ele limita requisições com lock e intervalo mínimo, baixa a página `detalhes.php?papel={ticker}`, extrai pares de tabela, limpa números brasileiros em `_limpar_valor()` e converte percentuais para decimal.
 
-## Convenções de código obrigatórias
+Depois de coletar dados, `app.py:85` decide se o ticker é FII usando whitelist (`FIIS_CONHECIDOS`), `quote_type == 'MUTUALFUND'`, sufixo `11` e exclusão de `UNITS_CONHECIDAS`. FIIs seguem para `FIIEngine.analisar()`; ações seguem para `ValuationEngine.processar()` e para `PeersEngine.comparar()`.
 
-- **Estilo:** PEP 8. Sem exceções.
-- **Type hints:** Obrigatório em todas as funções públicas. Usar `Optional[T]`, `List[T]`, `Dict[str, Any]`.
-- **Docstrings:** Google style em todas as funções públicas.
-- **Logging:** Usar `logger = logging.getLogger(__name__)` — nunca `print()` em módulos.
-- **Tratamento de erros:** Nunca deixar exceção genérica sem log. Sempre `logger.warning()` ou `logger.error()` com contexto.
-- **Constantes:** Maiúsculas no `config.py`. Nunca hardcoded espalhado pelo código.
-- **Nomes em português:** Variáveis de domínio financeiro ficam em português (ex: `preco_atual`, `fair_value`, `upside`). Variáveis de infraestrutura ficam em inglês (ex: `logger`, `cache_key`, `retry_count`).
-- **Sem quebrar interfaces existentes:** Qualquer alteração em assinaturas de funções deve manter backward compatibility ou atualizar TODOS os chamadores.
+Para ações, `ValuationEngine` normaliza DY, calcula LPA/VPA, consulta `get_selic_atual()`, classifica perfil crescimento versus renda/valor, aplica os métodos disponíveis, calcula média simples dos valores válidos, score sigmoid ajustado por qualidade, riscos, confiança e recomendação. Para FIIs, `FIIEngine` normaliza DY, ajusta por vacância conhecida, usa Selic para preço justo, ajusta score por DY versus Selic e P/VP, e define compra/venda por upside.
 
----
+O `TechnicalEngine` calcula RSI, médias móveis, MACD, bandas de Bollinger, momento e tendência a partir do histórico. O `PeersEngine` busca peers setoriais com `ThreadPoolExecutor`, calcula médias de P/L, P/VP e DY e devolve o setor e peers utilizados. O `SentinelaAI` formata o dicionário de dados sem campos volumosos, gera um prompt e tenta Groq, Gemini com timeout de 15 segundos, e Ollama local.
 
-## Bugs confirmados para corrigir (por prioridade)
+Por fim, `app.py` mescla `dados.update(analise)`, adiciona técnica e resposta de IA, remove `historico` antes de persistir e chama `DatabaseManager.salvar_analise()`. A UI mostra métricas principais, abas de Valuation & IA, Técnica & Peers e Gráfico. A aba Carteira lê `database.py`, atualiza preços com o mesmo cache e calcula valor atual e rentabilidade. A aba Gestor monta históricos de carteira e chama `PortfolioEngine.otimizar()`.
 
-### Bug 1 — CRÍTICO: COMPRA FORTE sobrescreve VENDA sem checar upside
-**Arquivo:** `valuation_engine.py`, método `processar()`, seção de recomendação.
+# Seção 3 — Convenções obrigatórias
 
-**Problema atual:**
+Convenções observadas no projeto:
+
+- Variáveis de domínio financeiro usam português ou termos financeiros já estabelecidos: `preco_atual`, `fair_value`, `upside`, `dy`, `roe`, `pl`, `pvp`, `carteira`, `rentabilidade`, `retencao`, `confianca`, `riscos`.
+- Variáveis de infraestrutura costumam usar inglês: `logger`, `clients`, `future`, `executor`, `timeout`, `cache`, `session`.
+- Módulos principais usam `logger = logging.getLogger(...)`; exemplos: `config.py:18`, `valuation_engine.py:5`, `fii_engine.py:4`, `market_engine.py:9`, `ai_core.py:11`, `database.py:7`, `peers_engine.py:4`, `fundamentus_scraper.py:8`.
+- Tratamento de erro externo registra contexto com `logger.warning()` ou `logger.error()` em engines e integrações; exemplos: yfinance em `market_engine.py:126`, Brapi em `market_engine.py:194`, Gemini em `ai_core.py:88`, Ollama em `ai_core.py:106`, banco em `database.py:102`, Fundamentus em `fundamentus_scraper.py:191`.
+- Funções públicas novas devem manter type hints e docstrings quando possível; o código atual é inconsistente, mas há exemplos já tipados em `market_engine.py:18`, `fii_engine.py:11`, `peers_engine.py:30`, `config.py:77`, `app.py:53`.
+- Não quebrar assinaturas existentes sem atualizar chamadores; `app.py` instancia e chama diretamente todos os engines.
+- Dados externos são tratados como não confiáveis: há flags `erro_scraper`, `dados_parciais`, `pl_confiavel`, `dy_confiavel`, `confianca` e `riscos`.
+- Evitar persistir objetos pesados no banco; `app.py:122` remove `historico` antes de salvar.
+- Manter compatibilidade local e pessoal: SQLite em arquivo, Streamlit local e fallback local via Ollama.
+
+# Seção 4 — Mapa de dependências entre arquivos
+
+- `config.py`
+  - Importa: `logging` (`config.py:1`), `os` (`config.py:2`), `time` (`config.py:3`), `requests` (`config.py:5`), `dotenv.load_dotenv` (`config.py:6`).
+  - É importado por: `ai_core.py:7`, `app.py:15`, `auditar_recomendacoes.py:24`, `auditoria.py:252`, `fii_engine.py:2`, `limpar_banco.py:22`, `portfolio_engine.py:4`, `valuation_engine.py:3`.
+
+- `valuation_engine.py`
+  - Importa: `logging` (`valuation_engine.py:1`), `math` (`valuation_engine.py:2`), `get_selic_atual` e `DISTRESSED_TICKERS` de `config` (`valuation_engine.py:3`).
+  - É importado por: `app.py:9`, `auditar_recomendacoes.py:21`.
+
+- `fii_engine.py`
+  - Importa: `logging` (`fii_engine.py:1`), `get_selic_atual` de `config` (`fii_engine.py:2`).
+  - É importado por: `app.py:10`, `auditar_recomendacoes.py:22`, `auditoria.py:859`.
+
+- `market_engine.py`
+  - Importa: `logging` (`market_engine.py:1`), `Any`, `Dict`, `Optional` de `typing` (`market_engine.py:2`), `yfinance` (`market_engine.py:4`), `FundamentusScraper` de `fundamentus_scraper` (`market_engine.py:6`), `BrapiProvider` de `brapi_provider` (`market_engine.py:7`).
+  - É importado por: `app.py:8`, `auditar_recomendacoes.py:20`, `auditoria.py:145`.
+
+- `app.py`
+  - Importa: `time` (`app.py:1`), `Any`, `Dict`, `Optional` de `typing` (`app.py:2`), `pandas` (`app.py:4`), `plotly.graph_objects` (`app.py:5`), `streamlit` (`app.py:6`), `DatabaseManager` (`app.py:7`), `MarketEngine` (`app.py:8`), `ValuationEngine` (`app.py:9`), `FIIEngine` (`app.py:10`), `TechnicalEngine` (`app.py:11`), `PortfolioEngine` (`app.py:12`), `PeersEngine` (`app.py:13`), `SentinelaAI` (`app.py:14`), `FIIS_CONHECIDOS` e `UNITS_CONHECIDAS` (`app.py:15`).
+  - É importado por: nenhum arquivo encontrado por busca textual.
+
+- `ai_core.py`
+  - Importa: `ThreadPoolExecutor` e `FuturesTimeout` (`ai_core.py:1`), `logging` (`ai_core.py:2`), `os` (`ai_core.py:3`), `requests` (`ai_core.py:5`), constantes de `config` (`ai_core.py:7`), `google.genai` dinamicamente (`ai_core.py:23`), `Groq` dinamicamente (`ai_core.py:33`).
+  - É importado por: `app.py:14`.
+
+- `database.py`
+  - Importa: `sqlite3` (`database.py:1`), `json` (`database.py:2`), `logging` (`database.py:3`), `datetime` (`database.py:4`), `closing` (`database.py:5`), `os` dentro de `reset_db()` (`database.py:121`).
+  - É importado por: `app.py:7`.
+
+- `technical_engine.py`
+  - Importa: `pandas` (`technical_engine.py:1`), `numpy` (`technical_engine.py:2`).
+  - É importado por: `app.py:11`, `auditar_recomendacoes.py:23`.
+
+- `portfolio_engine.py`
+  - Importa: `numpy` (`portfolio_engine.py:1`), `pandas` (`portfolio_engine.py:2`), `minimize` de `scipy.optimize` (`portfolio_engine.py:3`), `get_selic_atual` de `config` (`portfolio_engine.py:4`).
+  - É importado por: `app.py:12`.
+
+- `peers_engine.py`
+  - Importa: `logging` (`peers_engine.py:1`), `ThreadPoolExecutor` e `as_completed` (`peers_engine.py:2`).
+  - É importado por: `app.py:13`.
+
+- `fundamentus_scraper.py`
+  - Importa: `logging` (`fundamentus_scraper.py:1`), `threading` (`fundamentus_scraper.py:2`), `time` (`fundamentus_scraper.py:3`), `requests` (`fundamentus_scraper.py:5`), `BeautifulSoup` (`fundamentus_scraper.py:6`), `cloudscraper` opcional (`fundamentus_scraper.py:14`).
+  - É importado por: `market_engine.py:6`.
+
+- `auditoria.py`
+  - Importa: `sys` (`auditoria.py:18`), `os` (`auditoria.py:19`), `re` (`auditoria.py:20`), `io` (`auditoria.py:21`), `json` (`auditoria.py:22`), `math` (`auditoria.py:23`), `sqlite3` (`auditoria.py:24`), `datetime` (`auditoria.py:25`), `requests` dentro da auditoria Selic (`auditoria.py:78`), `MarketEngine` (`auditoria.py:145`), `numpy` (`auditoria.py:220` e `auditoria.py:527`), `get_selic_atual` (`auditoria.py:252`), `FIIEngine` (`auditoria.py:859`).
+  - É importado por: nenhum arquivo encontrado por busca textual.
+
+- `requirements.txt`
+  - Importa: não se aplica.
+  - É importado por: não se aplica.
+
+- `README.md`
+  - Importa: não se aplica.
+  - É importado por: não se aplica.
+
+# Seção 5 — Bugs confirmados (com localização exata)
+
+**Bug 1 — Recomendação de venda depende indevidamente de técnico negativo**
+
+Arquivo: `valuation_engine.py`, linhas 195-210.
+
+Código atual:
+
 ```python
 rec = "NEUTRO"
-if upside > 0.15 or (is_growth and upside > 0.05): rec = "COMPRA"
-if upside < -0.15: rec = "VENDA"
-if score >= 75: rec = "COMPRA FORTE"  # BUG: sobrescreve VENDA
+tecnico_negativo = dados.get('tecnico_negativo', False)
+if tecnico_negativo:
+    riscos.append("Técnico negativo")
+    confianca -= 10
+
+if upside > 0.15 and score >= 60 and confianca >= 50:
+    rec = "COMPRA"
+    if score >= 75 and confianca >= 70:
+        rec = "COMPRA FORTE"
+elif score >= 75 and upside <= 0:
+    rec = "QUALIDADE — AGUARDAR"
+elif upside < -0.15 and tecnico_negativo:
+    rec = "VENDA"
+else:
+    rec = "NEUTRO"
 ```
 
-**Comportamento errado:** Uma ação com upside de -20% (cara) mas ROE de 25% (ajuste +10 no score)
-pode atingir score 75 e receber COMPRA FORTE mesmo estando cara.
+Descrição: `VENDA` só é emitida quando `upside < -0.15` e `tecnico_negativo` é verdadeiro. Como o código lido não define `tecnico_negativo` em `app.py` nem em `technical_engine.py`, um ativo caro por valuation pode ficar `NEUTRO` se esse campo não chegar no dicionário.
 
-**Correção esperada:**
+**Bug 2 — Auditoria usa fórmula de Bazin diferente da produção**
+
+Arquivo de produção: `valuation_engine.py`, linhas 106-111.
+
+Código atual da produção:
+
 ```python
-rec = "NEUTRO"
-if upside > 0.15 or (is_growth and upside > 0.05): rec = "COMPRA"
-if upside < -0.15: rec = "VENDA"
-# COMPRA FORTE só quando há upside real E qualidade alta
-if score >= 75 and upside > 0.05: rec = "COMPRA FORTE"
-# Reconhecer empresa boa mas cara — não recomendar compra
-if score >= 75 and upside <= 0: rec = "QUALIDADE — AGUARDAR"
+if not is_growth and dy > 0 and dy_confiavel:
+    if dy > 0.15:
+        riscos.append("DY muito alto (possível armadilha)")
+        confianca -= 10
+    taxa_minima = max(selic, 0.05)
+    metodos['Bazin'] = (dy * p) / taxa_minima
 ```
 
----
+Arquivo de auditoria: `auditoria.py`, linhas 365-369.
 
-### Bug 2 — IMPORTANTE: P/VP não entra no score de FII
-**Arquivo:** `fii_engine.py`
+Código atual da auditoria:
 
-**Problema:** O score de FII é baseado exclusivamente no DY vs Selic.
-P/VP é o segundo indicador mais importante para FII e está ausente do score.
-
-**Correção esperada:** Após o cálculo do score atual, adicionar:
 ```python
-pvp = float(dados.get('pvp', 1.0) or 1.0)
-if pvp > 1.15: score -= 15   # pagando prêmio excessivo sobre o patrimônio
-elif pvp > 1.05: score -= 7  # prêmio moderado
-elif pvp < 0.85: score += 10 # desconto relevante = margem de segurança
-score = max(0, min(100, score))
+else:
+    taxa_b = selic * 0.85
+    b_val  = (dy * p) / taxa_b
+    div_anual = dy * p
+    metodos['Bazin'] = b_val
 ```
 
----
+Descrição: o relatório de auditoria calcula Bazin com `selic * 0.85`, mas a engine de produção usa `max(selic, 0.05)`. Isso faz a auditoria validar valores diferentes dos exibidos pelo app.
 
-### Bug 3 — IMPORTANTE: Lynch não desconta payout ratio
-**Arquivo:** `valuation_engine.py`, seção Lynch.
+**Bug 3 — Auditoria usa fórmula de Lynch diferente da produção**
 
-**Problema atual:**
+Arquivo de produção: `valuation_engine.py`, linhas 115-122.
+
+Código atual da produção:
+
 ```python
-taxa_crescimento = min(roe * 100, 30)
-metodos['Lynch'] = lpa * taxa_crescimento
+if is_growth and pl > 0 and dy_confiavel and lpa > 0 and roe > 0:
+    payout_ratio = min((dy * p) / lpa, 0.95)
+    retencao = 1 - payout_ratio
+    g = roe * retencao
+    g = min(g, 0.25)
+    pl_justo = 1.5 * (g * 100)
+    pl_justo = min(pl_justo, 35)
+    metodos['Lynch'] = lpa * pl_justo
 ```
-Usa ROE como proxy de crescimento, assumindo payout = 0% (100% de retenção). Superestima FV.
 
-**Correção esperada:**
+Arquivo de auditoria: `auditoria.py`, linhas 397-402.
+
+Código atual da auditoria:
+
 ```python
-# Taxa de crescimento sustentável real = ROE × retenção
-payout_ratio = min((dy * p) / lpa, 0.95) if lpa > 0 else 0.5
+lpa_l = p / pl
+payout_ratio = min((dy * p) / lpa_l, 0.95) if lpa_l > 0 else 0.5
 retencao = 1 - payout_ratio
-g_real = min(roe * retencao * 100, 30)
-metodos['Lynch'] = lpa * g_real
+taxa_l = min(roe * retencao * 100, 30)
+l_val = lpa_l * taxa_l
+metodos['Lynch'] = l_val
 ```
 
----
+Descrição: produção aplica multiplicador `1.5 * crescimento` com teto de P/L justo em 35, enquanto auditoria usa `lpa * taxa_l` com teto de 30. O script de auditoria pode aprovar ou reprovar fair values que não correspondem ao app.
 
-### Bug 4 — MODERADO: Selic hardcoded em config.py
-**Arquivo:** `config.py` e `valuation_engine.py`
+**Bug 4 — Auditoria usa fórmula de Gordon diferente da produção**
 
-**Problema:** Selic definida como constante. Afeta Bazin (taxa_minima) e Gordon (k = Selic + 0.06).
-Se a Selic mudar, todos os Fair Values ficam errados silenciosamente.
+Arquivo de produção: `valuation_engine.py`, linhas 126-134.
 
-**Correção esperada:** Criar função em `config.py`:
+Código atual da produção:
+
 ```python
-import requests
-import streamlit as st
-
-@st.cache_data(ttl=86400)  # cache de 24 horas
-def get_selic_atual() -> float:
-    """Busca a Selic diária atual via API do Banco Central do Brasil."""
-    try:
-        url = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json"
-        resp = requests.get(url, timeout=5)
-        resp.raise_for_status()
-        valor_diario = float(resp.json()[0]['valor'])
-        selic_anual = (1 + valor_diario / 100) ** 252 - 1
-        logger.info(f"Selic atual: {selic_anual:.4f} ({selic_anual*100:.2f}% a.a.)")
-        return selic_anual
-    except Exception as e:
-        logger.warning(f"Falha ao buscar Selic do BCB: {e}. Usando fallback hardcoded.")
-        return SELIC_FALLBACK  # constante de segurança em config.py
+if dy_confiavel and dy > 0.04 and roe > 0.10:
+    payout_ratio_g = min((dy * p) / lpa, 0.95) if lpa > 0 else 0.5
+    retencao_g = 1 - payout_ratio_g
+    g = roe * retencao_g
+    g = min(g, 0.08)
+    k = selic + 0.04
+    if k > g:
+        div_prox = (dy * p) * (1 + g)
+        metodos['Gordon'] = div_prox / (k - g)
 ```
 
----
+Arquivo de auditoria: `auditoria.py`, linhas 431-440.
 
-## Melhorias de qualidade (sem alterar lógica financeira)
-
-### Cache de dados de mercado
-**Arquivo:** `app.py` e `market_engine.py`
-
-O método `buscar_dados_ticker()` é chamado sem cache. Na aba Carteira, cada reload
-faz N chamadas ao yfinance (uma por ativo). Adicionar cache:
+Código atual da auditoria:
 
 ```python
-@st.cache_data(ttl=300)  # 5 minutos
-def buscar_dados_ticker_cached(ticker: str) -> dict:
-    return market.buscar_dados_ticker(ticker)
+g_cr  = min(roe * 0.5, 0.04)
+k_cr  = selic + 0.06
+if k_cr <= g_cr:
+    r = "k <= g: modelo instável — IGNORADO"
+    print(f"  {err(r)}")
+    metodos_log['Gordon'] = {"status": "IGNORADO", "motivo": r}
+else:
+    div_prox = (dy * p) * (1 + g_cr)
+    go_val   = div_prox / (k_cr - g_cr)
+    metodos['Gordon'] = go_val
 ```
 
-### Gráfico Candlestick com Plotly
-**Arquivo:** `app.py`, aba "Gráfico" no Terminal.
+Descrição: produção usa retenção calculada por payout, teto de crescimento de 8% e `k = selic + 0.04`; auditoria usa `roe * 0.5`, teto de 4% e `k = selic + 0.06`.
 
-O `st.line_chart(hist['Close'])` deve ser substituído por:
+**Bug 5 — Auditoria roteia FIIs diferente do app**
+
+Arquivo de produção: `app.py`, linhas 85-95.
+
+Código atual da produção:
+
 ```python
-import plotly.graph_objects as go
-
-fig = go.Figure(data=[
-    go.Candlestick(x=hist.index, open=hist['Open'], high=hist['High'],
-                   low=hist['Low'], close=hist['Close'], name='OHLC'),
-    go.Scatter(x=hist.index, y=hist['Close'].rolling(50).mean(),
-               line=dict(color='orange', width=1), name='MA50'),
-    go.Scatter(x=hist.index, y=hist['Close'].rolling(200).mean(),
-               line=dict(color='blue', width=1), name='MA200'),
-])
-fig.update_layout(xaxis_rangeslider_visible=False, height=400)
-st.plotly_chart(fig, use_container_width=True)
-```
-
-### Timeout no Gemini (ai_core.py)
-Adicionar timeout via `concurrent.futures.ThreadPoolExecutor`:
-```python
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
-
-with ThreadPoolExecutor(max_workers=1) as executor:
-    future = executor.submit(
-        self.clients['gemini'].models.generate_content,
-        model=GEMINI_MODEL, contents=prompt
+is_fii = (
+    ticker in FIIS_CONHECIDOS  # whitelist de FIIs conhecidos
+    or (
+        dados.get('quote_type') == 'MUTUALFUND'  # reforço se Yahoo funcionar
+        or (
+            "11" in ticker
+            and "SA" not in ticker
+            and ticker not in UNITS_CONHECIDAS  # excluir units
+        )
     )
-    try:
-        resp = future.result(timeout=15)
-        return {"content": resp.text, "model": "Gemini"}
-    except FuturesTimeout:
-        logger.warning("Gemini timeout (15s). Falling back to Ollama.")
+)
 ```
 
----
+Arquivo de auditoria: `auditoria.py`, linhas 847-852.
 
-## Testes a criar
+Código atual da auditoria:
 
-Criar arquivo `tests/test_valuation_engine.py` com os seguintes casos:
+```python
+# Roteamento FII vs Ação — idêntico ao app.py
+qt = dados.get('quote_type', '')
+is_fii = (
+    qt == 'MUTUALFUND'
+    or (not qt and '11' in ticker and 'SA' not in ticker)
+)
+```
 
-1. `test_dy_normalization_percentual()` — DY de 12.47 deve virar 0.1247
-2. `test_dy_invalido_acima_25pct()` — DY de 0.45 deve ser zerado e `dy_confiavel = False`
-3. `test_recomendacao_compra_forte_exige_upside()` — score 80 + upside -0.20 NÃO deve retornar COMPRA FORTE
-4. `test_recomendacao_qualidade_aguardar()` — score 80 + upside -0.10 deve retornar "QUALIDADE — AGUARDAR"
-5. `test_graham_ignorado_pl_negativo()` — pl_confiavel=False deve excluir Graham dos metodos_usados
-6. `test_lynch_desconta_payout()` — empresa com ROE 25% e payout 40% deve ter g_real ≈ 15%, não 25%
-7. `test_fii_score_penaliza_pvp_alto()` — FII com P/VP 1.2 deve ter score menor que FII com P/VP 0.95
+Descrição: o comentário diz que o roteamento é idêntico ao app, mas a auditoria não usa `FIIS_CONHECIDOS` nem exclui `UNITS_CONHECIDAS`. Units como `SANB11` ou `TAEE11` podem ser roteadas de forma diferente na auditoria e no app.
 
----
+**Bug 6 — Otimizador classifica FIIs apenas por sufixo 11**
 
-## O que NÃO alterar
+Arquivo: `portfolio_engine.py`, linhas 57-65.
 
-- Estrutura do SQLite e `database.py` — uso pessoal local, não precisa migrar para cloud
-- Lógica de detecção de FII (whitelist + fallback de sufixo) — está funcionando corretamente
-- Fallback chain Groq → Gemini → Ollama — estrutura correta, só adicionar timeout no Gemini
-- Arquivos `auditoria.py` e `limpar_banco.py` — ferramentas de manutenção ok
-- `requirements.txt` — dependências já pinadas com ranges corretos
+Código atual:
 
----
+```python
+try:
+    fiis = [c for c in df.columns if c.endswith('11')]
+    stocks = [c for c in df.columns if not c.endswith('11')]
 
-## Contexto financeiro (para o agente entender o domínio)
+    if fiis and stocks:
+        pesos_fiis = otimizar_grupo(fiis)
+        pesos_stocks = otimizar_grupo(stocks)
+        resultado = {col: round(p * 40, 1) for col, p in pesos_fiis.items()}
+        resultado.update({col: round(p * 60, 1) for col, p in pesos_stocks.items()})
+```
 
-- **LPA** = Lucro Por Ação = `preço / P/L`
-- **VPA** = Valor Patrimonial Por Ação = `preço / P/VP`
-- **DY** = Dividend Yield = dividendos anuais / preço (retornado como decimal pelo yfinance após normalização)
-- **ROE** = Return on Equity = lucro líquido / patrimônio líquido (retornado como decimal)
-- **Selic** = taxa básica de juros brasileira, benchmark de risco-zero no Brasil
-- **P/VP** = Preço / Valor Patrimonial — para FIIs, o indicador mais importante junto com DY
-- **Upside** = (Fair Value / Preço atual) - 1, em decimal
-- **FII** = Fundo de Investimento Imobiliário — ativo similar a REIT americano
-- **Unit** = ação composta (ex: ITSA4) — não é FII, não usar engine de FII
-- **Perfil CRESCIMENTO**: ROE > 20% AND DY < 4% — usar Lynch
-- **Perfil RENDA/VALOR**: tudo o mais — usar Bazin e Gordon
+Descrição: `config.py:55-58` mantém uma lista de Units conhecidas com sufixo `11` que não são FIIs. O otimizador ignora essa lista e pode tratar Units como FIIs na alocação 40/60.
 
----
+# Seção 6 — Melhorias de qualidade (com localização exata)
 
-## Prioridade de execução para o agente
+**Melhoria 1 — Tornar o gráfico responsivo à largura do container**
 
-1. Bug 1 (COMPRA FORTE sobrescrevendo VENDA) — `valuation_engine.py`
-2. Bug 2 (P/VP no score de FII) — `fii_engine.py`
-3. Bug 3 (Lynch sem payout) — `valuation_engine.py`
-4. Bug 4 (Selic dinâmica) — `config.py` + todos os chamadores de `get_selic_atual()`
-5. Cache de dados de mercado — `app.py`
-6. Candlestick Plotly — `app.py`
-7. Timeout Gemini — `ai_core.py`
-8. Testes pytest — criar `tests/test_valuation_engine.py`
+Arquivo: `app.py`, linha 189.
 
-**Regra:** Executar nessa ordem. Não pular etapas. Commitar separadamente por bug/feature.
+Código atual:
+
+```python
+st.plotly_chart(fig)
+```
+
+O que deve mudar e por quê: usar `st.plotly_chart(fig, use_container_width=True)` para manter o gráfico Candlestick consistente com layout wide e colunas responsivas do Streamlit.
+
+**Melhoria 2 — Alinhar metadados de versão**
+
+Arquivo: `app.py`, linha 17.
+
+Código atual:
+
+```python
+st.set_page_config(page_title="Sentinela B3 v12.1", layout="wide", page_icon="🦅")
+```
+
+Arquivo: `auditoria.py`, linhas 811-814.
+
+Código atual:
+
+```python
+_rel['meta'] = {
+    "timestamp":  datetime.now().isoformat(),
+    "versao":     "Sentinela B3 v13",
+    "db_path":    DB_PATH,
+```
+
+O que deve mudar e por quê: centralizar a versão ou atualizar os metadados para evitar que UI e auditoria reportem versões diferentes. O README não traz versão numérica.
+
+**Melhoria 3 — Fechar executor do Gemini de forma explícita**
+
+Arquivo: `ai_core.py`, linhas 13-17.
+
+Código atual:
+
+```python
+class SentinelaAI:
+    def __init__(self):
+        self.clients = {}
+        self._gemini_executor = ThreadPoolExecutor(max_workers=1)
+        self._setup()
+```
+
+O que deve mudar e por quê: adicionar método de encerramento ou gerenciamento explícito do executor para evitar thread persistente em ciclos longos do Streamlit. Verificar a melhor integração com `st.cache_resource` antes de alterar.
+
+**Melhoria 4 — Completar type hints/docstrings em métodos públicos**
+
+Arquivo: `database.py`, linhas 48-85.
+
+Código atual:
+
+```python
+def adicionar_posicao(self, ticker, qtd, preco):
+```
+
+```python
+def listar_carteira(self):
+```
+
+```python
+def salvar_analise(self, dados):
+```
+
+O que deve mudar e por quê: métodos públicos ainda não têm type hints nem docstrings, embora o projeto já use hints em partes novas. Padronizar isso reduz ambiguidade de chamadas de `app.py`.
+
+**Melhoria 5 — Evitar uma chamada externa por peer sem cache no comparador**
+
+Arquivo: `peers_engine.py`, linhas 44-46.
+
+Código atual:
+
+```python
+with ThreadPoolExecutor(max_workers=4) as executor:
+    futures = {executor.submit(self.market.buscar_dados_ticker, p): p
+               for p in target_peers}
+```
+
+O que deve mudar e por quê: `app.py` usa `buscar_dados_ticker_cached()`, mas `PeersEngine` chama `self.market.buscar_dados_ticker` diretamente. Isso pode repetir yfinance/Fundamentus fora do cache do app. Verificar uma estratégia de cache no engine ou injeção de função cached.
+
+# Seção 7 — O que NÃO alterar
+
+- Não alterar a estrutura do SQLite em `database.py` sem necessidade explícita: tabelas `analises` e `carteira_real` são criadas em `database.py:28` e `database.py:35`.
+- Não salvar `historico` no banco: `app.py:122` remove esse campo antes de `db.salvar_analise()`.
+- Não remover a cadeia de fallback Groq -> Gemini -> Ollama em `ai_core.py:66`, `ai_core.py:78` e `ai_core.py:94`.
+- Não remover o timeout do Gemini em `ai_core.py:86-90`.
+- Não remover o cache curto de dados de mercado em `app.py:52-62`.
+- Não remover o gráfico Candlestick com MA50 e MA200 em `app.py:166-189`.
+- Não remover a whitelist de FIIs nem a lista de Units conhecidas de `config.py:39-58`.
+- Não alterar a lógica de distressed tickers em `valuation_engine.py:19-33` sem teste específico.
+- Não remover flags de qualidade (`erro_scraper`, `dados_parciais`, `pl_confiavel`, `dy_confiavel`, `confianca`, `riscos`), porque elas controlam recomendação e transparência.
+- Não remover o lock/rate-limit do Fundamentus em `fundamentus_scraper.py:91-97`.
+- Não alterar `auditoria.py` e `limpar_banco.py` como parte de correções financeiras sem validar que a auditoria continua batendo com produção.
+
+# Seção 8 — Ordem de execução das correções
+
+1. `valuation_engine.py:207` — remover a dependência de `tecnico_negativo` para emitir `VENDA` quando o upside for menor que -15%.
+2. `auditoria.py:365` — alinhar Bazin da auditoria com `valuation_engine.py:110-111`.
+3. `auditoria.py:397` — alinhar Lynch da auditoria com `valuation_engine.py:116-122`, ou decidir que a produção deve seguir a auditoria e ajustar ambos com teste.
+4. `auditoria.py:431` — alinhar Gordon da auditoria com `valuation_engine.py:127-134`, ou decidir que a produção deve seguir a auditoria e ajustar ambos com teste.
+5. `auditoria.py:847` — usar a mesma detecção de FII do `app.py:85-95`, incluindo `FIIS_CONHECIDOS` e `UNITS_CONHECIDAS`.
+6. `portfolio_engine.py:58` — classificar FIIs no otimizador usando a mesma regra de FII/Unit do app ou uma função compartilhada.
+7. `app.py:189` — passar `use_container_width=True` para o gráfico Plotly.
+8. `app.py:17` e `auditoria.py:813` — alinhar versão reportada pela UI e pelo relatório.
+9. `ai_core.py:16` — definir ciclo de vida explícito para `_gemini_executor`.
+10. `database.py:48` — adicionar type hints e docstrings em métodos públicos sem mudar contratos.
+
+# Seção 9 — Testes manuais para validar cada correção
+
+- Bug 1 (`valuation_engine.py`): executar um teste direto em Python instanciando `ValuationEngine` com dados sintéticos de ação não distressed, `preco_atual=100`, fundamentos que gerem `fair_value` abaixo de `85`, e sem campo `tecnico_negativo`. Resultado esperado: recomendação `VENDA` quando `upside < -15%`, mesmo sem `tecnico_negativo`.
+
+- Bug 2 (`auditoria.py` Bazin): usar um ticker de renda com DY confiável, por exemplo `PETR4` ou `BBAS3`, e comparar `metodos_usados` do app com a seção Bazin de `python auditoria.py PETR4`. Resultado esperado: mesmo valor de Bazin na produção e na auditoria, respeitando arredondamento.
+
+- Bug 3 (`auditoria.py` Lynch): usar um ticker de crescimento com ROE alto e DY baixo, por exemplo `WEGE3`, e comparar o valor de Lynch mostrado pelo app com `python auditoria.py WEGE3`. Resultado esperado: auditoria e produção calculam o mesmo Lynch.
+
+- Bug 4 (`auditoria.py` Gordon): usar ticker com DY maior que 4% e ROE maior que 10%, por exemplo `BBAS3` ou `EGIE3`, e comparar Gordon no app e em `python auditoria.py BBAS3`. Resultado esperado: mesmo crescimento `g`, mesma taxa `k` e mesmo valor de Gordon.
+
+- Bug 5 (`auditoria.py` roteamento FII): executar `python auditoria.py SANB11 TAEE11 MXRF11`. Resultado esperado: `SANB11` e `TAEE11` não entram como FII; `MXRF11` entra como FII se estiver na whitelist ou passar pela regra do app.
+
+- Bug 6 (`portfolio_engine.py`): montar carteira com uma Unit conhecida (`TAEE11` ou `SANB11`) e uma ação comum (`ITUB4`) no modo Carteira/Gestor. Resultado esperado: a Unit não deve ser tratada como FII na segmentação 40/60, e a alocação deve refletir a regra compartilhada com o app.
+
+- Melhoria do gráfico (`app.py`): abrir o app com `streamlit run app.py`, analisar `PETR4` e inspecionar a aba Gráfico em viewport estreito e largo. Resultado esperado: Candlestick ocupa a largura disponível sem ficar comprimido.
+
+- Versão (`app.py`/`auditoria.py`): abrir a UI e rodar `python auditoria.py --db-only`. Resultado esperado: ambos reportam a mesma versão ou a versão vem de uma constante única.
+
+- Gemini executor (`ai_core.py`): com `GEMINI_API_KEY` configurada, provocar timeout ou simular cliente lento e confirmar que o app cai para Ollama sem travar. Depois de resetar/recarregar o Streamlit, verificar que não há acúmulo anormal de threads.
+
+- Type hints/docstrings (`database.py`): executar `python -m pytest -q` e abrir o app. Resultado esperado: nenhum chamador quebra, e métodos continuam aceitando os mesmos argumentos.
