@@ -204,7 +204,7 @@ class ValuationEngine:
                 rec = "COMPRA FORTE"
         elif score >= 75 and upside <= 0:
             rec = "QUALIDADE — AGUARDAR"
-        elif upside < -0.15 and tecnico_negativo:
+        elif upside < -0.15:
             rec = "VENDA"
         else:
             rec = "NEUTRO"
