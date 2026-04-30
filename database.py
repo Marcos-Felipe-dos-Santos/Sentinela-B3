@@ -7,6 +7,11 @@ from contextlib import closing
 logger = logging.getLogger("Database")
 
 class DatabaseManager:
+    # TODO: Considerar tabela cache_fundamentos para guardar última coleta válida
+    # do Fundamentus, com TTL de 24h. Permitiria fallback quando scraper falha.
+    # Riscos: dados defasados usados em análise fresca sem aviso ao usuário.
+    # Implementar apenas quando houver flag clara de "cache_stale" no resultado.
+    # Por ora, salvar_analise() já persiste dados_completos como JSON readonly.
     def __init__(self, db_path="sentinela_v6.db"):
         self.db_path = db_path
         self._init_db()
