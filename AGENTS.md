@@ -51,7 +51,7 @@ Convenções observadas no projeto:
 
 - `config.py`
   - Importa: `logging` (`config.py:1`), `os` (`config.py:2`), `time` (`config.py:3`), `requests` (`config.py:5`), `dotenv.load_dotenv` (`config.py:6`).
-  - É importado por: `ai_core.py:7`, `app.py:15`, `auditar_recomendacoes.py:24`, `auditoria.py:252`, `fii_engine.py:2`, `limpar_banco.py:22`, `portfolio_engine.py:4`, `valuation_engine.py:3`.
+  - É importado por: `ai_core.py:7`, `app.py:15`, `auditar_recomendacoes.py:24`, `auditoria.py:252`, `auditoria.py:820`, `auditoria.py:859`, `fii_engine.py:2`, `limpar_banco.py:22`, `portfolio_engine.py:4`, `valuation_engine.py:3`.
 
 - `valuation_engine.py`
   - Importa: `logging` (`valuation_engine.py:1`), `math` (`valuation_engine.py:2`), `get_selic_atual` e `DISTRESSED_TICKERS` de `config` (`valuation_engine.py:3`).
@@ -66,7 +66,7 @@ Convenções observadas no projeto:
   - É importado por: `app.py:8`, `auditar_recomendacoes.py:20`, `auditoria.py:145`.
 
 - `app.py`
-  - Importa: `time` (`app.py:1`), `Any`, `Dict`, `Optional` de `typing` (`app.py:2`), `pandas` (`app.py:4`), `plotly.graph_objects` (`app.py:5`), `streamlit` (`app.py:6`), `DatabaseManager` (`app.py:7`), `MarketEngine` (`app.py:8`), `ValuationEngine` (`app.py:9`), `FIIEngine` (`app.py:10`), `TechnicalEngine` (`app.py:11`), `PortfolioEngine` (`app.py:12`), `PeersEngine` (`app.py:13`), `SentinelaAI` (`app.py:14`), `FIIS_CONHECIDOS` e `UNITS_CONHECIDAS` (`app.py:15`).
+  - Importa: `time` (`app.py:1`), `Any`, `Dict`, `Optional` de `typing` (`app.py:2`), `pandas` (`app.py:4`), `plotly.graph_objects` (`app.py:5`), `streamlit` (`app.py:6`), `DatabaseManager` (`app.py:7`), `MarketEngine` (`app.py:8`), `ValuationEngine` (`app.py:9`), `FIIEngine` (`app.py:10`), `TechnicalEngine` (`app.py:11`), `PortfolioEngine` (`app.py:12`), `PeersEngine` (`app.py:13`), `SentinelaAI` (`app.py:14`), `APP_VERSION`, `FIIS_CONHECIDOS` e `UNITS_CONHECIDAS` (`app.py:15`).
   - É importado por: nenhum arquivo encontrado por busca textual.
 
 - `ai_core.py`
@@ -82,7 +82,7 @@ Convenções observadas no projeto:
   - É importado por: `app.py:11`, `auditar_recomendacoes.py:23`.
 
 - `portfolio_engine.py`
-  - Importa: `numpy` (`portfolio_engine.py:1`), `pandas` (`portfolio_engine.py:2`), `minimize` de `scipy.optimize` (`portfolio_engine.py:3`), `get_selic_atual` de `config` (`portfolio_engine.py:4`).
+  - Importa: `numpy` (`portfolio_engine.py:1`), `pandas` (`portfolio_engine.py:2`), `minimize` de `scipy.optimize` (`portfolio_engine.py:3`), `FIIS_CONHECIDOS`, `UNITS_CONHECIDAS` e `get_selic_atual` de `config` (`portfolio_engine.py:4`).
   - É importado por: `app.py:12`.
 
 - `peers_engine.py`
@@ -94,7 +94,7 @@ Convenções observadas no projeto:
   - É importado por: `market_engine.py:6`.
 
 - `auditoria.py`
-  - Importa: `sys` (`auditoria.py:18`), `os` (`auditoria.py:19`), `re` (`auditoria.py:20`), `io` (`auditoria.py:21`), `json` (`auditoria.py:22`), `math` (`auditoria.py:23`), `sqlite3` (`auditoria.py:24`), `datetime` (`auditoria.py:25`), `requests` dentro da auditoria Selic (`auditoria.py:78`), `MarketEngine` (`auditoria.py:145`), `numpy` (`auditoria.py:220` e `auditoria.py:527`), `get_selic_atual` (`auditoria.py:252`), `FIIEngine` (`auditoria.py:859`).
+  - Importa: `sys` (`auditoria.py:18`), `os` (`auditoria.py:19`), `re` (`auditoria.py:20`), `io` (`auditoria.py:21`), `json` (`auditoria.py:22`), `math` (`auditoria.py:23`), `sqlite3` (`auditoria.py:24`), `datetime` (`auditoria.py:25`), `requests` dentro da auditoria Selic (`auditoria.py:78`), `MarketEngine` (`auditoria.py:145`), `numpy` (`auditoria.py:220` e `auditoria.py:527`), `get_selic_atual` (`auditoria.py:252`), `APP_VERSION` (`auditoria.py:820`), `FIIS_CONHECIDOS` e `UNITS_CONHECIDAS` (`auditoria.py:859`), `FIIEngine` (`auditoria.py:878`).
   - É importado por: nenhum arquivo encontrado por busca textual.
 
 - `requirements.txt`
@@ -107,7 +107,7 @@ Convenções observadas no projeto:
 
 # Seção 5 — Bugs confirmados (com localização exata)
 
-**Bug 1 — Recomendação de venda depende indevidamente de técnico negativo**
+**[RESOLVIDO — Fase 2] Bug 1 — Recomendação de venda depende indevidamente de técnico negativo**
 
 Arquivo: `valuation_engine.py`, linhas 195-210.
 
@@ -134,7 +134,7 @@ else:
 
 Descrição: `VENDA` só é emitida quando `upside < -0.15` e `tecnico_negativo` é verdadeiro. Como o código lido não define `tecnico_negativo` em `app.py` nem em `technical_engine.py`, um ativo caro por valuation pode ficar `NEUTRO` se esse campo não chegar no dicionário.
 
-**Bug 2 — Auditoria usa fórmula de Bazin diferente da produção**
+**[RESOLVIDO — Fase 2] Bug 2 — Auditoria usa fórmula de Bazin diferente da produção**
 
 Arquivo de produção: `valuation_engine.py`, linhas 106-111.
 
@@ -163,7 +163,7 @@ else:
 
 Descrição: o relatório de auditoria calcula Bazin com `selic * 0.85`, mas a engine de produção usa `max(selic, 0.05)`. Isso faz a auditoria validar valores diferentes dos exibidos pelo app.
 
-**Bug 3 — Auditoria usa fórmula de Lynch diferente da produção**
+**[RESOLVIDO — Fase 2] Bug 3 — Auditoria usa fórmula de Lynch diferente da produção**
 
 Arquivo de produção: `valuation_engine.py`, linhas 115-122.
 
@@ -195,7 +195,7 @@ metodos['Lynch'] = l_val
 
 Descrição: produção aplica multiplicador `1.5 * crescimento` com teto de P/L justo em 35, enquanto auditoria usa `lpa * taxa_l` com teto de 30. O script de auditoria pode aprovar ou reprovar fair values que não correspondem ao app.
 
-**Bug 4 — Auditoria usa fórmula de Gordon diferente da produção**
+**[RESOLVIDO — Fase 2] Bug 4 — Auditoria usa fórmula de Gordon diferente da produção**
 
 Arquivo de produção: `valuation_engine.py`, linhas 126-134.
 
@@ -232,7 +232,7 @@ else:
 
 Descrição: produção usa retenção calculada por payout, teto de crescimento de 8% e `k = selic + 0.04`; auditoria usa `roe * 0.5`, teto de 4% e `k = selic + 0.06`.
 
-**Bug 5 — Auditoria roteia FIIs diferente do app**
+**[RESOLVIDO — Fase 2] Bug 5 — Auditoria roteia FIIs diferente do app**
 
 Arquivo de produção: `app.py`, linhas 85-95.
 
@@ -267,7 +267,7 @@ is_fii = (
 
 Descrição: o comentário diz que o roteamento é idêntico ao app, mas a auditoria não usa `FIIS_CONHECIDOS` nem exclui `UNITS_CONHECIDAS`. Units como `SANB11` ou `TAEE11` podem ser roteadas de forma diferente na auditoria e no app.
 
-**Bug 6 — Otimizador classifica FIIs apenas por sufixo 11**
+**[RESOLVIDO — Fase 2] Bug 6 — Otimizador classifica FIIs apenas por sufixo 11**
 
 Arquivo: `portfolio_engine.py`, linhas 57-65.
 
@@ -289,7 +289,7 @@ Descrição: `config.py:55-58` mantém uma lista de Units conhecidas com sufixo 
 
 # Seção 6 — Melhorias de qualidade (com localização exata)
 
-**Melhoria 1 — Tornar o gráfico responsivo à largura do container**
+**[IMPLEMENTADO — Fase 2] Melhoria 1 — Tornar o gráfico responsivo à largura do container**
 
 Arquivo: `app.py`, linha 189.
 
@@ -301,7 +301,7 @@ st.plotly_chart(fig)
 
 O que deve mudar e por quê: usar `st.plotly_chart(fig, use_container_width=True)` para manter o gráfico Candlestick consistente com layout wide e colunas responsivas do Streamlit.
 
-**Melhoria 2 — Alinhar metadados de versão**
+**[IMPLEMENTADO — Fase 2] Melhoria 2 — Alinhar metadados de versão**
 
 Arquivo: `app.py`, linha 17.
 
@@ -324,7 +324,7 @@ _rel['meta'] = {
 
 O que deve mudar e por quê: centralizar a versão ou atualizar os metadados para evitar que UI e auditoria reportem versões diferentes. O README não traz versão numérica.
 
-**Melhoria 3 — Fechar executor do Gemini de forma explícita**
+**[IMPLEMENTADO — Fase 2] Melhoria 3 — Fechar executor do Gemini de forma explícita**
 
 Arquivo: `ai_core.py`, linhas 13-17.
 
@@ -340,7 +340,7 @@ class SentinelaAI:
 
 O que deve mudar e por quê: adicionar método de encerramento ou gerenciamento explícito do executor para evitar thread persistente em ciclos longos do Streamlit. Verificar a melhor integração com `st.cache_resource` antes de alterar.
 
-**Melhoria 4 — Completar type hints/docstrings em métodos públicos**
+**[IMPLEMENTADO — Fase 2] Melhoria 4 — Completar type hints/docstrings em métodos públicos**
 
 Arquivo: `database.py`, linhas 48-85.
 
@@ -422,3 +422,27 @@ O que deve mudar e por quê: `app.py` usa `buscar_dados_ticker_cached()`, mas `P
 - Gemini executor (`ai_core.py`): com `GEMINI_API_KEY` configurada, provocar timeout ou simular cliente lento e confirmar que o app cai para Ollama sem travar. Depois de resetar/recarregar o Streamlit, verificar que não há acúmulo anormal de threads.
 
 - Type hints/docstrings (`database.py`): executar `python -m pytest -q` e abrir o app. Resultado esperado: nenhum chamador quebra, e métodos continuam aceitando os mesmos argumentos.
+
+# Seção 10 — Estado atual (Fase 3)
+
+Já implementado e não precisa ser feito:
+
+- Bugs 1 a 6 da Seção 5 estão resolvidos na Fase 2.
+- Melhoria 1 da Seção 6 está implementada: `app.py:189` usa `st.plotly_chart(fig, use_container_width=True)`.
+- Melhoria 2 da Seção 6 está implementada: `config.py:23` define `APP_VERSION = "v14"`; `app.py:17` usa `APP_VERSION`.
+- Melhoria 3 da Seção 6 está implementada: `ai_core.py:19-24` encerra `_gemini_executor` em `__del__()`.
+- Melhoria 4 da Seção 6 está implementada: `database.py:48`, `database.py:80` e `database.py:87` têm type hints e docstrings.
+- Cache na Carteira está implementado: `app.py:219` usa `buscar_dados_ticker_cached(ticker)` no loop da aba Carteira.
+- Filtro de peers por dados úteis está implementado: `peers_engine.py:64-72` define `_peer_valido()` e não descarta apenas por `erro_scraper`.
+- Units no otimizador estão implementadas: `portfolio_engine.py:4` importa `FIIS_CONHECIDOS` e `UNITS_CONHECIDAS`; `portfolio_engine.py:57-61` usa `_is_fii()`.
+
+Ainda falta implementar nesta fase:
+
+- Pendente: `remover_posicao()` em `database.py`; não existe método `def remover_posicao`.
+- Pendente: botão de remoção na aba Carteira em `app.py`; não existem widgets `remover_ticker` ou `btn_remover`.
+- Pendente: Sharpe Ratio no retorno de `portfolio_engine.py`; não existem `_sharpe_otimizado`, `_retorno_anual` ou `_volatilidade_anual`.
+- Pendente: métricas de Sharpe/Retorno/Volatilidade no Gestor em `app.py`; o Gestor ainda chama `st.bar_chart(res)` diretamente em `app.py:276`.
+- Pendente: ATR em `technical_engine.py`; o retorno ainda não inclui chave `atr`.
+- Pendente: duplicatas em `FIIS_CONHECIDOS` em `config.py`; `HGLG11` e `BTLG11` aparecem nas linhas `config.py:42` e `config.py:50`.
+- Pendente: usar `MAX_WORKERS` em `peers_engine.py`; o código ainda usa `ThreadPoolExecutor(max_workers=4)` em `peers_engine.py:44`.
+- Pendente: renomear `RISK_FREE_RATE` em `config.py`; `config.py:110` ainda define `RISK_FREE_RATE = SELIC_FALLBACK`. Busca nos arquivos Python encontrou uso apenas em `config.py`.
