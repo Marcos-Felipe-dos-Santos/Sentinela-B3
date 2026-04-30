@@ -16,6 +16,20 @@ from config import FIIS_CONHECIDOS, UNITS_CONHECIDAS
 
 st.set_page_config(page_title="Sentinela B3 v12.1", layout="wide", page_icon="🦅")
 
+
+def _safe_df_for_display(df: pd.DataFrame) -> pd.DataFrame:
+    """Converte colunas object/mixed para str, evitando ArrowInvalid no Streamlit.
+
+    Arrow serialization falha quando uma coluna mistura float e str
+    (ex: tech_data transposto com 'Neutro' e 50.0 na mesma coluna).
+    Apenas colunas object são convertidas — numéricas permanecem intactas.
+    """
+    df = df.copy()
+    for col in df.columns:
+        if df[col].dtype == "object":
+            df[col] = df[col].astype(str)
+    return df
+
 @st.cache_resource
 def load_engines():
     try:
@@ -129,7 +143,7 @@ if modo == "Terminal":
                 c1, c2 = st.columns(2)
                 with c1:
                     st.subheader("Análise Técnica")
-                    st.dataframe(pd.DataFrame([tech_data]).T)
+                    st.dataframe(_safe_df_for_display(pd.DataFrame([tech_data]).T))
                 with c2:
                     st.subheader("Comparação Setorial")
                     if 'erro' not in peers_data:
@@ -216,7 +230,7 @@ elif modo == "Carteira":
         )
 
         st.dataframe(
-            df[['ticker', 'quantidade', 'preco_medio', 'Preço Atual', 'Valor Atual', 'Rentabilidade %']],
+            _safe_df_for_display(df[['ticker', 'quantidade', 'preco_medio', 'Preço Atual', 'Valor Atual', 'Rentabilidade %']]),
             column_config={
                 "preco_medio": st.column_config.NumberColumn("PM", format="R$ %.2f"),
                 "Preço Atual": st.column_config.NumberColumn("Preço Atual", format="R$ %.2f"),
