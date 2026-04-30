@@ -84,6 +84,17 @@ class DatabaseManager:
             cursor.execute("SELECT * FROM carteira_real")
             return [dict(row) for row in cursor.fetchall()]
 
+    def remover_posicao(self, ticker: str) -> None:
+        """Remove completamente uma posição da carteira pelo ticker."""
+        ticker = ticker.upper().strip()
+        with closing(self._get_conn()) as conn:
+            with conn:
+                conn.execute(
+                    "DELETE FROM carteira_real WHERE ticker = ?",
+                    (ticker,)
+                )
+                logger.info(f"Posição removida: {ticker}")
+
     def salvar_analise(self, dados: dict) -> None:
         """Persiste ou atualiza a análise de um ticker no banco."""
         ticker = dados.get('ticker')
