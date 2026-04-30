@@ -186,7 +186,7 @@ if modo == "Terminal":
                             ),
                         ])
                         fig.update_layout(xaxis_rangeslider_visible=False, height=400)
-                        st.plotly_chart(fig)
+                        st.plotly_chart(fig, use_container_width=True)
                 else:
                     st.warning("Sem dados históricos para gráfico.")
 
