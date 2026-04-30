@@ -1,6 +1,8 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from config import MAX_WORKERS
+
 logger = logging.getLogger("Peers")
 
 class PeersEngine:
@@ -41,7 +43,7 @@ class PeersEngine:
 
         dados_peers = []
 
-        with ThreadPoolExecutor(max_workers=4) as executor:
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             futures = {executor.submit(self.market.buscar_dados_ticker, p): p
                        for p in target_peers}
 

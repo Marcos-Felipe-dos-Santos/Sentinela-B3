@@ -47,7 +47,7 @@ FIIS_CONHECIDOS = {
     # Shopping
     'HSML11', 'HGBS11', 'VIUR11', 'SHPH11', 'MALL11', 'RBVA11', 'XPPR11',
     # Logística
-    'HGLG11', 'VILG11', 'LVBI11', 'CXTL11', 'BTLG11', 'PATL11', 'RLOG11',
+    'VILG11', 'LVBI11', 'CXTL11', 'PATL11', 'RLOG11',
     # Híbridos/Outros
     'PVBI11', 'HGRU11', 'RBRY11', 'TRBL11', 'HGPO11', 'BTCI11', 'TGAR11',
 }
@@ -107,4 +107,4 @@ def get_selic_atual() -> float:
         return SELIC_FALLBACK
 
 
-RISK_FREE_RATE = SELIC_FALLBACK  # compatibilidade; use get_selic_atual() nos engines
+RISK_FREE_RATE_FALLBACK = SELIC_FALLBACK  # alias estático — preferir get_selic_atual()
