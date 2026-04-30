@@ -58,8 +58,23 @@ class PeersEngine:
             except TimeoutError:
                 logger.warning("Timeout global na busca de peers (10s).")
 
+        # Filtrar peers inválidos (ex: {"erro_scraper": True} sem ticker)
+        dados_peers = [
+            d for d in dados_peers
+            if isinstance(d, dict)
+            and not d.get('erro_scraper')
+            and 'ticker' in d
+        ]
+
         if not dados_peers:
-            return {"erro": "Não foi possível coletar dados dos peers."}
+            return {
+                "erro": "Não foi possível coletar dados dos peers.",
+                "Setor": setor,
+                "PL_Media_Peers": None,
+                "PVP_Media_Peers": None,
+                "DY_Media_Peers": None,
+                "Peers_Utilizados": [],
+            }
 
         def media(campo):
             vals = [d[campo] for d in dados_peers if d.get(campo) is not None]
@@ -70,5 +85,5 @@ class PeersEngine:
             'PL_Media_Peers':   media('pl'),
             'PVP_Media_Peers':  media('pvp'),
             'DY_Media_Peers':   media('dy'),
-            'Peers_Utilizados': [d['ticker'] for d in dados_peers],
+            'Peers_Utilizados': [d.get('ticker', 'N/A') for d in dados_peers],
         }
