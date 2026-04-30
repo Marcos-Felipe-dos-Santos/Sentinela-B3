@@ -8,7 +8,8 @@ class TechnicalEngine:
                 "rsi": 50, "momento": "Neutro",
                 "tendencia": "Indefinida", "ma50": 0, "ma200": 0,
                 "macd_line": 0, "macd_signal": 0, "macd_hist": 0, "macd_rec": "Neutro",
-                "bb_upper": 0, "bb_lower": 0, "bb_signal": "Neutro"
+                "bb_upper": 0, "bb_lower": 0, "bb_signal": "Neutro",
+                "atr": 0.0
             }
 
         close = historico['Close']
@@ -58,6 +59,19 @@ class TechnicalEngine:
         elif not np.isnan(bb_lower_val) and preco < bb_lower_val:
             bb_signal = "Sobrevendido (Rompimento Baixa)"
 
+        # ATR — Average True Range (14 períodos)
+        atr_val = 0.0
+        if 'High' in historico.columns and 'Low' in historico.columns:
+            high = historico['High']
+            low  = historico['Low']
+            tr   = pd.concat([
+                high - low,
+                (high - close.shift(1)).abs(),
+                (low  - close.shift(1)).abs()
+            ], axis=1).max(axis=1)
+            atr_raw = tr.rolling(14).mean().iloc[-1]
+            atr_val = round(float(atr_raw), 2) if not np.isnan(atr_raw) else 0.0
+
         # Momento
         momento = "Neutro"
         if rsi > 70:
@@ -84,5 +98,6 @@ class TechnicalEngine:
             "macd_rec": macd_rec,
             "bb_upper": round(bb_upper_val, 2) if not np.isnan(bb_upper_val) else 0,
             "bb_lower": round(bb_lower_val, 2) if not np.isnan(bb_lower_val) else 0,
-            "bb_signal": bb_signal
+            "bb_signal": bb_signal,
+            "atr": atr_val
         }
