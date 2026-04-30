@@ -394,24 +394,27 @@ def auditar_valuation(ticker: str, dados: dict):
         print(f"  {warn(r)}")
         metodos_log['Lynch'] = {"status": "IGNORADO", "motivo": r}
     else:
-        lpa_l = p / pl
-        payout_ratio = min((dy * p) / lpa_l, 0.95) if lpa_l > 0 else 0.5
-        retencao = 1 - payout_ratio
-        taxa_l = min(roe * retencao * 100, 30)
-        l_val = lpa_l * taxa_l
-        metodos['Lynch'] = l_val
-        print(f"  LPA real = {p:.2f} / {pl:.1f} = {lpa_l:.4f}")
-        print(f"  Payout = {payout_ratio*100:.1f}%")
-        print(f"  Retenção = {retencao*100:.1f}%")
-        print(
-            f"  Taxa cresc. = min(ROE×retenção×100, 30) = "
-            f"{taxa_l:.1f}%"
-        )
-        print(f"  Lynch = {lpa_l:.4f} × {taxa_l:.1f} = {ok(f'R$ {l_val:.2f}')}")
-        metodos_log['Lynch'] = {"status": "OK", "valor": round(l_val, 2),
-                                  "lpa": round(lpa_l, 4),
-                                  "payout_ratio": round(payout_ratio, 4),
-                                  "taxa_cresc": taxa_l}
+        lpa_l = p / pl if pl > 0 else 0
+        if lpa_l > 0 and roe > 0:
+            payout_ratio = min((dy * p) / lpa_l, 0.95)
+            retencao = 1 - payout_ratio
+            g = roe * retencao
+            g = min(g, 0.25)
+            pl_justo = 1.5 * (g * 100)
+            pl_justo = min(pl_justo, 35)
+            l_val = lpa_l * pl_justo
+            metodos['Lynch'] = l_val
+            print(f"  LPA real = {p:.2f} / {pl:.1f} = {lpa_l:.4f}")
+            print(f"  Payout = {payout_ratio*100:.1f}%")
+            print(f"  Retenção = {retencao*100:.1f}%")
+            print(f"  g = min(ROE×retenção, 25%) = {g*100:.1f}%")
+            print(f"  P/L justo = min(1.5×g×100, 35) = {pl_justo:.1f}")
+            print(f"  Lynch = {lpa_l:.4f} × {pl_justo:.1f} = {ok(f'R$ {l_val:.2f}')}")
+            metodos_log['Lynch'] = {"status": "OK", "valor": round(l_val, 2),
+                                      "lpa": round(lpa_l, 4),
+                                      "payout_ratio": round(payout_ratio, 4),
+                                      "g": round(g, 4),
+                                      "pl_justo": round(pl_justo, 2)}
 
     # Gordon
     print(sub("Método Gordon"))
