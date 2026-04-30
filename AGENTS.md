@@ -86,7 +86,7 @@ Convenções observadas no projeto:
   - É importado por: `app.py:12`.
 
 - `peers_engine.py`
-  - Importa: `logging` (`peers_engine.py:1`), `ThreadPoolExecutor` e `as_completed` (`peers_engine.py:2`).
+  - Importa: `logging` (`peers_engine.py:1`), `ThreadPoolExecutor` e `as_completed` (`peers_engine.py:2`), `MAX_WORKERS` de `config` (`peers_engine.py:4`).
   - É importado por: `app.py:13`.
 
 - `fundamentus_scraper.py`
@@ -374,6 +374,30 @@ with ThreadPoolExecutor(max_workers=4) as executor:
 
 O que deve mudar e por quê: `app.py` usa `buscar_dados_ticker_cached()`, mas `PeersEngine` chama `self.market.buscar_dados_ticker` diretamente. Isso pode repetir yfinance/Fundamentus fora do cache do app. Verificar uma estratégia de cache no engine ou injeção de função cached.
 
+**[IMPLEMENTADO — Fase 3] Melhoria 6 — Remover ativo da carteira**
+
+Arquivo: `database.py`, linha 87; `app.py`, linha 246.
+
+Implementado: `DatabaseManager.remover_posicao()` remove uma posição pelo ticker e a aba Carteira expõe um expander com `remover_ticker` e `btn_remover`.
+
+**[IMPLEMENTADO — Fase 3] Melhoria 7 — Métricas da otimização Markowitz**
+
+Arquivo: `portfolio_engine.py`, linhas 39-60; `app.py`, linhas 291-309.
+
+Implementado: `PortfolioEngine.otimizar()` retorna `_sharpe_otimizado`, `_retorno_anual` e `_volatilidade_anual`; o Gestor exibe as três métricas e filtra metadados antes do gráfico.
+
+**[IMPLEMENTADO — Fase 3] Melhoria 8 — ATR na análise técnica**
+
+Arquivo: `technical_engine.py`, linhas 12, 62-73 e 102.
+
+Implementado: `TechnicalEngine.calcular_indicadores()` retorna `atr` no fallback e no cálculo normal, usando `High`, `Low` e `Close` quando disponíveis.
+
+**[IMPLEMENTADO — Fase 3] Melhoria 9 — Limpezas de configuração e paralelismo**
+
+Arquivo: `config.py`, linhas 42, 50 e 110; `peers_engine.py`, linhas 4 e 46.
+
+Implementado: duplicatas de `HGLG11` e `BTLG11` removidas de `FIIS_CONHECIDOS`; `PeersEngine` usa `MAX_WORKERS`; `RISK_FREE_RATE` foi renomeado para `RISK_FREE_RATE_FALLBACK`.
+
 # Seção 7 — O que NÃO alterar
 
 - Não alterar a estrutura do SQLite em `database.py` sem necessidade explícita: tabelas `analises` e `carteira_real` são criadas em `database.py:28` e `database.py:35`.
@@ -435,14 +459,11 @@ Já implementado e não precisa ser feito:
 - Cache na Carteira está implementado: `app.py:219` usa `buscar_dados_ticker_cached(ticker)` no loop da aba Carteira.
 - Filtro de peers por dados úteis está implementado: `peers_engine.py:64-72` define `_peer_valido()` e não descarta apenas por `erro_scraper`.
 - Units no otimizador estão implementadas: `portfolio_engine.py:4` importa `FIIS_CONHECIDOS` e `UNITS_CONHECIDAS`; `portfolio_engine.py:57-61` usa `_is_fii()`.
+- Remoção de posição está implementada: `database.py:87` define `remover_posicao()` e `app.py:246` expõe o expander de remoção na Carteira.
+- Métricas de otimização estão implementadas: `portfolio_engine.py:39-60` calcula Sharpe, retorno anual e volatilidade anual; `app.py:291-309` exibe as métricas no Gestor.
+- ATR está implementado: `technical_engine.py:62-73` calcula Average True Range e o retorno inclui `atr`.
+- Limpeza final está implementada: `config.py:50` não duplica `HGLG11`/`BTLG11`; `peers_engine.py:46` usa `MAX_WORKERS`; `config.py:110` define `RISK_FREE_RATE_FALLBACK`.
 
 Ainda falta implementar nesta fase:
 
-- Pendente: `remover_posicao()` em `database.py`; não existe método `def remover_posicao`.
-- Pendente: botão de remoção na aba Carteira em `app.py`; não existem widgets `remover_ticker` ou `btn_remover`.
-- Pendente: Sharpe Ratio no retorno de `portfolio_engine.py`; não existem `_sharpe_otimizado`, `_retorno_anual` ou `_volatilidade_anual`.
-- Pendente: métricas de Sharpe/Retorno/Volatilidade no Gestor em `app.py`; o Gestor ainda chama `st.bar_chart(res)` diretamente em `app.py:276`.
-- Pendente: ATR em `technical_engine.py`; o retorno ainda não inclui chave `atr`.
-- Pendente: duplicatas em `FIIS_CONHECIDOS` em `config.py`; `HGLG11` e `BTLG11` aparecem nas linhas `config.py:42` e `config.py:50`.
-- Pendente: usar `MAX_WORKERS` em `peers_engine.py`; o código ainda usa `ThreadPoolExecutor(max_workers=4)` em `peers_engine.py:44`.
-- Pendente: renomear `RISK_FREE_RATE` em `config.py`; `config.py:110` ainda define `RISK_FREE_RATE = SELIC_FALLBACK`. Busca nos arquivos Python encontrou uso apenas em `config.py`.
+- Nenhum item confirmado como pendente na Fase 3 permanece aberto.
