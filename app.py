@@ -286,8 +286,27 @@ elif modo == "Gestor":
                     st.error(res.get('erro', 'Erro desconhecido'))
                 else:
                     st.success("Otimização Concluída!")
-                    st.subheader("Alocação Sugerida (Risco Mínimo)")
-                    st.bar_chart(res)
+                    sharpe = res.get('_sharpe_otimizado', 0)
+                    retorno = res.get('_retorno_anual', 0)
+                    vol = res.get('_volatilidade_anual', 0)
+
+                    col1, col2, col3 = st.columns(3)
+                    col1.metric(
+                        "Sharpe Otimizado", f"{sharpe:.2f}",
+                        help="Retorno ajustado ao risco. Acima de 1.0 é considerado bom."
+                    )
+                    col2.metric(
+                        "Retorno Anual Est.", f"{retorno:.1f}%",
+                        help="Retorno anual esperado com base no histórico de 1 ano."
+                    )
+                    col3.metric(
+                        "Volatilidade Anual", f"{vol:.1f}%",
+                        help="Desvio padrão anualizado dos retornos da carteira otimizada."
+                    )
+
+                    st.subheader("Alocação Sugerida (Máximo Sharpe)")
+                    pesos = {k: v for k, v in res.items() if not k.startswith('_')}
+                    st.bar_chart(pd.Series(pesos, name="Alocação %"))
 
 # ==========================================
 # 4. CONFIG (RESTAURADA v12.1)
