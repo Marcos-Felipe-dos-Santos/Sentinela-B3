@@ -45,7 +45,8 @@ class DatabaseManager:
                     ON analises (data_analise)
                 """)
 
-    def adicionar_posicao(self, ticker, qtd, preco):
+    def adicionar_posicao(self, ticker: str, qtd: int, preco: float) -> None:
+        """Adiciona ou atualiza uma posição na carteira com preço médio ponderado."""
         ticker = ticker.upper().strip()
         with closing(self._get_conn()) as conn:
             with conn:
@@ -76,13 +77,15 @@ class DatabaseManager:
                             (ticker, qtd, preco, datetime.now().strftime("%Y-%m-%d"))
                         )
 
-    def listar_carteira(self):
+    def listar_carteira(self) -> list:
+        """Retorna todas as posições da carteira como lista de dicts."""
         with closing(self._get_conn()) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM carteira_real")
             return [dict(row) for row in cursor.fetchall()]
 
-    def salvar_analise(self, dados):
+    def salvar_analise(self, dados: dict) -> None:
+        """Persiste ou atualiza a análise de um ticker no banco."""
         ticker = dados.get('ticker')
         if not ticker:
             return
