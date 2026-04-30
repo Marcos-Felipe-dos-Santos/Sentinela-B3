@@ -817,9 +817,11 @@ def main():
     print("╚══════════════════════════════════════════════════════╝")
     print(RST)
 
+    from config import APP_VERSION
+
     _rel['meta'] = {
         "timestamp":  datetime.now().isoformat(),
-        "versao":     "Sentinela B3 v13",
+        "versao":     f"Sentinela B3 {APP_VERSION}",
         "db_path":    DB_PATH,
         "tickers":    [],
         "modo":       "full",

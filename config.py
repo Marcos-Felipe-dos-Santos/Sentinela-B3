@@ -20,6 +20,7 @@ logger = logging.getLogger("Config")
 # ==========================================
 # CHAVES & MODELOS
 # ==========================================
+APP_VERSION = "v14"
 GEMINI_MODEL = "gemini-2.0-flash"
 GROQ_MODEL   = "llama-3.3-70b-versatile"
 OLLAMA_URL   = "http://localhost:11434"

@@ -12,9 +12,9 @@ from technical_engine import TechnicalEngine
 from portfolio_engine import PortfolioEngine
 from peers_engine import PeersEngine
 from ai_core import SentinelaAI
-from config import FIIS_CONHECIDOS, UNITS_CONHECIDAS 
+from config import APP_VERSION, FIIS_CONHECIDOS, UNITS_CONHECIDAS
 
-st.set_page_config(page_title="Sentinela B3 v12.1", layout="wide", page_icon="🦅")
+st.set_page_config(page_title=f"Sentinela B3 {APP_VERSION}", layout="wide", page_icon="🦅")
 
 
 def _safe_df_for_display(df: pd.DataFrame) -> pd.DataFrame:
