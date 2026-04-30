@@ -240,6 +240,7 @@ class ValuationEngine:
             'metodos_usados': detalhes,
             'perfil':        'CRESCIMENTO' if is_growth else 'RENDA/VALOR',
             'pl_confiavel':  pl_confiavel,
+            'dy_confiavel':  dy_confiavel,
             'confianca':     max(0, confianca),
             'riscos':        riscos,
         }

@@ -205,6 +205,8 @@ def test_valuation_engine_expected_keys() -> None:
     assert 'recomendacao' in result
     assert 'confianca' in result
     assert 'riscos' in result
+    assert 'dy_confiavel' in result
+    assert isinstance(result['dy_confiavel'], bool)
     assert result['recomendacao'] in [
         'COMPRA FORTE', 'COMPRA', 'NEUTRO', 'VENDA',
         'QUALIDADE — AGUARDAR', 'ALTO RISCO — EVITAR',
