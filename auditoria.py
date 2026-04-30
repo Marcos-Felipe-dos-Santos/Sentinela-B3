@@ -363,12 +363,12 @@ def auditar_valuation(ticker: str, dados: dict):
         print(f"  {warn(r)}")
         metodos_log['Bazin'] = {"status": "IGNORADO", "motivo": r}
     else:
-        taxa_b = selic * 0.85
+        taxa_b = max(selic, 0.05)
         b_val  = (dy * p) / taxa_b
         div_anual = dy * p
         metodos['Bazin'] = b_val
         print(f"  Dividendo anual = {dy*100:.2f}% × R${p:.2f} = R$ {div_anual:.2f}")
-        print(f"  Taxa mínima (Selic×0.85) = {selic*100:.2f}%×0.85 = {taxa_b*100:.2f}%")
+        print(f"  Taxa mínima = max(Selic, 5%) = max({selic*100:.2f}%, 5.00%) = {taxa_b*100:.2f}%")
         print(f"  Bazin = R${div_anual:.2f} / {taxa_b:.4f} = {ok(f'R$ {b_val:.2f}')}")
         if b_val < p:
             msg = (
