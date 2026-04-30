@@ -854,10 +854,18 @@ def main():
                 continue
 
             # Roteamento FII vs Ação — idêntico ao app.py
+            from config import FIIS_CONHECIDOS, UNITS_CONHECIDAS
             qt = dados.get('quote_type', '')
             is_fii = (
-                qt == 'MUTUALFUND'
-                or (not qt and '11' in ticker and 'SA' not in ticker)
+                ticker in FIIS_CONHECIDOS
+                or (
+                    qt == 'MUTUALFUND'
+                    or (
+                        '11' in ticker
+                        and 'SA' not in ticker
+                        and ticker not in UNITS_CONHECIDAS
+                    )
+                )
             )
 
             if is_fii:
