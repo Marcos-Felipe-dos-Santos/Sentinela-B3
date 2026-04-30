@@ -431,8 +431,12 @@ def auditar_valuation(ticker: str, dados: dict):
         print(f"  {warn(r)}")
         metodos_log['Gordon'] = {"status": "IGNORADO", "motivo": r}
     else:
-        g_cr  = min(roe * 0.5, 0.04)
-        k_cr  = selic + 0.06
+        lpa = p / pl if pl > 0 else 0
+        payout_ratio_g = min((dy * p) / lpa, 0.95) if lpa > 0 else 0.5
+        retencao_g = 1 - payout_ratio_g
+        g_cr = roe * retencao_g
+        g_cr = min(g_cr, 0.08)
+        k_cr = selic + 0.04
         if k_cr <= g_cr:
             r = "k <= g: modelo instável — IGNORADO"
             print(f"  {err(r)}")
@@ -441,8 +445,10 @@ def auditar_valuation(ticker: str, dados: dict):
             div_prox = (dy * p) * (1 + g_cr)
             go_val   = div_prox / (k_cr - g_cr)
             metodos['Gordon'] = go_val
-            print(f"  g (cresc. dividendo) = min(ROE×0.5, 4%) = {g_cr*100:.2f}%")
-            print(f"  k (taxa desconto)    = Selic + 6% = {k_cr*100:.2f}%")
+            print(f"  Payout = {payout_ratio_g*100:.1f}%")
+            print(f"  Retenção = {retencao_g*100:.1f}%")
+            print(f"  g (cresc. dividendo) = min(ROE×retenção, 8%) = {g_cr*100:.2f}%")
+            print(f"  k (taxa desconto)    = Selic + 4% = {k_cr*100:.2f}%")
             print(f"  Div próximo          = R${dy*p:.4f} × (1+{g_cr:.4f}) = R${div_prox:.4f}")
             print(f"  Gordon = {div_prox:.4f} / ({k_cr:.4f}-{g_cr:.4f}) = {ok(f'R$ {go_val:.2f}')}")
             metodos_log['Gordon'] = {"status": "OK", "valor": round(go_val, 2),
