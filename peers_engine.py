@@ -58,13 +58,18 @@ class PeersEngine:
             except TimeoutError:
                 logger.warning("Timeout global na busca de peers (10s).")
 
-        # Filtrar peers inválidos (ex: {"erro_scraper": True} sem ticker)
-        dados_peers = [
-            d for d in dados_peers
-            if isinstance(d, dict)
-            and not d.get('erro_scraper')
-            and 'ticker' in d
-        ]
+        # Filtrar peers sem dados mínimos para comparação.
+        # NÃO descartar apenas por erro_scraper — yfinance pode ter completado
+        # dados suficientes (ticker + preco_atual + pelo menos 1 fundamental).
+        def _peer_valido(d: dict) -> bool:
+            if not isinstance(d, dict) or 'ticker' not in d:
+                return False
+            if not d.get('preco_atual'):
+                return False
+            # Precisa de pelo menos 1 campo fundamental para comparação útil
+            return any(d.get(k) is not None for k in ('pl', 'pvp', 'roe'))
+
+        dados_peers = [d for d in dados_peers if _peer_valido(d)]
 
         if not dados_peers:
             return {

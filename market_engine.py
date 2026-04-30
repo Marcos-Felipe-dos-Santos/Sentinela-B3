@@ -59,6 +59,9 @@ class MarketEngine:
         if not dados.get('fonte_fundamentos'):
             dados['dados_parciais'] = True
 
+        # Garantia final: ticker sempre presente no dict retornado
+        dados.setdefault('ticker', ticker)
+
         return dados
 
     # ── Fonte 1: yfinance ────────────────────────────────────────────────────

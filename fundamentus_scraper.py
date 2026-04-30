@@ -130,6 +130,7 @@ class FundamentusScraper:
                     'ROE':              'roe',
                     'ROIC':             'roic',
                     'Dív.Líq/ Patrim.': 'div_liq_patrimonio',
+                    'Dív.Líq/EBITDA':   'divida_liq_ebitda',
                     'Marg. Líquida':    'margem_liquida',
                     'Margem Bruta':     'margem_bruta',
                     'Patrim. Líq':      'patrimonio_liquido',
@@ -151,7 +152,8 @@ class FundamentusScraper:
                 campos_ok = [k for k, v in dados.items() if v is not None]
                 if len(campos_ok) == 0:
                     return {
-                        "erro_scraper": True
+                        "erro_scraper": True,
+                        "ticker": ticker,
                     }
                 if len(campos_ok) < 3:
                     motivo = (

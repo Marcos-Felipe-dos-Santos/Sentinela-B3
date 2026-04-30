@@ -21,11 +21,14 @@ def _make_engine(side_effect_fn):
 
 # ── Cenário 1: Todos os peers retornam erro_scraper ──────────────────────────
 
-def test_all_peers_erro_scraper_returns_safe_default():
-    """Quando TODOS os peers devolvem {erro_scraper: True}, não deve crashar.
-    Deve retornar resultado seguro com Peers_Utilizados vazio.
+def test_all_peers_erro_scraper_no_fundamentals_returns_safe_default():
+    """Quando TODOS os peers devolvem {erro_scraper: True} sem campos fundamentais,
+    não deve crashar. Deve retornar resultado seguro com Peers_Utilizados vazio.
     """
-    engine = _make_engine(lambda t: {"erro_scraper": True, "preco_atual": 10.0})
+    engine = _make_engine(lambda t: {
+        "erro_scraper": True, "ticker": t, "preco_atual": 10.0
+        # sem pl, pvp, roe → não passa no filtro _peer_valido
+    })
 
     result = engine.comparar("PETR4")
 
@@ -38,10 +41,11 @@ def test_all_peers_erro_scraper_returns_safe_default():
 # ── Cenário 2: Mix de peers válidos e inválidos ──────────────────────────────
 
 def test_mixed_valid_and_invalid_peers():
-    """Peers com erro_scraper devem ser filtrados; válidos devem ser mantidos."""
+    """Peers sem dados fundamentais devem ser filtrados; com dados devem ser mantidos."""
     def fake_buscar(ticker):
         if ticker == "PRIO3":
-            return {"erro_scraper": True, "preco_atual": 40.0}
+            # Sem pl/pvp/roe → inválido para comparação
+            return {"ticker": ticker, "erro_scraper": True, "preco_atual": 40.0}
         return {
             "ticker": ticker,
             "preco_atual": 30.0,
@@ -116,3 +120,26 @@ def test_ticker_sem_setor_retorna_erro():
     result = engine.comparar("XYZW3")
 
     assert "erro" in result
+
+
+# ── Cenário 7: Peers com erro_scraper mas dados yfinance válidos ──────────
+
+def test_peers_com_erro_scraper_mas_fundamentals_aceitos():
+    """Peer com erro_scraper=True mas com pl/pvp/roe (via yfinance) deve ser aceito."""
+    def fake_buscar(ticker):
+        return {
+            "ticker": ticker,
+            "preco_atual": 25.0,
+            "pl": 10.0,
+            "pvp": 1.5,
+            "roe": 0.15,
+            "erro_scraper": True,  # scraper falhou mas yfinance completou
+        }
+
+    engine = _make_engine(fake_buscar)
+    result = engine.comparar("PETR4")
+
+    assert "erro" not in result
+    assert len(result["Peers_Utilizados"]) == 4  # todos aceitos
+    assert result["PL_Media_Peers"] == 10.0
+
