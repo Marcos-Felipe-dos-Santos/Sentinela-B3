@@ -242,6 +242,20 @@ elif modo == "Carteira":
         
         total = df['Valor Atual'].sum()
         st.metric("Patrimônio Total", f"R$ {total:,.2f}")
+
+        with st.expander("🗑️ Remover Ativo da Carteira"):
+            ticker_remover = st.text_input(
+                "Ticker para remover:",
+                key="remover_ticker"
+            ).upper().strip()
+            if st.button("Remover", key="btn_remover"):
+                if ticker_remover:
+                    db.remover_posicao(ticker_remover)
+                    st.success(f"{ticker_remover} removido da carteira.")
+                    time.sleep(0.5)
+                    st.rerun()
+                else:
+                    st.warning("Digite o ticker antes de remover.")
         
     else:
         st.info("Carteira vazia.")
