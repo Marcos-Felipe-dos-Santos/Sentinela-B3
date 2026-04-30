@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
-from config import get_selic_atual
+from config import FIIS_CONHECIDOS, UNITS_CONHECIDAS, get_selic_atual
 
 class PortfolioEngine:
     def otimizar(self, dados_historicos: pd.DataFrame):
@@ -54,9 +54,15 @@ class PortfolioEngine:
 
             return {c: p / total for c, p in pesos_brutos.items()}
 
+        def _is_fii(ticker: str) -> bool:
+            return (
+                ticker in FIIS_CONHECIDOS
+                or (ticker.endswith('11') and ticker not in UNITS_CONHECIDAS)
+            )
+
         try:
-            fiis = [c for c in df.columns if c.endswith('11')]
-            stocks = [c for c in df.columns if not c.endswith('11')]
+            fiis = [c for c in df.columns if _is_fii(c)]
+            stocks = [c for c in df.columns if not _is_fii(c)]
 
             if fiis and stocks:
                 pesos_fiis = otimizar_grupo(fiis)
