@@ -205,7 +205,11 @@ def test_valuation_engine_expected_keys() -> None:
     assert 'recomendacao' in result
     assert 'confianca' in result
     assert 'riscos' in result
-    assert result['recomendacao'] in ['COMPRA FORTE', 'COMPRA', 'NEUTRO', 'VENDA', 'QUALIDADE — AGUARDAR']
+    assert result['recomendacao'] in [
+        'COMPRA FORTE', 'COMPRA', 'NEUTRO', 'VENDA',
+        'QUALIDADE — AGUARDAR', 'ALTO RISCO — EVITAR',
+        'NEUTRO — DADOS INSUFICIENTES',
+    ]
 
 def test_dy_muito_alto_penaliza_bazin() -> None:
     """DY acima de 15% deve reduzir a confiança por ser armadilha."""
@@ -241,3 +245,63 @@ def test_gordon_ignorado_k_menor_g() -> None:
         resultado = ValuationEngine().processar(dados)
     
     assert 'Gordon' not in resultado['metodos_usados']
+
+
+# ── Testes de guards de segurança ────────────────────────────────────────────
+
+def test_distressed_ticker_retorna_alto_risco() -> None:
+    """Ticker distressed (AMER3) deve retornar ALTO RISCO — EVITAR, nunca COMPRA."""
+    dados = {
+        'ticker': 'AMER3',
+        'preco_atual': 5.69,
+        'roe': 0.02,
+        'pl': 8.5,
+        'pvp': 0.24,
+        'dy': 0.0,
+    }
+    with patch('valuation_engine.get_selic_atual', return_value=0.145):
+        resultado = ValuationEngine().processar(dados)
+
+    assert resultado['recomendacao'] == 'ALTO RISCO — EVITAR'
+    assert resultado['score_final'] <= 45
+    assert resultado['confianca'] == 0
+    assert 'Empresa em situação especial/distressed' in resultado['riscos']
+
+
+def test_distressed_ticker_nunca_compra_forte() -> None:
+    """Mesmo com dados excelentes, distressed não pode virar COMPRA FORTE."""
+    dados = {
+        'ticker': 'OIBR3',
+        'preco_atual': 0.11,
+        'roe': 0.30,
+        'pl': 3.0,
+        'pvp': 0.5,
+        'dy': 0.10,
+    }
+    with patch('valuation_engine.get_selic_atual', return_value=0.10):
+        resultado = ValuationEngine().processar(dados)
+
+    assert resultado['recomendacao'] not in ('COMPRA', 'COMPRA FORTE')
+    assert resultado['recomendacao'] == 'ALTO RISCO — EVITAR'
+
+
+def test_dados_insuficientes_bloqueia_compra() -> None:
+    """DY=0 + scraper_error + baixa confiança + 1 método → NEUTRO — DADOS INSUFICIENTES."""
+    dados = {
+        'ticker': 'XPTO3',
+        'preco_atual': 5.00,
+        'roe': 0.02,
+        'pl': 8.0,
+        'pvp': 0.20,
+        'dy': 0.0,
+        'erro_scraper': True,
+        'pl_confiavel': False,  # -20 confiança (total: 100 - 30 scraper - 20 pl = 50)
+    }
+    with patch('valuation_engine.get_selic_atual', return_value=0.145):
+        resultado = ValuationEngine().processar(dados)
+
+    # Com scraper error (-30 conf), PL não confiável (-20), DY=0,
+    # e nenhum método válido (Graham ignorado por pl_confiavel=False),
+    # a recomendação não deve ser positiva.
+    assert resultado['recomendacao'] not in ('COMPRA', 'COMPRA FORTE')
+

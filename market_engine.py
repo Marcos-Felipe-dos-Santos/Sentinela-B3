@@ -15,6 +15,11 @@ class MarketEngine:
         
         # 1. Fundamentus
         dados = self.scraper.buscar_dados(ticker)
+
+        # Garantir que 'ticker' sempre exista no dict retornado
+        # (scraper pode retornar {"erro_scraper": True} sem ticker)
+        if dados and 'ticker' not in dados:
+            dados['ticker'] = ticker
         
         # 2. Yahoo Fallback e Histórico
         try:

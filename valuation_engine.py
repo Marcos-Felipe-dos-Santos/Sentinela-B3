@@ -1,6 +1,6 @@
 import logging
 import math
-from config import get_selic_atual
+from config import get_selic_atual, DISTRESSED_TICKERS
 
 logger = logging.getLogger("Valuation")
 
@@ -9,7 +9,28 @@ class ValuationEngine:
         if not dados or not dados.get('preco_atual'):
             return None
 
+        ticker = str(dados.get('ticker', '')).upper()
         p   = float(dados['preco_atual'])
+
+        # ── GUARD: DISTRESSED TICKERS ────────────────────────────────────────
+        # Empresas em recuperação judicial ou situação especial não devem
+        # receber COMPRA ou COMPRA FORTE — valuation baseado em múltiplos
+        # não reflete o risco real (dívida, diluição, governança).
+        if ticker in DISTRESSED_TICKERS:
+            logger.warning(
+                f"[{ticker}] DISTRESSED — bloqueando recomendação positiva"
+            )
+            return {
+                'fair_value':    round(p, 2),
+                'upside':        0.0,
+                'score_final':   min(45, 30),
+                'recomendacao':  'ALTO RISCO — EVITAR',
+                'metodos_usados': '',
+                'perfil':        'DISTRESSED',
+                'pl_confiavel':  False,
+                'confianca':     0,
+                'riscos':        ['Empresa em situação especial/distressed'],
+            }
         roe = float(dados.get('roe', 0) or 0)
         pl  = float(dados.get('pl',  0) or 0)
         pvp = float(dados.get('pvp', 0) or 0)
@@ -187,6 +208,20 @@ class ValuationEngine:
             rec = "VENDA"
         else:
             rec = "NEUTRO"
+
+        # ── GUARD: Dados insuficientes para recomendar compra ────────────────
+        # Se TODAS as condições abaixo forem verdadeiras, a recomendação
+        # positiva não é confiável o suficiente.
+        if rec in ("COMPRA", "COMPRA FORTE"):
+            erro_scraper = bool(dados.get('erro_scraper', False))
+            metodos_count = len(valores_validos)
+            if dy == 0 and erro_scraper and confianca < 70 and metodos_count <= 1:
+                rec = "NEUTRO — DADOS INSUFICIENTES"
+                riscos.append("Valuation pouco confiável")
+                logger.warning(
+                    f"[{ticker}] Downgrade {rec}: DY=0, scraper_error, "
+                    f"confianca={confianca}, metodos={metodos_count}"
+                )
 
         detalhes = ", ".join([f"{k}: R${v:.2f}" for k, v in metodos.items()])
 

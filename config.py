@@ -57,6 +57,14 @@ UNITS_CONHECIDAS = {
     'BBSE11', 'SANB11', 'TRPL11', 'ALUP11', 'ENGI11', 'CPFE11',
 }
 
+# Empresas em situação especial (recuperação judicial, distressed)
+# Valuation engine bloqueia COMPRA/COMPRA FORTE para estes tickers
+DISTRESSED_TICKERS = {
+    'AMER3',
+    'OIBR3',
+    'CASH3',
+}
+
 # ==========================================
 # SELIC DINÂMICA (lazy load com cache)
 # ==========================================
