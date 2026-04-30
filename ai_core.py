@@ -16,6 +16,12 @@ class SentinelaAI:
         self._gemini_executor = ThreadPoolExecutor(max_workers=1)
         self._setup()
 
+    def __del__(self):
+        try:
+            self._gemini_executor.shutdown(wait=False)
+        except Exception:
+            pass
+
     def _setup(self):
         # Gemini
         if os.getenv("GEMINI_API_KEY"):
