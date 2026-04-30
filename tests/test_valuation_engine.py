@@ -208,7 +208,7 @@ def test_valuation_engine_expected_keys() -> None:
     assert result['recomendacao'] in [
         'COMPRA FORTE', 'COMPRA', 'NEUTRO', 'VENDA',
         'QUALIDADE — AGUARDAR', 'ALTO RISCO — EVITAR',
-        'NEUTRO — DADOS INSUFICIENTES',
+        'DADOS INSUFICIENTES — AGUARDAR',
     ]
 
 def test_dy_muito_alto_penaliza_bazin() -> None:
@@ -285,23 +285,61 @@ def test_distressed_ticker_nunca_compra_forte() -> None:
     assert resultado['recomendacao'] == 'ALTO RISCO — EVITAR'
 
 
-def test_dados_insuficientes_bloqueia_compra() -> None:
-    """DY=0 + scraper_error + baixa confiança + 1 método → NEUTRO — DADOS INSUFICIENTES."""
+def test_scraper_falhou_compra_vira_dados_insuficientes() -> None:
+    """Scraper failure + COMPRA deve virar DADOS INSUFICIENTES — AGUARDAR."""
     dados = {
-        'ticker': 'XPTO3',
-        'preco_atual': 5.00,
-        'roe': 0.02,
-        'pl': 8.0,
-        'pvp': 0.20,
-        'dy': 0.0,
+        'ticker': 'ITUB4',
+        'preco_atual': 42.87,
+        'roe': 0.21,
+        'pl': 10.69,
+        'pvp': 2.31,
+        'dy': 0.0124,
         'erro_scraper': True,
-        'pl_confiavel': False,  # -20 confiança (total: 100 - 30 scraper - 20 pl = 50)
     }
     with patch('valuation_engine.get_selic_atual', return_value=0.145):
         resultado = ValuationEngine().processar(dados)
 
-    # Com scraper error (-30 conf), PL não confiável (-20), DY=0,
-    # e nenhum método válido (Graham ignorado por pl_confiavel=False),
-    # a recomendação não deve ser positiva.
-    assert resultado['recomendacao'] not in ('COMPRA', 'COMPRA FORTE')
+    assert resultado['recomendacao'] == 'DADOS INSUFICIENTES — AGUARDAR'
+    assert resultado['confianca'] <= 50
+    assert 'Dados fundamentais insuficientes para análise precisa' in resultado['riscos']
+    # Valores calculados são preservados para transparência
+    assert resultado['fair_value'] > 0
+    assert resultado['score_final'] > 0
+
+
+def test_scraper_falhou_nao_sobrescreve_venda() -> None:
+    """Scraper failure não deve sobrescrever VENDA — VENDA tem prioridade."""
+    dados = {
+        'ticker': 'LIXO3',
+        'preco_atual': 100.0,
+        'roe': 0.02,
+        'pl': 50.0,
+        'pvp': 5.0,
+        'dy': 0.01,
+        'erro_scraper': True,
+        'tecnico_negativo': True,
+    }
+    with patch('valuation_engine.get_selic_atual', return_value=0.145):
+        resultado = ValuationEngine().processar(dados)
+
+    # upside < -15% + tecnico_negativo = VENDA; scraper guard não interfere
+    assert resultado['recomendacao'] != 'DADOS INSUFICIENTES — AGUARDAR'
+
+
+def test_scraper_falhou_nao_sobrescreve_alto_risco() -> None:
+    """Scraper failure não deve sobrescrever ALTO RISCO — EVITAR."""
+    dados = {
+        'ticker': 'AMER3',
+        'preco_atual': 5.69,
+        'roe': 0.02,
+        'pl': 8.5,
+        'pvp': 0.24,
+        'dy': 0.0,
+        'erro_scraper': True,
+    }
+    with patch('valuation_engine.get_selic_atual', return_value=0.145):
+        resultado = ValuationEngine().processar(dados)
+
+    # Distressed guard fires first — must remain ALTO RISCO
+    assert resultado['recomendacao'] == 'ALTO RISCO — EVITAR'
 

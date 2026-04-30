@@ -209,19 +209,19 @@ class ValuationEngine:
         else:
             rec = "NEUTRO"
 
-        # ── GUARD: Dados insuficientes para recomendar compra ────────────────
-        # Se TODAS as condições abaixo forem verdadeiras, a recomendação
-        # positiva não é confiável o suficiente.
-        if rec in ("COMPRA", "COMPRA FORTE"):
-            erro_scraper = bool(dados.get('erro_scraper', False))
-            metodos_count = len(valores_validos)
-            if dy == 0 and erro_scraper and confianca < 70 and metodos_count <= 1:
-                rec = "NEUTRO — DADOS INSUFICIENTES"
-                riscos.append("Valuation pouco confiável")
-                logger.warning(
-                    f"[{ticker}] Downgrade {rec}: DY=0, scraper_error, "
-                    f"confianca={confianca}, metodos={metodos_count}"
-                )
+        # ── GUARD: Scraper falhou → não recomendar compra ─────────────────────
+        # Dados fundamentais incompletos não significam que o ativo é ruim,
+        # apenas que não há confiança suficiente para sugerir compra.
+        # Preserva valores calculados para transparência.
+        # Não sobrescreve VENDA nem ALTO RISCO — EVITAR.
+        if rec in ("COMPRA", "COMPRA FORTE") and dados.get('erro_scraper'):
+            rec = "DADOS INSUFICIENTES — AGUARDAR"
+            riscos.append("Dados fundamentais insuficientes para análise precisa")
+            confianca = min(confianca, 50)
+            logger.warning(
+                f"[{ticker}] Downgrade → DADOS INSUFICIENTES: "
+                f"erro_scraper=True, rec original seria COMPRA/FORTE"
+            )
 
         detalhes = ", ".join([f"{k}: R${v:.2f}" for k, v in metodos.items()])
 
