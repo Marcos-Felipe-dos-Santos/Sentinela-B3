@@ -75,7 +75,7 @@ if modo == "Terminal":
     if st.button("Analisar") and ticker:
         with st.spinner(f"Analisando {ticker}..."):
             # A. Dados Básicos
-            dados = buscar_dados_ticker_cached(ticker)
+            dados = market.buscar_dados_ticker(ticker)
             if not dados or 'erro' in dados:
                 st.error("Ativo não encontrado."); st.stop()
             
