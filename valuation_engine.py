@@ -23,11 +23,12 @@ class ValuationEngine:
             return {
                 'fair_value':    round(p, 2),
                 'upside':        0.0,
-                'score_final':   min(45, 30),
+                'score_final':   30,
                 'recomendacao':  'ALTO RISCO — EVITAR',
                 'metodos_usados': '',
                 'perfil':        'DISTRESSED',
                 'pl_confiavel':  False,
+                'dy_confiavel':  False,
                 'confianca':     0,
                 'riscos':        ['Empresa em situação especial/distressed'],
             }
