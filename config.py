@@ -69,7 +69,7 @@ DISTRESSED_TICKERS = {
 # ==========================================
 # SELIC DINÂMICA (lazy load com cache)
 # ==========================================
-SELIC_FALLBACK = 0.1075
+SELIC_FALLBACK = 0.1475
 SELIC_CACHE_TTL = 86400
 _selic_cache_value = None
 _selic_cache_time = 0.0
