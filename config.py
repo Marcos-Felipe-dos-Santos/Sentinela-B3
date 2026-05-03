@@ -63,7 +63,9 @@ UNITS_CONHECIDAS = {
 DISTRESSED_TICKERS = {
     'AMER3',
     'OIBR3',
+    'OIBR4',
     'CASH3',
+    'MGLU3',
 }
 
 # ==========================================
