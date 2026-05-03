@@ -241,9 +241,9 @@ def test_gordon_ignorado_k_menor_g() -> None:
     }
     # g_uncapped = roe * retencao -> 0.90 * ~0.9 = ~0.81
     # g_capped = 0.08
-    # k = selic + 0.04 -> 0.03 + 0.04 = 0.07
-    # k < g
-    with patch('valuation_engine.get_selic_atual', return_value=0.03):
+    # k = selic + 0.07 -> 0.01 + 0.07 = 0.08
+    # k <= g
+    with patch('valuation_engine.get_selic_atual', return_value=0.01):
         resultado = ValuationEngine().processar(dados)
     
     assert 'Gordon' not in resultado['metodos_usados']
@@ -344,4 +344,3 @@ def test_scraper_falhou_nao_sobrescreve_alto_risco() -> None:
 
     # Distressed guard fires first — must remain ALTO RISCO
     assert resultado['recomendacao'] == 'ALTO RISCO — EVITAR'
-
