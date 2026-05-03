@@ -128,7 +128,7 @@ class ValuationEngine:
             retencao_g = 1 - payout_ratio_g
             g = roe * retencao_g
             g = min(g, 0.08)
-            k = selic + 0.04
+            k = selic + 0.07
             if k > g:
                 div_prox = (dy * p) * (1 + g)
                 metodos['Gordon'] = div_prox / (k - g)
