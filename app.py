@@ -73,7 +73,9 @@ if modo == "Terminal":
     ticker = st.text_input("Ticker:").upper().strip()
     
     if st.button("Analisar") and ticker:
-        with st.spinner(f"Analisando {ticker}..."):
+        status_box = st.empty()
+        status_box.info(f"Analisando {ticker}...")
+        with st.container():
             # A. Dados Básicos
             dados = market.buscar_dados_ticker(ticker)
             if not dados or 'erro' in dados:
@@ -121,6 +123,7 @@ if modo == "Terminal":
             # CORREÇÃO: Não salvar histórico pesado no banco
             dados_salvar = {k: v for k, v in dados.items() if k != 'historico'}
             db.salvar_analise(dados_salvar)
+            status_box.empty()
             
             # --- RENDERIZAÇÃO ---
             k1, k2, k3, k4 = st.columns(4)
@@ -186,7 +189,7 @@ if modo == "Terminal":
                             ),
                         ])
                         fig.update_layout(xaxis_rangeslider_visible=False, height=400)
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, width="stretch")
                 else:
                     st.warning("Sem dados históricos para gráfico.")
 
