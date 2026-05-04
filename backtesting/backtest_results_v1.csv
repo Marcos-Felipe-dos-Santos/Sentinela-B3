@@ -1,0 +1,88 @@
+ticker,data_analise,status,preco_analise,fair_value,upside,score_final,recomendacao,metodos_usados,perfil,pl_confiavel,dy_confiavel,confianca,riscos,data_futura,score,preco_futuro,retorno_real,acertou,motivo
+PETR4,2024-01-15,OK,38.58000183105469,37.35,-3.2,57.0,NEUTRO,"Graham: R$57.44, Bazin: R$25.28, Gordon: R$29.32",RENDA/VALOR,True,True,90.0,['ALTA DIVERGENCIA 127% entre metodos - reduzir confianca'],2024-04-15,57.0,39.310001373291016,0.018921708335656956,True,
+PETR4,2024-02-01,SEM_FUNDAMENTOS_HISTORICOS,41.56999969482422,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2024-03-01,SEM_FUNDAMENTOS_HISTORICOS,40.18000030517578,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2024-04-01,SEM_FUNDAMENTOS_HISTORICOS,37.650001525878906,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2024-05-02,SEM_FUNDAMENTOS_HISTORICOS,42.18000030517578,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2024-06-14,OK,34.68000030517578,31.56,-9.0,53.0,NEUTRO,"Graham: R$50.77, Bazin: R$20.33, Gordon: R$23.58",RENDA/VALOR,True,True,90.0,['ALTA DIVERGENCIA 150% entre metodos - reduzir confianca'],2024-09-12,53.0,36.869998931884766,0.06314874877270807,True,
+PETR4,2024-07-01,SEM_FUNDAMENTOS_HISTORICOS,38.630001068115234,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2024-08-01,SEM_FUNDAMENTOS_HISTORICOS,36.84000015258789,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2024-09-02,SEM_FUNDAMENTOS_HISTORICOS,39.0,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2024-10-01,SEM_FUNDAMENTOS_HISTORICOS,36.970001220703125,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2024-11-01,SEM_FUNDAMENTOS_HISTORICOS,35.41999816894531,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2024-12-13,OK,38.099998474121094,33.86,-11.1,52.0,NEUTRO,"Graham: R$55.04, Bazin: R$21.55, Gordon: R$24.99",RENDA/VALOR,True,True,90.0,['ALTA DIVERGENCIA 155% entre metodos - reduzir confianca'],2025-03-13,52.0,34.439998626708984,-0.09606299196830978,True,
+PETR4,2025-01-02,SEM_FUNDAMENTOS_HISTORICOS,36.77000045776367,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2025-02-03,SEM_FUNDAMENTOS_HISTORICOS,37.5,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2025-03-05,SEM_FUNDAMENTOS_HISTORICOS,34.619998931884766,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2025-04-01,SEM_FUNDAMENTOS_HISTORICOS,37.29999923706055,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2025-05-02,SEM_FUNDAMENTOS_HISTORICOS,30.809999465942383,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2025-06-13,OK,32.529998779296875,28.33,-12.9,50.0,NEUTRO,"Graham: R$46.69, Bazin: R$17.72, Gordon: R$20.56",RENDA/VALOR,True,True,90.0,['ALTA DIVERGENCIA 163% entre metodos - reduzir confianca'],2025-09-11,50.0,31.389999389648438,-0.03504455679149823,True,
+PETR4,2025-07-01,SEM_FUNDAMENTOS_HISTORICOS,31.489999771118164,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2025-08-01,SEM_FUNDAMENTOS_HISTORICOS,32.209999084472656,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2025-09-01,SEM_FUNDAMENTOS_HISTORICOS,31.170000076293945,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2025-10-01,SEM_FUNDAMENTOS_HISTORICOS,31.3799991607666,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2025-11-03,SEM_FUNDAMENTOS_HISTORICOS,30.100000381469727,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2025-12-01,SEM_FUNDAMENTOS_HISTORICOS,31.850000381469727,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2026-01-02,SEM_FUNDAMENTOS_HISTORICOS,30.709999084472656,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2026-02-02,SEM_FUNDAMENTOS_HISTORICOS,37.2400016784668,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2026-03-02,SEM_FUNDAMENTOS_HISTORICOS,41.130001068115234,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2026-04-01,SEM_FUNDAMENTOS_HISTORICOS,47.369998931884766,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+PETR4,2026-05-04,OK,49.34000015258789,43.34,-12.2,51.0,NEUTRO,"Graham: R$71.51, Bazin: R$27.09, Gordon: R$31.42",RENDA/VALOR,True,True,90.0,['ALTA DIVERGENCIA 164% entre metodos - reduzir confianca'],2026-05-04,51.0,49.34000015258789,0.0,True,
+ITUB4,2024-01-15,OK,29.52338981628418,17.66,-40.2,0.0,VENDA,"Graham: R$31.24, Bazin: R$4.07",RENDA/VALOR,True,True,90.0,['ALTA DIVERGENCIA 667% entre metodos - reduzir confianca'],2024-04-15,0.0,28.164165496826172,-0.04603889756278265,False,
+ITUB4,2024-02-01,SEM_FUNDAMENTOS_HISTORICOS,28.852603912353516,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2024-03-01,SEM_FUNDAMENTOS_HISTORICOS,30.070608139038086,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2024-04-01,SEM_FUNDAMENTOS_HISTORICOS,29.514562606811523,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2024-05-02,SEM_FUNDAMENTOS_HISTORICOS,28.06707763671875,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2024-06-14,OK,27.484554290771484,48.71,77.2,69.0,COMPRA,"Graham: R$28.12, Lynch: R$69.30",CRESCIMENTO,True,True,90.0,['ALTA DIVERGENCIA 146% entre metodos - reduzir confianca'],2024-09-12,69.0,32.630184173583984,0.18721896772909477,True,
+ITUB4,2024-07-01,SEM_FUNDAMENTOS_HISTORICOS,28.455427169799805,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2024-08-01,SEM_FUNDAMENTOS_HISTORICOS,29.45277976989746,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2024-09-02,SEM_FUNDAMENTOS_HISTORICOS,32.11827087402344,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2024-10-01,SEM_FUNDAMENTOS_HISTORICOS,31.332744598388672,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2024-11-01,SEM_FUNDAMENTOS_HISTORICOS,30.72374153137207,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2024-12-13,OK,28.29655647277832,49.73,75.7,69.0,COMPRA,"Graham: R$28.07, Lynch: R$71.39",CRESCIMENTO,True,True,90.0,['ALTA DIVERGENCIA 154% entre metodos - reduzir confianca'],2025-03-13,69.0,29.329214096069336,0.036494109249104095,False,
+ITUB4,2025-01-02,SEM_FUNDAMENTOS_HISTORICOS,26.981464385986328,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2025-02-03,SEM_FUNDAMENTOS_HISTORICOS,29.549867630004883,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2025-03-05,SEM_FUNDAMENTOS_HISTORICOS,28.59664535522461,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2025-04-01,SEM_FUNDAMENTOS_HISTORICOS,30.485435485839844,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2025-05-02,SEM_FUNDAMENTOS_HISTORICOS,34.436893463134766,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2025-06-13,OK,35.11650466918945,61.97,76.5,69.0,COMPRA,"Graham: R$34.19, Lynch: R$89.74",CRESCIMENTO,True,True,90.0,['ALTA DIVERGENCIA 162% entre metodos - reduzir confianca'],2025-09-11,69.0,36.844661712646484,0.04921210296232253,False,
+ITUB4,2025-07-01,SEM_FUNDAMENTOS_HISTORICOS,36.01941680908203,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2025-08-01,SEM_FUNDAMENTOS_HISTORICOS,33.912620544433594,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2025-09-01,SEM_FUNDAMENTOS_HISTORICOS,37.65048599243164,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2025-10-01,SEM_FUNDAMENTOS_HISTORICOS,37.233009338378906,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2025-11-03,SEM_FUNDAMENTOS_HISTORICOS,38.912620544433594,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2025-12-01,SEM_FUNDAMENTOS_HISTORICOS,40.09708786010742,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2026-01-02,SEM_FUNDAMENTOS_HISTORICOS,39.150001525878906,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2026-02-02,SEM_FUNDAMENTOS_HISTORICOS,45.880001068115234,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2026-03-02,SEM_FUNDAMENTOS_HISTORICOS,45.91999816894531,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2026-04-01,SEM_FUNDAMENTOS_HISTORICOS,43.83000183105469,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+ITUB4,2026-05-04,OK,42.400001525878906,73.53,73.4,68.0,COMPRA,"Graham: R$40.42, Lynch: R$106.64",CRESCIMENTO,True,True,90.0,['ALTA DIVERGENCIA 164% entre metodos - reduzir confianca'],2026-05-04,68.0,42.400001525878906,0.0,False,
+VALE3,2024-01-15,OK,71.55000305175781,55.73,-22.1,34.0,VENDA,"Graham: R$59.65, Bazin: R$51.81",RENDA/VALOR,True,True,100.0,[],2024-04-15,34.0,61.9900016784668,-0.1336128716357357,True,
+VALE3,2024-02-01,SEM_FUNDAMENTOS_HISTORICOS,67.44999694824219,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2024-03-01,SEM_FUNDAMENTOS_HISTORICOS,66.87999725341797,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2024-04-01,SEM_FUNDAMENTOS_HISTORICOS,61.220001220703125,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2024-05-02,SEM_FUNDAMENTOS_HISTORICOS,63.91999816894531,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2024-06-14,OK,60.619998931884766,45.04,-25.7,32.0,VENDA,"Graham: R$48.27, Bazin: R$41.81",RENDA/VALOR,True,True,100.0,[],2024-09-12,32.0,58.11000061035156,-0.04140544978157365,False,
+VALE3,2024-07-01,SEM_FUNDAMENTOS_HISTORICOS,63.13999938964844,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2024-08-01,SEM_FUNDAMENTOS_HISTORICOS,60.25,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2024-09-02,SEM_FUNDAMENTOS_HISTORICOS,58.7400016784668,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2024-10-01,SEM_FUNDAMENTOS_HISTORICOS,63.81999969482422,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2024-11-01,SEM_FUNDAMENTOS_HISTORICOS,62.029998779296875,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2024-12-13,OK,55.86000061035156,39.64,-29.0,30.0,VENDA,"Graham: R$42.68, Bazin: R$36.60",RENDA/VALOR,True,True,100.0,[],2025-03-13,30.0,54.5,-0.024346591397987512,False,
+VALE3,2025-01-02,SEM_FUNDAMENTOS_HISTORICOS,54.25,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2025-02-03,SEM_FUNDAMENTOS_HISTORICOS,54.209999084472656,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2025-03-05,SEM_FUNDAMENTOS_HISTORICOS,55.59000015258789,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2025-04-01,SEM_FUNDAMENTOS_HISTORICOS,57.189998626708984,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2025-05-02,SEM_FUNDAMENTOS_HISTORICOS,52.79999923706055,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2025-06-13,OK,52.130001068115234,36.01,-30.9,29.0,VENDA,"Graham: R$39.67, Bazin: R$32.36",RENDA/VALOR,True,True,100.0,[],2025-09-11,29.0,57.02000045776367,0.09380393802906238,False,
+VALE3,2025-07-01,SEM_FUNDAMENTOS_HISTORICOS,53.36000061035156,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2025-08-01,SEM_FUNDAMENTOS_HISTORICOS,53.75,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2025-09-01,SEM_FUNDAMENTOS_HISTORICOS,55.599998474121094,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2025-10-01,SEM_FUNDAMENTOS_HISTORICOS,58.310001373291016,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2025-11-03,SEM_FUNDAMENTOS_HISTORICOS,65.3499984741211,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2025-12-01,SEM_FUNDAMENTOS_HISTORICOS,67.91999816894531,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2026-01-02,SEM_FUNDAMENTOS_HISTORICOS,72.37999725341797,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2026-02-02,SEM_FUNDAMENTOS_HISTORICOS,84.81999969482422,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2026-03-02,SEM_FUNDAMENTOS_HISTORICOS,88.16000366210938,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2026-04-01,SEM_FUNDAMENTOS_HISTORICOS,83.0,,,,,,,,,,,,,,,,Forneca fundamentos point-in-time para evitar lookahead bias.
+VALE3,2026-05-04,OK,78.66000366210938,52.67,-33.0,27.0,VENDA,"Graham: R$59.29, Bazin: R$46.06",RENDA/VALOR,True,True,100.0,[],2026-05-04,27.0,78.66000366210938,0.0,False,
