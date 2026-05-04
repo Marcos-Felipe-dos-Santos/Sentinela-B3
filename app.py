@@ -127,8 +127,9 @@ if modo == "Terminal":
             
             # --- RENDERIZAÇÃO ---
             erro_scraper = bool(dados.get("erro_scraper"))
-            dados_parciais = bool(dados.get("dados_parciais")) or erro_scraper
+            dados_parciais = bool(dados.get("dados_parciais"))
             dados_cache = bool(dados.get("dados_cache"))
+            dados_manual = bool(dados.get("dados_manual"))
             campos_faltantes = dados.get("campos_faltantes") or []
             campos_faltantes_txt = (
                 ", ".join(str(campo) for campo in campos_faltantes)
@@ -164,19 +165,25 @@ if modo == "Terminal":
                 )
 
             with st.expander("Qualidade dos Dados", expanded=False):
-                q1, q2, q3, q4, q5 = st.columns(5)
+                q1, q2, q3, q4, q5, q6 = st.columns(6)
                 q1.metric("Fonte Preço", dados.get('fonte_preco') or "-")
                 q2.metric("Fonte Fund.", dados.get('fonte_fundamentos') or "-")
                 q3.metric("Dados Parciais", "⚠️ Sim" if dados_parciais else "✅ Não")
                 q4.metric("Erro Scraper", "⚠️ Sim" if erro_scraper else "✅ Não")
                 q5.metric("Dados Cache", "⚠️ Sim" if dados_cache else "✅ Não")
+                q6.metric("Dados Manual", "⚠️ Sim" if dados_manual else "✅ Não")
 
                 st.caption(f"Campos faltantes: {campos_faltantes_txt}")
                 st.caption(f"Riscos dos dados: {riscos_dados_txt}")
-                if dados_parciais or erro_scraper or campos_faltantes:
+                if dados_parciais or campos_faltantes:
                     st.warning(
                         "Dados fundamentais incompletos. A recomendação pode "
                         "estar limitada pela qualidade dos dados."
+                    )
+                elif erro_scraper:
+                    st.info(
+                        "Fundamentus indisponível, mas os campos obrigatórios "
+                        "foram preenchidos por outras fontes."
                     )
                 else:
                     st.success("Dados suficientes para análise.")

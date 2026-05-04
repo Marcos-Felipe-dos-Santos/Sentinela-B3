@@ -13,7 +13,7 @@ import os
 import sys
 from datetime import datetime
 from io import StringIO
-from typing import List
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
@@ -76,6 +76,79 @@ def _fmt_bool(val) -> str:
     return "Sim" if bool(val) else "Não"
 
 
+def _historico_disponivel(dados: Optional[Dict[str, Any]]) -> bool:
+    if not dados:
+        return False
+    hist = dados.get('historico')
+    return hist is not None and not getattr(hist, 'empty', True)
+
+
+def classificar_qualidade_dados(dados: Optional[Dict[str, Any]]) -> str:
+    """Classifica dados para a metrica de falha da auditoria."""
+    if not dados or not dados.get('preco_atual'):
+        return "no_data"
+    if not _historico_disponivel(dados) and not dados.get('fonte_preco'):
+        return "no_data"
+    if dados.get('campos_faltantes') or dados.get('dados_parciais'):
+        return "partial"
+    return "full"
+
+
+def calcular_metricas_dados(amostras: List[Optional[Dict[str, Any]]]) -> Dict[str, Any]:
+    """Calcula taxa de falha sem penalizar erro_scraper quando dados estao completos."""
+    total = len(amostras)
+    full_data_count = 0
+    partial_data_count = 0
+    no_data_count = 0
+
+    for dados in amostras:
+        status = classificar_qualidade_dados(dados)
+        if status == "full":
+            full_data_count += 1
+        elif status == "partial":
+            partial_data_count += 1
+        else:
+            no_data_count += 1
+
+    failure_rate_percent = (
+        round(((partial_data_count + no_data_count) / total) * 100, 1)
+        if total else 0.0
+    )
+    return {
+        "total_tickers_analyzed": total,
+        "full_data_count": full_data_count,
+        "partial_data_count": partial_data_count,
+        "no_data_count": no_data_count,
+        "failure_rate_percent": failure_rate_percent,
+    }
+
+
+def _excluir_da_taxa_operacional(registro: Dict[str, Any]) -> bool:
+    dados = registro.get("dados")
+    analise = registro.get("analise") or {}
+
+    if classificar_qualidade_dados(dados) == "no_data":
+        return True
+    if analise.get("perfil") == "DISTRESSED":
+        return True
+    if analise.get("recomendacao") == "ALTO RISCO — EVITAR":
+        return True
+    return False
+
+
+def calcular_metricas_operacionais(registros: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Calcula falha apenas no universo operacionalmente analisavel."""
+    operacionais = [
+        registro for registro in registros
+        if not _excluir_da_taxa_operacional(registro)
+    ]
+    metricas = calcular_metricas_dados([
+        registro.get("dados") for registro in operacionais
+    ])
+    metricas["excluded_count"] = len(registros) - len(operacionais)
+    return metricas
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # AUDITORIA PRINCIPAL
 # ══════════════════════════════════════════════════════════════════════════════
@@ -102,6 +175,8 @@ def auditar() -> str:
     log("=" * 80)
 
     alertas_totais: List[str] = []
+    amostras_dados: List[Optional[Dict[str, Any]]] = []
+    registros_operacionais: List[Dict[str, Any]] = []
 
     for ticker in TICKERS_AUDITORIA:
         log("")
@@ -109,13 +184,23 @@ def auditar() -> str:
         log(f"  TICKER: {ticker}")
         log("─" * 80)
 
+        registrou_metrica = False
         try:
             # ── 1. Buscar dados ──────────────────────────────────────────────
             dados = market.buscar_dados_ticker(ticker)
             if not dados or not dados.get('preco_atual'):
+                amostras_dados.append(dados)
+                registros_operacionais.append({
+                    "ticker": ticker,
+                    "dados": dados,
+                    "analise": None,
+                })
+                registrou_metrica = True
                 log(f"  [ERRO] {ticker}: Sem dados de mercado disponíveis.")
                 alertas_totais.append(f"{ticker}: SEM DADOS")
                 continue
+            amostras_dados.append(dados)
+            registrou_metrica = True
 
             erro_scraper = bool(dados.get("erro_scraper", False))
             preco = float(dados.get('preco_atual', 0) or 0)
@@ -129,9 +214,19 @@ def auditar() -> str:
                 analise = val_engine.processar(dados)
 
             if analise is None:
+                registros_operacionais.append({
+                    "ticker": ticker,
+                    "dados": dados,
+                    "analise": None,
+                })
                 log(f"  [ERRO] {ticker}: Engine retornou None (dados insuficientes).")
                 alertas_totais.append(f"{ticker}: ANÁLISE NULA")
                 continue
+            registros_operacionais.append({
+                "ticker": ticker,
+                "dados": dados,
+                "analise": analise,
+            })
 
             # ── 3. Técnica ───────────────────────────────────────────────────
             hist = dados.get('historico', pd.DataFrame())
@@ -186,6 +281,7 @@ def auditar() -> str:
             log(f"  Erro Scraper:    {_fmt_bool(erro_scraper)}")
             log(f"  Dados Parciais:  {_fmt_bool(dados.get('dados_parciais', False))}")
             log(f"  Dados Cache:     {_fmt_bool(dados.get('dados_cache', False))}")
+            log(f"  Dados Manual:    {_fmt_bool(dados.get('dados_manual', False))}")
             log(f"  Campos Falt.:    {dados.get('campos_faltantes', [])}")
             log(f"  Riscos Dados:    {dados.get('riscos_dados', [])}")
             log(f"  Dados yfinance:  {_fmt_bool(dados_yfinance)}")
@@ -251,15 +347,35 @@ def auditar() -> str:
                 log(f"  ✅ Nenhum alerta de sanidade.")
 
         except Exception as e:
+            if not registrou_metrica:
+                amostras_dados.append(None)
+                registros_operacionais.append({
+                    "ticker": ticker,
+                    "dados": None,
+                    "analise": None,
+                })
             log(f"  [ERRO] {ticker}: {e}")
             alertas_totais.append(f"{ticker}: EXCEÇÃO — {e}")
 
     # ── Resumo final ─────────────────────────────────────────────────────────
+    metricas_dados = calcular_metricas_dados(amostras_dados)
+    metricas_operacionais = calcular_metricas_operacionais(registros_operacionais)
     log("")
     log("=" * 80)
     log(f"  RESUMO DA AUDITORIA")
     log("=" * 80)
-    log(f"  Tickers analisados: {len(TICKERS_AUDITORIA)}")
+    log(f"  Tickers analisados: {metricas_dados['total_tickers_analyzed']}")
+    log(f"  full_data_count:    {metricas_dados['full_data_count']}")
+    log(f"  partial_data_count: {metricas_dados['partial_data_count']}")
+    log(f"  no_data_count:      {metricas_dados['no_data_count']}")
+    log(f"  Taxa geral de falha: {metricas_dados['failure_rate_percent']:.1f}%")
+    log("")
+    log(f"  Tickers operacionais: {metricas_operacionais['total_tickers_analyzed']}")
+    log(f"  operational_full_data_count:    {metricas_operacionais['full_data_count']}")
+    log(f"  operational_partial_data_count: {metricas_operacionais['partial_data_count']}")
+    log(f"  operational_no_data_count:      {metricas_operacionais['no_data_count']}")
+    log(f"  Excluídos da taxa operacional:  {metricas_operacionais['excluded_count']}")
+    log(f"  Taxa operacional de falha: {metricas_operacionais['failure_rate_percent']:.1f}%")
     log(f"  Alertas totais:     {len(alertas_totais)}")
     log("")
 
