@@ -151,6 +151,8 @@ def auditar() -> str:
             tendencia = tech.get('tendencia', 'N/A')
             rsi = tech.get('rsi', 'N/A')
             macd_rec = tech.get('macd_rec', 'N/A')
+            hist_audit = dados.get('historico', pd.DataFrame())
+            dados_yfinance = hist_audit is not None and not hist_audit.empty
 
             # ── 5. Imprimir debug completo ───────────────────────────────────
             log(f"  Tipo:            {'FII' if is_fii else 'AÇÃO'}")
@@ -174,8 +176,14 @@ def auditar() -> str:
             log(f"  RSI:             {rsi}")
             log(f"  MACD Rec:        {macd_rec}")
             log(f"  ──────────────── Dados ──────────────────────────")
+            log(f"  Fonte Preco:     {dados.get('fonte_preco', 'N/A')}")
+            log(f"  Fonte Fund.:     {dados.get('fonte_fundamentos', 'N/A')}")
             log(f"  Erro Scraper:    {erro_scraper}")
-            log(f"  Dados yfinance:  {'historico' in dados and not dados.get('historico', pd.DataFrame()).empty}")
+            log(f"  Dados Parciais:  {dados.get('dados_parciais', False)}")
+            log(f"  Campos Falt.:    {dados.get('campos_faltantes', [])}")
+            if 'dados_cache' in dados:
+                log(f"  Dados Cache:     {dados.get('dados_cache')}")
+            log(f"  Dados yfinance:  {dados_yfinance}")
 
             # ── 6. Validação de sanidade ─────────────────────────────────────
             alertas_ticker: List[str] = []
