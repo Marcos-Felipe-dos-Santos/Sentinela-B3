@@ -38,6 +38,8 @@ def test_brapi_normalizes_fields_without_network(monkeypatch):
                         "returnOnEquity": 18.0,
                         "dividendYield": 7.5,
                         "netDebtToEbitda": 1.7,
+                        "earningsPerShare": 6.1,
+                        "bookValuePerShare": 18.2,
                         "quoteType": "EQUITY",
                     }
                 ]
@@ -56,5 +58,37 @@ def test_brapi_normalizes_fields_without_network(monkeypatch):
         "roe": 0.18,
         "dy": 0.075,
         "divida_liq_ebitda": 1.7,
+        "lpa": 6.1,
+        "vpa": 18.2,
         "quote_type": "EQUITY",
     }
+
+
+def test_brapi_skips_invalid_negative_and_impossible_fields(monkeypatch):
+    monkeypatch.setenv("BRAPI_TOKEN", "token-test")
+
+    def fake_get(url, params, timeout):
+        return FakeResponse(
+            {
+                "results": [
+                    {
+                        "regularMarketPrice": -10,
+                        "priceEarnings": -5,
+                        "priceToBookRatio": 0,
+                        "returnOnEquity": -2,
+                        "dividendYield": 250,
+                        "netDebtToEbitda": -1,
+                        "earningsPerShare": -3,
+                        "bookValuePerShare": -4,
+                        "quoteType": "EQUITY",
+                    }
+                ]
+            }
+        )
+
+    monkeypatch.setattr("brapi_provider.requests.get", fake_get)
+
+    provider = BrapiProvider()
+    dados = provider.get_fundamentals("RUIM3")
+
+    assert dados == {"quote_type": "EQUITY"}

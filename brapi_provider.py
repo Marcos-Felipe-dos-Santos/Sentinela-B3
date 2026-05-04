@@ -25,11 +25,22 @@ def _to_float(value: Any) -> Optional[float]:
         return None
 
 
-def _percent_to_decimal(value: Any) -> Optional[float]:
+def _positive_float(value: Any) -> Optional[float]:
+    numero = _to_float(value)
+    if numero is None or numero <= 0:
+        return None
+    return numero
+
+
+def _percent_to_decimal(value: Any, *, assume_subunit_percent: bool = False) -> Optional[float]:
     numero = _to_float(value)
     if numero is None:
         return None
-    return numero / 100 if numero > 1 else numero
+    if numero < 0:
+        return None
+    if numero > 1 or (assume_subunit_percent and numero > 0.25):
+        numero = numero / 100
+    return numero
 
 
 def _first_number(*values: Any) -> Optional[float]:
@@ -133,19 +144,35 @@ class BrapiProvider:
             return None
 
         campos = {
-            "preco_atual": _to_float(_first_value(raw, "regularMarketPrice")),
-            "pl": _to_float(_first_value(raw, "priceEarnings", "trailingPE", "pl")),
-            "pvp": _to_float(_first_value(raw, "priceToBookRatio", "priceToBook", "pvp")),
+            "preco_atual": _positive_float(_first_value(raw, "regularMarketPrice")),
+            "pl": _positive_float(_first_value(raw, "priceEarnings", "trailingPE", "pl")),
+            "pvp": _positive_float(_first_value(raw, "priceToBookRatio", "priceToBook", "pvp")),
             "roe": _percent_to_decimal(_first_value(raw, "returnOnEquity", "roe")),
-            "dy": _percent_to_decimal(_first_value(raw, "dividendYield", "dy")),
-            "divida_liq_ebitda": _first_number(
+            "dy": _percent_to_decimal(
+                _first_value(raw, "dividendYield", "dy"),
+                assume_subunit_percent=True,
+            ),
+            "divida_liq_ebitda": _to_float(_first_number(
                 _first_value(raw, "netDebtToEbitda"),
                 _first_value(raw, "debtToEbitda"),
                 _first_value(raw, "dividaLiquidaEbitda"),
                 _first_value(raw, "divida_liq_ebitda"),
+            )),
+            "lpa": _positive_float(
+                _first_value(raw, "earningsPerShare", "eps", "trailingEps", "lpa")
+            ),
+            "vpa": _positive_float(
+                _first_value(raw, "bookValue", "bookValuePerShare", "vpa")
             ),
             "quote_type": _first_value(raw, "quoteType", "type") or "",
         }
+
+        if campos.get("dy") is not None and campos["dy"] > 0.30:
+            campos["dy"] = None
+        if campos.get("roe") is not None and campos["roe"] > 2:
+            campos["roe"] = None
+        if campos.get("divida_liq_ebitda") is not None and campos["divida_liq_ebitda"] < 0:
+            campos["divida_liq_ebitda"] = None
 
         normalizado = {
             chave: valor

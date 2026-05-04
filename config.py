@@ -68,6 +68,14 @@ DISTRESSED_TICKERS = {
     'MGLU3',
 }
 
+# Fallback manual para FIIs com cobertura fraca nas APIs.
+# Estimativas mantidas manualmente; revisar periodicamente.
+FII_MANUAL_FALLBACK = {
+    "CVBI11": {"dy": 0.10, "pvp": 0.85, "vacancia": 0.25},
+    "HGLG11": {"dy": 0.084, "pvp": 0.99, "vacancia": 0.08},
+    "MXRF11": {"dy": 0.115, "pvp": 0.98, "vacancia": 0.05},
+}
+
 # ==========================================
 # SELIC DINÂMICA (lazy load com cache)
 # ==========================================

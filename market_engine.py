@@ -6,18 +6,21 @@ import yfinance as yf
 import pandas as pd
 
 from brapi_provider import BrapiProvider
+from config import FII_MANUAL_FALLBACK, FIIS_CONHECIDOS, UNITS_CONHECIDAS
 from database import DatabaseManager
 from fundamentus_scraper import FundamentusScraper
 
 logger = logging.getLogger("MarketEngine")
 
-REQUIRED_FUNDAMENTALS = ('pl', 'pvp', 'roe', 'dy')
+REQUIRED_STOCK_FUNDAMENTALS = ('pl', 'pvp', 'roe', 'dy')
+REQUIRED_FII_FUNDAMENTALS = ('pvp', 'dy')
+REQUIRED_FUNDAMENTALS = REQUIRED_STOCK_FUNDAMENTALS
 REQUIRED_MARKET_DATA = ('preco_atual', 'historico')
 FUNDAMENTAL_KEYS = (
-    'pl', 'pvp', 'dy', 'roe', 'roic', 'divida_liq_ebitda',
+    'pl', 'pvp', 'dy', 'roe', 'lpa', 'vpa', 'roic', 'divida_liq_ebitda',
     'div_liq_patrimonio', 'margem_liquida', 'margem_bruta',
     'patrimonio_liquido', 'receita_liquida', 'lucro_liquido',
-    'ativo_total', 'ativo_circulante', 'quote_type',
+    'ativo_total', 'ativo_circulante', 'quote_type', 'vacancia',
 )
 
 
@@ -53,13 +56,33 @@ def _is_field_missing(field: str, value: Any, dados: Optional[Dict[str, Any]] = 
         return numero is None or numero <= 0
     if field == 'historico':
         return value is None or getattr(value, 'empty', True)
-    if field in {'pl', 'pvp', 'roe'}:
+    if field in {'pl', 'pvp', 'roe', 'lpa', 'vpa'}:
         if dados and field == 'pl' and dados.get('pl_confiavel') is False:
             return True
         return numero is not None and numero <= 0
 
     # DY zero can be a valid "no dividends" signal.
     return False
+
+
+def _is_fii_ticker(ticker: str, dados: Optional[Dict[str, Any]] = None) -> bool:
+    ticker_norm = str(ticker or "").upper().replace(".SA", "").strip()
+    quote_type = str((dados or {}).get('quote_type') or '').upper()
+    return (
+        ticker_norm in FIIS_CONHECIDOS
+        or quote_type == 'MUTUALFUND'
+        or (
+            ticker_norm.endswith("11")
+            and ticker_norm not in UNITS_CONHECIDAS
+        )
+    )
+
+
+def _required_fundamentals_for(dados: Dict[str, Any]) -> tuple[str, ...]:
+    ticker = str(dados.get('ticker', '')).upper()
+    if _is_fii_ticker(ticker, dados):
+        return REQUIRED_FII_FUNDAMENTALS
+    return REQUIRED_STOCK_FUNDAMENTALS
 
 
 def merge_if_valid(
@@ -77,7 +100,8 @@ def merge_if_valid(
     for chave, valor in supplemental.items():
         if chave in {
             'ticker', 'erro_scraper', 'dados_parciais', 'campos_faltantes',
-            'dados_cache', 'fonte_preco', 'fonte_fundamentos', 'riscos_dados',
+            'dados_cache', 'dados_manual', 'fonte_preco', 'fonte_fundamentos',
+            'riscos_dados',
         }:
             continue
         if allowed_keys is not None and chave not in allowed_keys:
@@ -97,7 +121,7 @@ def list_missing_required_fields(dados: Dict[str, Any]) -> list[str]:
     """List required fields still absent after source consolidation."""
     return [
         campo
-        for campo in REQUIRED_FUNDAMENTALS
+        for campo in _required_fundamentals_for(dados)
         if _is_field_missing(campo, dados.get(campo), dados)
     ]
 
@@ -148,6 +172,7 @@ class MarketEngine:
             'dados_parciais': False,
             'campos_faltantes': [],
             'dados_cache': False,
+            'dados_manual': False,
             'riscos_dados': [],
         }
 
@@ -166,9 +191,11 @@ class MarketEngine:
         if not dados.get('fonte_preco'):
             return None
 
-        missing_before_cache = list_missing_required_fields(dados)
-        if missing_before_cache or (not brapi_ok and not fundamentus_ok):
-            self._aplicar_cache_fundamentos(ticker, dados, overwrite=not (brapi_ok or fundamentus_ok))
+        if list_missing_required_fields(dados):
+            self._aplicar_cache_fundamentos(ticker, dados)
+
+        if list_missing_required_fields(dados):
+            self._aplicar_fallback_manual_fii(ticker, dados)
 
         dados['campos_faltantes'] = (
             list_missing_required_fields(dados)
@@ -319,8 +346,6 @@ class MarketEngine:
         self,
         ticker: str,
         dados: Dict[str, Any],
-        *,
-        overwrite: bool,
     ) -> bool:
         database = getattr(self, 'database', None)
         if database is None:
@@ -338,22 +363,50 @@ class MarketEngine:
         preenchidos = merge_if_valid(
             dados,
             cache,
-            overwrite=overwrite,
             allowed_keys=set(FUNDAMENTAL_KEYS),
         )
         if not preenchidos:
             return False
 
         dados['dados_cache'] = True
-        _definir_fonte_fundamentos(dados, 'cache')
+        _registrar_fonte_fundamentos(dados, 'cache')
         dados.setdefault('riscos_dados', []).append(
-            'usando últimos fundamentos válidos em cache'
+            'campos fundamentais preenchidos via cache'
         )
         logger.info(f"[{ticker}] Usando cache de fundamentos ({len(preenchidos)} campos)")
         return True
 
+    def _aplicar_fallback_manual_fii(self, ticker: str, dados: Dict[str, Any]) -> bool:
+        ticker_norm = ticker.upper().replace(".SA", "").strip()
+        if not ticker_norm.endswith("11") or ticker_norm in UNITS_CONHECIDAS:
+            return False
+
+        fallback = FII_MANUAL_FALLBACK.get(ticker_norm)
+        if not fallback:
+            return False
+
+        preenchidos = merge_if_valid(
+            dados,
+            fallback,
+            allowed_keys={'dy', 'pvp', 'vacancia'},
+        )
+        if not preenchidos:
+            return False
+
+        dados['dados_manual'] = True
+        _registrar_fonte_fundamentos(dados, 'manual_fii')
+        dados.setdefault('riscos_dados', []).append(
+            'fundamentos FII preenchidos manualmente'
+        )
+        logger.info(f"[{ticker_norm}] Fallback manual FII preencheu {len(preenchidos)} campos")
+        return True
+
     def _salvar_cache_se_valido(self, ticker: str, dados: Dict[str, Any]) -> None:
-        if dados.get('dados_cache') or not _fundamentos_validos_para_cache(dados):
+        if (
+            dados.get('dados_cache')
+            or dados.get('dados_manual')
+            or not _fundamentos_validos_para_cache(dados)
+        ):
             return
 
         fonte = dados.get('fonte_fundamentos')
@@ -365,7 +418,7 @@ class MarketEngine:
             for chave in FUNDAMENTAL_KEYS
             if chave in dados and not _is_field_missing(chave, dados.get(chave), dados)
         }
-        if not _fundamentos_validos_para_cache(payload):
+        if not _fundamentos_validos_para_cache({'ticker': ticker, **payload}):
             return
 
         database = getattr(self, 'database', None)

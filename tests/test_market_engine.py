@@ -267,9 +267,86 @@ def test_cache_is_used_when_providers_fail(monkeypatch):
     assert dados["roe"] == 0.14
     assert dados["dy"] == 0.07
     assert dados["dados_cache"] is True
-    assert dados["fonte_fundamentos"] == "cache"
-    assert "usando últimos fundamentos válidos em cache" in dados["riscos_dados"]
+    assert dados["fonte_fundamentos"].endswith("cache")
+    assert "campos fundamentais preenchidos via cache" in dados["riscos_dados"]
     assert dados["dados_parciais"] is False
+
+
+def test_fii_without_pl_roe_but_with_dy_pvp_is_not_partial(monkeypatch):
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(100.0),
+        info={"currentPrice": 100.0, "priceToBook": 0.98, "dividendYield": 0.10},
+        brapi=FakeBrapi(disponivel=False),
+        scraper={"erro_scraper": True},
+    )
+
+    dados = engine.buscar_dados_ticker("MXRF11")
+
+    assert dados["pvp"] == 0.98
+    assert dados["dy"] == 0.10
+    assert dados["campos_faltantes"] == []
+    assert dados["dados_parciais"] is False
+
+
+def test_cache_fills_missing_required_stock_fields(monkeypatch):
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(12.0),
+        info={"currentPrice": 12.0, "trailingPE": 8.0, "dividendYield": 0.04},
+        brapi=FakeBrapi(disponivel=False),
+        scraper={"erro_scraper": True},
+        cache=FakeCache({"pvp": 1.1, "roe": 0.18, "dy": 0.06}),
+    )
+
+    dados = engine.buscar_dados_ticker("CACHE3")
+
+    assert dados["pl"] == 8.0
+    assert dados["pvp"] == 1.1
+    assert dados["roe"] == 0.18
+    assert dados["dy"] == 0.04
+    assert dados["dados_cache"] is True
+    assert dados["campos_faltantes"] == []
+    assert dados["dados_parciais"] is False
+
+
+def test_manual_fii_fallback_fills_missing_dy_pvp(monkeypatch):
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(100.0),
+        info={"currentPrice": 100.0},
+        brapi=FakeBrapi(disponivel=False),
+        scraper={"erro_scraper": True},
+        cache=FakeCache(),
+    )
+
+    dados = engine.buscar_dados_ticker("CVBI11")
+
+    assert dados["dy"] == 0.10
+    assert dados["pvp"] == 0.85
+    assert dados["vacancia"] == 0.25
+    assert dados["dados_manual"] is True
+    assert dados["fonte_fundamentos"] == "manual_fii"
+    assert "fundamentos FII preenchidos manualmente" in dados["riscos_dados"]
+    assert dados["dados_parciais"] is False
+
+
+def test_manual_fii_fallback_never_overwrites_fresh_provider_values(monkeypatch):
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(100.0),
+        info={"currentPrice": 100.0, "priceToBook": 1.05, "dividendYield": 0.09},
+        brapi=FakeBrapi(disponivel=False),
+        scraper={"erro_scraper": True},
+        cache=FakeCache(),
+    )
+
+    dados = engine.buscar_dados_ticker("HGLG11")
+
+    assert dados["pvp"] == 1.05
+    assert dados["dy"] == 0.09
+    assert dados["dados_manual"] is False
+    assert "manual_fii" not in (dados.get("fonte_fundamentos") or "")
 
 
 def test_quality_helpers_respect_zero_dy_but_not_zero_price():
