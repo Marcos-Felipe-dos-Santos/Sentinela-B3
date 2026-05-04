@@ -49,10 +49,13 @@ coverage.xml
 *.cover
 *.log
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .hypothesis/
 
 # ── Ambiente Virtual ────────────────────
 venv/
+.venv/
 env/
 ENV/
 env.bak/
@@ -79,6 +82,8 @@ out/
 # ── Dados Sensíveis ─────────────────────
 # Variáveis de ambiente (API keys, etc)
 .env
+.env.*
+!.env.example
 .env.local
 .env.*.local
 
@@ -91,11 +96,15 @@ sentinela_v*.db.backup*
 # Banco principal (não versionar dados de produção)
 sentinela_v*.db
 sentinela.db
+*.db
+*.sqlite
+*.sqlite3
 *.db-shm
 *.db-wal
 
 # ── Logs ────────────────────────────────
 sentinela.log
+logs/*.log
 *.log
 logs/
 

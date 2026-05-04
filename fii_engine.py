@@ -4,7 +4,12 @@ from config import get_selic_atual
 logger = logging.getLogger("FII")
 
 VACANCIA_CONHECIDA = {
-    # examples only if already relevant in tests
+    # Estimativas manuais; revisar periodicamente.
+    "CVBI11": 0.25,
+    "MALL11": 0.18,
+    "HGLG11": 0.08,
+    "RBRP11": 0.00,
+    "MXRF11": 0.05,
 }
 
 class FIIEngine:

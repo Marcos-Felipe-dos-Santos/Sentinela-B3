@@ -80,7 +80,8 @@ class PortfolioEngine:
                 return -((ret_port - risk_free) / vol_port)
 
             cons = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1},)
-            bounds = tuple((0.0, 1.0) for _ in range(num_ativos))
+            limite_superior = 0.95 if num_ativos == 2 else 0.35
+            bounds = tuple((0.05, limite_superior) for _ in range(num_ativos))
             init = [1.0 / num_ativos] * num_ativos
 
             opt = minimize(neg_sharpe, init, method='SLSQP', bounds=bounds, constraints=cons)
