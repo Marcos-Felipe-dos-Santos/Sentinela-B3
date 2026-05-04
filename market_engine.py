@@ -6,11 +6,13 @@ import yfinance as yf
 import pandas as pd
 
 from brapi_provider import BrapiProvider
+from database import DatabaseManager
 from fundamentus_scraper import FundamentusScraper
 
 logger = logging.getLogger("MarketEngine")
 
-REQUIRED_FUNDAMENTALS = ('preco_atual', 'pl', 'pvp', 'roe', 'dy')
+REQUIRED_FUNDAMENTALS = ('pl', 'pvp', 'roe', 'dy')
+REQUIRED_MARKET_DATA = ('preco_atual', 'historico')
 FUNDAMENTAL_KEYS = (
     'pl', 'pvp', 'dy', 'roe', 'roic', 'divida_liq_ebitda',
     'div_liq_patrimonio', 'margem_liquida', 'margem_bruta',
@@ -49,6 +51,8 @@ def _is_field_missing(field: str, value: Any, dados: Optional[Dict[str, Any]] = 
     numero = _as_float(value)
     if field == 'preco_atual':
         return numero is None or numero <= 0
+    if field == 'historico':
+        return value is None or getattr(value, 'empty', True)
     if field in {'pl', 'pvp', 'roe'}:
         if dados and field == 'pl' and dados.get('pl_confiavel') is False:
             return True
@@ -58,18 +62,29 @@ def _is_field_missing(field: str, value: Any, dados: Optional[Dict[str, Any]] = 
     return False
 
 
-def merge_if_valid(base: Dict[str, Any], supplemental: Dict[str, Any]) -> list[str]:
-    """Merge supplemental values only into missing/invalid fields."""
+def merge_if_valid(
+    base: Dict[str, Any],
+    supplemental: Dict[str, Any],
+    *,
+    overwrite: bool = False,
+    allowed_keys: Optional[set[str]] = None,
+) -> list[str]:
+    """Merge supplemental values when valid, optionally overwriting fields."""
     preenchidos: list[str] = []
     if not supplemental:
         return preenchidos
 
     for chave, valor in supplemental.items():
-        if chave in {'ticker', 'erro_scraper', 'dados_parciais', 'campos_faltantes'}:
+        if chave in {
+            'ticker', 'erro_scraper', 'dados_parciais', 'campos_faltantes',
+            'dados_cache', 'fonte_preco', 'fonte_fundamentos', 'riscos_dados',
+        }:
+            continue
+        if allowed_keys is not None and chave not in allowed_keys:
             continue
         if _is_field_missing(chave, valor):
             continue
-        if _is_field_missing(chave, base.get(chave), base):
+        if overwrite or _is_field_missing(chave, base.get(chave), base):
             base[chave] = valor
             preenchidos.append(chave)
             if chave == 'pl':
@@ -87,6 +102,15 @@ def list_missing_required_fields(dados: Dict[str, Any]) -> list[str]:
     ]
 
 
+def list_missing_market_fields(dados: Dict[str, Any]) -> list[str]:
+    """List required price/history fields still absent."""
+    return [
+        campo
+        for campo in REQUIRED_MARKET_DATA
+        if _is_field_missing(campo, dados.get(campo), dados)
+    ]
+
+
 def _registrar_fonte_fundamentos(dados: Dict[str, Any], fonte: str) -> None:
     atual = dados.get('fonte_fundamentos')
     if not atual:
@@ -97,10 +121,19 @@ def _registrar_fonte_fundamentos(dados: Dict[str, Any], fonte: str) -> None:
         dados['fonte_fundamentos'] = f"{atual}+{fonte}"
 
 
+def _definir_fonte_fundamentos(dados: Dict[str, Any], fonte: str) -> None:
+    dados['fonte_fundamentos'] = fonte
+
+
+def _fundamentos_validos_para_cache(dados: Dict[str, Any]) -> bool:
+    return not list_missing_required_fields(dados)
+
+
 class MarketEngine:
     def __init__(self) -> None:
         self.scraper = FundamentusScraper()
         self.brapi = BrapiProvider()
+        self.database = DatabaseManager()
 
     def buscar_dados_ticker(self, ticker: str) -> Optional[Dict[str, Any]]:
         """Busca dados de mercado com fallback multi-fonte."""
@@ -114,25 +147,35 @@ class MarketEngine:
             'erro_scraper': False,
             'dados_parciais': False,
             'campos_faltantes': [],
+            'dados_cache': False,
+            'riscos_dados': [],
         }
 
-        # 1. yfinance: always first for price, history and basic info.
+        # 1. yfinance: always first for price, history and fallback basics.
         self._buscar_yfinance(ticker, dados)
 
-        # 2. Brapi: optional supplement for missing fundamentals.
-        self._buscar_brapi(ticker, dados)
+        # 2. Brapi: preferred fundamentals source when available.
+        brapi_ok = self._buscar_brapi(ticker, dados)
 
-        # 3. Fundamentus: final complement, preserving valid previous fields.
-        self._buscar_fundamentus(ticker, dados)
+        # 3. Fundamentus: fallback only when Brapi is unavailable/incomplete.
+        missing_after_brapi = list_missing_required_fields(dados)
+        fundamentus_ok = False
+        if not brapi_ok or missing_after_brapi:
+            fundamentus_ok = self._buscar_fundamentus(ticker, dados)
 
         if not dados.get('fonte_preco'):
             return None
 
-        # TODO(cache): DatabaseManager stores analyses, not a safe last-valid
-        # fundamentals table. Add SQLite cache only with stale/cache flags and
-        # migration tests.
-        dados['campos_faltantes'] = list_missing_required_fields(dados)
+        missing_before_cache = list_missing_required_fields(dados)
+        if missing_before_cache or (not brapi_ok and not fundamentus_ok):
+            self._aplicar_cache_fundamentos(ticker, dados, overwrite=not (brapi_ok or fundamentus_ok))
+
+        dados['campos_faltantes'] = (
+            list_missing_required_fields(dados)
+            + list_missing_market_fields(dados)
+        )
         dados['dados_parciais'] = bool(dados['campos_faltantes'])
+        self._salvar_cache_se_valido(ticker, dados)
         dados.setdefault('ticker', ticker)
         return dados
 
@@ -194,7 +237,7 @@ class MarketEngine:
             return False
 
     def _buscar_brapi(self, ticker: str, dados: Dict[str, Any]) -> bool:
-        """Tenta complementar via Brapi. Retorna True se preencheu campos."""
+        """Busca fundamentos via Brapi, sobrescrevendo fundamentos do Yahoo."""
         if not self.brapi.disponivel:
             logger.warning(f"[{ticker}] Brapi indisponivel: BRAPI_TOKEN ausente")
             return False
@@ -204,15 +247,28 @@ class MarketEngine:
             if not brapi_data:
                 return False
 
-            preenchidos = merge_if_valid(dados, brapi_data)
+            fundamentos = {
+                chave: valor
+                for chave, valor in brapi_data.items()
+                if chave in FUNDAMENTAL_KEYS
+            }
+            preenchidos = merge_if_valid(
+                dados,
+                fundamentos,
+                overwrite=True,
+                allowed_keys=set(FUNDAMENTAL_KEYS),
+            )
 
-            if 'preco_atual' in preenchidos and not dados.get('fonte_preco'):
+            if _is_field_missing('preco_atual', dados.get('preco_atual'), dados):
+                merge_if_valid(dados, brapi_data, allowed_keys={'preco_atual'})
+
+            if dados.get('preco_atual') and not dados.get('fonte_preco'):
                 dados['fonte_preco'] = 'brapi'
 
             campos_fundamentalistas = [c for c in preenchidos if c in FUNDAMENTAL_KEYS and c != 'quote_type']
             if campos_fundamentalistas:
-                _registrar_fonte_fundamentos(dados, 'brapi')
-                logger.info(f"[{ticker}] Brapi complementou {len(campos_fundamentalistas)} campos")
+                _definir_fonte_fundamentos(dados, 'brapi')
+                logger.info(f"[{ticker}] Brapi definiu {len(campos_fundamentalistas)} fundamentos")
                 return True
 
         except Exception as e:
@@ -250,11 +306,76 @@ class MarketEngine:
 
         campos_fundamentalistas = [c for c in preenchidos if c in FUNDAMENTAL_KEYS and c != 'quote_type']
         if campos_fundamentalistas:
-            _registrar_fonte_fundamentos(dados, 'fundamentus')
+            if dados.get('fonte_fundamentos') in (None, 'yfinance_partial'):
+                _definir_fonte_fundamentos(dados, 'fundamentus')
+            else:
+                _registrar_fonte_fundamentos(dados, 'fundamentus')
 
         dados['erro_scraper'] = False
         logger.info(f"[{ticker}] Fundamentus OK - complementou {len(campos_fundamentalistas)} campos")
         return bool(campos_fundamentalistas)
+
+    def _aplicar_cache_fundamentos(
+        self,
+        ticker: str,
+        dados: Dict[str, Any],
+        *,
+        overwrite: bool,
+    ) -> bool:
+        database = getattr(self, 'database', None)
+        if database is None:
+            return False
+
+        try:
+            cache = database.buscar_fundamentos_cache(ticker)
+        except Exception as e:
+            logger.warning(f"[{ticker}] Cache fundamentos indisponivel: {e}")
+            return False
+
+        if not cache:
+            return False
+
+        preenchidos = merge_if_valid(
+            dados,
+            cache,
+            overwrite=overwrite,
+            allowed_keys=set(FUNDAMENTAL_KEYS),
+        )
+        if not preenchidos:
+            return False
+
+        dados['dados_cache'] = True
+        _definir_fonte_fundamentos(dados, 'cache')
+        dados.setdefault('riscos_dados', []).append(
+            'usando últimos fundamentos válidos em cache'
+        )
+        logger.info(f"[{ticker}] Usando cache de fundamentos ({len(preenchidos)} campos)")
+        return True
+
+    def _salvar_cache_se_valido(self, ticker: str, dados: Dict[str, Any]) -> None:
+        if dados.get('dados_cache') or not _fundamentos_validos_para_cache(dados):
+            return
+
+        fonte = dados.get('fonte_fundamentos')
+        if not fonte or fonte == 'yfinance_partial':
+            return
+
+        payload = {
+            chave: dados[chave]
+            for chave in FUNDAMENTAL_KEYS
+            if chave in dados and not _is_field_missing(chave, dados.get(chave), dados)
+        }
+        if not _fundamentos_validos_para_cache(payload):
+            return
+
+        database = getattr(self, 'database', None)
+        if database is None:
+            return
+
+        try:
+            database.salvar_fundamentos_cache(ticker, payload, fonte)
+        except Exception as e:
+            logger.warning(f"[{ticker}] Falha ao salvar cache de fundamentos: {e}")
 
     def buscar_noticias(self, ticker: str):
         """Busca ultimas noticias via yfinance."""

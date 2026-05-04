@@ -40,6 +40,20 @@ def _first_number(*values: Any) -> Optional[float]:
     return None
 
 
+def _first_value(raw: Dict[str, Any], *keys: str) -> Any:
+    nested = (
+        raw.get("fundamentalist")
+        or raw.get("fundamentals")
+        or raw.get("fundamental")
+        or {}
+    )
+    for key in keys:
+        for source in (raw, nested):
+            if isinstance(source, dict) and key in source:
+                return source.get(key)
+    return None
+
+
 class BrapiProvider:
     """Provider opcional de dados via Brapi API."""
 
@@ -119,17 +133,18 @@ class BrapiProvider:
             return None
 
         campos = {
-            "preco_atual": _to_float(raw.get("regularMarketPrice")),
-            "pl": _to_float(raw.get("priceEarnings")),
-            "pvp": _to_float(raw.get("priceToBookRatio")),
-            "roe": _percent_to_decimal(raw.get("returnOnEquity")),
-            "dy": _percent_to_decimal(raw.get("dividendYield")),
+            "preco_atual": _to_float(_first_value(raw, "regularMarketPrice")),
+            "pl": _to_float(_first_value(raw, "priceEarnings", "trailingPE", "pl")),
+            "pvp": _to_float(_first_value(raw, "priceToBookRatio", "priceToBook", "pvp")),
+            "roe": _percent_to_decimal(_first_value(raw, "returnOnEquity", "roe")),
+            "dy": _percent_to_decimal(_first_value(raw, "dividendYield", "dy")),
             "divida_liq_ebitda": _first_number(
-                raw.get("netDebtToEbitda"),
-                raw.get("debtToEbitda"),
-                raw.get("dividaLiquidaEbitda"),
+                _first_value(raw, "netDebtToEbitda"),
+                _first_value(raw, "debtToEbitda"),
+                _first_value(raw, "dividaLiquidaEbitda"),
+                _first_value(raw, "divida_liq_ebitda"),
             ),
-            "quote_type": raw.get("quoteType", raw.get("type", "")),
+            "quote_type": _first_value(raw, "quoteType", "type") or "",
         }
 
         normalizado = {

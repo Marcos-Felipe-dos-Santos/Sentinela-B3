@@ -15,8 +15,10 @@ class FakeTicker:
 class FakeScraper:
     def __init__(self, resposta):
         self.resposta = resposta
+        self.calls = 0
 
     def buscar_dados(self, ticker):
+        self.calls += 1
         return self.resposta
 
 
@@ -27,6 +29,18 @@ class FakeBrapi:
 
     def get_fundamentals(self, ticker):
         return self.resposta
+
+
+class FakeCache:
+    def __init__(self, resposta=None):
+        self.resposta = resposta
+        self.saved = []
+
+    def buscar_fundamentos_cache(self, ticker, max_age_days=7):
+        return self.resposta
+
+    def salvar_fundamentos_cache(self, ticker, dados, fonte):
+        self.saved.append((ticker, dados, fonte))
 
 
 def _historico(preco=10.0):
@@ -41,7 +55,7 @@ def _historico(preco=10.0):
     )
 
 
-def _engine(monkeypatch, *, info, historico=None, scraper=None, brapi=None):
+def _engine(monkeypatch, *, info, historico=None, scraper=None, brapi=None, cache=None):
     monkeypatch.setattr(
         "market_engine.yf.Ticker",
         lambda ticker: FakeTicker(info=info, historico=historico),
@@ -49,6 +63,7 @@ def _engine(monkeypatch, *, info, historico=None, scraper=None, brapi=None):
     engine = MarketEngine.__new__(MarketEngine)
     engine.scraper = FakeScraper(scraper if scraper is not None else {"erro_scraper": True})
     engine.brapi = brapi if brapi is not None else FakeBrapi(disponivel=False)
+    engine.database = cache
     return engine
 
 
@@ -107,6 +122,45 @@ def test_brapi_fills_missing_fields(monkeypatch):
     assert dados["campos_faltantes"] == []
 
 
+def test_brapi_overrides_yfinance_fundamentals_when_valid(monkeypatch):
+    cache = FakeCache()
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(22.0),
+        info={
+            "currentPrice": 21.0,
+            "trailingPE": 12.0,
+            "priceToBook": 2.5,
+            "returnOnEquity": 0.08,
+            "dividendYield": 0.01,
+            "quoteType": "EQUITY",
+        },
+        brapi=FakeBrapi(
+            {
+                "preco_atual": 99.0,
+                "pl": 7.0,
+                "pvp": 1.3,
+                "roe": 0.22,
+                "dy": 0.06,
+                "quote_type": "EQUITY",
+            }
+        ),
+        cache=cache,
+    )
+
+    dados = engine.buscar_dados_ticker("PETR4")
+
+    assert dados["preco_atual"] == 22.0
+    assert dados["fonte_preco"] == "yfinance"
+    assert dados["pl"] == 7.0
+    assert dados["pvp"] == 1.3
+    assert dados["roe"] == 0.22
+    assert dados["dy"] == 0.06
+    assert dados["fonte_fundamentos"] == "brapi"
+    assert dados["dados_parciais"] is False
+    assert cache.saved
+
+
 def test_brapi_does_not_overwrite_valid_fields_with_missing_values(monkeypatch):
     engine = _engine(
         monkeypatch,
@@ -128,6 +182,45 @@ def test_brapi_does_not_overwrite_valid_fields_with_missing_values(monkeypatch):
     assert dados["pvp"] == 1.4
     assert dados["roe"] == 0.12
     assert dados["dy"] == 0.03
+
+
+def test_fundamentus_fills_only_missing_fields(monkeypatch):
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(18.0),
+        info={"currentPrice": 18.0, "quoteType": "EQUITY"},
+        brapi=FakeBrapi({"pl": 9.0, "dy": 0.04, "quote_type": "EQUITY"}),
+        scraper={"pl": 1.0, "pvp": 1.2, "roe": 0.18, "dy": 0.99},
+        cache=FakeCache(),
+    )
+
+    dados = engine.buscar_dados_ticker("ITUB4")
+
+    assert dados["pl"] == 9.0
+    assert dados["dy"] == 0.04
+    assert dados["pvp"] == 1.2
+    assert dados["roe"] == 0.18
+    assert dados["fonte_fundamentos"] == "brapi+fundamentus"
+    assert dados["dados_parciais"] is False
+
+
+def test_scraper_failure_does_not_make_data_partial_when_brapi_complete(monkeypatch):
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(25.0),
+        info={"currentPrice": 25.0, "quoteType": "EQUITY"},
+        brapi=FakeBrapi({"pl": 8.0, "pvp": 1.1, "roe": 0.16, "dy": 0.05}),
+        scraper={"erro_scraper": True},
+        cache=FakeCache(),
+    )
+
+    dados = engine.buscar_dados_ticker("BBAS3")
+
+    assert dados["fonte_fundamentos"] == "brapi"
+    assert dados["erro_scraper"] is False
+    assert dados["campos_faltantes"] == []
+    assert dados["dados_parciais"] is False
+    assert engine.scraper.calls == 0
 
 
 def test_missing_fields_and_partial_flag_are_set(monkeypatch):
@@ -153,14 +246,36 @@ def test_no_cache_path_does_not_mark_cached_data(monkeypatch):
 
     dados = engine.buscar_dados_ticker("CACHE3")
 
-    assert "dados_cache" not in dados
+    assert dados["dados_cache"] is False
     assert dados.get("fonte_fundamentos") != "cache"
+
+
+def test_cache_is_used_when_providers_fail(monkeypatch):
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(12.0),
+        info={"currentPrice": 12.0, "trailingPE": 99.0},
+        brapi=FakeBrapi(disponivel=False),
+        scraper={"erro_scraper": True},
+        cache=FakeCache({"pl": 6.0, "pvp": 0.9, "roe": 0.14, "dy": 0.07}),
+    )
+
+    dados = engine.buscar_dados_ticker("CACHE3")
+
+    assert dados["pl"] == 6.0
+    assert dados["pvp"] == 0.9
+    assert dados["roe"] == 0.14
+    assert dados["dy"] == 0.07
+    assert dados["dados_cache"] is True
+    assert dados["fonte_fundamentos"] == "cache"
+    assert "usando últimos fundamentos válidos em cache" in dados["riscos_dados"]
+    assert dados["dados_parciais"] is False
 
 
 def test_quality_helpers_respect_zero_dy_but_not_zero_price():
     dados = {"preco_atual": 0, "pl": 0, "pvp": 1.0, "roe": 0, "dy": 0}
 
-    assert list_missing_required_fields(dados) == ["preco_atual", "pl", "roe"]
+    assert list_missing_required_fields(dados) == ["pl", "roe"]
 
 
 def test_merge_if_valid_only_fills_missing_fields():

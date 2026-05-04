@@ -30,6 +30,7 @@ def test_database_initialization(db, db_path):
     
     assert 'analises' in tables
     assert 'carteira_real' in tables
+    assert 'fundamentals_cache' in tables
 
 def test_database_reset_db(db, db_path):
     # Write some data to create wal/shm
@@ -42,3 +43,28 @@ def test_database_reset_db(db, db_path):
     
     # Should still exist
     assert os.path.exists(db_path)
+
+
+def test_fundamentos_cache_roundtrip(db):
+    dados = {"pl": 8.0, "pvp": 1.2, "roe": 0.15, "dy": 0.04}
+
+    db.salvar_fundamentos_cache("petr4.sa", dados, "brapi")
+
+    assert db.buscar_fundamentos_cache("PETR4") == dados
+
+
+def test_fundamentos_cache_stale_is_not_returned(db):
+    dados = {"pl": 8.0, "pvp": 1.2, "roe": 0.15, "dy": 0.04}
+    db.salvar_fundamentos_cache("VALE3", dados, "brapi")
+
+    with db._get_conn() as conn:
+        with conn:
+            conn.execute(
+                """
+                UPDATE fundamentals_cache
+                SET atualizado_em = '2000-01-01T00:00:00'
+                WHERE ticker = 'VALE3'
+                """
+            )
+
+    assert db.buscar_fundamentos_cache("VALE3", max_age_days=7) is None
