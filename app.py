@@ -126,11 +126,52 @@ if modo == "Terminal":
             status_box.empty()
             
             # --- RENDERIZAÇÃO ---
+            erro_scraper = bool(dados.get("erro_scraper"))
+            dados_parciais = bool(dados.get("dados_parciais")) or erro_scraper
+            campos_faltantes = dados.get("campos_faltantes") or []
+            campos_faltantes_txt = (
+                ", ".join(str(campo) for campo in campos_faltantes)
+                if campos_faltantes else "Nenhum"
+            )
+            recomendacao = analise.get('recomendacao', '-')
+
             k1, k2, k3, k4 = st.columns(4)
             k1.metric("Preço", f"R$ {dados.get('preco_atual', 0):.2f}")
             k2.metric("Valor Justo", f"R$ {analise.get('fair_value', 0):.2f}")
-            k3.metric("Recomendação", analise.get('recomendacao', '-'))
+            k3.metric("Recomendação", recomendacao)
             k4.metric("Score", f"{analise.get('score_final', 0)}/100")
+
+            if recomendacao == "DADOS INSUFICIENTES — AGUARDAR":
+                st.info(
+                    "A análise preserva os cálculos, mas bloqueia compra porque "
+                    "os dados fundamentais estão incompletos."
+                )
+            elif recomendacao == "ALTO RISCO — EVITAR":
+                st.error(
+                    "Ativo classificado como situação especial/distressed. "
+                    "Evitar análise por múltiplos tradicionais."
+                )
+            elif recomendacao == "QUALIDADE — AGUARDAR":
+                st.info(
+                    "Empresa de qualidade, mas sem margem de segurança suficiente "
+                    "no preço atual."
+                )
+
+            with st.expander("Qualidade dos Dados", expanded=False):
+                q1, q2, q3, q4 = st.columns(4)
+                q1.metric("Fonte Preço", dados.get('fonte_preco') or "-")
+                q2.metric("Fonte Fund.", dados.get('fonte_fundamentos') or "-")
+                q3.metric("Dados Parciais", "⚠️ Sim" if dados_parciais else "✅ Não")
+                q4.metric("Erro Scraper", "⚠️ Sim" if erro_scraper else "✅ Não")
+
+                st.caption(f"Campos faltantes: {campos_faltantes_txt}")
+                if dados_parciais or erro_scraper or campos_faltantes:
+                    st.warning(
+                        "Dados fundamentais incompletos. A recomendação pode "
+                        "estar limitada pela qualidade dos dados."
+                    )
+                else:
+                    st.success("Dados suficientes para análise.")
             
             t1, t2, t3 = st.tabs(["Valuation & IA", "Técnica & Peers", "Gráfico"])
             

@@ -71,6 +71,11 @@ def _fmt(val, fmt_str: str = ".4f") -> str:
         return str(val)
 
 
+def _fmt_bool(val) -> str:
+    """Formata booleanos como Sim/Não para o relatório."""
+    return "Sim" if bool(val) else "Não"
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # AUDITORIA PRINCIPAL
 # ══════════════════════════════════════════════════════════════════════════════
@@ -176,14 +181,14 @@ def auditar() -> str:
             log(f"  RSI:             {rsi}")
             log(f"  MACD Rec:        {macd_rec}")
             log(f"  ──────────────── Dados ──────────────────────────")
-            log(f"  Fonte Preco:     {dados.get('fonte_preco', 'N/A')}")
+            log(f"  Fonte Preço:     {dados.get('fonte_preco', 'N/A')}")
             log(f"  Fonte Fund.:     {dados.get('fonte_fundamentos', 'N/A')}")
-            log(f"  Erro Scraper:    {erro_scraper}")
-            log(f"  Dados Parciais:  {dados.get('dados_parciais', False)}")
+            log(f"  Erro Scraper:    {_fmt_bool(erro_scraper)}")
+            log(f"  Dados Parciais:  {_fmt_bool(dados.get('dados_parciais', False))}")
             log(f"  Campos Falt.:    {dados.get('campos_faltantes', [])}")
             if 'dados_cache' in dados:
-                log(f"  Dados Cache:     {dados.get('dados_cache')}")
-            log(f"  Dados yfinance:  {dados_yfinance}")
+                log(f"  Dados Cache:     {_fmt_bool(dados.get('dados_cache'))}")
+            log(f"  Dados yfinance:  {_fmt_bool(dados_yfinance)}")
 
             # ── 6. Validação de sanidade ─────────────────────────────────────
             alertas_ticker: List[str] = []
