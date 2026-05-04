@@ -210,6 +210,9 @@ class ValuationEngine:
         else:
             rec = "NEUTRO"
 
+        if rec == "COMPRA FORTE" and riscos:
+            rec = "COMPRA"
+
         # ── GUARD: Scraper falhou → não recomendar compra ─────────────────────
         # Dados fundamentais incompletos não significam que o ativo é ruim,
         # apenas que não há confiança suficiente para sugerir compra.

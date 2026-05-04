@@ -185,9 +185,9 @@ def auditar() -> str:
             log(f"  Fonte Fund.:     {dados.get('fonte_fundamentos', 'N/A')}")
             log(f"  Erro Scraper:    {_fmt_bool(erro_scraper)}")
             log(f"  Dados Parciais:  {_fmt_bool(dados.get('dados_parciais', False))}")
+            log(f"  Dados Cache:     {_fmt_bool(dados.get('dados_cache', False))}")
             log(f"  Campos Falt.:    {dados.get('campos_faltantes', [])}")
-            if 'dados_cache' in dados:
-                log(f"  Dados Cache:     {_fmt_bool(dados.get('dados_cache'))}")
+            log(f"  Riscos Dados:    {dados.get('riscos_dados', [])}")
             log(f"  Dados yfinance:  {_fmt_bool(dados_yfinance)}")
 
             # ── 6. Validação de sanidade ─────────────────────────────────────

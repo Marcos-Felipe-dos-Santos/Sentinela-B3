@@ -88,6 +88,48 @@ def test_recomendacao_qualidade_aguardar() -> None:
     assert resultado['recomendacao'] == 'QUALIDADE — AGUARDAR'
 
 
+def test_compra_forte_com_risco_vira_compra() -> None:
+    """Score e upside altos com risco explicito nao devem virar COMPRA FORTE."""
+    dados = {
+        'ticker': 'GROW3',
+        'preco_atual': 100.0,
+        'roe': 0.25,
+        'pl': 5.0,
+        'pvp': 4.0,
+        'dy': 0.01,
+        'divida_liq_ebitda': 4.0,
+    }
+
+    with patch('valuation_engine.get_selic_atual', return_value=0.10):
+        resultado = ValuationEngine().processar(dados)
+
+    assert resultado['score_final'] >= 75
+    assert resultado['upside'] > 15
+    assert resultado['riscos']
+    assert resultado['recomendacao'] == 'COMPRA'
+
+
+def test_compra_forte_sem_risco_continua_possivel() -> None:
+    """Score e upside altos sem risco explicito ainda podem virar COMPRA FORTE."""
+    dados = {
+        'ticker': 'GROW3',
+        'preco_atual': 100.0,
+        'roe': 0.25,
+        'pl': 5.0,
+        'pvp': 4.0,
+        'dy': 0.01,
+        'divida_liq_ebitda': 0.0,
+    }
+
+    with patch('valuation_engine.get_selic_atual', return_value=0.10):
+        resultado = ValuationEngine().processar(dados)
+
+    assert resultado['score_final'] >= 75
+    assert resultado['upside'] > 15
+    assert resultado['riscos'] == []
+    assert resultado['recomendacao'] == 'COMPRA FORTE'
+
+
 def test_graham_ignorado_pl_negativo() -> None:
     """pl_confiavel=False deve excluir Graham dos métodos usados."""
     dados = {
