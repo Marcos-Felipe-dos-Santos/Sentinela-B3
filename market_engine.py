@@ -1,12 +1,100 @@
 import logging
+import math
 from typing import Any, Dict, Optional
 
 import yfinance as yf
+import pandas as pd
 
-from fundamentus_scraper import FundamentusScraper
 from brapi_provider import BrapiProvider
+from fundamentus_scraper import FundamentusScraper
 
 logger = logging.getLogger("MarketEngine")
+
+REQUIRED_FUNDAMENTALS = ('preco_atual', 'pl', 'pvp', 'roe', 'dy')
+FUNDAMENTAL_KEYS = (
+    'pl', 'pvp', 'dy', 'roe', 'roic', 'divida_liq_ebitda',
+    'div_liq_patrimonio', 'margem_liquida', 'margem_bruta',
+    'patrimonio_liquido', 'receita_liquida', 'lucro_liquido',
+    'ativo_total', 'ativo_circulante', 'quote_type',
+)
+
+
+def is_missing(value: Any) -> bool:
+    """Return True for empty/null/non-finite values; numeric zero is field-specific."""
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return value.strip() == "" or value.strip().upper() in {"N/A", "NA", "NONE", "NULL"}
+    try:
+        if isinstance(value, (int, float)) and not math.isfinite(float(value)):
+            return True
+    except (TypeError, ValueError):
+        return False
+    return False
+
+
+def _as_float(value: Any) -> Optional[float]:
+    if is_missing(value):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _is_field_missing(field: str, value: Any, dados: Optional[Dict[str, Any]] = None) -> bool:
+    if is_missing(value):
+        return True
+
+    numero = _as_float(value)
+    if field == 'preco_atual':
+        return numero is None or numero <= 0
+    if field in {'pl', 'pvp', 'roe'}:
+        if dados and field == 'pl' and dados.get('pl_confiavel') is False:
+            return True
+        return numero is not None and numero <= 0
+
+    # DY zero can be a valid "no dividends" signal.
+    return False
+
+
+def merge_if_valid(base: Dict[str, Any], supplemental: Dict[str, Any]) -> list[str]:
+    """Merge supplemental values only into missing/invalid fields."""
+    preenchidos: list[str] = []
+    if not supplemental:
+        return preenchidos
+
+    for chave, valor in supplemental.items():
+        if chave in {'ticker', 'erro_scraper', 'dados_parciais', 'campos_faltantes'}:
+            continue
+        if _is_field_missing(chave, valor):
+            continue
+        if _is_field_missing(chave, base.get(chave), base):
+            base[chave] = valor
+            preenchidos.append(chave)
+            if chave == 'pl':
+                base['pl_confiavel'] = bool(supplemental.get('pl_confiavel', True))
+
+    return preenchidos
+
+
+def list_missing_required_fields(dados: Dict[str, Any]) -> list[str]:
+    """List required fields still absent after source consolidation."""
+    return [
+        campo
+        for campo in REQUIRED_FUNDAMENTALS
+        if _is_field_missing(campo, dados.get(campo), dados)
+    ]
+
+
+def _registrar_fonte_fundamentos(dados: Dict[str, Any], fonte: str) -> None:
+    atual = dados.get('fonte_fundamentos')
+    if not atual:
+        dados['fonte_fundamentos'] = fonte
+        return
+    fontes = atual.split('+')
+    if fonte not in fontes:
+        dados['fonte_fundamentos'] = f"{atual}+{fonte}"
 
 
 class MarketEngine:
@@ -14,112 +102,90 @@ class MarketEngine:
         self.scraper = FundamentusScraper()
         self.brapi = BrapiProvider()
 
-    # ── Método principal ─────────────────────────────────────────────────────
     def buscar_dados_ticker(self, ticker: str) -> Optional[Dict[str, Any]]:
-        """Busca dados de mercado com fallback multi-fonte.
+        """Busca dados de mercado com fallback multi-fonte."""
+        ticker = ticker.upper().replace(".SA", "").strip()
 
-        Fluxo de prioridade:
-            1. yfinance — preço, histórico, fundamentalista básico
-            2. Fundamentus scraper — fundamentalista detalhado
-            3. Brapi (opcional) — complementar se token configurado
-            4. Fallback: mantém dados parciais com flags de qualidade
-
-        Args:
-            ticker: Código do ativo B3 (ex: "PETR4").
-
-        Returns:
-            Dict com dados consolidados e flags de qualidade, ou None.
-        """
-        ticker = ticker.upper().replace(".SA", "")
-
-        # Inicializar dict resultado com flags de qualidade
         dados: Dict[str, Any] = {
             'ticker': ticker,
+            'historico': pd.DataFrame(),
             'fonte_preco': None,
             'fonte_fundamentos': None,
             'erro_scraper': False,
             'dados_parciais': False,
+            'campos_faltantes': [],
         }
 
-        # ── 1. yfinance: preço + histórico + fundamentalista básico ──────
-        yf_ok = self._buscar_yfinance(ticker, dados)
+        # 1. yfinance: always first for price, history and basic info.
+        self._buscar_yfinance(ticker, dados)
 
-        # ── 2. Fundamentus: fundamentalista detalhado (sobrescreve yfinance)
-        fund_ok = self._buscar_fundamentus(ticker, dados)
+        # 2. Brapi: optional supplement for missing fundamentals.
+        self._buscar_brapi(ticker, dados)
 
-        # ── 3. Brapi: complementar opcional ──────────────────────────────
-        if not fund_ok and self.brapi.disponivel:
-            self._buscar_brapi(ticker, dados)
+        # 3. Fundamentus: final complement, preserving valid previous fields.
+        self._buscar_fundamentus(ticker, dados)
 
-        # ── 4. Definir flags finais de qualidade ─────────────────────────
         if not dados.get('fonte_preco'):
-            # Sem preço de nenhuma fonte → dados inúteis
             return None
 
-        if not dados.get('fonte_fundamentos'):
-            dados['dados_parciais'] = True
-
-        # Garantia final: ticker sempre presente no dict retornado
+        # TODO(cache): DatabaseManager stores analyses, not a safe last-valid
+        # fundamentals table. Add SQLite cache only with stale/cache flags and
+        # migration tests.
+        dados['campos_faltantes'] = list_missing_required_fields(dados)
+        dados['dados_parciais'] = bool(dados['campos_faltantes'])
         dados.setdefault('ticker', ticker)
-
         return dados
 
-    # ── Fonte 1: yfinance ────────────────────────────────────────────────────
     def _buscar_yfinance(self, ticker: str, dados: Dict[str, Any]) -> bool:
-        """Busca dados via yfinance. Retorna True se obteve dados válidos."""
+        """Busca dados via yfinance. Retorna True se obteve preco valido."""
         try:
             tk = yf.Ticker(f"{ticker}.SA")
 
-            # Histórico (1 ano)
             hist = tk.history(period="1y", timeout=10)
-            if not hist.empty:
+            if hist is not None and not hist.empty:
                 dados['historico'] = hist
                 dados['preco_atual'] = hist['Close'].iloc[-1]
                 dados['fonte_preco'] = 'yfinance'
 
-            # Fundamentalista básico via .info
             info = tk.info
             if info:
-                # Yahoo Finance retorna dividendYield como percentagem bruta
-                # (ex: 12.47 = 12,47%) enquanto o sistema usa decimal (0.1247).
-                dy_raw = info.get('dividendYield')
+                dy_raw = _as_float(info.get('dividendYield'))
                 if dy_raw is not None and dy_raw > 1:
                     dy_raw = dy_raw / 100
 
-                # ── P/L sanity ───────────────────────────────────────────
-                # Yahoo trailingPE para cíclicos (VALE3, PETR4) pode oscilar
-                # muito entre trimestres — registrar confiabilidade.
-                pl_raw = info.get('trailingPE')
+                pl_raw = _as_float(info.get('trailingPE'))
                 pl_confiavel = True
                 if pl_raw is not None:
                     if pl_raw < 0:
-                        pl_raw = None   # PL negativo → sem lucro → ausente
+                        pl_raw = None
                         pl_confiavel = False
-                        logger.warning(f"[{ticker}] PL negativo (prejuízo) — descartado")
+                        logger.warning(f"[{ticker}] PL negativo (prejuizo) - descartado")
                     elif pl_raw > 80:
                         pl_confiavel = False
                         logger.warning(
                             f"[{ticker}] PL={pl_raw:.1f} via Yahoo muito alto (>80) "
-                            f"— possível TTM atípico. Graham pode ser descartado."
+                            "Possivel TTM atipico; pode ser sobrescrito por fonte melhor."
                         )
 
-                dados.update({
-                    'pl':          pl_raw,
-                    'pvp':         info.get('priceToBook'),
-                    'dy':          dy_raw,
-                    'roe':         info.get('returnOnEquity'),
-                    'preco_atual': dados.get('preco_atual') or info.get('currentPrice'),
-                    'pl_confiavel': pl_confiavel,
-                    # quoteType distingue FII real (MUTUALFUND) de unit/ação (EQUITY)
-                    'quote_type':  info.get('quoteType', ''),
-                })
-
-                if not dados.get('fonte_preco') and info.get('currentPrice'):
+                preco_info = _as_float(info.get('currentPrice'))
+                if not dados.get('fonte_preco') and preco_info and preco_info > 0:
+                    dados['preco_atual'] = preco_info
                     dados['fonte_preco'] = 'yfinance'
 
-                # yfinance fornece fundamentalista parcial por padrão
-                if any(dados.get(k) is not None for k in ('pl', 'pvp', 'dy', 'roe')):
-                    dados['fonte_fundamentos'] = 'yfinance_partial'
+                payload = {
+                    'pl': pl_raw,
+                    'pvp': _as_float(info.get('priceToBook')),
+                    'dy': dy_raw,
+                    'roe': _as_float(info.get('returnOnEquity')),
+                    'pl_confiavel': pl_confiavel,
+                    'quote_type': info.get('quoteType', ''),
+                }
+                for chave, valor in payload.items():
+                    if not is_missing(valor):
+                        dados[chave] = valor
+
+                if any(not _is_field_missing(k, dados.get(k), dados) for k in ('pl', 'pvp', 'dy', 'roe')):
+                    _registrar_fonte_fundamentos(dados, 'yfinance_partial')
 
             return bool(dados.get('fonte_preco'))
 
@@ -127,45 +193,10 @@ class MarketEngine:
             logger.warning(f"Yahoo error {ticker}: {e}")
             return False
 
-    # ── Fonte 2: Fundamentus scraper ─────────────────────────────────────────
-    def _buscar_fundamentus(self, ticker: str, dados: Dict[str, Any]) -> bool:
-        """Busca dados via Fundamentus. Retorna True se obteve dados completos."""
-        scraper_dados = self.scraper.buscar_dados(ticker)
-
-        # Scraper retornou None ou {"erro_scraper": True}
-        if not scraper_dados or scraper_dados.get('erro_scraper'):
-            dados['erro_scraper'] = True
-            logger.info(
-                f"[{ticker}] Fundamentus indisponível — "
-                f"mantendo dados yfinance (fonte_fundamentos={dados.get('fonte_fundamentos')})"
-            )
-            return False
-
-        # Fundamentus com dados válidos — sobrescreve yfinance nos campos
-        # fundamentalistas, mas NÃO descarta preço/histórico do yfinance.
-        for chave in ('pl', 'pvp', 'dy', 'roe', 'roic', 'div_liq_patrimonio',
-                       'margem_liquida', 'margem_bruta', 'patrimonio_liquido',
-                       'receita_liquida', 'lucro_liquido', 'ativo_total',
-                       'ativo_circulante'):
-            if chave in scraper_dados and scraper_dados[chave] is not None:
-                dados[chave] = scraper_dados[chave]
-
-        # Preço do Fundamentus como fallback se yfinance não obteve
-        if not dados.get('preco_atual') and scraper_dados.get('preco_atual'):
-            dados['preco_atual'] = scraper_dados['preco_atual']
-            dados['fonte_preco'] = 'fundamentus'
-
-        dados['fonte_fundamentos'] = 'fundamentus'
-        dados['erro_scraper'] = False
-        dados['dados_parciais'] = False
-
-        logger.info(f"[{ticker}] Fundamentus ✓ — dados completos")
-        return True
-
-    # ── Fonte 3: Brapi (opcional) ────────────────────────────────────────────
     def _buscar_brapi(self, ticker: str, dados: Dict[str, Any]) -> bool:
-        """Tenta complementar via Brapi. Retorna True se obteve dados."""
+        """Tenta complementar via Brapi. Retorna True se preencheu campos."""
         if not self.brapi.disponivel:
+            logger.warning(f"[{ticker}] Brapi indisponivel: BRAPI_TOKEN ausente")
             return False
 
         try:
@@ -173,22 +204,15 @@ class MarketEngine:
             if not brapi_data:
                 return False
 
-            # Preenche apenas campos que estão ausentes
-            campo_mapa = {
-                'priceEarnings': 'pl',
-                'priceToBookRatio': 'pvp',
-                'dividendYield': 'dy',
-                'returnOnEquity': 'roe',
-            }
-            preenchidos = 0
-            for brapi_key, nosso_key in campo_mapa.items():
-                if not dados.get(nosso_key) and brapi_data.get(brapi_key) is not None:
-                    dados[nosso_key] = brapi_data[brapi_key]
-                    preenchidos += 1
+            preenchidos = merge_if_valid(dados, brapi_data)
 
-            if preenchidos > 0:
-                dados['fonte_fundamentos'] = 'brapi_supplemental'
-                logger.info(f"[{ticker}] Brapi complementou {preenchidos} campos")
+            if 'preco_atual' in preenchidos and not dados.get('fonte_preco'):
+                dados['fonte_preco'] = 'brapi'
+
+            campos_fundamentalistas = [c for c in preenchidos if c in FUNDAMENTAL_KEYS and c != 'quote_type']
+            if campos_fundamentalistas:
+                _registrar_fonte_fundamentos(dados, 'brapi')
+                logger.info(f"[{ticker}] Brapi complementou {len(campos_fundamentalistas)} campos")
                 return True
 
         except Exception as e:
@@ -196,21 +220,53 @@ class MarketEngine:
 
         return False
 
-    # ── Notícias ─────────────────────────────────────────────────────────────
+    def _buscar_fundamentus(self, ticker: str, dados: Dict[str, Any]) -> bool:
+        """Busca dados via Fundamentus como complemento."""
+        try:
+            scraper_dados = self.scraper.buscar_dados(ticker)
+        except Exception as e:
+            dados['erro_scraper'] = True
+            logger.warning(f"[{ticker}] Fundamentus error: {e}")
+            return False
+
+        if not scraper_dados or scraper_dados.get('erro_scraper'):
+            dados['erro_scraper'] = True
+            logger.info(
+                f"[{ticker}] Fundamentus indisponivel - preservando dados existentes "
+                f"(fonte_fundamentos={dados.get('fonte_fundamentos')})"
+            )
+            return False
+
+        campos = ('preco_atual',) + FUNDAMENTAL_KEYS
+        supplemental = {
+            chave: scraper_dados[chave]
+            for chave in campos
+            if chave in scraper_dados
+        }
+        preenchidos = merge_if_valid(dados, supplemental)
+
+        if 'preco_atual' in preenchidos and not dados.get('fonte_preco'):
+            dados['fonte_preco'] = 'fundamentus'
+
+        campos_fundamentalistas = [c for c in preenchidos if c in FUNDAMENTAL_KEYS and c != 'quote_type']
+        if campos_fundamentalistas:
+            _registrar_fonte_fundamentos(dados, 'fundamentus')
+
+        dados['erro_scraper'] = False
+        logger.info(f"[{ticker}] Fundamentus OK - complementou {len(campos_fundamentalistas)} campos")
+        return bool(campos_fundamentalistas)
+
     def buscar_noticias(self, ticker: str):
-        """Busca últimas notícias via yfinance."""
+        """Busca ultimas noticias via yfinance."""
         try:
             tk = yf.Ticker(f"{ticker}.SA")
             news = tk.news
-            # CORREÇÃO CRÍTICA v9.1: Extração Segura com .get() aninhado
-            # yfinance v0.2.40+ mudou estrutura para content.title em alguns casos
             safe_news = []
             for n in (news or [])[:3]:
-                titulo = n.get('title', n.get('content', {}).get('title', 'Sem título'))
+                titulo = n.get('title', n.get('content', {}).get('title', 'Sem titulo'))
                 link = n.get('link', n.get('url', '#'))
                 safe_news.append({'titulo': titulo, 'link': link})
             return safe_news
         except Exception as e:
             logger.warning(f"News error {ticker}: {e}")
             return []
-

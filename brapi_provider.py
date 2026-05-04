@@ -1,14 +1,4 @@
-"""Brapi Provider — fonte opcional de dados de mercado.
-
-Usa a API gratuita da Brapi (brapi.dev) como fonte complementar.
-Requer BRAPI_TOKEN no ambiente. Se ausente, retorna None silenciosamente.
-
-Uso:
-    from brapi_provider import BrapiProvider
-    brapi = BrapiProvider()
-    quote = brapi.get_quote("PETR4")       # dict ou None
-    fundamentos = brapi.get_fundamentals("PETR4")  # dict ou None
-"""
+"""Optional Brapi provider for supplemental market fundamentals."""
 
 import logging
 import os
@@ -22,48 +12,63 @@ _BASE_URL = "https://brapi.dev/api"
 _TIMEOUT = 10
 
 
+def _normalizar_ticker(ticker: str) -> str:
+    return str(ticker or "").upper().replace(".SA", "").strip()
+
+
+def _to_float(value: Any) -> Optional[float]:
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _percent_to_decimal(value: Any) -> Optional[float]:
+    numero = _to_float(value)
+    if numero is None:
+        return None
+    return numero / 100 if numero > 1 else numero
+
+
+def _first_number(*values: Any) -> Optional[float]:
+    for value in values:
+        numero = _to_float(value)
+        if numero is not None:
+            return numero
+    return None
+
+
 class BrapiProvider:
     """Provider opcional de dados via Brapi API."""
 
     def __init__(self) -> None:
         self._token: Optional[str] = os.environ.get("BRAPI_TOKEN")
         if not self._token:
-            logger.info(
-                "[Brapi] BRAPI_TOKEN não encontrado no ambiente — "
-                "provider desabilitado (sem impacto)"
-            )
+            logger.info("[Brapi] BRAPI_TOKEN nao encontrado; provider desabilitado")
 
     @property
     def disponivel(self) -> bool:
-        """Retorna True se o token está configurado."""
-        return self._token is not None
+        """Retorna True se o token esta configurado."""
+        return bool(self._token)
 
     def _get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
-        """Faz GET seguro na API Brapi.
-
-        Args:
-            endpoint: Caminho relativo da API (ex: "/quote/PETR4").
-            params: Parâmetros de query adicionais.
-
-        Returns:
-            Dict com resposta JSON ou None em caso de falha.
-        """
+        """Faz GET seguro na API Brapi."""
         if not self._token:
             return None
 
-        params = params or {}
-        params["token"] = self._token
+        query = dict(params or {})
+        query["token"] = self._token
 
         try:
             resp = requests.get(
                 f"{_BASE_URL}{endpoint}",
-                params=params,
+                params=query,
                 timeout=_TIMEOUT,
             )
             if resp.status_code != 200:
-                logger.warning(
-                    f"[Brapi] HTTP {resp.status_code} para {endpoint}"
-                )
+                logger.warning(f"[Brapi] HTTP {resp.status_code} para {endpoint}")
                 return None
 
             data = resp.json()
@@ -73,21 +78,16 @@ class BrapiProvider:
 
             return data
 
-        except requests.RequestException as e:
+        except (requests.RequestException, ValueError) as e:
             logger.warning(f"[Brapi] Request falhou para {endpoint}: {e}")
             return None
 
-    def get_quote(self, ticker: str) -> Optional[Dict[str, Any]]:
-        """Busca cotação atual de um ticker.
+    def _primeiro_resultado(self, ticker: str, params: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+        ticker_norm = _normalizar_ticker(ticker)
+        if not ticker_norm:
+            return None
 
-        Args:
-            ticker: Código do ativo (ex: "PETR4").
-
-        Returns:
-            Dict com dados da cotação ou None se indisponível.
-        """
-        ticker = ticker.upper().replace(".SA", "")
-        data = self._get(f"/quote/{ticker}")
+        data = self._get(f"/quote/{ticker_norm}", params=params)
         if not data:
             return None
 
@@ -95,31 +95,53 @@ class BrapiProvider:
         if not results:
             return None
 
-        quote = results[0]
-        logger.info(f"[Brapi] ✓ Cotação {ticker}: R${quote.get('regularMarketPrice', '?')}")
-        return quote
+        return results[0]
+
+    def get_quote(self, ticker: str) -> Optional[Dict[str, Any]]:
+        """Busca cotacao atual de um ticker."""
+        quote = self._primeiro_resultado(ticker)
+        if not quote:
+            return None
+
+        preco = _to_float(quote.get("regularMarketPrice"))
+        if preco is None:
+            return None
+
+        return {
+            "preco_atual": preco,
+            "quote_type": quote.get("quoteType", quote.get("type", "")),
+        }
 
     def get_fundamentals(self, ticker: str) -> Optional[Dict[str, Any]]:
-        """Busca dados fundamentalistas de um ticker.
-
-        Args:
-            ticker: Código do ativo (ex: "PETR4").
-
-        Returns:
-            Dict com indicadores fundamentalistas ou None se indisponível.
-        """
-        ticker = ticker.upper().replace(".SA", "")
-        data = self._get(f"/quote/{ticker}", params={"fundamental": "true"})
-        if not data:
+        """Busca e normaliza indicadores fundamentalistas disponiveis."""
+        raw = self._primeiro_resultado(ticker, params={"fundamental": "true"})
+        if not raw:
             return None
 
-        results = data.get("results", [])
-        if not results:
+        campos = {
+            "preco_atual": _to_float(raw.get("regularMarketPrice")),
+            "pl": _to_float(raw.get("priceEarnings")),
+            "pvp": _to_float(raw.get("priceToBookRatio")),
+            "roe": _percent_to_decimal(raw.get("returnOnEquity")),
+            "dy": _percent_to_decimal(raw.get("dividendYield")),
+            "divida_liq_ebitda": _first_number(
+                raw.get("netDebtToEbitda"),
+                raw.get("debtToEbitda"),
+                raw.get("dividaLiquidaEbitda"),
+            ),
+            "quote_type": raw.get("quoteType", raw.get("type", "")),
+        }
+
+        normalizado = {
+            chave: valor
+            for chave, valor in campos.items()
+            if valor is not None and valor != ""
+        }
+        if not normalizado:
             return None
 
-        fundamentals = results[0]
         logger.info(
-            f"[Brapi] ✓ Fundamentos {ticker}: "
-            f"P/L={fundamentals.get('priceEarnings', 'N/A')}"
+            f"[Brapi] Fundamentos {_normalizar_ticker(ticker)}: "
+            f"P/L={normalizado.get('pl', 'N/A')}"
         )
-        return fundamentals
+        return normalizado
