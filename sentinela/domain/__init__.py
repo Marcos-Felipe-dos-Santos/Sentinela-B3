@@ -9,13 +9,17 @@ from .models import (
     TechnicalResult,
     ValuationResult,
 )
+from .provenance import FieldProvenance, FieldValue, ProvenancedPayload
 
 __all__ = [
     "AnalysisResult",
     "AssetType",
     "DataQualityReport",
+    "FieldProvenance",
+    "FieldValue",
     "FundamentalsSnapshot",
     "MarketSnapshot",
+    "ProvenancedPayload",
     "TechnicalResult",
     "ValuationResult",
 ]
