@@ -132,3 +132,13 @@ analysis run without introducing a separate database table.
 The legacy `DatabaseManager` and legacy `analises` table are unchanged. Older
 payloads without `field_provenance` remain valid and can still be saved through
 the append-only repository.
+
+## Phase 4.4 - UI Visibility
+
+The existing Streamlit "Qualidade dos Dados" area now displays a compact
+field-level provenance table when `field_provenance` is available.
+
+This display is informational only. Raw fields still drive all calculations,
+recommendations, AI prompts, persistence, and charts. Recommendation logic does
+not consume provenance yet, and malformed or missing provenance falls back to a
+neutral UI message.

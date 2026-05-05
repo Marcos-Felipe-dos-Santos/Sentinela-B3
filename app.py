@@ -31,6 +31,76 @@ def _safe_df_for_display(df: pd.DataFrame) -> pd.DataFrame:
             df[col] = df[col].astype(str)
     return df
 
+
+FIELD_PROVENANCE_ORDER = ("preco_atual", "dy", "pl", "pvp", "roe")
+
+
+def _safe_text(value: Any, default: str = "-") -> str:
+    if value is None or value == "":
+        return default
+    return str(value)
+
+
+def _safe_warnings_text(warnings: Any) -> str:
+    if not warnings:
+        return "-"
+    if isinstance(warnings, list):
+        return ", ".join(str(warning) for warning in warnings) or "-"
+    return str(warnings)
+
+
+def _safe_confidence(value: Any) -> str:
+    if value is None or value == "":
+        return "-"
+    try:
+        return f"{float(value):.2f}"
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def build_field_provenance_rows(field_provenance: Any) -> list[dict[str, Any]]:
+    """Build compact UI rows from serialized field provenance metadata."""
+    if not isinstance(field_provenance, dict):
+        return []
+
+    rows: list[dict[str, Any]] = []
+    for field_name in FIELD_PROVENANCE_ORDER:
+        field_data = field_provenance.get(field_name)
+        if not isinstance(field_data, dict):
+            continue
+
+        provenance = field_data.get("provenance")
+        if not isinstance(provenance, dict):
+            provenance = {}
+
+        rows.append(
+            {
+                "Campo": field_name,
+                "Valor": _safe_text(field_data.get("value")),
+                "Unidade": _safe_text(field_data.get("unit")),
+                "Fonte": _safe_text(provenance.get("source")),
+                "Confiança": _safe_confidence(provenance.get("confidence")),
+                "Cache": bool(provenance.get("cached", False)),
+                "Manual": bool(provenance.get("manual", False)),
+                "Stale": bool(provenance.get("stale", False)),
+                "Alertas": _safe_warnings_text(provenance.get("warnings")),
+            }
+        )
+
+    return rows
+
+
+def render_field_provenance_table(dados: dict) -> None:
+    """Render field-level provenance in the existing data quality area."""
+    rows = build_field_provenance_rows((dados or {}).get("field_provenance"))
+    st.markdown("**Proveniência por campo**")
+    if not rows:
+        st.caption("Proveniência por campo ainda indisponível para esta análise.")
+        return
+
+    st.dataframe(_safe_df_for_display(pd.DataFrame(rows)), hide_index=True)
+
+
 @st.cache_resource
 def load_engines():
     try:
@@ -179,6 +249,9 @@ if modo == "Terminal":
                     )
                 else:
                     st.success("Dados suficientes para análise.")
+
+                st.divider()
+                render_field_provenance_table(dados)
             
             t1, t2, t3 = st.tabs(["Valuation & IA", "Técnica & Peers", "Gráfico"])
             
