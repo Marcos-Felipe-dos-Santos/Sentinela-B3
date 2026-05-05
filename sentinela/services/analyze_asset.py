@@ -22,6 +22,7 @@ class AnalysisService:
         peers_engine: Optional[Any] = None,
         ai_engine: Optional[Any] = None,
         repository: Optional[Any] = None,
+        asset_classifier: Optional[Any] = None,
     ) -> None:
         self.market_engine = market_engine
         self.valuation_engine = valuation_engine
@@ -30,6 +31,7 @@ class AnalysisService:
         self.peers_engine = peers_engine
         self.ai_engine = ai_engine
         self.repository = repository
+        self.asset_classifier = asset_classifier
 
     def analyze(self, ticker: str, use_ai: bool = True, persist: bool = True) -> AnalysisResult:
         """Analyze one asset through the same current engine sequence used by the UI."""
@@ -48,7 +50,11 @@ class AnalysisService:
                 raw={},
             )
 
-        is_fii = self._is_fii(ticker_norm, dados)
+        is_fii = (
+            self.asset_classifier.is_fii(ticker_norm, dados)
+            if self.asset_classifier is not None
+            else self._is_fii(ticker_norm, dados)
+        )
         if is_fii:
             analise = self.fii_engine.analisar(dados)
             peers_data: dict[str, Any] = {}

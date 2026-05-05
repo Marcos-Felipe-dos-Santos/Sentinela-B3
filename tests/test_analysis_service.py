@@ -13,6 +13,7 @@ def _service(
     tech_result=None,
     peers_result=None,
     ai_result=None,
+    asset_classifier=None,
 ):
     market = MagicMock()
     market.buscar_dados_ticker.return_value = market_data
@@ -60,6 +61,7 @@ def _service(
         peers_engine=peers,
         ai_engine=ai,
         repository=repository,
+        asset_classifier=asset_classifier,
     )
     return service, market, valuation, fii, technical, peers, ai, repository
 
@@ -192,6 +194,53 @@ def test_analysis_service_calls_save_run_for_append_only_repository():
     result = service.analyze("ITUB4")
 
     assert repository.saved == [result]
+
+
+def test_analysis_service_uses_injected_asset_classifier_when_provided():
+    class FakeClassifier:
+        def __init__(self):
+            self.calls = []
+
+        def is_fii(self, ticker, dados):
+            self.calls.append((ticker, dados))
+            return True
+
+    market_data = {
+        "ticker": "PETR4",
+        "preco_atual": 30.0,
+        "historico": "HIST",
+        "quote_type": "EQUITY",
+    }
+    classifier = FakeClassifier()
+    service, _, valuation, fii, _, peers, _, _ = _service(
+        market_data=market_data,
+        asset_classifier=classifier,
+    )
+
+    result = service.analyze("PETR4")
+
+    assert classifier.calls == [("PETR4", market_data)]
+    fii.analisar.assert_called_once()
+    valuation.processar.assert_not_called()
+    peers.comparar.assert_not_called()
+    assert result.is_fii is True
+
+
+def test_analysis_service_fallback_classification_remains_unchanged_without_classifier():
+    market_data = {
+        "ticker": "ABCD11",
+        "preco_atual": 10.0,
+        "historico": "HIST",
+        "quote_type": "EQUITY",
+    }
+    service, _, valuation, fii, _, peers, _, _ = _service(market_data=market_data)
+
+    result = service.analyze("ABCD11")
+
+    fii.analisar.assert_called_once()
+    valuation.processar.assert_not_called()
+    peers.comparar.assert_not_called()
+    assert result.is_fii is True
 
 
 def test_analysis_service_does_not_call_ai_when_use_ai_false():
