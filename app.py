@@ -12,7 +12,8 @@ from technical_engine import TechnicalEngine
 from portfolio_engine import PortfolioEngine
 from peers_engine import PeersEngine
 from ai_core import SentinelaAI
-from config import APP_VERSION, FIIS_CONHECIDOS, UNITS_CONHECIDAS
+from config import APP_VERSION
+from sentinela.services.asset_classifier import AssetClassifier
 
 st.set_page_config(page_title=f"Sentinela B3 {APP_VERSION}", layout="wide", page_icon="🦅")
 
@@ -41,12 +42,13 @@ def load_engines():
         port = PortfolioEngine()
         peers = PeersEngine(market)
         ai = SentinelaAI()
-        return db, market, val, fii, tech, port, peers, ai
+        asset_classifier = AssetClassifier()
+        return db, market, val, fii, tech, port, peers, ai, asset_classifier
     except Exception as e:
         st.error(f"Erro Init: {e}")
         st.stop()
 
-db, market, val_engine, fii_engine, tech_engine, port_engine, peers_engine, ai_engine = load_engines()
+db, market, val_engine, fii_engine, tech_engine, port_engine, peers_engine, ai_engine, asset_classifier = load_engines()
 
 
 @st.cache_data(ttl=300)
@@ -84,17 +86,7 @@ if modo == "Terminal":
             # B. Detecção FII
             # CORRIGIDO: Yahoo retorna quote_type='EQUITY' para FIIs BR (não MUTUALFUND)
             # Usar whitelist como critério primário + fallback de sufixo 11
-            is_fii = (
-                ticker in FIIS_CONHECIDOS  # whitelist de FIIs conhecidos
-                or (
-                    dados.get('quote_type') == 'MUTUALFUND'  # reforço se Yahoo funcionar
-                    or (
-                        "11" in ticker
-                        and "SA" not in ticker
-                        and ticker not in UNITS_CONHECIDAS  # excluir units
-                    )
-                )
-            )
+            is_fii = asset_classifier.is_fii(ticker, dados)
             
             # C. Motores Específicos
             if is_fii:
