@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+import pandas as pd
+
 from config import FIIS_CONHECIDOS, UNITS_CONHECIDAS
 from sentinela.domain.models import AnalysisResult
 
@@ -70,7 +72,7 @@ class AnalysisService:
                 raw=dados,
             )
 
-        hist = dados.get("historico")
+        hist = dados.get("historico", pd.DataFrame())
         tech_data = self.technical_engine.calcular_indicadores(hist)
 
         dados.update(analise)
@@ -113,4 +115,3 @@ class AnalysisService:
                 )
             )
         )
-

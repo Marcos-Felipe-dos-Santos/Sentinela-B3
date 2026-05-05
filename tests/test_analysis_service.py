@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock
 
+import pandas as pd
+
 from sentinela.services.analyze_asset import AnalysisService
 
 
@@ -122,6 +124,22 @@ def test_analysis_service_happy_path_fii_uses_real_fii_method_name():
     assert result.valuation.perfil == "FII"
 
 
+def test_analysis_service_uses_empty_dataframe_when_historico_missing():
+    market_data = {
+        "ticker": "ITUB4",
+        "preco_atual": 30.0,
+        "quote_type": "EQUITY",
+    }
+    service, _, _, _, technical, _, _, _ = _service(market_data=market_data)
+
+    result = service.analyze("ITUB4")
+
+    hist = technical.calcular_indicadores.call_args.args[0]
+    assert isinstance(hist, pd.DataFrame)
+    assert hist.empty
+    assert result.success is True
+
+
 def test_analysis_service_returns_insufficient_data_when_market_data_is_none():
     service, _, valuation, fii, technical, peers, ai, repository = _service(market_data=None)
 
@@ -168,4 +186,3 @@ def test_analysis_service_does_not_call_ai_when_use_ai_false():
     repository.salvar_analise.assert_called_once()
     assert result.ai_analysis is None
     assert "analise_ia" not in result.raw
-
