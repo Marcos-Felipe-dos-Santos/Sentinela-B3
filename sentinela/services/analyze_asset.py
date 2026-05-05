@@ -6,8 +6,8 @@ from typing import Any, Optional
 
 import pandas as pd
 
-from config import FIIS_CONHECIDOS, UNITS_CONHECIDAS
 from sentinela.domain.models import AnalysisResult
+from sentinela.services.asset_classifier import AssetClassifier
 
 
 class AnalysisService:
@@ -31,7 +31,7 @@ class AnalysisService:
         self.peers_engine = peers_engine
         self.ai_engine = ai_engine
         self.repository = repository
-        self.asset_classifier = asset_classifier
+        self.asset_classifier = asset_classifier if asset_classifier is not None else AssetClassifier()
 
     def analyze(self, ticker: str, use_ai: bool = True, persist: bool = True) -> AnalysisResult:
         """Analyze one asset through the same current engine sequence used by the UI."""
@@ -50,11 +50,7 @@ class AnalysisService:
                 raw={},
             )
 
-        is_fii = (
-            self.asset_classifier.is_fii(ticker_norm, dados)
-            if self.asset_classifier is not None
-            else self._is_fii(ticker_norm, dados)
-        )
+        is_fii = self.asset_classifier.is_fii(ticker_norm, dados)
         if is_fii:
             analise = self.fii_engine.analisar(dados)
             peers_data: dict[str, Any] = {}
@@ -111,20 +107,6 @@ class AnalysisService:
                 self.repository.salvar_analise(dados_salvar)
 
         return result
-
-    @staticmethod
-    def _is_fii(ticker: str, dados: dict[str, Any]) -> bool:
-        return (
-            ticker in FIIS_CONHECIDOS
-            or (
-                dados.get("quote_type") == "MUTUALFUND"
-                or (
-                    "11" in ticker
-                    and "SA" not in ticker
-                    and ticker not in UNITS_CONHECIDAS
-                )
-            )
-        )
 
     @staticmethod
     def _has_explicit_method(obj: Any, method_name: str) -> bool:

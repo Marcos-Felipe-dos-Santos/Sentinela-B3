@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 import pandas as pd
 
 from sentinela.services.analyze_asset import AnalysisService
+from sentinela.services.asset_classifier import AssetClassifier
 
 
 def _service(
@@ -196,7 +197,25 @@ def test_analysis_service_calls_save_run_for_append_only_repository():
     assert repository.saved == [result]
 
 
-def test_analysis_service_uses_injected_asset_classifier_when_provided():
+def test_analysis_service_uses_asset_classifier_by_default():
+    market_data = {
+        "ticker": "ABCD11",
+        "preco_atual": 10.0,
+        "historico": "HIST",
+        "quote_type": "EQUITY",
+    }
+    service, _, valuation, fii, _, peers, _, _ = _service(market_data=market_data)
+
+    result = service.analyze("ABCD11.SA")
+
+    assert isinstance(service.asset_classifier, AssetClassifier)
+    fii.analisar.assert_called_once()
+    valuation.processar.assert_not_called()
+    peers.comparar.assert_not_called()
+    assert result.is_fii is True
+
+
+def test_analysis_service_injected_classifier_is_used():
     class FakeClassifier:
         def __init__(self):
             self.calls = []
@@ -226,7 +245,7 @@ def test_analysis_service_uses_injected_asset_classifier_when_provided():
     assert result.is_fii is True
 
 
-def test_analysis_service_fallback_classification_remains_unchanged_without_classifier():
+def test_analysis_service_default_asset_classifier_keeps_suffix_11_as_fii():
     market_data = {
         "ticker": "ABCD11",
         "preco_atual": 10.0,
@@ -241,6 +260,23 @@ def test_analysis_service_fallback_classification_remains_unchanged_without_clas
     valuation.processar.assert_not_called()
     peers.comparar.assert_not_called()
     assert result.is_fii is True
+
+
+def test_analysis_service_known_unit_with_mutualfund_quote_type_routes_as_stock_or_non_fii():
+    market_data = {
+        "ticker": "SANB11",
+        "preco_atual": 30.0,
+        "historico": "HIST",
+        "quote_type": "MUTUALFUND",
+    }
+    service, _, valuation, fii, _, peers, _, _ = _service(market_data=market_data)
+
+    result = service.analyze("SANB11")
+
+    fii.analisar.assert_not_called()
+    valuation.processar.assert_called_once()
+    peers.comparar.assert_called_once_with("SANB11")
+    assert result.is_fii is False
 
 
 def test_analysis_service_does_not_call_ai_when_use_ai_false():
