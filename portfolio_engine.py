@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
-from config import FIIS_CONHECIDOS, UNITS_CONHECIDAS, get_selic_atual
+from config import get_selic_atual
+from sentinela.services.asset_classifier import AssetClassifier
 
 
 class PortfolioResult(dict):
@@ -16,6 +17,9 @@ class PortfolioResult(dict):
 
 
 class PortfolioEngine:
+    def __init__(self, asset_classifier: AssetClassifier | None = None):
+        self.asset_classifier = asset_classifier or AssetClassifier()
+
     def otimizar(self, dados_historicos: pd.DataFrame):
         """Otimização de Markowitz (Máximo Sharpe Ratio) segmentada."""
         if dados_historicos is None or dados_historicos.empty:
@@ -106,15 +110,9 @@ class PortfolioEngine:
 
             return {c: p / total for c, p in pesos_brutos.items()}, metricas
 
-        def _is_fii(ticker: str) -> bool:
-            return (
-                ticker in FIIS_CONHECIDOS
-                or (ticker.endswith('11') and ticker not in UNITS_CONHECIDAS)
-            )
-
         try:
-            fiis = [c for c in df.columns if _is_fii(c)]
-            stocks = [c for c in df.columns if not _is_fii(c)]
+            fiis = [c for c in df.columns if self.asset_classifier.is_fii(c)]
+            stocks = [c for c in df.columns if not self.asset_classifier.is_fii(c)]
 
             if fiis and stocks:
                 pesos_fiis, _ = otimizar_grupo(fiis)
