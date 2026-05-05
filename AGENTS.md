@@ -8,9 +8,10 @@ Stack técnica lida no código e no README: Python, Streamlit, SQLite, pandas, n
 
 Arquivos principais:
 
-- `app.py`: interface Streamlit, roteamento entre ações/FIIs, cache curto de dados, renderização de valuation, IA, técnica, peers, gráfico e carteira.
+- `app.py`: interface Streamlit, roteamento entre ações/FIIs via `AssetClassifier`, cache curto de dados, renderização de valuation, IA, técnica, peers, gráfico e carteira.
 - `config.py`: modelos de IA, parâmetros globais, listas de FIIs e Units conhecidas, tickers distressed, Selic dinâmica com cache manual.
-- `market_engine.py`: consolida preço/histórico do yfinance, fundamentos preferenciais da Brapi, fallback Fundamentus, fallback manual de FIIs e cache de fundamentos.
+- `market_engine.py`: consolida preço/histórico do yfinance, fundamentos preferenciais da Brapi, fallback Fundamentus, fallback manual de FIIs, cache de fundamentos e classificação FII/Unit via `AssetClassifier`.
+- `sentinela/services/asset_classifier.py`: classificador central de ações, FIIs e Units; preserva `FIIS_CONHECIDOS`, `UNITS_CONHECIDAS` e a regra de segurança de que Unit conhecida não deve virar FII mesmo com `quote_type == "MUTUALFUND"`.
 - `valuation_engine.py`: calcula fair value de ações por Graham, Bazin, Lynch e Gordon, score, riscos, confiança e recomendação.
 - `fii_engine.py`: calcula fair value de FIIs via Bazin adaptado com DY, Selic, P/VP e vacância conhecida.
 - `database.py`: cria e acessa tabelas `analises` e `carteira_real` no SQLite local.
@@ -27,7 +28,7 @@ O `MarketEngine` normaliza o ticker e monta um dicionário com flags de fonte e 
 
 O `FundamentusScraper` monta uma sessão com cloudscraper quando disponível, ou `requests.Session` como fallback. Ele limita requisições com lock e intervalo mínimo, baixa a página `detalhes.php?papel={ticker}`, extrai pares de tabela, limpa números brasileiros em `_limpar_valor()` e converte percentuais para decimal.
 
-Depois de coletar dados, `app.py:85` decide se o ticker é FII usando whitelist (`FIIS_CONHECIDOS`), `quote_type == 'MUTUALFUND'`, sufixo `11` e exclusão de `UNITS_CONHECIDAS`. FIIs seguem para `FIIEngine.analisar()`; ações seguem para `ValuationEngine.processar()` e para `PeersEngine.comparar()`.
+Depois de coletar dados, `app.py` decide se o ticker é FII por meio de `AssetClassifier.is_fii(ticker, dados)`. A regra central preserva `FIIS_CONHECIDOS`, `UNITS_CONHECIDAS`, `quote_type == "MUTUALFUND"` e fallback por sufixo `11`, mantendo a invariante de segurança de que Units conhecidas como `SANB11`, `TAEE11` e `KLBN11` não devem seguir para `FIIEngine`. FIIs seguem para `FIIEngine.analisar()`; ações seguem para `ValuationEngine.processar()` e para `PeersEngine.comparar()`.
 
 Para ações, `ValuationEngine` normaliza DY, calcula LPA/VPA, consulta `get_selic_atual()`, classifica perfil crescimento versus renda/valor, aplica os métodos disponíveis, calcula média simples dos valores válidos, score sigmoid ajustado por qualidade, riscos, confiança e recomendação. Para FIIs, `FIIEngine` normaliza DY, ajusta por vacância conhecida, usa Selic para preço justo, ajusta score por DY versus Selic e P/VP, e define compra/venda por upside.
 
@@ -53,7 +54,7 @@ Convenções observadas no projeto:
 
 - `config.py`
   - Importa: `logging` (`config.py:1`), `os` (`config.py:2`), `time` (`config.py:3`), `requests` (`config.py:5`), `dotenv.load_dotenv` (`config.py:6`).
-  - É importado por: `ai_core.py:7`, `app.py:15`, `auditar_recomendacoes.py:24`, `auditoria.py:252`, `auditoria.py:820`, `auditoria.py:859`, `fii_engine.py:2`, `limpar_banco.py:22`, `portfolio_engine.py:4`, `valuation_engine.py:3`.
+  - É importado por: `ai_core.py`, `app.py`, `auditoria.py`, `fii_engine.py`, `limpar_banco.py`, `market_engine.py`, `portfolio_engine.py`, `valuation_engine.py` e pelo `AssetClassifier`. `FIIS_CONHECIDOS` e `UNITS_CONHECIDAS` devem ser consumidos pelo classificador central, não por novas regras duplicadas.
 
 - `valuation_engine.py`
   - Importa: `logging`, `math`, `get_selic_atual` e `DISTRESSED_TICKERS` de `config`, além de `DataQualityValidator` de `data_quality`.
@@ -64,7 +65,7 @@ Convenções observadas no projeto:
   - É importado por: `app.py:10`, `auditar_recomendacoes.py:22`, `auditoria.py:859`.
 
 - `market_engine.py`
-  - Importa: `logging`, `math`, `Any`, `Dict`, `Optional`, `yfinance`, `pandas`, `BrapiProvider`, constantes de `config`, `DatabaseManager` e `FundamentusScraper`.
+  - Importa: `logging`, `math`, `Any`, `Dict`, `Optional`, `yfinance`, `pandas`, `BrapiProvider`, `FII_MANUAL_FALLBACK` de `config`, `DatabaseManager`, `FundamentusScraper` e `AssetClassifier`.
   - É importado por: `app.py`, `auditar_recomendacoes.py`, `auditoria.py` e testes.
 
 - `brapi_provider.py`
@@ -72,7 +73,7 @@ Convenções observadas no projeto:
   - É importado por: `market_engine.py` e testes de provider.
 
 - `app.py`
-  - Importa: `time` (`app.py:1`), `Any`, `Dict`, `Optional` de `typing` (`app.py:2`), `pandas` (`app.py:4`), `plotly.graph_objects` (`app.py:5`), `streamlit` (`app.py:6`), `DatabaseManager` (`app.py:7`), `MarketEngine` (`app.py:8`), `ValuationEngine` (`app.py:9`), `FIIEngine` (`app.py:10`), `TechnicalEngine` (`app.py:11`), `PortfolioEngine` (`app.py:12`), `PeersEngine` (`app.py:13`), `SentinelaAI` (`app.py:14`), `APP_VERSION`, `FIIS_CONHECIDOS` e `UNITS_CONHECIDAS` (`app.py:15`).
+  - Importa: `time`, `Any`, `Dict`, `Optional`, `pandas`, `plotly.graph_objects`, `streamlit`, `DatabaseManager`, `MarketEngine`, `ValuationEngine`, `FIIEngine`, `TechnicalEngine`, `PortfolioEngine`, `PeersEngine`, `SentinelaAI`, `APP_VERSION` e `AssetClassifier`.
   - É importado por: nenhum arquivo encontrado por busca textual.
 
 - `ai_core.py`
@@ -93,7 +94,7 @@ Convenções observadas no projeto:
   - É importado por: `valuation_engine.py` e testes.
 
 - `portfolio_engine.py`
-  - Importa: `numpy` (`portfolio_engine.py:1`), `pandas` (`portfolio_engine.py:2`), `minimize` de `scipy.optimize` (`portfolio_engine.py:3`), `FIIS_CONHECIDOS`, `UNITS_CONHECIDAS` e `get_selic_atual` de `config` (`portfolio_engine.py:4`).
+  - Importa: `numpy`, `pandas`, `minimize` de `scipy.optimize`, `get_selic_atual` de `config` e `AssetClassifier`.
   - É importado por: `app.py:12`.
 
 - `peers_engine.py`
@@ -105,7 +106,7 @@ Convenções observadas no projeto:
   - É importado por: `market_engine.py:6`.
 
 - `auditar_recomendacoes.py`
-  - Importa: `logging`, `os`, `sys`, `datetime`, `StringIO`, tipagens, `pandas`, `MarketEngine`, `ValuationEngine`, `FIIEngine`, `TechnicalEngine` e constantes de `config`.
+  - Importa: `logging`, `os`, `sys`, `datetime`, `StringIO`, tipagens, `pandas`, `MarketEngine`, `ValuationEngine`, `FIIEngine`, `TechnicalEngine` e `AssetClassifier`.
   - É o script operacional atual de auditoria de recomendações e qualidade de dados.
 
 - `auditoria.py`
@@ -448,9 +449,10 @@ Este é o roadmap ativo para próximos agentes. A antiga ordem de correções fi
    - Preservar compatibilidade com a leitura atual de `analises` enquanto o app não for migrado.
 
 3. Fase 3 — `AssetClassifier` central.
-   - Centralizar classificação de ações, FIIs, Units, delisted e distressed.
-   - Substituir regras duplicadas em `app.py`, `market_engine.py`, `portfolio_engine.py` e scripts de auditoria apenas quando a fase pedir integração.
-   - A regra deve preservar `FIIS_CONHECIDOS` e `UNITS_CONHECIDAS`.
+   - Implementado nos fluxos ativos: `sentinela/services/analyze_asset.py`, `auditar_recomendacoes.py`, `portfolio_engine.py`, `app.py` e `market_engine.py`.
+   - Não reintroduzir regras locais duplicadas para FII/Unit nesses caminhos; use `AssetClassifier`.
+   - Restam apenas cópias intencionais em `tests/test_asset_classifier_equivalence.py`, documentação/histórico, utilitário de manutenção (`limpar_banco.py`) e diagnóstico legado (`auditoria.py`).
+   - A regra central preserva `FIIS_CONHECIDOS`, `UNITS_CONHECIDAS` e a invariante de segurança de Units conhecidas não virarem FIIs.
 
 4. Fase 4 — proveniência por campo.
    - Evoluir de `fonte_fundamentos` agregada para origem por campo financeiro.
@@ -466,12 +468,13 @@ Este é o roadmap ativo para próximos agentes. A antiga ordem de correções fi
 
 - `auditar_recomendacoes.py` é o script operacional atual de auditoria. Ele analisa a cesta fixa de tickers, gera `logs/auditoria_recomendacoes.txt`, calcula métrica geral de falha de dados e métrica operacional de falha excluindo casos não analisáveis, como delisted/distressed bloqueados.
 - `auditoria.py` é legado/diagnóstico profundo. Use quando precisar investigar Selic, banco, scraper, valuation, técnica, prompt ou referência Fundamentus com mais detalhe; não trate como auditoria operacional padrão.
-- Baseline atual informado: 69 testes passando. Para mudanças de código, validar com `python -m pytest -q`; para mudanças de recomendação/dados, rodar também `python auditar_recomendacoes.py`.
+- Baseline atual conhecido após a migração do `AssetClassifier`: 147 testes passando. Para mudanças de código, validar com `python -m pytest -q`; para mudanças de recomendação/dados, rodar também `python auditar_recomendacoes.py`.
 - Para mudanças apenas em `AGENTS.md` ou documentação, testes automatizados não são obrigatórios, mas o diff deve confirmar que nenhum source/test foi alterado.
 
 # Seção 10 — Estado atual do projeto
 
-- 69 testes passando no baseline atual conhecido.
+- 147 testes passando no baseline atual conhecido.
+- `AssetClassifier` é o classificador central nos caminhos ativos: `AnalysisService`, `auditar_recomendacoes.py`, `portfolio_engine.py`, `app.py` e `market_engine.py`.
 - Brapi é a fonte preferencial de fundamentos quando `BRAPI_TOKEN` está configurado.
 - yfinance permanece responsável preferencial por preço atual e histórico.
 - Fundamentus é fallback/complemento para fundamentos quando Brapi está indisponível ou incompleta.
