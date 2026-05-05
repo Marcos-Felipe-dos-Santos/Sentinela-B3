@@ -171,6 +171,29 @@ def test_analysis_service_does_not_call_repository_when_persist_false():
     assert result.success is True
 
 
+def test_analysis_service_calls_save_run_for_append_only_repository():
+    class AppendOnlyRepository:
+        def __init__(self):
+            self.saved = []
+
+        def save_run(self, analysis):
+            self.saved.append(analysis)
+
+    market_data = {
+        "ticker": "ITUB4",
+        "preco_atual": 30.0,
+        "historico": "HIST",
+        "quote_type": "EQUITY",
+    }
+    service, _, _, _, _, _, _, _ = _service(market_data=market_data)
+    repository = AppendOnlyRepository()
+    service.repository = repository
+
+    result = service.analyze("ITUB4")
+
+    assert repository.saved == [result]
+
+
 def test_analysis_service_does_not_call_ai_when_use_ai_false():
     market_data = {
         "ticker": "ITUB4",

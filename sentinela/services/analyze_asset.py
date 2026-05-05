@@ -84,11 +84,7 @@ class AnalysisService:
             ai_content = ia_resp.get("content") if isinstance(ia_resp, dict) else ia_resp
             dados["analise_ia"] = ai_content
 
-        if self.repository is not None and persist:
-            dados_salvar = {key: value for key, value in dados.items() if key != "historico"}
-            self.repository.salvar_analise(dados_salvar)
-
-        return AnalysisResult(
+        result = AnalysisResult(
             ticker=ticker_norm,
             is_fii=is_fii,
             success=True,
@@ -101,6 +97,14 @@ class AnalysisService:
             ai_analysis=ai_content,
             raw=dados,
         )
+        if self.repository is not None and persist:
+            dados_salvar = {key: value for key, value in dados.items() if key != "historico"}
+            if self._has_explicit_method(self.repository, "save_run"):
+                self.repository.save_run(result)
+            else:
+                self.repository.salvar_analise(dados_salvar)
+
+        return result
 
     @staticmethod
     def _is_fii(ticker: str, dados: dict[str, Any]) -> bool:
@@ -115,3 +119,11 @@ class AnalysisService:
                 )
             )
         )
+
+    @staticmethod
+    def _has_explicit_method(obj: Any, method_name: str) -> bool:
+        if method_name in getattr(obj, "__dict__", {}):
+            return callable(getattr(obj, method_name))
+        if any(method_name in vars(cls) for cls in type(obj).__mro__):
+            return callable(getattr(obj, method_name))
+        return False
