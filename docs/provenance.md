@@ -98,3 +98,27 @@ FieldValue(
 )
 ```
 
+## Phase 4.2 - Parallel MarketEngine Metadata
+
+`MarketEngine.buscar_dados_ticker()` now adds `field_provenance` as a parallel
+metadata structure for the core fields in scope:
+
+- `preco_atual`
+- `dy`
+- `pl`
+- `pvp`
+- `roe`
+
+The raw fields remain unchanged. For example, `dados["dy"]` is still the numeric
+ratio consumed by valuation, FII analysis, AI formatting, UI rendering, cache
+logic, and legacy persistence. The new metadata lives beside it:
+
+```python
+dados["dy"] == 0.08
+dados["field_provenance"]["dy"]["value"] == 0.08
+```
+
+Valuation engines still consume the existing dict values and do not receive
+`FieldValue` objects. Provenance is not displayed in the Streamlit UI yet, and
+it is not persisted as a first-class database feature. The current metadata is a
+foundation for future auditability work.

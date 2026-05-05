@@ -7,6 +7,7 @@ from market_engine import (
     list_missing_required_fields,
     merge_if_valid,
 )
+from sentinela.domain.provenance import FieldValue
 
 
 class FakeTicker:
@@ -138,6 +139,86 @@ def test_brapi_fills_missing_fields(monkeypatch):
     assert dados["dy"] == 0.05
     assert "brapi" in dados["fonte_fundamentos"]
     assert dados["campos_faltantes"] == []
+
+
+def test_market_engine_adds_field_provenance_for_core_fields(monkeypatch):
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(22.0),
+        info={
+            "currentPrice": 21.0,
+            "trailingPE": 8.0,
+            "priceToBook": 1.2,
+            "returnOnEquity": 0.15,
+            "dividendYield": 0.04,
+            "quoteType": "EQUITY",
+        },
+    )
+
+    dados = engine.buscar_dados_ticker("PETR4")
+
+    assert "field_provenance" in dados
+    assert set(dados["field_provenance"]) == {"preco_atual", "dy", "pl", "pvp", "roe"}
+
+
+def test_field_provenance_preserves_raw_values(monkeypatch):
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(22.0),
+        info={
+            "currentPrice": 21.0,
+            "trailingPE": 8.0,
+            "priceToBook": 1.2,
+            "returnOnEquity": 0.15,
+            "dividendYield": 0.04,
+            "quoteType": "EQUITY",
+        },
+    )
+
+    dados = engine.buscar_dados_ticker("PETR4")
+
+    assert dados["dy"] == 0.04
+    assert dados["field_provenance"]["dy"]["value"] == dados["dy"]
+    assert not isinstance(dados["dy"], FieldValue)
+    assert not isinstance(dados["pl"], FieldValue)
+    assert not isinstance(dados["pvp"], FieldValue)
+    assert not isinstance(dados["roe"], FieldValue)
+
+
+def test_price_provenance_uses_fonte_preco(monkeypatch):
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(22.0),
+        info={"currentPrice": 21.0, "quoteType": "EQUITY"},
+    )
+
+    dados = engine.buscar_dados_ticker("PETR4")
+
+    assert dados["fonte_preco"] == "yfinance"
+    assert dados["field_provenance"]["preco_atual"]["provenance"]["source"] == "yfinance"
+
+
+def test_fundamentals_provenance_uses_fonte_fundamentos(monkeypatch):
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(10.0),
+        info={"currentPrice": 10.0, "quoteType": "EQUITY"},
+        brapi=FakeBrapi(
+            {
+                "pl": 9.0,
+                "pvp": 1.1,
+                "roe": 0.20,
+                "dy": 0.05,
+                "quote_type": "EQUITY",
+            }
+        ),
+    )
+
+    dados = engine.buscar_dados_ticker("ITUB4")
+
+    assert dados["fonte_fundamentos"] == "brapi"
+    for field in ("dy", "pl", "pvp", "roe"):
+        assert dados["field_provenance"][field]["provenance"]["source"] == "brapi"
 
 
 def test_brapi_overrides_yfinance_fundamentals_when_valid(monkeypatch):
@@ -290,6 +371,24 @@ def test_cache_is_used_when_providers_fail(monkeypatch):
     assert dados["dados_parciais"] is False
 
 
+def test_cache_provenance_marks_cached_fields(monkeypatch):
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(12.0),
+        info={"currentPrice": 12.0, "trailingPE": 99.0},
+        brapi=FakeBrapi(disponivel=False),
+        scraper={"erro_scraper": True},
+        cache=FakeCache({"pl": 6.0, "pvp": 0.9, "roe": 0.14, "dy": 0.07}),
+    )
+
+    dados = engine.buscar_dados_ticker("CACHE3")
+
+    for field in ("dy", "pl", "pvp", "roe"):
+        provenance = dados["field_provenance"][field]["provenance"]
+        assert provenance["source"] == "fundamentals_cache"
+        assert provenance["cached"] is True
+
+
 def test_fii_without_pl_roe_but_with_dy_pvp_is_not_partial(monkeypatch):
     engine = _engine(
         monkeypatch,
@@ -349,6 +448,25 @@ def test_manual_fii_fallback_fills_missing_dy_pvp(monkeypatch):
     assert dados["dados_parciais"] is False
 
 
+def test_manual_fallback_provenance_marks_manual_fields(monkeypatch):
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(100.0),
+        info={"currentPrice": 100.0},
+        brapi=FakeBrapi(disponivel=False),
+        scraper={"erro_scraper": True},
+        cache=FakeCache(),
+    )
+
+    dados = engine.buscar_dados_ticker("CVBI11")
+
+    for field in ("dy", "pvp"):
+        provenance = dados["field_provenance"][field]["provenance"]
+        assert provenance["source"] == "manual_fallback"
+        assert provenance["manual"] is True
+        assert "manual_fallback" in provenance["warnings"]
+
+
 def test_market_engine_manual_fii_fallback_does_not_apply_to_known_unit(monkeypatch):
     monkeypatch.setitem(
         market_engine.FII_MANUAL_FALLBACK,
@@ -393,6 +511,23 @@ def test_quality_helpers_respect_zero_dy_but_not_zero_price():
     dados = {"preco_atual": 0, "pl": 0, "pvp": 1.0, "roe": 0, "dy": 0}
 
     assert list_missing_required_fields(dados) == ["pl", "roe"]
+
+
+def test_missing_field_provenance_is_safe(monkeypatch):
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(15.0),
+        info={"currentPrice": 15.0, "dividendYield": 0.0},
+    )
+
+    dados = engine.buscar_dados_ticker("ABCD3")
+
+    for field in ("pl", "pvp", "roe"):
+        field_data = dados["field_provenance"][field]
+        provenance = field_data["provenance"]
+        assert field_data["value"] is None
+        assert provenance["confidence"] == 0.0
+        assert "missing_value" in provenance["warnings"]
 
 
 def test_merge_if_valid_only_fills_missing_fields():

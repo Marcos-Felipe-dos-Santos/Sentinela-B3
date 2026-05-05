@@ -9,6 +9,7 @@ from brapi_provider import BrapiProvider
 from config import FII_MANUAL_FALLBACK
 from database import DatabaseManager
 from fundamentus_scraper import FundamentusScraper
+from sentinela.domain.provenance import FieldProvenance, FieldValue
 from sentinela.services.asset_classifier import AssetClassifier
 
 logger = logging.getLogger("MarketEngine")
@@ -23,6 +24,19 @@ FUNDAMENTAL_KEYS = (
     'patrimonio_liquido', 'receita_liquida', 'lucro_liquido',
     'ativo_total', 'ativo_circulante', 'quote_type', 'vacancia',
 )
+FIELD_PROVENANCE_KEYS = ('preco_atual', 'dy', 'pl', 'pvp', 'roe')
+FIELD_PROVENANCE_UNITS = {
+    'preco_atual': 'BRL',
+    'dy': 'ratio',
+    'pl': 'ratio',
+    'pvp': 'ratio',
+    'roe': 'ratio',
+}
+SOURCE_ALIASES = {
+    'cache': 'fundamentals_cache',
+    'manual_fii': 'manual_fallback',
+    'yfinance_partial': 'yfinance',
+}
 
 _DEFAULT_ASSET_CLASSIFIER = AssetClassifier()
 
@@ -175,6 +189,106 @@ class MarketEngine:
             getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER),
         )
 
+    def _record_field_sources(
+        self,
+        dados: Dict[str, Any],
+        fields: list[str] | tuple[str, ...],
+        source: str,
+    ) -> None:
+        field_sources = dados.setdefault('_field_sources', {})
+        for field in fields:
+            if field in FIELD_PROVENANCE_KEYS:
+                field_sources[field] = source
+
+    def _normalize_provenance_source(self, source: Any) -> tuple[str, bool]:
+        if not source:
+            return 'unknown', False
+
+        source_text = str(source)
+        inferred = '+' in source_text
+        source_key = source_text.split('+')[-1].strip()
+        return SOURCE_ALIASES.get(source_key, source_key or 'unknown'), inferred
+
+    def _infer_field_source(self, field: str, dados: Dict[str, Any]) -> tuple[str, bool]:
+        field_sources = dados.get('_field_sources')
+        if isinstance(field_sources, dict) and field in field_sources:
+            return self._normalize_provenance_source(field_sources[field])
+
+        if field == 'preco_atual':
+            return self._normalize_provenance_source(dados.get('fonte_preco'))
+
+        source, inferred = self._normalize_provenance_source(dados.get('fonte_fundamentos'))
+        return source, inferred or source != 'unknown'
+
+    def _field_provenance_confidence(
+        self,
+        field: str,
+        dados: Dict[str, Any],
+        source: str,
+        inferred: bool,
+    ) -> float:
+        if _is_field_missing(field, dados.get(field), dados):
+            return 0.0
+        if source == 'manual_fallback':
+            return 0.6
+        if source == 'fundamentals_cache':
+            return 0.75
+        if inferred:
+            return 0.8
+        if source == 'unknown':
+            return 0.5
+        return 1.0
+
+    def _field_provenance_warnings(
+        self,
+        field: str,
+        dados: Dict[str, Any],
+        source: str,
+        inferred: bool,
+    ) -> list[str]:
+        warnings: list[str] = []
+        missing = _is_field_missing(field, dados.get(field), dados)
+
+        if missing:
+            warnings.append('missing_value')
+        if inferred and source != 'unknown':
+            warnings.append('source_inferred_from_aggregate_flag')
+        if dados.get('dados_parciais') and (missing or field in dados.get('campos_faltantes', [])):
+            warnings.append('partial_data')
+        if (
+            dados.get('erro_scraper')
+            and field != 'preco_atual'
+            and (missing or source in {'unknown', 'fundamentus'})
+        ):
+            warnings.append('scraper_error')
+        if source == 'manual_fallback':
+            warnings.append('manual_fallback')
+
+        return warnings
+
+    def _field_value_dict(self, field: str, dados: Dict[str, Any]) -> dict[str, Any]:
+        source, inferred = self._infer_field_source(field, dados)
+        provenance = FieldProvenance(
+            source=source,
+            confidence=self._field_provenance_confidence(field, dados, source, inferred),
+            cached=source == 'fundamentals_cache',
+            manual=source == 'manual_fallback',
+            warnings=self._field_provenance_warnings(field, dados, source, inferred),
+        )
+        return FieldValue(
+            name=field,
+            value=dados.get(field),
+            unit=FIELD_PROVENANCE_UNITS.get(field),
+            provenance=provenance,
+        ).to_dict()
+
+    def _attach_field_provenance(self, dados: Dict[str, Any]) -> None:
+        dados['field_provenance'] = {
+            field: self._field_value_dict(field, dados)
+            for field in FIELD_PROVENANCE_KEYS
+        }
+        dados.pop('_field_sources', None)
+
     def buscar_dados_ticker(self, ticker: str) -> Optional[Dict[str, Any]]:
         """Busca dados de mercado com fallback multi-fonte."""
         ticker = ticker.upper().replace(".SA", "").strip()
@@ -221,6 +335,7 @@ class MarketEngine:
         dados['dados_parciais'] = bool(dados['campos_faltantes'])
         self._salvar_cache_se_valido(ticker, dados)
         dados.setdefault('ticker', ticker)
+        self._attach_field_provenance(dados)
         return dados
 
     def _buscar_yfinance(self, ticker: str, dados: Dict[str, Any]) -> bool:
@@ -233,6 +348,7 @@ class MarketEngine:
                 dados['historico'] = hist
                 dados['preco_atual'] = hist['Close'].iloc[-1]
                 dados['fonte_preco'] = 'yfinance'
+                self._record_field_sources(dados, ('preco_atual',), 'yfinance')
 
             info = tk.info
             if info:
@@ -258,6 +374,7 @@ class MarketEngine:
                 if not dados.get('fonte_preco') and preco_info and preco_info > 0:
                     dados['preco_atual'] = preco_info
                     dados['fonte_preco'] = 'yfinance'
+                    self._record_field_sources(dados, ('preco_atual',), 'yfinance')
 
                 payload = {
                     'pl': pl_raw,
@@ -267,9 +384,12 @@ class MarketEngine:
                     'pl_confiavel': pl_confiavel,
                     'quote_type': info.get('quoteType', ''),
                 }
+                preenchidos_yfinance: list[str] = []
                 for chave, valor in payload.items():
                     if not is_missing(valor):
                         dados[chave] = valor
+                        preenchidos_yfinance.append(chave)
+                self._record_field_sources(dados, preenchidos_yfinance, 'yfinance')
 
                 if any(not _is_field_missing(k, dados.get(k), dados) for k in ('pl', 'pvp', 'dy', 'roe')):
                     _registrar_fonte_fundamentos(dados, 'yfinance_partial')
@@ -302,9 +422,11 @@ class MarketEngine:
                 overwrite=True,
                 allowed_keys=set(FUNDAMENTAL_KEYS),
             )
+            self._record_field_sources(dados, preenchidos, 'brapi')
 
             if _is_field_missing('preco_atual', dados.get('preco_atual'), dados):
-                merge_if_valid(dados, brapi_data, allowed_keys={'preco_atual'})
+                preenchidos_preco = merge_if_valid(dados, brapi_data, allowed_keys={'preco_atual'})
+                self._record_field_sources(dados, preenchidos_preco, 'brapi')
 
             if dados.get('preco_atual') and not dados.get('fonte_preco'):
                 dados['fonte_preco'] = 'brapi'
@@ -344,6 +466,7 @@ class MarketEngine:
             if chave in scraper_dados
         }
         preenchidos = merge_if_valid(dados, supplemental)
+        self._record_field_sources(dados, preenchidos, 'fundamentus')
 
         if 'preco_atual' in preenchidos and not dados.get('fonte_preco'):
             dados['fonte_preco'] = 'fundamentus'
@@ -382,6 +505,7 @@ class MarketEngine:
             cache,
             allowed_keys=set(FUNDAMENTAL_KEYS),
         )
+        self._record_field_sources(dados, preenchidos, 'fundamentals_cache')
         if not preenchidos:
             return False
 
@@ -407,6 +531,7 @@ class MarketEngine:
             fallback,
             allowed_keys={'dy', 'pvp', 'vacancia'},
         )
+        self._record_field_sources(dados, preenchidos, 'manual_fallback')
         if not preenchidos:
             return False
 
