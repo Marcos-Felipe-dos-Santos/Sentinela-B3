@@ -1,4 +1,5 @@
 import sqlite3
+from copy import deepcopy
 
 from sentinela.domain.models import AnalysisResult
 from sentinela.repositories.analysis_repository import AnalysisRepository
@@ -6,6 +7,42 @@ from sentinela.repositories.analysis_repository import AnalysisRepository
 
 def _repo(tmp_path):
     return AnalysisRepository(str(tmp_path / "analysis_repo.db"))
+
+
+def _payload_with_field_provenance():
+    return {
+        "ticker": "PETR4",
+        "preco_atual": 35.0,
+        "dy": 0.08,
+        "field_provenance": {
+            "preco_atual": {
+                "name": "preco_atual",
+                "value": 35.0,
+                "unit": "BRL",
+                "provenance": {
+                    "source": "yfinance",
+                    "confidence": 1.0,
+                    "cached": False,
+                    "manual": False,
+                    "stale": False,
+                    "warnings": [],
+                },
+            },
+            "dy": {
+                "name": "dy",
+                "value": 0.08,
+                "unit": "ratio",
+                "provenance": {
+                    "source": "brapi",
+                    "confidence": 0.9,
+                    "cached": False,
+                    "manual": False,
+                    "stale": False,
+                    "warnings": [],
+                },
+            },
+        },
+    }
 
 
 def test_save_run_inserts_append_only_for_same_ticker(tmp_path):
@@ -114,3 +151,113 @@ def test_repository_does_not_create_or_modify_legacy_analises_table(tmp_path):
     assert "analysis_runs" in tables
     assert "analises" not in tables
 
+
+def test_save_run_preserves_field_provenance_payload(tmp_path):
+    repo = _repo(tmp_path)
+    payload = _payload_with_field_provenance()
+
+    repo.save_run(payload)
+    latest = repo.get_latest("PETR4")
+
+    assert latest is not None
+    saved_payload = latest["payload"]
+    assert saved_payload["preco_atual"] == 35.0
+    assert saved_payload["dy"] == 0.08
+    assert "field_provenance" in saved_payload
+    assert (
+        saved_payload["field_provenance"]["preco_atual"]["provenance"]["source"]
+        == "yfinance"
+    )
+    assert saved_payload["field_provenance"]["dy"]["provenance"]["source"] == "brapi"
+    assert saved_payload["field_provenance"]["dy"]["value"] == saved_payload["dy"]
+
+
+def test_field_provenance_roundtrip_for_cached_and_manual_flags(tmp_path):
+    repo = _repo(tmp_path)
+    payload = {
+        "ticker": "MXRF11",
+        "pvp": 0.98,
+        "dy": 0.11,
+        "field_provenance": {
+            "pvp": {
+                "value": 0.98,
+                "unit": "ratio",
+                "provenance": {
+                    "source": "fundamentals_cache",
+                    "cached": True,
+                    "manual": False,
+                    "stale": False,
+                    "confidence": 0.75,
+                    "warnings": [],
+                },
+            },
+            "dy": {
+                "value": 0.11,
+                "unit": "ratio",
+                "provenance": {
+                    "source": "manual_fallback",
+                    "cached": False,
+                    "manual": True,
+                    "stale": False,
+                    "confidence": 0.6,
+                    "warnings": ["manual_fallback"],
+                },
+            },
+        },
+    }
+
+    repo.save_run(payload)
+    latest = repo.get_latest("MXRF11")
+
+    assert latest is not None
+    field_provenance = latest["payload"]["field_provenance"]
+    assert field_provenance["pvp"]["provenance"]["cached"] is True
+    assert field_provenance["dy"]["provenance"]["manual"] is True
+    assert "manual_fallback" in field_provenance["dy"]["provenance"]["warnings"]
+
+
+def test_input_hash_changes_when_field_provenance_changes(tmp_path):
+    repo = _repo(tmp_path)
+    first = _payload_with_field_provenance()
+    second = deepcopy(first)
+    second["field_provenance"]["dy"]["provenance"]["source"] = "fundamentus"
+
+    first_id = repo.save_run(first)
+    second_id = repo.save_run(second)
+    runs = repo.list_runs("PETR4")
+
+    assert first_id != second_id
+    assert repo.count_runs("PETR4") == 2
+    assert runs[0]["input_hash"] != runs[1]["input_hash"]
+
+
+def test_missing_field_provenance_is_still_allowed(tmp_path):
+    repo = _repo(tmp_path)
+
+    row_id = repo.save_run({"ticker": "VALE3", "preco_atual": 60.0, "dy": 0.05})
+    latest = repo.get_latest("VALE3")
+
+    assert row_id > 0
+    assert latest is not None
+    assert latest["payload"]["ticker"] == "VALE3"
+    assert latest["payload"]["preco_atual"] == 60.0
+    assert "field_provenance" not in latest["payload"]
+
+
+def test_analysis_result_with_field_provenance_is_preserved(tmp_path):
+    repo = _repo(tmp_path)
+    payload = _payload_with_field_provenance()
+    payload.update(
+        {
+            "market": {"ticker": "PETR4", "preco_atual": 35.0},
+            "valuation": {"recomendacao": "NEUTRO", "fair_value": 36.0},
+        }
+    )
+    analysis = AnalysisResult.from_dict(payload)
+
+    repo.save_run(analysis)
+    latest = repo.get_latest("PETR4")
+
+    assert latest is not None
+    assert "field_provenance" in latest["payload"]
+    assert latest["payload"]["field_provenance"]["dy"]["provenance"]["source"] == "brapi"

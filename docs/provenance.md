@@ -122,3 +122,13 @@ Valuation engines still consume the existing dict values and do not receive
 `FieldValue` objects. Provenance is not displayed in the Streamlit UI yet, and
 it is not persisted as a first-class database feature. The current metadata is a
 foundation for future auditability work.
+
+## Phase 4.3 - Append-Only Payload Preservation
+
+`AnalysisRepository` stores `field_provenance` inside the existing
+`payload_json` snapshot. This keeps provenance attached to each append-only
+analysis run without introducing a separate database table.
+
+The legacy `DatabaseManager` and legacy `analises` table are unchanged. Older
+payloads without `field_provenance` remain valid and can still be saved through
+the append-only repository.
