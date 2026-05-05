@@ -6,9 +6,10 @@ import yfinance as yf
 import pandas as pd
 
 from brapi_provider import BrapiProvider
-from config import FII_MANUAL_FALLBACK, FIIS_CONHECIDOS, UNITS_CONHECIDAS
+from config import FII_MANUAL_FALLBACK
 from database import DatabaseManager
 from fundamentus_scraper import FundamentusScraper
+from sentinela.services.asset_classifier import AssetClassifier
 
 logger = logging.getLogger("MarketEngine")
 
@@ -22,6 +23,8 @@ FUNDAMENTAL_KEYS = (
     'patrimonio_liquido', 'receita_liquida', 'lucro_liquido',
     'ativo_total', 'ativo_circulante', 'quote_type', 'vacancia',
 )
+
+_DEFAULT_ASSET_CLASSIFIER = AssetClassifier()
 
 
 def is_missing(value: Any) -> bool:
@@ -65,22 +68,21 @@ def _is_field_missing(field: str, value: Any, dados: Optional[Dict[str, Any]] = 
     return False
 
 
-def _is_fii_ticker(ticker: str, dados: Optional[Dict[str, Any]] = None) -> bool:
-    ticker_norm = str(ticker or "").upper().replace(".SA", "").strip()
-    quote_type = str((dados or {}).get('quote_type') or '').upper()
-    return (
-        ticker_norm in FIIS_CONHECIDOS
-        or quote_type == 'MUTUALFUND'
-        or (
-            ticker_norm.endswith("11")
-            and ticker_norm not in UNITS_CONHECIDAS
-        )
-    )
+def _is_fii_ticker(
+    ticker: str,
+    dados: Optional[Dict[str, Any]] = None,
+    asset_classifier: Optional[AssetClassifier] = None,
+) -> bool:
+    classifier = asset_classifier or _DEFAULT_ASSET_CLASSIFIER
+    return classifier.is_fii(ticker, dados)
 
 
-def _required_fundamentals_for(dados: Dict[str, Any]) -> tuple[str, ...]:
+def _required_fundamentals_for(
+    dados: Dict[str, Any],
+    asset_classifier: Optional[AssetClassifier] = None,
+) -> tuple[str, ...]:
     ticker = str(dados.get('ticker', '')).upper()
-    if _is_fii_ticker(ticker, dados):
+    if _is_fii_ticker(ticker, dados, asset_classifier):
         return REQUIRED_FII_FUNDAMENTALS
     return REQUIRED_STOCK_FUNDAMENTALS
 
@@ -117,11 +119,14 @@ def merge_if_valid(
     return preenchidos
 
 
-def list_missing_required_fields(dados: Dict[str, Any]) -> list[str]:
+def list_missing_required_fields(
+    dados: Dict[str, Any],
+    asset_classifier: Optional[AssetClassifier] = None,
+) -> list[str]:
     """List required fields still absent after source consolidation."""
     return [
         campo
-        for campo in _required_fundamentals_for(dados)
+        for campo in _required_fundamentals_for(dados, asset_classifier)
         if _is_field_missing(campo, dados.get(campo), dados)
     ]
 
@@ -149,15 +154,26 @@ def _definir_fonte_fundamentos(dados: Dict[str, Any], fonte: str) -> None:
     dados['fonte_fundamentos'] = fonte
 
 
-def _fundamentos_validos_para_cache(dados: Dict[str, Any]) -> bool:
-    return not list_missing_required_fields(dados)
+def _fundamentos_validos_para_cache(
+    dados: Dict[str, Any],
+    asset_classifier: Optional[AssetClassifier] = None,
+) -> bool:
+    return not list_missing_required_fields(dados, asset_classifier)
 
 
 class MarketEngine:
-    def __init__(self) -> None:
+    def __init__(self, asset_classifier: Optional[AssetClassifier] = None) -> None:
         self.scraper = FundamentusScraper()
         self.brapi = BrapiProvider()
         self.database = DatabaseManager()
+        self.asset_classifier = asset_classifier or AssetClassifier()
+
+    def _is_fii_ticker(self, ticker: str, dados: Optional[Dict[str, Any]] = None) -> bool:
+        return _is_fii_ticker(
+            ticker,
+            dados,
+            getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER),
+        )
 
     def buscar_dados_ticker(self, ticker: str) -> Optional[Dict[str, Any]]:
         """Busca dados de mercado com fallback multi-fonte."""
@@ -183,7 +199,8 @@ class MarketEngine:
         brapi_ok = self._buscar_brapi(ticker, dados)
 
         # 3. Fundamentus: fallback only when Brapi is unavailable/incomplete.
-        missing_after_brapi = list_missing_required_fields(dados)
+        classifier = getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER)
+        missing_after_brapi = list_missing_required_fields(dados, classifier)
         fundamentus_ok = False
         if not brapi_ok or missing_after_brapi:
             fundamentus_ok = self._buscar_fundamentus(ticker, dados)
@@ -191,14 +208,14 @@ class MarketEngine:
         if not dados.get('fonte_preco'):
             return None
 
-        if list_missing_required_fields(dados):
+        if list_missing_required_fields(dados, classifier):
             self._aplicar_cache_fundamentos(ticker, dados)
 
-        if list_missing_required_fields(dados):
+        if list_missing_required_fields(dados, classifier):
             self._aplicar_fallback_manual_fii(ticker, dados)
 
         dados['campos_faltantes'] = (
-            list_missing_required_fields(dados)
+            list_missing_required_fields(dados, classifier)
             + list_missing_market_fields(dados)
         )
         dados['dados_parciais'] = bool(dados['campos_faltantes'])
@@ -378,7 +395,7 @@ class MarketEngine:
 
     def _aplicar_fallback_manual_fii(self, ticker: str, dados: Dict[str, Any]) -> bool:
         ticker_norm = ticker.upper().replace(".SA", "").strip()
-        if not ticker_norm.endswith("11") or ticker_norm in UNITS_CONHECIDAS:
+        if not self._is_fii_ticker(ticker_norm, dados):
             return False
 
         fallback = FII_MANUAL_FALLBACK.get(ticker_norm)
@@ -405,7 +422,10 @@ class MarketEngine:
         if (
             dados.get('dados_cache')
             or dados.get('dados_manual')
-            or not _fundamentos_validos_para_cache(dados)
+            or not _fundamentos_validos_para_cache(
+                dados,
+                getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER),
+            )
         ):
             return
 
@@ -418,7 +438,10 @@ class MarketEngine:
             for chave in FUNDAMENTAL_KEYS
             if chave in dados and not _is_field_missing(chave, dados.get(chave), dados)
         }
-        if not _fundamentos_validos_para_cache({'ticker': ticker, **payload}):
+        if not _fundamentos_validos_para_cache(
+            {'ticker': ticker, **payload},
+            getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER),
+        ):
             return
 
         database = getattr(self, 'database', None)

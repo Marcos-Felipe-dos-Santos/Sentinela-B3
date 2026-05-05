@@ -1,6 +1,12 @@
+import market_engine
 import pandas as pd
 
-from market_engine import MarketEngine, list_missing_required_fields, merge_if_valid
+from market_engine import (
+    MarketEngine,
+    _is_fii_ticker,
+    list_missing_required_fields,
+    merge_if_valid,
+)
 
 
 class FakeTicker:
@@ -65,6 +71,18 @@ def _engine(monkeypatch, *, info, historico=None, scraper=None, brapi=None, cach
     engine.brapi = brapi if brapi is not None else FakeBrapi(disponivel=False)
     engine.database = cache
     return engine
+
+
+def test_market_engine_known_unit_not_treated_as_fii():
+    assert _is_fii_ticker("SANB11", {"quote_type": "MUTUALFUND"}) is False
+
+
+def test_market_engine_known_fii_treated_as_fii():
+    assert _is_fii_ticker("HGLG11", {}) is True
+
+
+def test_market_engine_suffix_11_non_unit_still_fii():
+    assert _is_fii_ticker("ABCD11", {}) is True
 
 
 def test_yfinance_data_is_preserved_when_fundamentus_fails(monkeypatch):
@@ -329,6 +347,28 @@ def test_manual_fii_fallback_fills_missing_dy_pvp(monkeypatch):
     assert dados["fonte_fundamentos"] == "manual_fii"
     assert "fundamentos FII preenchidos manualmente" in dados["riscos_dados"]
     assert dados["dados_parciais"] is False
+
+
+def test_market_engine_manual_fii_fallback_does_not_apply_to_known_unit(monkeypatch):
+    monkeypatch.setitem(
+        market_engine.FII_MANUAL_FALLBACK,
+        "SANB11",
+        {"dy": 0.11, "pvp": 0.88, "vacancia": 0.02},
+    )
+    engine = MarketEngine.__new__(MarketEngine)
+    dados = {
+        "ticker": "SANB11",
+        "quote_type": "MUTUALFUND",
+        "riscos_dados": [],
+    }
+
+    applied = engine._aplicar_fallback_manual_fii("SANB11", dados)
+
+    assert applied is False
+    assert dados.get("dados_manual") is not True
+    assert "dy" not in dados
+    assert "pvp" not in dados
+    assert "vacancia" not in dados
 
 
 def test_manual_fii_fallback_never_overwrites_fresh_provider_values(monkeypatch):
