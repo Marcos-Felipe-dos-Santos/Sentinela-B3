@@ -1,5 +1,7 @@
 import pandas as pd
+from unittest.mock import MagicMock
 
+import auditar_recomendacoes as audit
 from auditar_recomendacoes import (
     calcular_metricas_dados,
     calcular_metricas_operacionais,
@@ -128,3 +130,90 @@ def test_operational_failure_rate_counts_full_normal_asset_as_success():
     assert metricas["partial_data_count"] == 0
     assert metricas["no_data_count"] == 0
     assert metricas["failure_rate_percent"] == 0.0
+
+
+def _run_single_ticker_audit(monkeypatch, ticker, dados):
+    market = MagicMock()
+    market.buscar_dados_ticker.return_value = dados
+
+    val_engine = MagicMock()
+    val_engine.processar.return_value = {
+        "fair_value": 10.0,
+        "upside": 0.0,
+        "score_final": 50,
+        "recomendacao": "NEUTRO",
+        "confianca": 90,
+        "riscos": [],
+        "perfil": "RENDA/VALOR",
+        "metodos_usados": "Fake valuation",
+    }
+
+    fii_engine = MagicMock()
+    fii_engine.analisar.return_value = {
+        "fair_value": 10.0,
+        "upside": 0.0,
+        "score_final": 50,
+        "recomendacao": "NEUTRO",
+        "confianca": 90,
+        "riscos": [],
+        "perfil": "FII",
+        "metodos_usados": "Fake FII",
+    }
+
+    tech_engine = MagicMock()
+    tech_engine.calcular_indicadores.return_value = {
+        "tendencia": "Neutro",
+        "rsi": 50,
+        "macd_rec": "Neutro",
+    }
+
+    monkeypatch.setattr(audit, "TICKERS_AUDITORIA", [ticker])
+    monkeypatch.setattr(audit, "MarketEngine", lambda: market)
+    monkeypatch.setattr(audit, "ValuationEngine", lambda: val_engine)
+    monkeypatch.setattr(audit, "FIIEngine", lambda: fii_engine)
+    monkeypatch.setattr(audit, "TechnicalEngine", lambda: tech_engine)
+
+    output = audit.auditar()
+    return output, market, val_engine, fii_engine, tech_engine
+
+
+def test_audit_known_unit_is_not_routed_to_fii(monkeypatch):
+    dados = _dados_base(ticker="SANB11", quote_type="EQUITY")
+
+    output, _, val_engine, fii_engine, _ = _run_single_ticker_audit(
+        monkeypatch,
+        "SANB11",
+        dados,
+    )
+
+    fii_engine.analisar.assert_not_called()
+    val_engine.processar.assert_called_once_with(dados)
+    assert "Tipo:            AÇÃO" in output
+
+
+def test_audit_known_fii_is_routed_to_fii(monkeypatch):
+    dados = _dados_base(ticker="HGLG11", quote_type="EQUITY")
+
+    output, _, val_engine, fii_engine, _ = _run_single_ticker_audit(
+        monkeypatch,
+        "HGLG11",
+        dados,
+    )
+
+    fii_engine.analisar.assert_called_once_with(dados)
+    val_engine.processar.assert_not_called()
+    assert "Tipo:            FII" in output
+
+
+def test_audit_mutualfund_quote_type_does_not_override_known_unit(monkeypatch):
+    dados = _dados_base(ticker="SANB11", quote_type="MUTUALFUND")
+
+    output, _, val_engine, fii_engine, _ = _run_single_ticker_audit(
+        monkeypatch,
+        "SANB11",
+        dados,
+    )
+
+    fii_engine.analisar.assert_not_called()
+    val_engine.processar.assert_called_once_with(dados)
+    assert "Tipo:            AÇÃO" in output

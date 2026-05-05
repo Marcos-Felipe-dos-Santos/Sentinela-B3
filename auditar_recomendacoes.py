@@ -21,7 +21,7 @@ from market_engine import MarketEngine
 from valuation_engine import ValuationEngine
 from fii_engine import FIIEngine
 from technical_engine import TechnicalEngine
-from config import FIIS_CONHECIDOS, UNITS_CONHECIDAS
+from sentinela.services.asset_classifier import AssetClassifier
 
 # ══════════════════════════════════════════════════════════════════════════════
 # CONFIGURAÇÃO
@@ -47,18 +47,6 @@ LOG_FILE = os.path.join(LOG_DIR, "auditoria_recomendacoes.txt")
 # ══════════════════════════════════════════════════════════════════════════════
 
 logger = logging.getLogger("Auditoria")
-
-
-def _is_fii(ticker: str) -> bool:
-    """Detecta FII usando a mesma lógica de app.py."""
-    return (
-        ticker in FIIS_CONHECIDOS
-        or (
-            "11" in ticker
-            and "SA" not in ticker
-            and ticker not in UNITS_CONHECIDAS
-        )
-    )
 
 
 def _fmt(val, fmt_str: str = ".4f") -> str:
@@ -168,6 +156,7 @@ def auditar() -> str:
     val_engine = ValuationEngine()
     fii_engine = FIIEngine()
     tech_engine = TechnicalEngine()
+    asset_classifier = AssetClassifier()
 
     log("=" * 80)
     log(f"  AUDITORIA DE RECOMENDAÇÕES — Sentinela B3")
@@ -206,7 +195,7 @@ def auditar() -> str:
             preco = float(dados.get('preco_atual', 0) or 0)
 
             # ── 2. Análise (FII ou Ação) ─────────────────────────────────────
-            is_fii = _is_fii(ticker)
+            is_fii = asset_classifier.is_fii(ticker, dados)
 
             if is_fii:
                 analise = fii_engine.analisar(dados)
