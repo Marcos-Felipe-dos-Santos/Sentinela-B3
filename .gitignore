@@ -1,13 +1,13 @@
 # ==========================================
 # SENTINELA B3 - GITIGNORE
 # ==========================================
-# INSTRUÇÕES: Renomeie este arquivo para .gitignore
-# (remova o .txt e adicione o ponto no início)
 
 # ── Python ──────────────────────────────
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
+*.pyo
+*.pyd
 *$py.class
 
 # C extensions
@@ -65,7 +65,6 @@ venv.bak/
 # VSCode
 .vscode/
 .history/
-.VSCodeCounter/
 
 # PyCharm
 .idea/
@@ -116,6 +115,8 @@ auditoria_*.txt
 
 # Outputs temporários
 outputs/
+exports/
+reports/generated/
 temp/
 tmp/
 
@@ -143,11 +144,20 @@ $RECYCLE.BIN/
 .streamlit/secrets.toml
 .streamlit/config.toml
 
+# ── Agentes / Ferramentas ───────────────
+.agent/
+.gemini/
+.cursor/
+.VSCodeCounter/
+
 # ── Outros ──────────────────────────────
-# Arquivos grandes de dados
-*.csv
+# Arquivos grandes de dados (fora do backtesting rastreado)
 *.xlsx
 *.parquet
+
+# Backtesting outputs gerados (v1 e fundamentos são rastreados)
+backtesting/backtest_results_v[2-9]*.csv
+backtesting/backtest_results_v[1-9][0-9]*.csv
 
 # Documentação compilada
 docs/_build/

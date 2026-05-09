@@ -113,17 +113,29 @@ streamlit run app.py
 
 ```txt
 .
-├── app.py
-├── valuation_engine.py
-├── technical_engine.py
-├── fii_engine.py
-├── market_engine.py
-├── database.py
-├── ai_core.py
-├── fundamentus_scraper.py
-├── auditoria.py
-├── limpar_banco.py
-└── requirements.txt
+├── app.py                          # Interface Streamlit
+├── market_engine.py                # Dados de mercado e cache
+├── valuation_engine.py             # Análise de ações
+├── fii_engine.py                   # Análise de FIIs
+├── technical_engine.py             # Indicadores técnicos
+├── portfolio_engine.py             # Otimização de portfólio
+├── peers_engine.py                 # Comparação com pares
+├── database.py                     # Persistência SQLite
+├── ai_core.py                      # Camada de IA
+├── config.py                       # Configurações e constantes
+├── fundamentus_scraper.py          # Scraper Fundamentus
+├── brapi_provider.py               # Provedor Brapi
+├── auditar_recomendacoes.py        # Auditoria operacional
+├── auditoria.py                    # Diagnóstico legado
+├── limpar_banco.py                 # Utilitário de limpeza
+├── requirements.txt
+├── sentinela/                      # Pacote de domínio
+│   ├── domain/                     # Modelos e enums
+│   ├── services/                   # Classificador e serviços
+│   └── repositories/               # Repositório de análises
+├── backtesting/                    # Motor de backtesting
+├── tests/                          # Testes automatizados (pytest)
+└── docs/                           # Documentação técnica
 ```
 
 ---
@@ -139,7 +151,7 @@ streamlit run app.py
 
 ## 🧪 Testes Automatizados
 
-O projeto conta com uma suíte de 28 testes automatizados utilizando `pytest` para garantir a estabilidade do sistema contra edge-cases de dados e regras financeiras sem realizar requisições à internet.
+O projeto conta com uma suíte de **199 testes automatizados** utilizando `pytest` para garantir a estabilidade do sistema contra edge-cases de dados e regras financeiras sem realizar requisições à internet.
 
 ```bash
 # Executar a suíte de testes
@@ -156,7 +168,7 @@ Para mais informações, consulte a documentação da suíte de testes em `tests
 * [ ] Cache inteligente de dados
 * [ ] Deploy em ambiente cloud
 * [ ] Dashboard mais avançado
-* [ ] Backtesting de estratégias
+* [x] Backtesting de estratégias
 
 ---
 
