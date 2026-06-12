@@ -352,14 +352,18 @@ def test_scraper_falhou_compra_vira_dados_insuficientes() -> None:
 
 
 def test_scraper_falhou_nao_sobrescreve_venda() -> None:
-    """Scraper failure não deve sobrescrever VENDA — VENDA tem prioridade."""
+    """Scraper failure não deve sobrescrever VENDA — VENDA tem prioridade.
+
+    dy=0.06 garante que Bazin dispara (gate >= 5%) e produz VENDA,
+    preservando a intenção do teste.
+    """
     dados = {
         'ticker': 'LIXO3',
         'preco_atual': 100.0,
         'roe': 0.02,
         'pl': 50.0,
         'pvp': 5.0,
-        'dy': 0.01,
+        'dy': 0.06,
         'erro_scraper': True,
         'tecnico_negativo': True,
     }
@@ -390,7 +394,6 @@ def test_scraper_falhou_nao_sobrescreve_alto_risco() -> None:
 
 # ── Testes de baseline para bugs conhecidos ──────────────────────────────────
 
-@pytest.mark.xfail(reason="BUG: gate Bazin é dy>0, deveria ser dy>=0.05")
 def test_bazin_nao_aciona_dy_abaixo_5pct() -> None:
     """Ação com DY de 3% (abaixo do mínimo Bazin de 5%) não deve usar Bazin."""
     dados = {

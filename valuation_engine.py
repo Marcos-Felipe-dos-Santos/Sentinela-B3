@@ -104,7 +104,10 @@ class ValuationEngine:
 
         # ── 2. BAZIN ─────────────────────────────────────────────────────────
         # Só para RENDA com DY confiável; usa taxa mínima = max(selic, 5%)
-        if not is_growth and dy > 0 and dy_confiavel:
+        # Bazin foi criado para pagadoras de dividendos consistentes.
+        # Gate de 5% evita avaliar pelo modelo de renda empresas com DY
+        # simbólico (0-4%), que produziria fair value incorretamente baixo.
+        if not is_growth and dy >= 0.05 and dy_confiavel:
             if dy > 0.15:
                 riscos.append("DY muito alto (possível armadilha)")
                 confianca -= 10
