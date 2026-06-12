@@ -59,6 +59,53 @@ def _safe_confidence(value: Any) -> str:
         return str(value)
 
 
+def _cor_recomendacao(rec: str) -> str:
+    cores = {
+        "COMPRA FORTE":                   "🟢",
+        "COMPRA":                         "🟢",
+        "NEUTRO":                         "🟡",
+        "QUALIDADE — AGUARDAR":           "🟡",
+        "VENDA":                          "🔴",
+        "ALTO RISCO — EVITAR":            "🔴",
+        "DADOS INSUFICIENTES — AGUARDAR": "🟠",
+    }
+    emoji = cores.get(rec, "⚪")
+    cor_css = {
+        "🟢": "#00c853", "🟡": "#ffd600",
+        "🔴": "#d50000", "🟠": "#ff6d00", "⚪": "#9e9e9e",
+    }[emoji]
+    return f'<span style="color:{cor_css};font-size:2rem;font-weight:700">{emoji} {rec}</span>'
+
+
+def _plotar_metodos(metodos_str: str, preco_atual: float):
+    import re
+    pares = re.findall(r'(\w+):\s*R\$([0-9,.]+)', metodos_str)
+    if not pares:
+        return None
+    nomes = [p[0] for p in pares]
+    valores = [float(p[1].replace(',', '.')) for p in pares]
+    cores_bar = ['#00c853' if v > preco_atual else '#d50000' for v in valores]
+    fig = go.Figure(go.Bar(
+        x=valores, y=nomes, orientation='h',
+        marker_color=cores_bar,
+        text=[f"R${v:.2f}" for v in valores],
+        textposition='outside',
+    ))
+    fig.add_vline(x=preco_atual, line_dash="dash", line_color="white",
+                  annotation_text=f"Preço atual R${preco_atual:.2f}",
+                  annotation_position="top right")
+    fig.update_layout(
+        height=120 + 40 * len(nomes),
+        margin=dict(l=0, r=80, t=20, b=20),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font_color='white',
+        xaxis=dict(showgrid=False),
+        yaxis=dict(showgrid=False),
+    )
+    return fig
+
+
 def build_field_provenance_rows(field_provenance: Any) -> list[dict[str, Any]]:
     """Build compact UI rows from serialized field provenance metadata."""
     if not isinstance(field_provenance, dict):
@@ -205,11 +252,23 @@ if modo == "Terminal":
             )
             recomendacao = analise.get('recomendacao', '-')
 
+            dqr = DataQualityReport(dados)
+            comp = dqr.completude()
+            alertas_dq = dqr.validacao_cruzada()
+            badge = dqr.badge()
+
             k1, k2, k3, k4 = st.columns(4)
             k1.metric("Preço", f"R$ {dados.get('preco_atual', 0):.2f}")
             k2.metric("Valor Justo", f"R$ {analise.get('fair_value', 0):.2f}")
-            k3.metric("Recomendação", recomendacao)
+            k3.markdown(_cor_recomendacao(recomendacao), unsafe_allow_html=True)
             k4.metric("Score", f"{analise.get('score_final', 0)}/100")
+
+            col_b1, col_b2, col_b3, col_b4 = st.columns([1, 1, 1, 3])
+            col_b1.markdown(f"**{badge}**")
+            col_b2.markdown(f"📊 Completude: **{comp['completude_pct']}%**")
+            col_b3.markdown(f"🎯 Confiança: **{comp['score_confianca']}/100**")
+            if alertas_dq:
+                col_b4.warning(" | ".join(alertas_dq))
 
             if recomendacao == "DADOS INSUFICIENTES — AGUARDAR":
                 st.info(
@@ -228,12 +287,6 @@ if modo == "Terminal":
                 )
 
             with st.expander("Qualidade dos Dados", expanded=False):
-                # ── Relatório de qualidade (DataQualityReport) ────────────────
-                dqr = DataQualityReport(dados)
-                comp = dqr.completude()
-                alertas_dq = dqr.validacao_cruzada()
-                badge = dqr.badge()
-
                 st.markdown(f"#### {badge}")
                 m1, m2 = st.columns(2)
                 m1.metric("Completude", f"{comp['completude_pct']}%")
@@ -275,7 +328,13 @@ if modo == "Terminal":
             
             with t1:
                 st.info(f"Perfil: {analise.get('perfil', 'N/A')}")
-                st.write(f"**Métodos:** {analise.get('metodos_usados', '-')}")
+                fig_metodos = _plotar_metodos(
+                    analise.get('metodos_usados', ''), dados.get('preco_atual', 0)
+                )
+                if fig_metodos:
+                    st.plotly_chart(fig_metodos, use_container_width=True)
+                else:
+                    st.write(analise.get('metodos_usados', '-'))
                 st.divider()
                 st.subheader("Veredito IA")
                 st.write(dados['analise_ia'])
@@ -288,9 +347,17 @@ if modo == "Terminal":
                     st.dataframe(_safe_df_for_display(pd.DataFrame([tech_data]).T))
                 with c2:
                     st.subheader("Comparação Setorial")
-                    if 'erro' not in peers_data:
-                        st.write(f"Setor: {peers_data.get('Setor', '-')}")
-                        st.json(peers_data)
+                    if 'erro' not in peers_data and peers_data:
+                        st.markdown(f"**Setor:** {peers_data.get('Setor', '—')}")
+                        col_p1, col_p2, col_p3 = st.columns(3)
+                        pl_p = peers_data.get('PL_Media_Peers')
+                        pvp_p = peers_data.get('PVP_Media_Peers')
+                        dy_p = peers_data.get('DY_Media_Peers')
+                        col_p1.metric("P/L médio peers", f"{pl_p:.1f}x" if pl_p is not None else "—")
+                        col_p2.metric("P/VP médio peers", f"{pvp_p:.2f}x" if pvp_p is not None else "—")
+                        col_p3.metric("DY médio peers", f"{dy_p * 100:.1f}%" if dy_p is not None else "—")
+                        if peers_data.get('Peers_Utilizados'):
+                            st.caption(f"Peers: {', '.join(peers_data['Peers_Utilizados'])}")
                     else:
                         st.warning("Sem peers.")
             
@@ -317,13 +384,13 @@ if modo == "Terminal":
                             go.Scatter(
                                 x=hist.index,
                                 y=hist['Close'].rolling(50).mean(),
-                                line=dict(color='orange', width=1),
+                                line=dict(color='#FFD700', width=1),
                                 name='MA50',
                             ),
                             go.Scatter(
                                 x=hist.index,
                                 y=hist['Close'].rolling(200).mean(),
-                                line=dict(color='blue', width=1),
+                                line=dict(color='#FFFFFF', width=1),
                                 name='MA200',
                             ),
                         ])
