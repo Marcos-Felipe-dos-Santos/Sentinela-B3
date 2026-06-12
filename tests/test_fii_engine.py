@@ -54,4 +54,25 @@ def test_fii_engine_vacancy_adjustment(engine):
         
     assert result['dy'] == pytest.approx(0.10)
     assert result['dy_efetivo'] == pytest.approx(0.09) # 0.10 * (1 - 0.10)
-    assert result['fair_value'] == pytest.approx(90.0) # (100 * 0.09) / 0.10
+    assert result['fair_value'] == pytest.approx(105.88, abs=0.01) # (100 * 0.09) / (0.10 * 0.85) ≈ 105.88
+
+
+# ── Teste de baseline para bug conhecido ─────────────────────────────────────
+
+def test_fii_preco_justo_desconta_ir_selic_liquida(engine):
+    """FII é isento de IR: comparar com Selic*0.85, não Selic bruta.
+
+    Com selic=0.10 e dy=0.10:
+      BUG:  fair_value = (100 * 0.10) / 0.10        = 100.00
+      FIX:  fair_value = (100 * 0.10) / (0.10*0.85) ≈ 117.65
+    """
+    dados = {
+        'ticker': 'FIIX11',
+        'preco_atual': 100.0,
+        'dy': 0.10,
+        'pvp': 1.0,
+    }
+    with patch('fii_engine.get_selic_atual', return_value=0.10):
+        result = engine.analisar(dados)
+
+    assert result['fair_value'] == pytest.approx(117.65, abs=0.01)

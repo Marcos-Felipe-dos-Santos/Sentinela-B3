@@ -3,6 +3,11 @@ from config import get_selic_atual
 
 logger = logging.getLogger("FII")
 
+# IR sobre renda fixa: 15% (alíquota para prazo > 2 anos, comparável
+# a FII de longo prazo). FII distribui rendimentos isentos de IR para
+# pessoa física — a comparação justa é contra o rendimento líquido.
+FATOR_IR_RENDA_FIXA = 0.85
+
 VACANCIA_CONHECIDA = {
     # Estimativas manuais; revisar periodicamente.
     "CVBI11": 0.25,
@@ -66,16 +71,17 @@ class FIIEngine:
             dy_efetivo = dy
 
         selic = get_selic_atual()
+        selic_liquida = selic * FATOR_IR_RENDA_FIXA
 
         # Bazin adaptado para FIIs (yield vs taxa livre de risco)
-        preco_justo = (p * dy_efetivo) / selic
+        preco_justo = (p * dy_efetivo) / selic_liquida
         upside      = (preco_justo / p) - 1
 
         # Score
         score = 50
-        if dy_efetivo > selic:
+        if dy_efetivo > selic_liquida:
             score += 20
-        elif dy_efetivo < (selic * 0.7):
+        elif dy_efetivo < (selic_liquida * 0.7):
             score -= 20
         pvp = float(dados.get('pvp', 1.0) or 1.0)
         if pvp > 1.15:

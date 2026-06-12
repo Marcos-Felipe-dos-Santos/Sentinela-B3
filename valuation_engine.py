@@ -1,5 +1,6 @@
 import logging
 import math
+import statistics
 from config import get_selic_atual, DISTRESSED_TICKERS
 
 logger = logging.getLogger("Valuation")
@@ -104,7 +105,10 @@ class ValuationEngine:
 
         # ── 2. BAZIN ─────────────────────────────────────────────────────────
         # Só para RENDA com DY confiável; usa taxa mínima = max(selic, 5%)
-        if not is_growth and dy > 0 and dy_confiavel:
+        # Bazin foi criado para pagadoras de dividendos consistentes.
+        # Gate de 5% evita avaliar pelo modelo de renda empresas com DY
+        # simbólico (0-4%), que produziria fair value incorretamente baixo.
+        if not is_growth and dy >= 0.05 and dy_confiavel:
             if dy > 0.15:
                 riscos.append("DY muito alto (possível armadilha)")
                 confianca -= 10
@@ -141,7 +145,11 @@ class ValuationEngine:
             fair_value = p
             upside     = 0.0
         else:
-            fair_value = sum(valores_validos) / len(valores_validos)
+            # Mediana em vez de média: Graham (patrimonial), Bazin (renda) e
+            # Gordon (DCF) respondem perguntas diferentes. Quando divergem >2x,
+            # a média aritmética produz um valor sem significado econômico.
+            # statistics.median: 1 valor → o valor; 2 → média; 3+ → mediana.
+            fair_value = statistics.median(valores_validos)
             upside     = (fair_value / p) - 1
             
             if len(valores_validos) >= 2:

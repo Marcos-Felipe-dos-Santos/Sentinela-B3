@@ -142,3 +142,15 @@ This display is informational only. Raw fields still drive all calculations,
 recommendations, AI prompts, persistence, and charts. Recommendation logic does
 not consume provenance yet, and malformed or missing provenance falls back to a
 neutral UI message.
+
+## Phase 4.5 - AI Context
+
+`field_provenance` is now summarized in the AI prompt as quality context. The
+summary helps the AI explain reliability, caveats, manual data, cached data,
+stale fields, and warnings.
+
+This context is explanatory only. Valuation engines still use raw fields, and
+the deterministic classification logic remains outside AI. The AI prompt
+explicitly instructs providers not to override the heuristic classification,
+fair value, upside, score, or confidence calculated by the system.
+
