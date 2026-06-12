@@ -20,7 +20,7 @@ Python + Streamlit, local-first, SQLite. NÃO é consultoria financeira.
 - Testes: python -m pytest tests/ -x --tb=short
 - Lint: ruff check .
 
-## Bugs conhecidos (não corrija sem teste baseline primeiro)
-- Bazin dispara com dy > 0 — deve ser dy >= 0.05
-- FII usa Selic bruta — deve usar Selic * 0.85
-- Fair value = média — deve ser mediana
+## Bugs corrigidos (branch refactor/economic-fixes)
+- Gate Bazin dy >= 5% (era dy > 0)
+- FII compara com Selic líquida ×0.85 (era bruta)
+- Fair value usa mediana (era média)

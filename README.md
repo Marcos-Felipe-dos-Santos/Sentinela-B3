@@ -48,7 +48,7 @@ O projeto foi desenvolvido com foco em:
   * Dividend Yield
   * P/VP
   * Ajuste de vacância em FIIs
-  * Comparação com Selic
+  * Comparação com a Selic líquida de IR (Selic × 0.85), já que rendimentos de FII são isentos para pessoa física
 
 ### 💼 Otimização de Portfólio
 
@@ -140,6 +140,64 @@ streamlit run app.py
 
 ---
 
+## 📐 Metodologia de valuation
+
+> Todo resultado gerado é educacional. Nenhuma saída constitui recomendação de compra ou venda.
+
+### Graham (valor patrimonial)
+
+Fórmula: `√(22.5 × LPA × VPA)` onde LPA = preço / P/L e VPA = preço / P/VP.
+Piso de P/L em 7× (evita fair value absurdo em cíclicos com P/L muito baixo).
+Gates de aplicação: P/L ≤ 25, P/VP ≤ 3.0 (crescimento) ou ≤ 2.5 (renda), `pl_confiavel=True`.
+
+### Bazin (renda por dividendos)
+
+Fórmula: `(DY × Preço) / max(Selic, 5%)`.
+Gate: **DY ≥ 5%** — aplicado apenas a pagadoras consistentes, perfil RENDA.
+Taxa mínima usa `max(Selic, 0.05)` para não distorcer em cenários de Selic muito baixa.
+
+### Peter Lynch (crescimento)
+
+Fórmula: `LPA × P/L_justo` onde `P/L_justo = 1.5 × (g × 100)`, cap 35.
+Taxa de crescimento: `g = ROE × (1 − payout)`, cap 25%.
+Aplicado apenas a perfil CRESCIMENTO (ROE > 20% e DY < 4%).
+
+### Gordon (fluxo de dividendos descontado)
+
+Fórmula: `Div_próx / (k − g)` onde `k = Selic + 7%` e `g = ROE × retenção`, cap 8%.
+Gate: DY > 4%, ROE > 10% e k > g.
+
+### Fair value agregado
+
+`statistics.median(métodos_válidos)`: com 1 método retorna o valor; com 2 retorna a média; com 3 ou mais retorna a mediana.
+Quando os métodos divergem mais de 2× entre si, o risco "Métodos divergentes" é sinalizado e a confiança é penalizada.
+
+### Normalização de DY
+
+Yahoo Finance retorna `dividendYield` de forma inconsistente para ativos brasileiros.
+Regra 1: se `DY > 1` → Yahoo retornou como percentual — dividir por 100.
+Regra 2: se `DY > 0.25` → dado impossível (> 25%) — descartado como inválido.
+
+### FIIs — engine dedicada
+
+Fórmula: `(Preço × DY_efetivo) / (Selic × 0.85)`.
+`DY_efetivo` aplica desconto de vacância quando conhecida para o fundo.
+Os limiares de score (bônus/penalidade) usam igualmente a Selic líquida.
+
+---
+
+### Decisões metodológicas
+
+**Gate de 5% no Bazin**: o modelo de Décio Bazin foi desenvolvido para empresas que distribuem dividendos de forma consistente. Aplicá-lo a ações com DY simbólico (1–4%) produziria um "preço justo de renda" para empresas que não são, de fato, pagadoras — gerando sinais distorcidos.
+
+**Selic líquida no FII (× 0.85)**: rendimentos distribuídos por FIIs são isentos de Imposto de Renda para pessoa física, enquanto a renda fixa equivalente (CDB, Tesouro) sofre tributação de 15% no prazo longo. Comparar o DY isento com a Selic bruta subestimava o fair value do FII em aproximadamente 17%.
+
+**Mediana no fair value**: Graham avalia patrimônio, Bazin avalia fluxo de dividendos e Gordon avalia crescimento futuro — são perspectivas econômicas distintas. Quando divergem expressivamente, a média aritmética produz um número sem interpretação clara. A mediana preserva o valor mais central sem ser distorcida pelos extremos.
+
+**Piso de P/L 7 no Graham**: empresas cíclicas frequentemente apresentam P/L muito baixo no pico do ciclo, o que inflaria artificialmente o LPA ajustado. O piso de 7× ancora o cálculo num mínimo razoável de avaliação de mercado, reduzindo ruído em dados de entrada de baixa qualidade.
+
+---
+
 ## ⚠️ Limitações
 
 * Dependência de dados externos (Yahoo Finance / Fundamentus)
@@ -151,7 +209,7 @@ streamlit run app.py
 
 ## 🧪 Testes Automatizados
 
-O projeto conta com uma suíte de **199 testes automatizados** utilizando `pytest` para garantir a estabilidade do sistema contra edge-cases de dados e regras financeiras sem realizar requisições à internet.
+O projeto conta com uma suíte de **180 testes automatizados** utilizando `pytest` para garantir a estabilidade do sistema contra edge-cases de dados e regras financeiras sem realizar requisições à internet.
 
 ```bash
 # Executar a suíte de testes
