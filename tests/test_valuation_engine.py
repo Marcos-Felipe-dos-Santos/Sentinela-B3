@@ -386,3 +386,62 @@ def test_scraper_falhou_nao_sobrescreve_alto_risco() -> None:
 
     # Distressed guard fires first — must remain ALTO RISCO
     assert resultado['recomendacao'] == 'ALTO RISCO — EVITAR'
+
+
+# ── Testes de baseline para bugs conhecidos ──────────────────────────────────
+
+@pytest.mark.xfail(reason="BUG: gate Bazin é dy>0, deveria ser dy>=0.05")
+def test_bazin_nao_aciona_dy_abaixo_5pct() -> None:
+    """Ação com DY de 3% (abaixo do mínimo Bazin de 5%) não deve usar Bazin."""
+    dados = {
+        'ticker': 'REND3',
+        'preco_atual': 100.0,
+        'roe': 0.10,
+        'pl': 30.0,
+        'pvp': 4.0,
+        'dy': 0.03,
+    }
+    with patch('valuation_engine.get_selic_atual', return_value=0.10):
+        resultado = ValuationEngine().processar(dados)
+
+    assert 'Bazin' not in resultado['metodos_usados']
+
+
+def test_bazin_aciona_no_limite_de_5pct() -> None:
+    """Ação com DY exatamente 5% deve acionar Bazin (limite mínimo)."""
+    dados = {
+        'ticker': 'REND3',
+        'preco_atual': 100.0,
+        'roe': 0.10,
+        'pl': 30.0,
+        'pvp': 4.0,
+        'dy': 0.05,
+    }
+    with patch('valuation_engine.get_selic_atual', return_value=0.10):
+        resultado = ValuationEngine().processar(dados)
+
+    assert 'Bazin' in resultado['metodos_usados']
+
+
+@pytest.mark.xfail(reason="BUG: fair_value usa média, deveria usar mediana")
+def test_fair_value_usa_mediana_com_tres_metodos() -> None:
+    """Com Graham+Bazin+Gordon divergindo, fair_value deve ser a mediana, não a média.
+
+    Valores calculados manualmente com selic=0.05:
+      Graham ≈ 106.07  (sqrt(22.5 * 10 * 50))
+      Bazin  = 200.00  ((0.10 * 100) / 0.05)
+      Gordon ≈  89.56  (10.075 / 0.1125)
+    Mediana = 106.07 | Média ≈ 131.88
+    """
+    dados = {
+        'ticker': 'DIVG3',
+        'preco_atual': 100.0,
+        'roe': 0.15,
+        'pl': 10.0,
+        'pvp': 2.0,
+        'dy': 0.10,
+    }
+    with patch('valuation_engine.get_selic_atual', return_value=0.05):
+        resultado = ValuationEngine().processar(dados)
+
+    assert resultado['fair_value'] == pytest.approx(106.07, abs=0.5)
