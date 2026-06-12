@@ -13,6 +13,7 @@ from portfolio_engine import PortfolioEngine
 from peers_engine import PeersEngine
 from ai_core import SentinelaAI
 from config import APP_VERSION
+from data_quality import DataQualityReport
 from sentinela.services.asset_classifier import AssetClassifier
 
 st.set_page_config(page_title=f"Sentinela B3 {APP_VERSION}", layout="wide", page_icon="🦅")
@@ -227,6 +228,23 @@ if modo == "Terminal":
                 )
 
             with st.expander("Qualidade dos Dados", expanded=False):
+                # ── Relatório de qualidade (DataQualityReport) ────────────────
+                dqr = DataQualityReport(dados)
+                comp = dqr.completude()
+                alertas_dq = dqr.validacao_cruzada()
+                badge = dqr.badge()
+
+                st.markdown(f"#### {badge}")
+                m1, m2 = st.columns(2)
+                m1.metric("Completude", f"{comp['completude_pct']}%")
+                m2.metric("Score de confiança", f"{comp['score_confianca']}/100")
+
+                if alertas_dq:
+                    for alerta in alertas_dq:
+                        st.warning(f"⚠️ {alerta}")
+
+                st.divider()
+                # ── Flags de proveniência ──────────────────────────────────────
                 q1, q2, q3, q4, q5, q6 = st.columns(6)
                 q1.metric("Fonte Preço", dados.get('fonte_preco') or "-")
                 q2.metric("Fonte Fund.", dados.get('fonte_fundamentos') or "-")
