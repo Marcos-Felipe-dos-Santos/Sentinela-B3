@@ -118,3 +118,83 @@ def get_selic_atual() -> float:
 
 
 RISK_FREE_RATE_FALLBACK = SELIC_FALLBACK  # alias estático — preferir get_selic_atual()
+
+
+# ── PARÂMETROS ECONÔMICOS CENTRALIZADOS ──────────────────────────────────────
+# Todos os limiares usados pelos engines em um lugar nomeado.
+# Altere aqui para tunar o comportamento sem caçar literais no código.
+
+class MacroContext:
+    # DY normalização (Yahoo Finance)
+    DY_PERCENTUAL_THRESHOLD = 1.0      # DY > 1 → Yahoo retornou como %
+    DY_SANIDADE_MAX         = 0.25     # DY > 25% → dado inválido
+
+    # Classificação de perfil
+    ROE_CRESCIMENTO_MIN     = 0.20     # ROE > 20% → perfil CRESCIMENTO
+    DY_CRESCIMENTO_MAX      = 0.04     # DY < 4% → perfil CRESCIMENTO
+
+    # Graham
+    GRAHAM_PVP_LIMITE_CRESCIMENTO = 3.0
+    GRAHAM_PVP_LIMITE_RENDA       = 2.5
+    GRAHAM_PL_LIMITE              = 25.0
+    GRAHAM_PL_FLOOR               = 7.0    # piso para cíclicos
+
+    # Bazin
+    BAZIN_DY_MIN            = 0.05     # gate: pagadoras consistentes
+    BAZIN_DY_ARMADILHA      = 0.15     # DY > 15% → possível armadilha
+    BAZIN_TAXA_MIN          = 0.05     # taxa mínima (floor da Selic)
+
+    # Lynch
+    LYNCH_PAYOUT_MAX        = 0.95
+    LYNCH_G_MAX             = 0.25
+    LYNCH_PL_MULTIPLICADOR  = 1.5
+    LYNCH_PL_MAX            = 35.0
+
+    # Gordon
+    GORDON_DY_MIN           = 0.04
+    GORDON_ROE_MIN          = 0.10
+    GORDON_G_MAX            = 0.08
+    GORDON_PREMIO_RISCO     = 0.07     # k = Selic + 7%
+    GORDON_PAYOUT_MAX       = 0.95
+
+    # Divergência entre métodos
+    METODOS_DIVERGENCIA_RATIO = 2.0
+
+    # Score sigmoid
+    SCORE_SIGMOID_AMPLITUDE  = 48
+    SCORE_SIGMOID_INCLINACAO = 3
+
+    # Qualidade financeira
+    DIVIDA_EBITDA_LIMITE    = 3.0
+    ROE_BONUS_MIN           = 0.20
+    ROE_PENALIDADE_MAX      = 0.05
+
+    # Recomendação ações
+    REC_UPSIDE_COMPRA       = 0.15
+    REC_SCORE_COMPRA        = 60
+    REC_CONFIANCA_COMPRA    = 50
+    REC_SCORE_FORTE         = 75
+    REC_CONFIANCA_FORTE     = 70
+    REC_UPSIDE_VENDA        = -0.15
+
+    # FII
+    FII_FATOR_IR            = 0.85     # alíquota 15% renda fixa longo prazo
+    FII_DY_SELIC_RATIO_MIN  = 0.70     # DY < 70% da Selic líquida → penalidade
+    FII_PVP_PREMIO_ALTO     = 1.15
+    FII_PVP_PREMIO_MODERADO = 1.05
+    FII_PVP_DESCONTO        = 0.85
+    FII_UPSIDE_COMPRA       = 0.10
+    FII_UPSIDE_VENDA        = -0.10
+
+
+# Instância global — engines importam MACRO em vez de literais
+MACRO = MacroContext()
+
+
+def _normalizar_dy(dy_raw: float) -> tuple[float, bool]:
+    """Normaliza DY do Yahoo Finance. Retorna (dy_decimal, dy_confiavel)."""
+    if dy_raw > MACRO.DY_PERCENTUAL_THRESHOLD:
+        return dy_raw / 100, True
+    if dy_raw > MACRO.DY_SANIDADE_MAX:
+        return 0.0, False
+    return dy_raw, True

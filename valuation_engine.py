@@ -1,7 +1,7 @@
 import logging
 import math
 import statistics
-from config import get_selic_atual, DISTRESSED_TICKERS
+from config import get_selic_atual, DISTRESSED_TICKERS, MACRO, _normalizar_dy
 
 logger = logging.getLogger("Valuation")
 
@@ -42,24 +42,15 @@ class ValuationEngine:
         #   Ex: PETR4 → 12.47  (percentagem bruta)  → dividir por 100 → 0.1247
         #   Ex: WEGE3 → 3.02   (percentagem bruta)  → dividir por 100 → 0.0302
         #   Ex: ITUB4 → 0.45   (dado suspeito)       → 45% DY impossível → cap
-        #
-        # Regra 1: se dy > 1   → Yahoo retornou como % → dividir por 100
-        # Regra 2: se dy > 0.25 → 25% DY é fisicamente impossível para B3 → dado inválido → 0
         dy_raw = float(dados.get('dy', 0) or 0)
-        dy_confiavel = True   # flag: sabemos o DY com confiança?
-
-        if dy_raw > 1:
-            dy = dy_raw / 100
+        dy, dy_confiavel = _normalizar_dy(dy_raw)
+        if dy_raw > MACRO.DY_PERCENTUAL_THRESHOLD:
             logger.info(f"[{dados.get('ticker','?')}] DY normalizado: {dy_raw:.4f}% → {dy:.4f} decimal")
-        elif dy_raw > 0.25:
+        elif not dy_confiavel:
             logger.warning(
                 f"[{dados.get('ticker','?')}] DY={dy_raw:.4f} ({dy_raw*100:.1f}%) improvável para B3 "
                 f"— dado suspeito (Yahoo bug?). Desconsiderado."
             )
-            dy = 0.0
-            dy_confiavel = False
-        else:
-            dy = dy_raw
 
         lpa = (p / pl)  if pl  > 0 else 0
         vpa = (p / pvp) if pvp > 0 else 0
@@ -82,7 +73,7 @@ class ValuationEngine:
         # ATENÇÃO: se DY foi zerado por falta de confiabilidade, NÃO classificar como
         # crescimento só porque dy=0 — manter RENDA/VALOR por precaução.
         if dy_confiavel:
-            is_growth = roe > 0.20 and dy < 0.04
+            is_growth = roe > MACRO.ROE_CRESCIMENTO_MIN and dy < MACRO.DY_CRESCIMENTO_MAX
         else:
             is_growth = False  # sem DY confiável, evitar Lynch (pode inflar valuation)
             logger.info(f"[{dados.get('ticker','?')}] DY não confiável → is_growth=False (conservador)")
@@ -91,9 +82,9 @@ class ValuationEngine:
 
         # ── 1. GRAHAM ─────────────────────────────────────────────────────────
         # Limite P/L aumentado de 20→25 para acomodar cíclicos em pico de lucro
-        limite_pvp = 3.0 if is_growth else 2.5
-        limite_pl  = 25.0  # mesmo para ambos os perfis (era 20 para RENDA/VALOR)
-        pl_graham  = max(pl, 7.0)   # floor de 7x para evitar FV absurdo com PL baixo
+        limite_pvp = MACRO.GRAHAM_PVP_LIMITE_CRESCIMENTO if is_growth else MACRO.GRAHAM_PVP_LIMITE_RENDA
+        limite_pl  = MACRO.GRAHAM_PL_LIMITE
+        pl_graham  = max(pl, MACRO.GRAHAM_PL_FLOOR)   # floor para evitar FV absurdo com PL baixo
 
         # Se PL veio do Yahoo com flag de baixa confiabilidade (PL negativo ou >80),
         # Graham é ignorado mesmo dentro do limite — melhor não aplicar com dado suspeito
@@ -108,32 +99,32 @@ class ValuationEngine:
         # Bazin foi criado para pagadoras de dividendos consistentes.
         # Gate de 5% evita avaliar pelo modelo de renda empresas com DY
         # simbólico (0-4%), que produziria fair value incorretamente baixo.
-        if not is_growth and dy >= 0.05 and dy_confiavel:
-            if dy > 0.15:
+        if not is_growth and dy >= MACRO.BAZIN_DY_MIN and dy_confiavel:
+            if dy > MACRO.BAZIN_DY_ARMADILHA:
                 riscos.append("DY muito alto (possível armadilha)")
                 confianca -= 10
-            taxa_minima = max(selic, 0.05)
+            taxa_minima = max(selic, MACRO.BAZIN_TAXA_MIN)
             metodos['Bazin'] = (dy * p) / taxa_minima
 
         # ── 3. PETER LYNCH ───────────────────────────────────────────────────
         # Só para CRESCIMENTO com DY confiável e lpa > 0 e roe > 0
         if is_growth and pl > 0 and dy_confiavel and lpa > 0 and roe > 0:
-            payout_ratio = min((dy * p) / lpa, 0.95)
+            payout_ratio = min((dy * p) / lpa, MACRO.LYNCH_PAYOUT_MAX)
             retencao = 1 - payout_ratio
             g = roe * retencao
-            g = min(g, 0.25)
-            pl_justo = 1.5 * (g * 100)
-            pl_justo = min(pl_justo, 35)
+            g = min(g, MACRO.LYNCH_G_MAX)
+            pl_justo = MACRO.LYNCH_PL_MULTIPLICADOR * (g * 100)
+            pl_justo = min(pl_justo, MACRO.LYNCH_PL_MAX)
             metodos['Lynch'] = lpa * pl_justo
 
         # ── 4. GORDON ─────────────────────────────────────────────────────────
         # Modelo de dividendos; exige DY confiável e real (>4%) e ROE sólido
-        if dy_confiavel and dy > 0.04 and roe > 0.10:
-            payout_ratio_g = min((dy * p) / lpa, 0.95) if lpa > 0 else 0.5
+        if dy_confiavel and dy > MACRO.GORDON_DY_MIN and roe > MACRO.GORDON_ROE_MIN:
+            payout_ratio_g = min((dy * p) / lpa, MACRO.GORDON_PAYOUT_MAX) if lpa > 0 else 0.5
             retencao_g = 1 - payout_ratio_g
             g = roe * retencao_g
-            g = min(g, 0.08)
-            k = selic + 0.07
+            g = min(g, MACRO.GORDON_G_MAX)
+            k = selic + MACRO.GORDON_PREMIO_RISCO
             if k > g:
                 div_prox = (dy * p) * (1 + g)
                 metodos['Gordon'] = div_prox / (k - g)
@@ -151,9 +142,9 @@ class ValuationEngine:
             # statistics.median: 1 valor → o valor; 2 → média; 3+ → mediana.
             fair_value = statistics.median(valores_validos)
             upside     = (fair_value / p) - 1
-            
+
             if len(valores_validos) >= 2:
-                if max(valores_validos) / max(min(valores_validos), 0.01) > 2.0:
+                if max(valores_validos) / max(min(valores_validos), 0.01) > MACRO.METODOS_DIVERGENCIA_RATIO:
                     riscos.append("Métodos divergentes")
                     confianca -= 10
 
@@ -162,7 +153,7 @@ class ValuationEngine:
             confianca -= 10
 
         # ── SCORE (Sigmoid) ───────────────────────────────────────────────────
-        score = 50 + 48 * (2 / (1 + math.exp(-upside * 3)) - 1)
+        score = 50 + MACRO.SCORE_SIGMOID_AMPLITUDE * (2 / (1 + math.exp(-upside * MACRO.SCORE_SIGMOID_INCLINACAO)) - 1)
         score = max(0, min(100, score))
 
         # Ajustes de qualidade (aplicados independente do valuation)
@@ -180,24 +171,24 @@ class ValuationEngine:
                 divida_liq_ebitda = 0.0
         except (TypeError, ValueError):
             divida_liq_ebitda = 0.0
-        if divida_liq_ebitda > 3.0: 
+        if divida_liq_ebitda > MACRO.DIVIDA_EBITDA_LIMITE:
             score -= 15
             riscos.append("Dívida elevada")
             confianca -= 15
-            
-        if roe > 0.20:  score += 10
-        if roe < 0.05:  score -= 15
-        
-        if not dy_confiavel: 
+
+        if roe > MACRO.ROE_BONUS_MIN:    score += 10
+        if roe < MACRO.ROE_PENALIDADE_MAX: score -= 15
+
+        if not dy_confiavel:
             score -= 5
             riscos.append("DY suspeito")
             confianca -= 20
-            
-        if not pl_confiavel: 
+
+        if not pl_confiavel:
             score -= 5
             riscos.append("PL não confiável")
             confianca -= 20
-            
+
         score = max(0, min(100, score))
 
         # ── RECOMENDAÇÃO ──────────────────────────────────────────────────────
@@ -207,13 +198,13 @@ class ValuationEngine:
             riscos.append("Técnico negativo")
             confianca -= 10
 
-        if upside > 0.15 and score >= 60 and confianca >= 50:
+        if upside > MACRO.REC_UPSIDE_COMPRA and score >= MACRO.REC_SCORE_COMPRA and confianca >= MACRO.REC_CONFIANCA_COMPRA:
             rec = "COMPRA"
-            if score >= 75 and confianca >= 70:
+            if score >= MACRO.REC_SCORE_FORTE and confianca >= MACRO.REC_CONFIANCA_FORTE:
                 rec = "COMPRA FORTE"
-        elif score >= 75 and upside <= 0:
+        elif score >= MACRO.REC_SCORE_FORTE and upside <= 0:
             rec = "QUALIDADE — AGUARDAR"
-        elif upside < -0.15:
+        elif upside < MACRO.REC_UPSIDE_VENDA:
             rec = "VENDA"
         else:
             rec = "NEUTRO"
