@@ -1,0 +1,30 @@
+﻿{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "autoMemoryEnabled": true,
+  "permissions": {
+    "allow": [
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(python -m pytest tests/ *)",
+      "Bash(ruff check *)",
+      "Bash(ruff format --check *)",
+      "Bash(python --version)"
+    ],
+    "ask": [
+      "Bash(streamlit run *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(pip install *)",
+      "Bash(python -m pip install *)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Bash(git push *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean *)"
+    ]
+  }
+}

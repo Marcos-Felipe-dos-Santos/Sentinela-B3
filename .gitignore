@@ -166,3 +166,5 @@ site/
 # Arquivos de lock (se não quiser versionar)
 # poetry.lock
 # Pipfile.lock
+
+verificar_setup.bat
