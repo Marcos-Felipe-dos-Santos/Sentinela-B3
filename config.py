@@ -119,6 +119,11 @@ def get_selic_atual() -> float:
 
 RISK_FREE_RATE_FALLBACK = SELIC_FALLBACK  # alias estático — preferir get_selic_atual()
 
+# Fallbacks para indicadores macro dinâmicos
+CDI_FALLBACK      = 0.143   # CDI ≈ Selic (BCB SGS série 12 anualizada)
+IPCA_12M_FALLBACK = 0.055   # IPCA acumulado 12m estimado (BCB SGS série 433)
+NTNB_LONGA_FALLBACK = 0.070 # Yield real NTN-B vencimento >= 2035 (Tesouro Direto)
+
 
 # ── PARÂMETROS ECONÔMICOS CENTRALIZADOS ──────────────────────────────────────
 # Todos os limiares usados pelos engines em um lugar nomeado.
@@ -154,7 +159,7 @@ class MacroContext:
     GORDON_DY_MIN           = 0.04
     GORDON_ROE_MIN          = 0.10
     GORDON_G_MAX            = 0.08
-    GORDON_PREMIO_RISCO     = 0.07     # k = Selic + 7%
+    GORDON_PREMIO_RISCO     = 0.07     # k = Selic + 7% (também reutilizado em cost_of_equity_real)
     GORDON_PAYOUT_MAX       = 0.95
 
     # Divergência entre métodos
@@ -185,6 +190,118 @@ class MacroContext:
     FII_PVP_DESCONTO        = 0.85
     FII_UPSIDE_COMPRA       = 0.10
     FII_UPSIDE_VENDA        = -0.10
+
+    # ── Indicadores dinâmicos ──────────────────────────────────────────────────
+
+    def __init__(self, selic: float | None = None):
+        # selic explícito: útil em testes (evita chamada BCB). Sem arg: usa get_selic_atual().
+        self._selic: float = selic if selic is not None else get_selic_atual()
+        self._cdi:      float | None = None
+        self._ipca_12m: float | None = None
+        self._ntnb_longa: float | None = None
+
+    @property
+    def selic(self) -> float:
+        return self._selic
+
+    @property
+    def selic_liquida(self) -> float:
+        """Selic líquida de IR para FIIs: Selic × 0.85."""
+        return self._selic * self.FII_FATOR_IR
+
+    @property
+    def cdi(self) -> float:
+        """CDI anualizado base 252 (BCB SGS série 12). Fallback: CDI_FALLBACK."""
+        if self._cdi is None:
+            d = self._fetch_bcb(12)        # CDI diário % a.d. como decimal
+            if d is not None:
+                self._cdi = (1 + d) ** 252 - 1
+            else:
+                self._cdi = CDI_FALLBACK
+        return self._cdi
+
+    @property
+    def ipca_12m(self) -> float:
+        """IPCA acumulado últimos 12 meses (BCB SGS série 433). Fallback: IPCA_12M_FALLBACK."""
+        if self._ipca_12m is None:
+            self._ipca_12m = self._fetch_ipca_acumulado()
+        return self._ipca_12m
+
+    @property
+    def ntnb_longa(self) -> float:
+        """Yield real NTN-B vencimento >= 2035 (Tesouro Direto). Fallback: NTNB_LONGA_FALLBACK."""
+        if self._ntnb_longa is None:
+            self._ntnb_longa = self._fetch_ntnb()
+        return self._ntnb_longa
+
+    def cost_of_equity_real(self) -> float:
+        """Custo de capital próprio real = yield NTN-B longa + prêmio de risco."""
+        return self.ntnb_longa + self.GORDON_PREMIO_RISCO
+
+    # ── Fetchers privados ──────────────────────────────────────────────────────
+
+    def _fetch_bcb(self, serie: int) -> float | None:
+        """Retorna último valor da série BCB SGS como decimal (÷100), ou None em falha."""
+        try:
+            url = (
+                f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{serie}/"
+                "dados/ultimos/1?formato=json"
+            )
+            resp = requests.get(url, timeout=5)
+            resp.raise_for_status()
+            return float(resp.json()[0]["valor"]) / 100
+        except Exception as exc:
+            logger.warning("Falha BCB SGS série %d: %s", serie, exc)
+            return None
+
+    def _fetch_ipca_acumulado(self) -> float:
+        """IPCA acumulado 12 meses via BCB SGS série 433. Retorna decimal."""
+        try:
+            url = (
+                "https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/"
+                "dados/ultimos/12?formato=json"
+            )
+            resp = requests.get(url, timeout=5)
+            resp.raise_for_status()
+            acumulado = 1.0
+            for item in resp.json():
+                acumulado *= 1 + float(item["valor"]) / 100
+            return acumulado - 1.0
+        except Exception as exc:
+            logger.warning("Falha IPCA BCB série 433: %s. Usando fallback.", exc)
+            return IPCA_12M_FALLBACK
+
+    def _fetch_ntnb(self) -> float:
+        """Yield real médio de NTN-B com vencimento >= 2035 via Tesouro Direto. Retorna decimal."""
+        try:
+            url = (
+                "https://www.tesourodireto.com.br/json/br/com/b3/tesourodireto/"
+                "service/api/treasureList.json"
+            )
+            resp = requests.get(
+                url, timeout=10, headers={"User-Agent": "Mozilla/5.0"}
+            )
+            resp.raise_for_status()
+            bonds = resp.json()["response"]["TrsrBdTradgList"]
+            rates: list[float] = []
+            for item in bonds:
+                bd = item["TrsrBd"]
+                nm   = str(bd.get("nm", ""))
+                venc = str(bd.get("mtrtyDt", ""))
+                ano  = int(venc[:4]) if len(venc) >= 4 and venc[:4].isdigit() else 0
+                if "IPCA+" in nm and ano >= 2035:
+                    # taxa pode estar em sellr.anulInvstmtRate ou no nível do TrsrBd
+                    taxa = (
+                        bd.get("sellr", {}).get("anulInvstmtRate")
+                        or bd.get("anulInvstmtRate")
+                    )
+                    if taxa is not None:
+                        rates.append(float(taxa))
+            if rates:
+                return sum(rates) / len(rates) / 100
+        except Exception as exc:
+            logger.warning("Falha NTN-B Tesouro Direto: %s. Usando fallback.", exc)
+        return NTNB_LONGA_FALLBACK
 
 
 # Instância global — engines importam MACRO em vez de literais
