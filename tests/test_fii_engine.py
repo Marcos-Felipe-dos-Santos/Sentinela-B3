@@ -1,10 +1,22 @@
 import pytest
-from fii_engine import FIIEngine
+from fii_engine import FIIEngine, VACANCIA_CONHECIDA
 from unittest.mock import patch
+
+
+class FakeFIIProvider:
+    """CVMFIIProvider stub para testes de FIIEngine."""
+
+    def __init__(self, resultado=None):
+        self._resultado = resultado
+
+    def obter_dados_fii(self, cnpj: str) -> dict | None:
+        return self._resultado
+
 
 @pytest.fixture
 def engine():
-    return FIIEngine()
+    # CVM desabilitado por padrão — sem chamadas de rede
+    return FIIEngine(cvm_provider=None)
 
 def test_fii_engine_valid_input(engine):
     dados = {
@@ -76,3 +88,67 @@ def test_fii_preco_justo_desconta_ir_selic_liquida(engine):
         result = engine.analisar(dados)
 
     assert result['fair_value'] == pytest.approx(117.65, abs=0.01)
+
+
+# ---------------------------------------------------------------------------
+# CVM FII integration tests
+# ---------------------------------------------------------------------------
+
+def test_fii_cvm_vpa_substitui_pvp_dados():
+    """VPA da CVM (Valor_Patrimonial_Cotas) deve substituir o pvp dos dados."""
+    engine = FIIEngine(cvm_provider=FakeFIIProvider({
+        'valor_cota':        155.0,
+        'patrimonio_liquido': 1_550_000_000.0,
+        'vacancia_fisica':   None,
+    }))
+    dados = {'ticker': 'XPML11', 'preco_atual': 150.0, 'pvp': 0.9, 'dy': 0.08}
+
+    with patch('fii_engine.get_selic_atual', return_value=0.10):
+        result = engine.analisar(dados)
+
+    assert result is not None
+    assert result['pvp'] == pytest.approx(150.0 / 155.0)  # CVM VPA, não Yahoo pvp
+
+
+def test_fii_cvm_vacancia_disponivel_usa_cvm():
+    """Quando CVM fornece vacância, deve ter precedência sobre VACANCIA_CONHECIDA."""
+    # HGLG11 está em VACANCIA_CONHECIDA com 0.08; CVM simula 0.12
+    engine = FIIEngine(cvm_provider=FakeFIIProvider({
+        'valor_cota':      None,
+        'vacancia_fisica': 0.12,
+    }))
+    dados = {'ticker': 'HGLG11', 'preco_atual': 150.0, 'dy': 0.08, 'pvp': 0.9}
+
+    with patch('fii_engine.get_selic_atual', return_value=0.10):
+        result = engine.analisar(dados)
+
+    assert result['vacancia_fonte'] == 'CVM'
+    assert result['dy_efetivo'] == pytest.approx(0.08 * (1 - 0.12))
+
+
+def test_fii_vacancia_manual_tem_flag():
+    """VACANCIA_CONHECIDA como fallback deve marcar vacancia_fonte='manual'."""
+    engine = FIIEngine(cvm_provider=None)
+    dados = {'ticker': 'HGLG11', 'preco_atual': 150.0, 'dy': 0.08, 'pvp': 0.9}
+
+    with patch('fii_engine.get_selic_atual', return_value=0.10):
+        result = engine.analisar(dados)
+
+    assert result['vacancia_fonte'] == 'manual'
+    assert result['dy_efetivo'] == pytest.approx(0.08 * (1 - VACANCIA_CONHECIDA['HGLG11']))
+
+
+def test_fii_cvm_falha_graceful():
+    """Exceção no CVMFIIProvider não deve impedir a análise — usa pvp dos dados."""
+    class ErrorProvider:
+        def obter_dados_fii(self, cnpj):
+            raise RuntimeError("CVM offline")
+
+    engine = FIIEngine(cvm_provider=ErrorProvider())
+    dados = {'ticker': 'HGLG11', 'preco_atual': 150.0, 'dy': 0.08, 'pvp': 0.9}
+
+    with patch('fii_engine.get_selic_atual', return_value=0.10):
+        result = engine.analisar(dados)
+
+    assert result is not None
+    assert result['pvp'] == pytest.approx(0.9)  # fallback to dados pvp
