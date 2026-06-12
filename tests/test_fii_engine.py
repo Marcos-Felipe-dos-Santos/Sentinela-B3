@@ -54,12 +54,11 @@ def test_fii_engine_vacancy_adjustment(engine):
         
     assert result['dy'] == pytest.approx(0.10)
     assert result['dy_efetivo'] == pytest.approx(0.09) # 0.10 * (1 - 0.10)
-    assert result['fair_value'] == pytest.approx(90.0) # (100 * 0.09) / 0.10
+    assert result['fair_value'] == pytest.approx(105.88, abs=0.01) # (100 * 0.09) / (0.10 * 0.85) ≈ 105.88
 
 
 # ── Teste de baseline para bug conhecido ─────────────────────────────────────
 
-@pytest.mark.xfail(reason="BUG: FII usa Selic bruta, deveria usar Selic*0.85")
 def test_fii_preco_justo_desconta_ir_selic_liquida(engine):
     """FII é isento de IR: comparar com Selic*0.85, não Selic bruta.
 
