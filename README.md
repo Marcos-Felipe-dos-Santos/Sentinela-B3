@@ -1,164 +1,121 @@
-# 🧠 Sentinela B3
+# Sentinela B3
 
-Plataforma pessoal de análise de ativos da bolsa brasileira (**ações e FIIs**) com foco em valuation, análise técnica e suporte à decisão.
+**Plataforma educacional de análise de ações e FIIs da B3, com dados oficiais da CVM, metodologia transparente e qualidade de dados visível.**
 
-> ⚠️ **Projeto educacional e de uso pessoal. Não constitui recomendação de investimento.**
+![Python 3.13](https://img.shields.io/badge/Python-3.13-blue)
+![pytest](https://img.shields.io/badge/testes-255%20passing-brightgreen)
+![Licença MIT](https://img.shields.io/badge/licença-MIT-green)
 
----
-
-## 🚀 Visão Geral
-
-O **Sentinela B3** é uma aplicação construída em Python que integra múltiplas fontes de dados e metodologias de análise para gerar insights sobre ativos da B3.
-
-O projeto foi desenvolvido com foco em:
-
-* aprendizado prático de engenharia de software
-* construção de portfólio técnico
-* suporte a decisões pessoais de investimento
+![Terminal de Análise](docs/screenshot.png)
 
 ---
 
-## ✨ Funcionalidades
+## O que é
 
-### 📊 Análise Fundamentalista
+O Sentinela B3 é uma aplicação local construída em Python + Streamlit que combina dados oficiais da CVM com metodologias clássicas de valuation (Graham, Bazin, Lynch, Gordon) para apoiar o estudo de ações e FIIs da bolsa brasileira.
 
-* Valuation baseado em:
+O projeto é voltado para investidores individuais e estudantes que querem entender como os indicadores são calculados — com transparência total sobre de onde vêm os dados, qual é a confiança de cada fonte e onde a análise tem limitações.
 
-  * Graham
-  * Bazin
-  * Gordon
-  * Lynch
-* Cálculo de Confiança da IA e sinalização de Riscos
-* Score automático do ativo
-* Classificação (valor, renda ou crescimento)
-
-### 📈 Análise Técnica
-
-* RSI (Índice de Força Relativa)
-* MACD (Convergência e Divergência de Médias Móveis)
-* Bandas de Bollinger
-* Médias móveis (MA50 / MA200)
-* Identificação de tendência
-
-### 🏢 FIIs (Fundos Imobiliários)
-
-* Engine dedicada para FIIs
-* Avaliação baseada em:
-
-  * Dividend Yield
-  * P/VP
-  * Ajuste de vacância em FIIs
-  * Comparação com a Selic líquida de IR (Selic × 0.85), já que rendimentos de FII são isentos para pessoa física
-
-### 💼 Otimização de Portfólio
-
-* Otimização baseada em Teoria de Markowitz (Máximo Sharpe Ratio)
-* Portfólio segmentado ações/FIIs (60/40) automaticamente
-
-### 🤖 IA (Assistente)
-
-* Integração com modelos de IA para gerar análises resumidas
-* Fallback automático entre provedores
-
-### 🗄️ Banco de Dados
-
-* Armazenamento local com SQLite
-* Histórico de análises
-* Ferramentas de auditoria e limpeza
-
-### 📉 Visualização
-
-* Gráficos interativos com Plotly
-* Candlestick com médias móveis
-* Interface via Streamlit
+**Não é** um robô de investimentos, não emite ordens, não constitui consultoria financeira e não recomenda compra ou venda de nenhum ativo.
 
 ---
 
-## 🛠️ Stack Tecnológica
+## Funcionalidades principais
 
-* **Python 3.11+**
-* **Streamlit** — interface web
-* **Pandas / NumPy** — manipulação de dados
-* **Plotly** — visualização
-* **SQLite** — persistência local
-* **yfinance / scraping Fundamentus** — dados de mercado
-* **APIs de IA (Gemini / Groq / Ollama)**
+- 📊 **Valuation fundamentalista** — Graham, Bazin, Lynch e Gordon com fair value agregado por mediana
+- 🏛️ **Dados oficiais da CVM** — DFP/ITR para ações (ROE, margens, dívida, receita) e Informe Mensal para FIIs
+- 🔗 **Cascata de fontes resiliente** — CVM → brapi → yfinance → Fundamentus com fallback automático
+- 🔍 **Qualidade de dados visível** — badge inline, completude por campo, score de confiança por fonte
+- 📡 **Macro context dinâmico** — Selic, CDI, IPCA 12m e yield real NTN-B buscados ao vivo (BCB + Tesouro Direto)
+- 📈 **Análise técnica** — RSI, MACD, Bandas de Bollinger, MA50/MA200 com gráfico candlestick interativo
+- 🏢 **Engine dedicada para FIIs** — DY isento × Selic líquida (×0,85), P/VP, vacância
+- 👥 **Comparação setorial** — P/L, P/VP e DY médios dos peers do mesmo setor
+- 🤖 **Veredito IA** — análise em linguagem natural via Groq, Gemini ou Ollama (todos opcionais)
+- 💼 **Gestão de carteira** — rastreamento de posições com rentabilidade atualizada
 
 ---
 
-## 📦 Instalação
+## Stack
 
-```bash
-git clone https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3.git
-cd Sentinela-B3
+| Categoria | Tecnologia | Uso |
+|-----------|-----------|-----|
+| Interface | Streamlit ≥ 1.32 | App web local, dark theme |
+| Linguagem | Python 3.13 | Toda a lógica |
+| Dados de mercado | yfinance ≥ 0.2.50 | Cotação, histórico OHLC, fundamentos fallback |
+| Cotação preferencial | brapi (REST) | Preço e DY para ativos BR |
+| Fundamentos oficiais | CVM Dados Abertos | DFP/ITR ZIP (dados.cvm.gov.br) |
+| FIIs oficiais | CVM Informe Mensal | Patrimônio líquido e vacância |
+| Scraping complementar | Fundamentus | Fallback de múltiplos |
+| Macro | BCB SGS API | Selic (série 432), CDI (série 12), IPCA (série 433) |
+| Macro | Tesouro Direto JSON | Yield real NTN-B vencimento ≥ 2035 |
+| Manipulação de dados | Pandas ≥ 2.2, NumPy | ETL e séries temporais |
+| Visualização | Plotly ≥ 5.19 | Candlestick, barras de valuation |
+| Persistência | SQLite (WAL mode) | Histórico de análises local |
+| IA | Groq / Gemini / Ollama | Veredito em linguagem natural (todos opcionais) |
+| Testes | pytest ≥ 8.0 | 255 testes sintéticos, sem rede |
 
-python -m venv venv
-.\venv\Scripts\Activate.ps1  # Windows
-# source venv/bin/activate  # Linux/Mac
+---
 
-pip install -r requirements.txt
+## Arquitetura de dados
+
+### Cascata de fontes
+
+```
+Ações — fundamentos
+  1. CVM Dados Abertos (DFP/ITR)   ← fonte primária, dados auditados
+        ROE, margens, receita, dívida, LPA, VPA
+  2. brapi                          ← cotação e DY preferencial
+        preço_atual, dividendYield, P/L, P/VP
+  3. yfinance                       ← fallback geral
+        todos os campos quando brapi falha
+  4. Fundamentus (scraping)         ← fallback complementar
+        múltiplos quando yfinance está incompleto
+
+FIIs — fundamentos
+  1. CVM Informe Mensal             ← patrimônio, cotas, tipo de fundo
+  2. brapi / yfinance               ← cotação e DY
+  3. FII_MANUAL_FALLBACK (config)   ← vacância estimada para fundos sem cobertura
+
+Macro (MacroContext)
+  BCB SGS série 432  → Selic anual (cache 24h)
+  BCB SGS série 12   → CDI diário → anualizado base 252 (lazy, cache instância)
+  BCB SGS série 433  → IPCA mensal → acumulado 12m composto (lazy)
+  Tesouro Direto JSON → yield real NTN-B vencimento ≥ 2035 (lazy)
+  Hardcoded fallback se qualquer API falhar
 ```
 
----
+### Score de confiança por fonte
 
-## ▶️ Execução
+| Fonte | Score | Dados típicos |
+|-------|-------|---------------|
+| CVM | 100 | ROE, VPA, LPA, margens, receita, dívida — balanço auditado |
+| brapi | 80 | Cotação, DY, P/L, P/VP |
+| yfinance | 60 | Fallback geral de mercado |
+| Fundamentus | 40 | Fallback de múltiplos via scraping |
+| Manual / cache | 20–30 | Estimativas e dados envelhecidos |
 
-```bash
-streamlit run app.py
-```
-
----
-
-## 🧪 Estrutura do Projeto
-
-```txt
-.
-├── app.py                          # Interface Streamlit
-├── market_engine.py                # Dados de mercado e cache
-├── valuation_engine.py             # Análise de ações
-├── fii_engine.py                   # Análise de FIIs
-├── technical_engine.py             # Indicadores técnicos
-├── portfolio_engine.py             # Otimização de portfólio
-├── peers_engine.py                 # Comparação com pares
-├── database.py                     # Persistência SQLite
-├── ai_core.py                      # Camada de IA
-├── config.py                       # Configurações e constantes
-├── fundamentus_scraper.py          # Scraper Fundamentus
-├── brapi_provider.py               # Provedor Brapi
-├── auditar_recomendacoes.py        # Auditoria operacional
-├── auditoria.py                    # Diagnóstico legado
-├── limpar_banco.py                 # Utilitário de limpeza
-├── requirements.txt
-├── sentinela/                      # Pacote de domínio
-│   ├── domain/                     # Modelos e enums
-│   ├── services/                   # Classificador e serviços
-│   └── repositories/               # Repositório de análises
-├── backtesting/                    # Motor de backtesting
-├── tests/                          # Testes automatizados (pytest)
-└── docs/                           # Documentação técnica
-```
+O `DataQualityReport` exibe badge inline (🟢 Dados CVM / 🟡 Dados parciais / 🔴 Sem CVM), completude por campo e alertas de consistência (ex.: P/L declarado diverge > 10% de preço/LPA derivado).
 
 ---
 
-## 📐 Metodologia de valuation
+## Metodologia de valuation
 
 > Todo resultado gerado é educacional. Nenhuma saída constitui recomendação de compra ou venda.
 
 ### Graham (valor patrimonial)
 
-Fórmula: `√(22.5 × LPA × VPA)` onde LPA = preço / P/L e VPA = preço / P/VP.
-Piso de P/L em 7× (evita fair value absurdo em cíclicos com P/L muito baixo).
-Gates de aplicação: P/L ≤ 25, P/VP ≤ 3.0 (crescimento) ou ≤ 2.5 (renda), `pl_confiavel=True`.
+Fórmula: `√(22.5 × LPA × VPA)` com piso de P/L em 7× (evita fair value distorcido em cíclicos).
+Gates: P/L ≤ 25, P/VP ≤ 3,0 (crescimento) ou ≤ 2,5 (renda), `pl_confiavel=True`.
 
 ### Bazin (renda por dividendos)
 
 Fórmula: `(DY × Preço) / max(Selic, 5%)`.
 Gate: **DY ≥ 5%** — aplicado apenas a pagadoras consistentes, perfil RENDA.
-Taxa mínima usa `max(Selic, 0.05)` para não distorcer em cenários de Selic muito baixa.
+Taxa mínima usa `max(Selic, 0,05)` para não distorcer em cenários de Selic muito baixa.
 
 ### Peter Lynch (crescimento)
 
-Fórmula: `LPA × P/L_justo` onde `P/L_justo = 1.5 × (g × 100)`, cap 35.
+Fórmula: `LPA × P/L_justo` onde `P/L_justo = 1,5 × (g × 100)`, cap 35×.
 Taxa de crescimento: `g = ROE × (1 − payout)`, cap 25%.
 Aplicado apenas a perfil CRESCIMENTO (ROE > 20% e DY < 4%).
 
@@ -169,92 +126,135 @@ Gate: DY > 4%, ROE > 10% e k > g.
 
 ### Fair value agregado
 
-`statistics.median(métodos_válidos)`: com 1 método retorna o valor; com 2 retorna a média; com 3 ou mais retorna a mediana.
+`statistics.median(métodos_válidos)`: com 1 método retorna o valor; com 2 retorna a média; com 3 ou mais retorna a **mediana** — não a média aritmética.
 Quando os métodos divergem mais de 2× entre si, o risco "Métodos divergentes" é sinalizado e a confiança é penalizada.
 
 ### Normalização de DY
 
 Yahoo Finance retorna `dividendYield` de forma inconsistente para ativos brasileiros.
 Regra 1: se `DY > 1` → Yahoo retornou como percentual — dividir por 100.
-Regra 2: se `DY > 0.25` → dado impossível (> 25%) — descartado como inválido.
+Regra 2: se `DY > 0,25` → dado impossível (> 25%) — descartado como inválido.
 
 ### FIIs — engine dedicada
 
-Fórmula: `(Preço × DY_efetivo) / (Selic × 0.85)`.
+Fórmula: `(Preço × DY_efetivo) / (Selic × 0,85)`.
 `DY_efetivo` aplica desconto de vacância quando conhecida para o fundo.
-Os limiares de score (bônus/penalidade) usam igualmente a Selic líquida.
-
----
+Os limiares de score (bônus/penalidade) usam a Selic líquida (×0,85), não a Selic bruta — porque rendimentos de FII são isentos de IR para pessoa física enquanto renda fixa equivalente paga 15%.
 
 ### Decisões metodológicas
 
-**Gate de 5% no Bazin**: o modelo de Décio Bazin foi desenvolvido para empresas que distribuem dividendos de forma consistente. Aplicá-lo a ações com DY simbólico (1–4%) produziria um "preço justo de renda" para empresas que não são, de fato, pagadoras — gerando sinais distorcidos.
+**Gate de 5% no Bazin:** aplicá-lo a ações com DY simbólico (1–4%) produziria um "preço justo de renda" para empresas que não são, de fato, pagadoras consistentes — gerando sinais distorcidos.
 
-**Selic líquida no FII (× 0.85)**: rendimentos distribuídos por FIIs são isentos de Imposto de Renda para pessoa física, enquanto a renda fixa equivalente (CDB, Tesouro) sofre tributação de 15% no prazo longo. Comparar o DY isento com a Selic bruta subestimava o fair value do FII em aproximadamente 17%.
+**Selic líquida no FII (×0,85):** comparar o DY isento do FII com a Selic bruta subestimava o fair value em aproximadamente 17%.
 
-**Mediana no fair value**: Graham avalia patrimônio, Bazin avalia fluxo de dividendos e Gordon avalia crescimento futuro — são perspectivas econômicas distintas. Quando divergem expressivamente, a média aritmética produz um número sem interpretação clara. A mediana preserva o valor mais central sem ser distorcida pelos extremos.
+**Mediana no fair value:** Graham avalia patrimônio, Bazin avalia fluxo de dividendos e Gordon avalia crescimento — perspectivas econômicas distintas. Quando divergem expressivamente, a média aritmética produz um número sem interpretação clara. A mediana preserva o valor mais central sem ser distorcida pelos extremos.
 
-**Piso de P/L 7 no Graham**: empresas cíclicas frequentemente apresentam P/L muito baixo no pico do ciclo, o que inflaria artificialmente o LPA ajustado. O piso de 7× ancora o cálculo num mínimo razoável de avaliação de mercado, reduzindo ruído em dados de entrada de baixa qualidade.
+**Piso de P/L 7 no Graham:** empresas cíclicas frequentemente apresentam P/L muito baixo no pico do ciclo, o que inflaria artificialmente o LPA ajustado.
 
----
-
-## ⚠️ Limitações
-
-* Dependência de dados externos (Yahoo Finance / Fundamentus)
-* Possíveis inconsistências em scraping
-* Não otimizado para alta escala
-* Uso estritamente pessoal
+**MacroContext como base de cálculo:** todos os parâmetros econômicos (Selic, CDI, IPCA, NTN-B) são buscados ao vivo pelo `MacroContext` em `config.py` e compartilhados por todos os engines via `MACRO` global. Fallbacks hardcoded garantem funcionamento offline.
 
 ---
 
-## 🧪 Testes Automatizados
-
-O projeto conta com uma suíte de **180 testes automatizados** utilizando `pytest` para garantir a estabilidade do sistema contra edge-cases de dados e regras financeiras sem realizar requisições à internet.
+## Instalação
 
 ```bash
-# Executar a suíte de testes
-python -m pytest -q
+git clone https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3.git
+cd Sentinela-B3
+
+python -m venv venv
+
+# Windows
+venv\Scripts\activate
+
+# Linux / Mac
+source venv/bin/activate
+
+pip install -r requirements.txt
+
+# Variáveis de ambiente (todas opcionais — ver seção Configuração)
+cp .env.example .env
+
+streamlit run app.py
 ```
 
-Para mais informações, consulte a documentação da suíte de testes em `tests/README.md`.
+A aplicação abre em `http://localhost:8501`.
 
 ---
 
-## 📌 Próximos Passos
+## Configuração
 
-* [ ] Melhorar cobertura de testes
-* [ ] Cache inteligente de dados
-* [ ] Deploy em ambiente cloud
-* [ ] Dashboard mais avançado
-* [x] Backtesting de estratégias
+Todas as chaves são **opcionais**. Sem nenhuma delas, o sistema opera integralmente com fontes abertas (CVM, BCB SGS, yfinance).
 
----
+| Variável | Uso | Obrigatória? |
+|----------|-----|--------------|
+| `GROQ_API_KEY` | Veredito IA (Groq — llama-3.3-70b) | Não |
+| `GEMINI_API_KEY` | Veredito IA fallback (Gemini 2.0 Flash) | Não |
+| `BRAPI_TOKEN` | Aumenta o rate limit da brapi | Não |
 
-## 👨‍💻 Autor
-
-**Marcos Felipe dos Santos**
-
-Projeto desenvolvido como parte de aprendizado em:
-
-* engenharia de software
-* análise de dados financeiros
-* integração com APIs
+Sem chave de IA, a seção "Veredito IA" exibe mensagem informando indisponibilidade mas não bloqueia o valuation.
 
 ---
 
-## ⭐ Destaque para Recrutadores
+## Testes
 
-Este projeto demonstra:
+```bash
+python -m pytest tests/ -v
+```
 
-* organização de código em múltiplos módulos
-* aplicação de conceitos de valuation financeiro
-* integração de APIs externas
-* tratamento de erros e edge cases
-* uso de IA em aplicações reais
-* versionamento com commits estruturados
+**255 testes** cobrindo, sem tráfego de rede:
+
+| Módulo de teste | O que cobre |
+|-----------------|-------------|
+| `test_valuation_engine` | Graham, Bazin, Lynch, Gordon, fair value, gates, distressed |
+| `test_fii_engine` | Score FII, DY × Selic líquida, P/VP, vacância |
+| `test_market_engine` | Cascata de fontes, normalização DY, flags de qualidade |
+| `test_cvm_provider` | Download DFP, cálculo de indicadores, cache 7d |
+| `test_cvm_fii_provider` | Informe Mensal, cálculo de vacância |
+| `test_data_quality` | Completude, score de confiança, badge, validação cruzada |
+| `test_macro_context` | Selic, CDI anualizado, IPCA composto, NTN-B, fallbacks |
+| `test_technical_engine` | RSI, MACD, Bollinger, tendência |
+| `test_peers_engine` | Médias setoriais, filtros de peers |
+| `test_backtest_engine` | Backtesting de estratégias por ticker |
+| `test_provenance` | FieldProvenance, serialização, prioridade de fonte |
 
 ---
 
-## 📄 Licença
+## Limitações conhecidas
 
-Uso pessoal e educacional.
+- **Sem TTM (Trailing Twelve Months):** os dados CVM usam o último DFP anual disponível, não a soma dos últimos 4 ITRs trimestrais — o que pode atrasar indicadores em empresas com sazonalidade forte.
+- **Vacância de FIIs:** para fundos sem cobertura na API, a vacância é estimada manualmente em `FII_MANUAL_FALLBACK` — revisar periodicamente.
+- **CVM sem mapeamento:** o mapa ticker → CD_CVM (`cvm_ticker_map.py`) cobre os principais ativos; tickers não mapeados caem para brapi/yfinance.
+- **Tesouro Direto via JSON:** o endpoint pode retornar 403 dependendo do user-agent; o fallback hardcoded (`NTNB_LONGA_FALLBACK = 7,0%`) é ativado automaticamente.
+- **IA opcional:** sem chave de API configurada, o veredito em linguagem natural não é gerado.
+
+---
+
+## Roadmap
+
+| Status | Item |
+|--------|------|
+| ✅ | Pipeline CVM para fundamentos oficiais (DFP/ITR) |
+| ✅ | CVMFIIProvider com Informe Mensal e cálculo de vacância |
+| ✅ | MacroContext dinâmico (Selic, CDI, IPCA, NTN-B longa) |
+| ✅ | DataQualityReport com completude, score e badge inline |
+| ✅ | Correções econômicas: gate Bazin ≥ 5%, Selic líquida no FII, mediana no fair value |
+| ✅ | Gráfico de valuation por método com barras horizontais Plotly |
+| 🔄 | TTM (Trailing Twelve Months) via soma de ITRs trimestrais |
+| 🔄 | NTN-B longa como taxa de desconto no Gordon (em vez de Selic + 7%) |
+| 🔄 | Mapeamento CVM especializado para bancos (modelo P/VP justificado) |
+| 🔄 | Cobertura automática de todos os tickers via mapa CVM completo |
+| 🔄 | Deploy público (Streamlit Community Cloud) |
+
+---
+
+## Aviso legal
+
+Este projeto é **estritamente educacional**. Nenhuma análise, cálculo, recomendação, score ou badge gerado por este sistema constitui consultoria financeira, recomendação de compra ou venda de valores mobiliários, ou qualquer tipo de assessoria de investimento.
+
+Dados de mercado podem estar desatualizados, incompletos ou incorretos. Decisões de investimento devem sempre ser tomadas com o auxílio de um profissional certificado (CFP, CFA ou assessor de investimentos habilitado pela CVM).
+
+---
+
+## Licença
+
+MIT — uso pessoal e educacional.

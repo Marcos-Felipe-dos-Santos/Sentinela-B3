@@ -79,7 +79,7 @@ def _cor_recomendacao(rec: str) -> str:
 
 def _plotar_metodos(metodos_str: str, preco_atual: float):
     import re
-    pares = re.findall(r'(\w+):\s*R\$([0-9,.]+)', metodos_str)
+    pares = re.findall(r'(\w+):\s*R\$([0-9]+[.,][0-9]+)', metodos_str)
     if not pares:
         return None
     nomes = [p[0] for p in pares]
