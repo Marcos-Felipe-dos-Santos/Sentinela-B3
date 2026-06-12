@@ -1,5 +1,6 @@
 import logging
 import math
+import statistics
 from config import get_selic_atual, DISTRESSED_TICKERS
 
 logger = logging.getLogger("Valuation")
@@ -144,7 +145,11 @@ class ValuationEngine:
             fair_value = p
             upside     = 0.0
         else:
-            fair_value = sum(valores_validos) / len(valores_validos)
+            # Mediana em vez de média: Graham (patrimonial), Bazin (renda) e
+            # Gordon (DCF) respondem perguntas diferentes. Quando divergem >2x,
+            # a média aritmética produz um valor sem significado econômico.
+            # statistics.median: 1 valor → o valor; 2 → média; 3+ → mediana.
+            fair_value = statistics.median(valores_validos)
             upside     = (fair_value / p) - 1
             
             if len(valores_validos) >= 2:

@@ -426,7 +426,6 @@ def test_bazin_aciona_no_limite_de_5pct() -> None:
     assert 'Bazin' in resultado['metodos_usados']
 
 
-@pytest.mark.xfail(reason="BUG: fair_value usa média, deveria usar mediana")
 def test_fair_value_usa_mediana_com_tres_metodos() -> None:
     """Com Graham+Bazin+Gordon divergindo, fair_value deve ser a mediana, não a média.
 
