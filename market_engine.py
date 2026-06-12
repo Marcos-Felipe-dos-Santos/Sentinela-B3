@@ -7,6 +7,8 @@ import pandas as pd
 
 from brapi_provider import BrapiProvider
 from config import FII_MANUAL_FALLBACK
+from cvm_provider import CVMProvider
+from cvm_ticker_map import get_cd_cvm
 from database import DatabaseManager
 from fundamentus_scraper import FundamentusScraper
 from sentinela.domain.provenance import FieldProvenance, FieldValue
@@ -36,6 +38,20 @@ SOURCE_ALIASES = {
     'cache': 'fundamentals_cache',
     'manual_fii': 'manual_fallback',
     'yfinance_partial': 'yfinance',
+}
+
+# Campos do calcular_indicadores (CVM) → chaves de FUNDAMENTAL_KEYS.
+# divida_pl = (passivo_total - PL) / PL — proxy de alavancagem total,
+# não dívida líquida financeira; mapeado como melhor aproximação disponível.
+_CVM_TO_MARKET: dict[str, str] = {
+    'roe':                'roe',
+    'margem_liquida':     'margem_liquida',
+    'divida_pl':          'div_liq_patrimonio',
+    'patrimonio_liquido': 'patrimonio_liquido',
+    'lucro_liquido':      'lucro_liquido',
+    'receita_liquida':    'receita_liquida',
+    'ativo_total':        'ativo_total',
+    'ativo_circulante':   'ativo_circulante',
 }
 
 _DEFAULT_ASSET_CLASSIFIER = AssetClassifier()
@@ -179,6 +195,7 @@ class MarketEngine:
     def __init__(self, asset_classifier: Optional[AssetClassifier] = None) -> None:
         self.scraper = FundamentusScraper()
         self.brapi = BrapiProvider()
+        self.cvm = CVMProvider()
         self.database = DatabaseManager()
         self.asset_classifier = asset_classifier or AssetClassifier()
 
@@ -303,20 +320,25 @@ class MarketEngine:
             'campos_faltantes': [],
             'dados_cache': False,
             'dados_manual': False,
+            'cvm_disponivel': False,
             'riscos_dados': [],
         }
 
         # 1. yfinance: always first for price, history and fallback basics.
         self._buscar_yfinance(ticker, dados)
 
-        # 2. Brapi: preferred fundamentals source when available.
+        # 2. Brapi: cotação recente + complemento de fundamentos.
         brapi_ok = self._buscar_brapi(ticker, dados)
 
-        # 3. Fundamentus: fallback only when Brapi is unavailable/incomplete.
+        # 3. CVM: fundamentos oficiais das demonstrações financeiras.
+        #    Roda após brapi para ter a última palavra nos campos que provê.
+        self._buscar_cvm(ticker, dados)
+
+        # 4. Fundamentus: fallback only when Brapi is unavailable/incomplete.
         classifier = getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER)
-        missing_after_brapi = list_missing_required_fields(dados, classifier)
+        missing_after_providers = list_missing_required_fields(dados, classifier)
         fundamentus_ok = False
-        if not brapi_ok or missing_after_brapi:
+        if not brapi_ok or missing_after_providers:
             fundamentus_ok = self._buscar_fundamentus(ticker, dados)
 
         if not dados.get('fonte_preco'):
@@ -375,6 +397,10 @@ class MarketEngine:
                     dados['preco_atual'] = preco_info
                     dados['fonte_preco'] = 'yfinance'
                     self._record_field_sources(dados, ('preco_atual',), 'yfinance')
+
+                shares = _as_float(info.get('sharesOutstanding'))
+                if shares and shares > 0:
+                    dados['_shares_outstanding'] = shares
 
                 payload = {
                     'pl': pl_raw,
@@ -440,6 +466,77 @@ class MarketEngine:
         except Exception as e:
             logger.warning(f"[{ticker}] Brapi error: {e}")
 
+        return False
+
+    def _buscar_cvm(self, ticker: str, dados: Dict[str, Any]) -> bool:
+        """Preenche fundamentos a partir das DFPs oficiais da CVM.
+
+        Cobre: ROE, margens, PL, lucro, receita, ativo circulante/total,
+        alavancagem (proxy passivo/PL) e, se sharesOutstanding disponível,
+        também LPA, VPA, P/L e P/VP derivados do DFP.
+        """
+        cvm = getattr(self, 'cvm', None)
+        if cvm is None:
+            return False
+
+        cd_cvm = get_cd_cvm(ticker)
+        if cd_cvm is None:
+            dados['cvm_disponivel'] = False
+            return False
+
+        try:
+            historico = cvm.calcular_indicadores(cd_cvm, anos=1)
+            if not historico:
+                dados['cvm_disponivel'] = False
+                return False
+
+            ind = historico[max(historico)]
+
+            # Campos com mapeamento direto para FUNDAMENTAL_KEYS
+            cvm_campos: Dict[str, Any] = {}
+            for cvm_key, market_key in _CVM_TO_MARKET.items():
+                v = ind.get(cvm_key)
+                if v is not None:
+                    cvm_campos[market_key] = v
+
+            # Derivados por ação — requer sharesOutstanding do yfinance
+            shares = dados.get('_shares_outstanding')
+            preco = _as_float(dados.get('preco_atual'))
+            lucro = ind.get('lucro_liquido')
+            pl_val = ind.get('patrimonio_liquido')
+
+            if shares and shares > 0:
+                if lucro is not None:
+                    lpa_cvm = lucro / shares
+                    cvm_campos['lpa'] = lpa_cvm
+                    if preco and preco > 0 and lpa_cvm != 0:
+                        cvm_campos['pl'] = preco / lpa_cvm
+
+                if pl_val is not None:
+                    vpa_cvm = pl_val / shares
+                    cvm_campos['vpa'] = vpa_cvm
+                    if preco and preco > 0 and vpa_cvm != 0:
+                        cvm_campos['pvp'] = preco / vpa_cvm
+
+            preenchidos = merge_if_valid(
+                dados,
+                cvm_campos,
+                overwrite=True,
+                allowed_keys=set(FUNDAMENTAL_KEYS),
+            )
+            self._record_field_sources(dados, preenchidos, 'CVM')
+
+            campos_fund = [c for c in preenchidos if c in FUNDAMENTAL_KEYS and c != 'quote_type']
+            if campos_fund:
+                _definir_fonte_fundamentos(dados, 'CVM')
+                dados['cvm_disponivel'] = True
+                logger.info(f"[{ticker}] CVM preencheu {len(campos_fund)} campos (cd_cvm={cd_cvm})")
+                return True
+
+        except Exception as exc:
+            logger.warning(f"[{ticker}] CVM error: {exc}")
+
+        dados['cvm_disponivel'] = False
         return False
 
     def _buscar_fundamentus(self, ticker: str, dados: Dict[str, Any]) -> bool:

@@ -1,5 +1,6 @@
 import market_engine
 import pandas as pd
+import pytest
 
 from market_engine import (
     MarketEngine,
@@ -8,6 +9,44 @@ from market_engine import (
     merge_if_valid,
 )
 from sentinela.domain.provenance import FieldValue
+
+
+class FakeCVM:
+    """CVM provider stub para testes de market_engine."""
+
+    def __init__(self, resultado=None):
+        # resultado=None → sem dado; resultado={ano: {...}} → retorna esse dict
+        self._resultado = resultado
+
+    def calcular_indicadores(self, cd_cvm: int, anos: int = 1) -> dict:
+        if self._resultado is None:
+            return {}
+        return self._resultado
+
+
+def _cvm_ind(
+    *,
+    patrimonio_liquido=300_000_000.0,
+    lucro_liquido=60_000_000.0,
+    receita_liquida=500_000_000.0,
+    roe=0.20,
+    margem_liquida=0.12,
+    divida_pl=0.80,
+    ativo_total=1_000_000_000.0,
+    ativo_circulante=300_000_000.0,
+):
+    return {
+        2025: {
+            "patrimonio_liquido": patrimonio_liquido,
+            "lucro_liquido":      lucro_liquido,
+            "receita_liquida":    receita_liquida,
+            "roe":                roe,
+            "margem_liquida":     margem_liquida,
+            "divida_pl":          divida_pl,
+            "ativo_total":        ativo_total,
+            "ativo_circulante":   ativo_circulante,
+        }
+    }
 
 
 class FakeTicker:
@@ -62,7 +101,7 @@ def _historico(preco=10.0):
     )
 
 
-def _engine(monkeypatch, *, info, historico=None, scraper=None, brapi=None, cache=None):
+def _engine(monkeypatch, *, info, historico=None, scraper=None, brapi=None, cache=None, cvm=None):
     monkeypatch.setattr(
         "market_engine.yf.Ticker",
         lambda ticker: FakeTicker(info=info, historico=historico),
@@ -71,6 +110,9 @@ def _engine(monkeypatch, *, info, historico=None, scraper=None, brapi=None, cach
     engine.scraper = FakeScraper(scraper if scraper is not None else {"erro_scraper": True})
     engine.brapi = brapi if brapi is not None else FakeBrapi(disponivel=False)
     engine.database = cache
+    # cvm=None → atributo não definido → getattr(engine, 'cvm', None) retorna None → pula CVM
+    if cvm is not None:
+        engine.cvm = cvm
     return engine
 
 
@@ -536,3 +578,104 @@ def test_merge_if_valid_only_fills_missing_fields():
 
     assert changed == ["pvp"]
     assert base == {"pl": 10.0, "pvp": 1.2, "dy": 0}
+
+
+# ---------------------------------------------------------------------------
+# CVM integration tests
+# ---------------------------------------------------------------------------
+
+def test_cvm_fills_fundamentals_when_ticker_mapped(monkeypatch):
+    """CVM preenche roe, margem_liquida e patrimonio_liquido para PETR4."""
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(38.0),
+        info={"currentPrice": 38.0, "quoteType": "EQUITY"},
+        cvm=FakeCVM(_cvm_ind(roe=0.18, margem_liquida=0.14)),
+    )
+
+    dados = engine.buscar_dados_ticker("PETR4")
+
+    assert dados["roe"] == pytest.approx(0.18)
+    assert dados["margem_liquida"] == pytest.approx(0.14)
+    assert dados["patrimonio_liquido"] == pytest.approx(300_000_000.0)
+    assert dados["cvm_disponivel"] is True
+    assert dados["fonte_fundamentos"] == "CVM"
+
+
+def test_cvm_disponivel_false_when_ticker_not_mapped(monkeypatch):
+    """Ticker sem mapeamento CVM deve ter cvm_disponivel=False."""
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(15.0),
+        info={"currentPrice": 15.0, "quoteType": "EQUITY", "trailingPE": 10.0,
+              "priceToBook": 1.2, "returnOnEquity": 0.10, "dividendYield": 0.04},
+        cvm=FakeCVM(_cvm_ind()),  # CVM ativo mas ticker ZZZZZ9 não está no mapa
+    )
+
+    dados = engine.buscar_dados_ticker("ZZZZZ9")
+
+    assert dados["cvm_disponivel"] is False
+
+
+def test_cvm_failure_falls_back_gracefully(monkeypatch):
+    """Exceção no CVM não impede retorno dos dados das fontes existentes."""
+    class ErrorCVM:
+        def calcular_indicadores(self, *args, **kwargs):
+            raise RuntimeError("simulated CVM failure")
+
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(22.0),
+        info={"currentPrice": 22.0, "trailingPE": 8.0, "priceToBook": 1.2,
+              "returnOnEquity": 0.15, "dividendYield": 0.04, "quoteType": "EQUITY"},
+        cvm=ErrorCVM(),
+    )
+
+    dados = engine.buscar_dados_ticker("PETR4")
+
+    assert dados["preco_atual"] == pytest.approx(22.0)
+    assert dados["cvm_disponivel"] is False
+    assert dados["pl"] == pytest.approx(8.0)   # yfinance fallback intacto
+
+
+def test_cvm_computes_pl_pvp_from_shares(monkeypatch):
+    """Com sharesOutstanding disponível, CVM deriva P/L e P/VP."""
+    shares = 13_000_000_000.0  # 13 bilhões de ações
+    lucro  = 60_000_000_000.0  # 60 bi lucro
+    pl_val = 300_000_000_000.0  # 300 bi PL
+    preco  = 38.0
+
+    lpa_esperado = lucro / shares
+    vpa_esperado = pl_val / shares
+
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(preco),
+        info={"currentPrice": preco, "quoteType": "EQUITY",
+              "sharesOutstanding": shares},
+        cvm=FakeCVM(_cvm_ind(lucro_liquido=lucro, patrimonio_liquido=pl_val)),
+    )
+
+    dados = engine.buscar_dados_ticker("PETR4")
+
+    assert dados["lpa"] == pytest.approx(lpa_esperado)
+    assert dados["vpa"] == pytest.approx(vpa_esperado)
+    assert dados["pl"]  == pytest.approx(preco / lpa_esperado)
+    assert dados["pvp"] == pytest.approx(preco / vpa_esperado)
+
+
+def test_cvm_overrides_brapi_fundamentals(monkeypatch):
+    """CVM (mais confiável) deve sobrescrever ROE fornecido pelo brapi."""
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(30.0),
+        info={"currentPrice": 30.0, "quoteType": "EQUITY"},
+        brapi=FakeBrapi({"pl": 9.0, "pvp": 1.5, "roe": 0.99, "dy": 0.05}),
+        cvm=FakeCVM(_cvm_ind(roe=0.20)),
+    )
+
+    dados = engine.buscar_dados_ticker("PETR4")
+
+    # CVM sobrescreve o roe absurdo do brapi
+    assert dados["roe"] == pytest.approx(0.20)
+    assert dados["fonte_fundamentos"] == "CVM"
