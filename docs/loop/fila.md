@@ -75,7 +75,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   Todo ticket respeita os arquivos travados por fase (`docs/PLANO.md`, seção 8). Os de `cvm_provider.py` (E-7, E-8, E-20) ficam agendados para a Fase 1 e precisam terminar antes da Fase 2A.
   Cada ticket leva título Conventional Commit, arquivos, cenário de falha, correção esperada e aceite com nome do teste. Não abrir issues.
 
-- [ ] **F0-6** · levantamento · `docs: add phase 2 decision dossier`
+- [x] **F0-6** · levantamento · `docs: add phase 2 decision dossier`
   Em `docs/decisoes/dossie-fase2.md`, com o script em `scripts/dossie_fase2.py`, sem alterar módulos de produção. Amostra: os tickers dos mapas atuais, nunca a carteira.
   - **E-1:** ações da Composição do Capital da CVM (ON + PN − tesouraria, na escala do documento) contra o `sharesOutstanding` do yfinance, ticker a ticker; divergências acima de 5%, casos com duas classes de ação e efeito no LPA, VPA e P/L.
   - **Taxas:** fair value por método com a Selic de 10% a 15% em passos de 0,5 (incluindo 13,75%) e com k real a partir da NTN-B longa mais três níveis de prêmio. Para variar as taxas, usar o mesmo mecanismo da fixture do F0-2.
