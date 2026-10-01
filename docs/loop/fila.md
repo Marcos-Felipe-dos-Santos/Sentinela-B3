@@ -66,7 +66,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - o que quebra se o módulo sair (testes, cobertura, cascata);
   - se brapi + CVM cobrem esses campos no universo mapeado.
 
-- [ ] **F0-5** · docs · `docs: add Jules backlog`
+- [x] **F0-5** · docs · `docs: add Jules backlog`
   `docs/jules-backlog.md` em três grupos:
   - **A:** configuração para o Jules revisar os PRs de fase.
   - **B:** um ticket por módulo com especificação externa (`technical_engine`, `fundamentus_scraper._limpar_valor`, `database.adicionar_posicao`, `cvm_provider`). Aceite = mutation score ≥ 80% com o mutmut 3, com aviso explícito de que um teste vermelho pode ser o resultado correto — o RSI hoje devolve 50 onde Wilder manda 100.

@@ -72,3 +72,13 @@
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos:** manter ou remover o scraper (E-11 × F-25) e o destino da flag `erro_scraper`; as 5 perguntas estão no fim do documento.
 - **Para o Marcos revisar:** a tabela da seção 2 e a afirmação de que, em instalação limpa, o scraper já está praticamente morto por falta do `cloudscraper` (vem da auditoria, não foi reproduzida).
+
+### F0-5 — docs: add Jules backlog
+- **Status:** sucesso
+- **O que foi feito:** `docs/jules-backlog.md` em três grupos, sem abrir issues. **A:** configuração para o Jules revisar PRs de fase (leituras obrigatórias, conferências por commit, resíduos só apontados). **B:** quatro tickets de teste com especificação externa e meta de mutation ≥ 80% (B1 `technical_engine`, B2 `_limpar_valor`, B3 `adicionar_posicao`, B4 `cvm_provider` em três subtickets sequenciais E-20 → E-8 → E-7, a terminar antes da Fase 2A), com o aviso de que teste vermelho pode ser o resultado correto. **C:** achados de baixa severidade agrupados por arquivo (README, `.env.example`, `peers_engine.py`, `data_quality.py`, `config.py`), mais uma tabela com os que ficam fora do Jules e o item do plano que os cobre.
+- **Divergências do código encontradas ao especificar (ficam como cenário de falha nos tickets, sem correção):** RSI 50 onde Wilder manda 100 (`technical_engine.py:22-23`); bandas de Bollinger com desvio amostral (`:49`); ATR com média simples e não suavização de Wilder (`:72`); venda parcial altera o preço médio em `database.py:69-72`; `_limpar_valor` lê `"3.5"` como decimal US e `"1.500"` como milhar.
+- **Dificuldades:** o PLANO lista `BRAPI_TOKEN` fora do `.env.example` como ticket do grupo C, mas o loop não lê arquivos `.env*`. **Como resolvi:** o ticket C-B marca o fato como não verificado.
+- **Testes:** 278 → 278 (só documentação).
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** (0) o critério de seleção do E-8 (`VERSAO` × `DT_REFER`), porque a correção da auditoria não resolve a republicação — o ticket B4.2 só abre depois disso; (1) o ticket B2 só vale se o scraper não for removido (F0-4); (2) quando abrir cada ticket no Jules, respeitando a janela de arquivos travados; (3) as fontes oficiais dos segmentos de FII do ticket C-E (sem fonte, o Jules remove o comentário).
+- **Para o Marcos revisar:** os quatro cenários de divergência do B1 e a regra de venda parcial do B3 (custo médio inalterado na venda), que é a especificação externa assumida; se você usa outra regra de apuração, ajuste o ticket antes de repassar.
