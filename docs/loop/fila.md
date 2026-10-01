@@ -12,7 +12,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
 ## Itens
 
-- [ ] **F0-0** · docs · `docs: add red team audit with normalized finding IDs`
+- [x] **F0-0** · docs · `docs: add red team audit with normalized finding IDs`
   A auditoria de 9/9 está em `docs/auditoria/2026-09-red-team.md`, ainda com a numeração quebrada. Normalizar sem mudar o conteúdo dos achados:
   - cada bloco ganha ID explícito no cabeçalho;
   - blocos financeiros: F-1 a F-15, com F-14 = conformidade regulatória (o que o Veredito chama de F-24) e F-15 = Markowitz mal rotulado;
