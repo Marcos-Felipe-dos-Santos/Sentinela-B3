@@ -48,7 +48,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** workflow válido; suíte verde e hermética, sem aviso do BCB no stderr; a guarda de rede derruba um teste descartável que tenta conectar (o teste não é commitado); `xfail_strict` e `--strict-markers` ativos; `python -m mutmut run "technical_engine*"` termina e `python -m mutmut export-cicd-stats` gera os números; `git status` limpo depois da mutação.
 
-- [ ] **F0-3** · test · `test: add characterization safety net before refactor`
+- [x] **F0-3** · test · `test: add characterization safety net before refactor`
   `tests/test_financeiro_pre_refactor.py` com valores sintéticos, em três seções:
   - **A (preservar):**
     - com três métodos assimétricos (por exemplo 10, 12 e 40), o fair value é a mediana (12), não a média (20,67) — com só dois métodos, `statistics.median` devolve a média e o teste não verificaria nada;
