@@ -17,3 +17,22 @@
 - **Para o Marcos revisar:** `CLAUDE.md`, `AGENTS.md`, `docs/PLANO.md` e os ADRs citam apenas F-25 e F-28 (PLANO), que não mudaram; nenhum deles foi alterado. A linha 18 desta fila ainda diz "o que o Veredito chama de F-24", descrição histórica que fica como está. A auditoria entra no git inteira (estava não rastreada).
   O texto de correção do F-15 sugere o rótulo "Alocação sugerida", hoje proibido pelo `CLAUDE.md`; o documento é histórico e não foi editado, e nenhum item futuro deve usar essa correção como especificação. A reordenação da tabela F-16 a F-30 não alterou o texto das linhas, mas o diff não prova isso (arquivo novo no git).
 - **Bloqueio (resolvido):** o `/safe-commit` exigia `ruff check .` completo (301 erros antigos). A skill passou a usar o gate do CI (`--select E9,F63,F7,F82`), verde; o loop foi retomado sem mudar o conteúdo do item.
+
+### F0-1 — docs: sync agent instructions and plan with codebase
+- **Status:** sucesso
+- **O que foi feito:** conferi contagens de linha dos 14 módulos da tabela (todas batem), as linhas citadas, as regras econômicas (Selic × 0,85 no FII, k = Selic + 7% no Gordon, normalizadores de DY) e os fatos de código (`CVMFIIProvider` não injetado em `app.py:158`, `cloudscraper` fora do `requirements.txt`, `tecnico_negativo` só lido, `dados.update(analise)` em `app.py:227`, `FII_MANUAL_FALLBACK` em `config.py:73` × `VACANCIA_CONHECIDA` em `fii_engine.py`, mapas com 50 ações e 30 FIIs, Markowitz 40/60 em `portfolio_engine.py:121-123`, "Alocação Sugerida" em `app.py:516`).
+- **Divergências corrigidas (só nos documentos):**
+  1. `market_engine.py:377` → `377-379` (a regra `> 1` está na 378) em `CLAUDE.md` e ADR 0001.
+  2. Armadilha 15 / PLANO (F2A-1 e tabela): "classe lê coluna inexistente" não se sustenta. `CVMTickerMap` só é instanciada em testes e `refresh` nunca preenche `ticker`. A leitura de coluna da auditoria não foi verificada (exige rede).
+  3. Tempo da suíte: ~1,4 s → ~2 s (medido 1,7–2,1 s) em `CLAUDE.md`, `AGENTS.md` e ADR 0001.
+  4. ADR 0001: "sem rede" não vale, o import de `config` chama o BCB (armadilha 8); texto ajustado.
+  5. Armadilha 9: `ntnb_longa` é lido por `cost_of_equity_real`; "sem consumidor" vale fora dos testes.
+- **Correções da 1ª revisão:** ADR 0001 ("sem rede" em Alternativas e caminho antigo da auditoria nas linhas 5 e 189), ADR 0002 ("Quatro" → "Cinco coisas mudaram"), PLANO F2A-1 ("nunca instanciada fora dos testes"), AGENTS.md (preço: brapi só se o yfinance falhar; BRAPI_TOKEN marcado como não verificado). O BOM UTF-8 saiu do início de `CLAUDE.md` e `AGENTS.md` ainda no bootstrap, sem efeito de conteúdo.
+- **Correções da 2ª revisão:** armadilha 7 (`_limpar_valor` tem teste, fraco; só `adicionar_posicao` está sem teste — divergência 6, a frase vinha da auditoria desatualizada); regra de `_normalizar_dy` (`>0.25` devolve `(0.0, False)`, não só "suspeito"); AGENTS.md alinhado ao CLAUDE.md sobre a interface FastAPI.
+- **Para o Marcos (extra):** o invariante "DY em [0, 0.30]" do F0-3 não bate com o corte de 0,25 do código; a data da Selic (13,75% em 16/09/2026) do ADR 0002 não foi verificável; o ADR 0001 mantém tabelas de fase históricas (vale a ordem do PLANO).
+- **Dificuldades:** `.env.example` não pôde ser lido (permissão negada); a ausência de `BRAPI_TOKEN` nele ficou sem reconferir.
+- **Como resolvi:** não li o arquivo, para respeitar a regra de nunca tocar em `.env*`; fica registrado.
+- **Testes:** 255 → 255 (só documentação).
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** a afirmação sobre `BRAPI_TOKEN` ausente do `.env.example` e a "coluna inexistente" do atualizador, que só se confirma com rede. Este commit também inclui `AGENTS.md`, `CLAUDE.md`, `docs/PLANO.md` e `docs/adr/` inteiros, que estavam não commitados desde o bootstrap.

@@ -24,7 +24,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   Depois, atualizar as citações de IDs F-* em `CLAUDE.md`, `AGENTS.md`, `docs/PLANO.md`, `docs/adr/0002-loop-tempo-dados.md` e nesta fila (por exemplo, F-25 e F-28).
   **Aceite:** todo achado com ID único e explícito; nenhuma referência a ID inexistente, na auditoria ou nos documentos do plano; tabela de correspondência presente.
 
-- [ ] **F0-1** · docs · `docs: sync agent instructions and plan with codebase`
+- [x] **F0-1** · docs · `docs: sync agent instructions and plan with codebase`
   Validar `CLAUDE.md`, `AGENTS.md`, `docs/PLANO.md`, `docs/adr/0001-refactor-v2.md` e `docs/adr/0002-loop-tempo-dados.md` contra o código:
   - módulos e contagens de linha;
   - linhas citadas: `market_engine.py:377/503/513/519`, `config.py:308/311`, `app.py:158/227`, `brapi_provider.py:72`, `fundamentus_scraper.py:99`, `ai_core.py:121`, `valuation_engine.py:120-130`, `data_quality.py:170`;
