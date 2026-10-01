@@ -63,3 +63,12 @@
 - **Decisões que ficaram para o Marcos:** o limite do invariante de DY (0,30 do plano × 0,25 do código) e a correção do `_normalizar_dy` para percentual acima de 30, que é da Fase 2A.
 - **Para o Marcos revisar:** a seção B é o que muda na Fase 2; o gate da Fase 1 é as seções A, B e C inalteradas. O teste `test_c_fair_value_e_preco_estao_na_mesma_escala` usa limites largos (0,1× a 20×) de propósito: ele pega erro de fator 100, não valuation errado.
 - **Notas da revisão (não bloqueiam):** o teste de alavancagem da B não quebra quando o F2B-3 criar a lente de bancos (usa ativo sem setor; o achado é também o F-13, sem mark próprio no `pytest.ini`); `_normalizar_dy(-0.05)` e `nan` também saem como confiáveis e não têm xfail; a janela de um ano do Markowitz está no `app.py` e não é coberta. O xfail do DY > 30% leva `raises=AssertionError` para não esconder um `TypeError` do refactor.
+
+### F0-4 — docs: add Fundamentus scraper decision brief
+- **Status:** sucesso
+- **O que foi feito:** `docs/decisoes/scraper-fundamentus.md`, sem decidir e sem alterar código. Cobre os campos que dependem só do Fundamentus (exclusivos: `roic` e `margem_bruta`, sem consumidor; relevante sem brapi: `divida_liq_ebitda`; fora do mapa CVM: 7 campos patrimoniais), o que quebra se o módulo sair (cascata, flag `erro_scraper` em 3 consumidores de produção, 2 testes do scraper e cerca de 36 referências em 7 arquivos de teste) e se brapi + CVM cobrem o universo mapeado (sim para o que o valuation lê, com ressalva do `BRAPI_TOKEN`). Termina com 4 opções e 5 perguntas.
+- **Dificuldades:** o item pede "para quantos tickers", mas isso depende de rede. **Como resolvi:** dei a contagem por regra (50 ações com CVM; o resto da B3 fora do mapa) e indiquei como medir no F0-6; a cobertura real da brapi e o formato atual da página do Fundamentus ficam marcados como não verificados.
+- **Testes:** 278 → 278 (só documentação).
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** manter ou remover o scraper (E-11 × F-25) e o destino da flag `erro_scraper`; as 5 perguntas estão no fim do documento.
+- **Para o Marcos revisar:** a tabela da seção 2 e a afirmação de que, em instalação limpa, o scraper já está praticamente morto por falta do `cloudscraper` (vem da auditoria, não foi reproduzida).

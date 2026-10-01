@@ -60,7 +60,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** suíte verde; seções filtráveis por mark; mutation score de pelo menos um módulo no diário; teste que sobrevive a mutação não entra.
 
-- [ ] **F0-4** · levantamento · `docs: add Fundamentus scraper decision brief`
+- [x] **F0-4** · levantamento · `docs: add Fundamentus scraper decision brief`
   Conflito E-11 (declarar `cloudscraper`) × F-25 (remover o scraper por ToS). Sem decidir e sem mudar código, escrever em `docs/decisoes/scraper-fundamentus.md`:
   - quantos campos dependem só do Fundamentus, e para quantos tickers;
   - o que quebra se o módulo sair (testes, cobertura, cascata);
