@@ -1,4 +1,4 @@
-﻿---
+---
 name: test-runner
 description: Executa o menor conjunto de testes relevante para a mudança atual.
 context: fork
