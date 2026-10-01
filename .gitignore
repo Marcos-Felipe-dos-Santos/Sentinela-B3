@@ -168,3 +168,6 @@ site/
 # Pipfile.lock
 
 verificar_setup.bat
+
+data/
+.claude/settings.local.json
