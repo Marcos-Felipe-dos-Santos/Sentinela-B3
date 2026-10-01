@@ -87,7 +87,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   O mesmo recorte de cobertura, classe e bancos aplicado aos ativos da carteira do Marcos vai para `outputs/dossie-carteira.md`, fora do git. Rede só para leitura (CVM, B3, Banco Central, yfinance). O documento termina com as perguntas que o Marcos precisa responder.
 
-- [ ] **F0-7** · levantamento · `docs: add residue inventory`
+- [x] **F0-7** · levantamento · `docs: add residue inventory`
   Em `docs/limpeza/inventario.md`, sem remover nada:
   - código morto com `python -m vulture .` (confiança ≥ 80%; abaixo disso, lista separada);
   - `ruff check --select F401,F841,ERA001 .` — imports e variáveis sem uso, código comentado;

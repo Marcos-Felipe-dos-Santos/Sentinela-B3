@@ -97,3 +97,14 @@
 - **Decisões que ficaram para o Marcos:** as 8 perguntas do fim do dossiê (a 0 trata o mapa desalinhado).
 - **Para o Marcos revisar:** primeiro a seção 0 do dossiê. `outputs/dossie-carteira.md` existe, mas diz que a carteira está vazia neste banco: para o recorte real, rode `python scripts/dossie_fase2.py <caminho do banco com a carteira>` (abre o banco em modo somente leitura) onde ela estiver (a cópia do `E:\`, por exemplo); a saída vai para `outputs/`, fora do git. O dossiê não toca em dado da carteira.
 - **Notas da 3ª revisão (aprovada):** o cabeçalho do dossiê agora lista as limitações: NTN-B de fallback nas seções 2, 3, 4 e 6; DY de bases diferentes entre seções; Graham e Bazin da seção 5 sem as travas da V1; FCA só do ano corrente; IF.data sem chamada de controle; k real só no Gordon e no FII. Pendências menores, para o F0-8: `carteira()` recebe `fii` sem usar e `mercado()` guarda campos que ninguém lê.
+
+### F0-7 — docs: add residue inventory
+- **Status:** sucesso
+- **O que foi feito:** `docs/limpeza/inventario.md`, sem remover nada, com a categoria de cada achado (remover já, remover na fase X, investigar, manter): vulture ≥ 80% (7, todos falsos positivos em testes) e 60–79% (25), `ruff` F401/F841/ERA001 (15), a dívida do `ruff check .` completo separada em automática segura × comportamental, deptry (3), módulos órfãos, arquivos rastreados e lacunas do `.gitignore`, duplicidades conhecidas, documentação com caminho inexistente e branches integrados. A seção 10 é a lista exata do F0-8.
+- **Números:** `ruff check .` está em **332 erros** (301 em 1/10). Os 31 a mais são do próprio loop (`scripts/dossie_fase2.py`, 30; `tests/conftest.py`, 1); 247 têm correção automática. O repositório não tem configuração do ruff versionada.
+- **Dificuldades:** `x != x` (teste de NaN) dispara PLR0124 em `auditoria.py:558-559`; o inventário avisa para não "corrigir". O vulture não entende `row_factory` de `sqlite3` nem campos de dataclass.
+- **Como resolvi:** classifiquei como manter, com whitelist no F0-8.
+- **Testes:** 278 → 278 (só documentação).
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos (itens *investigar*):** `get_quote` e `buscar_noticias` sem chamador; `reportlab` e `openpyxl` sem uso (o `.gitignore` ignora `*.xlsx`, sinal de exportação que existiu); `cloudscraper` ausente do `requirements.txt` (depende do F0-4); `docs/cleanup_report.md` (relatório histórico de 8/5/2026 que cita arquivos já removidos). Branches remotos já integrados à `main` para apagar à mão: `feat/cvm-fii-provider`, `feat/cvm-provider`, `feat/macro-provider`, `feat/ui-improvements`, `refactor/economic-fixes`, `refactor/macro-context`.
+- **Para o Marcos revisar:** a seção 10, que é o que o F0-8 vai executar. Nada dela toca os arquivos intocáveis.
