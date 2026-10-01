@@ -33,7 +33,7 @@ O cabeçalho da fila define o branch da fase e os arquivos intocáveis.
    - `chore`: cumpra o aceite do item à risca.
    - `levantamento`: só escreve análise em `docs/` e, se o item pedir, script em `scripts/`. Não altera módulos de produção.
    - `limpeza`: remova só o que o item lista. Antes de remover, confirme por busca que nada usa o que sai. Arquivo rastreado sai com `git rm`, ou `git rm --cached` se deve continuar existindo localmente. Depois, rode de novo as ferramentas do inventário e atualize `docs/limpeza/inventario.md`.
-4. **Verificação.** `python -m pytest -q` e `ruff check .` verdes. `ruff format` só nos arquivos que o item criou ou alterou. No máximo 3 rodadas de correção; na 3ª falha, marque `[!]`, registre no diário e pare o loop.
+4. **Verificação.** `python -m pytest -q` e `ruff check --select E9,F63,F7,F82 .` verdes — o mesmo gate do CI. A dívida antiga do `ruff check .` completo fica no inventário (F0-7) e é paga a partir da Fase 1. `ruff format` só nos arquivos que o item criou ou alterou. No máximo 3 rodadas de correção; na 3ª falha, marque `[!]`, registre no diário e pare o loop.
 5. **Sem resíduo novo.** O item não acrescenta código comentado, import sem uso, print de depuração, arquivo temporário nem TODO sem item na fila.
 6. **Diário.** Acrescente a seção do item em `docs/loop/diario.md`, no formato abaixo.
 7. **Fila.** Marque o item como `[x]`.

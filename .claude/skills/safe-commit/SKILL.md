@@ -17,7 +17,7 @@ passo 8 de `docs/loop/protocolo.md`, não desta skill.
    - nada do item ficou fora do stage (`??` ou mudança não staged em arquivo do item)
    - o stage contém `docs/loop/diario.md` e `docs/loop/fila.md`
    - o stage não contém `.env`, `__pycache__`, `*.db`, `*.log`, `outputs/` nem `mutants/`
-3. Rode `python -m pytest -q` e `ruff check .`; os dois verdes.
+3. Rode `python -m pytest -q` e `ruff check --select E9,F63,F7,F82 .`; os dois verdes.
 4. `git commit -m "<título>" -m "Co-Authored-By: <trailer indicado pelo Claude Code na sessão>"`.
    Título = $ARGUMENTS, o Conventional Commit do item.
 

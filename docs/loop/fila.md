@@ -91,6 +91,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   Em `docs/limpeza/inventario.md`, sem remover nada:
   - código morto com `python -m vulture .` (confiança ≥ 80%; abaixo disso, lista separada);
   - `ruff check --select F401,F841,ERA001 .` — imports e variáveis sem uso, código comentado;
+  - a dívida do `ruff check .` completo (301 erros em 1º/10), separando as correções automáticas seguras (UP045, UP006, ordem de imports) das que mudam comportamento (como BLE001, `except` genérico);
   - `deptry .` — dependências sem uso, faltando ou só transitivas;
   - módulos órfãos: `.py` que nada importa e que não são ponto de entrada;
   - arquivos rastreados que deveriam ser ignorados (`*.db`, `__pycache__`, `outputs/`, logs) e lacunas no `.gitignore`;
