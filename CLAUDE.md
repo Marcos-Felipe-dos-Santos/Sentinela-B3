@@ -130,13 +130,15 @@ atuais. `backtest_results_v1.csv` veio de versão anterior do engine. Não é ev
 
 **7. Suíte verde não é sinal**
 `app.py`, `auditoria.py`, `limpar_banco.py` em 0%. `adicionar_posicao` sem teste;
-`_limpar_valor` tem teste, mas fraco (`test_fundamentus_scraper.py:22` aceita `None` ou qualquer float). `tests/conftest.py` **não** mocka nada globalmente —
-só ajusta `sys.path` e `basetemp` no Windows. 9 dos 23 módulos não usam mock.
+`_limpar_valor` tem teste, mas fraco (`test_fundamentus_scraper.py:22` aceita `None` ou qualquer float).
+`tests/conftest.py` só mocka a Selic: semeia o BCB (14,75%, igual ao fallback) durante o import de
+`config` — contorno do E-6, não correção — e bloqueia `socket.connect`, falhando o teste e a sessão
+que tentarem rede. Fora isso ajusta `sys.path` e `basetemp` no Windows. 9 dos 23 módulos não usam mock.
 
 **8. `config.py:308` faz rede no import**
 `MACRO = MacroContext()` chama a API do BCB ao importar. Em CI ou daemon isso vira
 chamada externa a cada execução, e a Selic fica congelada pelo tempo do processo.
-Exige fixture `autouse` no conftest e correção antes do monitoramento contínuo.
+A suíte contorna isso com a semente do `tests/conftest.py`; a correção (E-6) é anterior ao monitoramento contínuo.
 
 **9. Integrações inertes**
 `CVMFIIProvider` nunca injetado (`app.py:158`). `cloudscraper` fora do requirements.

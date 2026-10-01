@@ -171,3 +171,4 @@ verificar_setup.bat
 
 data/
 .claude/settings.local.json
+mutants/

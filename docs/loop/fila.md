@@ -36,7 +36,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   Divergiu: corrige o documento, nunca o código.
   **Aceite:** diff só nesses cinco arquivos; divergências listadas no diário.
 
-- [ ] **F0-2** · chore · `chore: add CI gate, strict xfail, hermetic fixtures and dev tooling`
+- [x] **F0-2** · chore · `chore: add CI gate, strict xfail, hermetic fixtures and dev tooling`
   - (a) `.github/workflows/ci.yml` em push e pull_request, Python 3.13, rodando `ruff check --select E9,F63,F7,F82 .` e `python -m pytest tests/ --tb=short`, sem gate de cobertura.
   - (b) `pytest.ini`: `xfail_strict = true`, seção `markers` com os marks da seção B do F0-3 e `--strict-markers` em `addopts`, para que mark digitado errado vire erro.
   - (c) Fixture `autouse` de sessão em `tests/conftest.py` semeando a Selic de forma determinística, sem cair no fallback por exceção. `MACRO` é instanciado no import de `config`: prefira a abordagem que não mexe em `config.py` e justifique a escolha no diário. Se usar stub de `requests.get`, ele responde só à URL do BCB e levanta exceção em qualquer outra. Comentário no `conftest.py` apontando para o E-6: a fixture é contorno, não correção.
