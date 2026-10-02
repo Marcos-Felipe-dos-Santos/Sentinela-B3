@@ -69,7 +69,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
 ## Itens
 
-- [ ] **F1-15** · fix · `fix: regenerate CVM ticker map from official registry`
+- [x] **F1-15** · fix · `fix: regenerate CVM ticker map from official registry`
   **Decidido pelo Marcos (pergunta 0 do dossiê, 2/10/2026).** O mapa de `cvm_ticker_map.py` passa a ser gerado do caminho oficial (FCA → CNPJ → cadastro da CVM), sem digitação à mão.
 
   **Geração (`scripts/gerar_mapa_cvm.py`):**

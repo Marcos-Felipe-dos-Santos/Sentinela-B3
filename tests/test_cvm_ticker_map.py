@@ -1,15 +1,21 @@
+import csv
+from pathlib import Path
+
 import pytest
-from cvm_ticker_map import CVMTickerMap, get_cd_cvm, get_ticker
+from cvm_ticker_map import _MANUAL_MAP, CVMTickerMap, get_cd_cvm, get_ticker
+
+FIXTURE_OFICIAL = Path(__file__).parent / "fixtures" / "cvm_codigos_oficiais.csv"
 
 
 # --- funções de módulo (mapa estático) ---
+
 
 def test_mapping_petr4():
     assert get_cd_cvm("PETR4") == 9512
 
 
 def test_mapping_vale3():
-    assert get_cd_cvm("VALE3") == 19348
+    assert get_cd_cvm("VALE3") == 4170
 
 
 def test_roundtrip():
@@ -28,7 +34,18 @@ def test_get_ticker_unknown_returns_none():
     assert get_ticker(0) is None
 
 
+def test_mapa_manual_bate_com_cadastro_oficial():
+    with FIXTURE_OFICIAL.open(encoding="utf-8") as f:
+        oficial = {
+            r["ticker"]: int(r["cd_cvm"])
+            for r in csv.DictReader(f, delimiter=";")
+            if r["situacao"] != "fora"
+        }
+    assert {t: cd for cd, t in _MANUAL_MAP.items()} == oficial
+
+
 # --- CVMTickerMap com banco em memória ---
+
 
 @pytest.fixture()
 def cvm_map(tmp_path):
@@ -42,7 +59,7 @@ def test_class_get_cd_cvm_petr4(cvm_map):
 
 
 def test_class_get_ticker_vale3(cvm_map):
-    assert cvm_map.get_ticker(19348) == "VALE3"
+    assert cvm_map.get_ticker(4170) == "VALE3"
 
 
 def test_class_roundtrip_itub4(cvm_map):
