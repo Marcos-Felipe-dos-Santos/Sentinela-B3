@@ -179,3 +179,14 @@
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** o nome "P/VP do FII" para a lente do `fii_nav` (o PLANO falava em "FII NAV"; o F1-18 corrige a tabela).
+
+### F1-17 — test: raise mutation score of valuation methods to 80%
+- **Status:** sucesso
+- **O que foi feito:** rodei `python -m mutmut run "sentinela.methods*"` e `python -m mutmut export-cicd-stats`. Primeira rodada: 625 mortos e 21 sobreviventes de 646 mutantes → **96,7%** (`base` 164/183 = 89,6%, `registry` 32/34 = 94,1%, os demais módulos 100%). Os 21 sobreviventes só alteravam o texto de mensagens de erro (`XX…XX`, caixa, `type(None).__name__`). Como a mensagem é o que o desenvolvedor e o relatório do F1-12 leem quando um método ou um insumo viola o contrato, escrevi `tests/test_methods_contrato_mensagens.py` (8 testes), que confere as mensagens exatas (igualdade de texto, não só um trecho). Segunda rodada: nenhum sobrevivente.
+- **Mutation por módulo (`sentinela.methods*`, depois):** `base` 183/183, `bazin` 61/61, `fii_nav` 16/16, `fii_yield` 51/51, `gordon` 111/111, `graham` 81/81, `lynch` 109/109, `registry` 34/34 → **646/646 = 100%**. `sentinela.domain.units*` (F1-1): 68/68. `valuation_engine*` e `fii_engine*` (não fazem parte do gate do item): 88,0% e 89,2% na última medição (linha de base do F0-3: 60,2% e o equivalente do FII; depois do golden do F1-16: 86,1% e 88,7%).
+- **Mutantes equivalentes:** nenhum no pacote `sentinela.methods`: todos foram mortos. Os equivalentes ficam nos motores V1 e estão listados no diário do F1-16.
+- **Dificuldades:** nenhuma.
+- **Testes:** 614 passed + 1 skipped + 1 xfailed → 622 passed + 1 skipped + 1 xfailed (8 novos). Nenhum teste existente mudou.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** a escolha de matar os mutantes de mensagem com igualdade exata de texto (mudar uma mensagem passa a exigir mudar o teste).

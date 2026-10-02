@@ -261,7 +261,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - `tests/test_registry.py::test_registro_tem_os_seis_metodos`, `::test_todo_modulo_de_metodo_esta_registrado`, `::test_regime_coerente_com_a_taxa`, `::test_parametros_da_1_0_0_fixados` e `::test_changelog_tem_a_1_0_0`;
   - gate da fase.
 
-- [ ] **F1-17** · test · `test: raise mutation score of valuation methods to 80%`
+- [x] **F1-17** · test · `test: raise mutation score of valuation methods to 80%`
   Fecha o gate de mutação da fase:
   - roda a mutação no pacote;
   - escreve testes para os sobreviventes não equivalentes (a especificação da 1.0.0 é o comportamento da V1, fixado pelo golden);
