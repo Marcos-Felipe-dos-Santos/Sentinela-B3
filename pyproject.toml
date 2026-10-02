@@ -19,7 +19,7 @@ source_paths = [
     "valuation_engine.py",
     "sentinela/",
 ]
-also_copy = ["app.py", "auditoria.py", "auditar_recomendacoes.py", "limpar_banco.py", "backtesting/", "pytest.ini"]
+also_copy = ["app.py", "auditoria.py", "auditar_recomendacoes.py", "limpar_banco.py", "backtesting/", "scripts/", "pytest.ini"]
 # Com xfail_strict ligado, um XPASS acidental conta como mutante morto: só na mutação ele é desligado.
 pytest_add_cli_args = ["-o", "xfail_strict=False"]
 pytest_add_cli_args_test_selection = ["tests/"]

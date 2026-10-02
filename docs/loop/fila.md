@@ -124,7 +124,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - `git grep -n tecnico_negativo -- '*.py'` só encontra o teste novo;
   - gate da fase.
 
-- [ ] **F1-16** · test · `test: pin valuation engine outputs on a boundary grid`
+- [x] **F1-16** · test · `test: pin valuation engine outputs on a boundary grid`
   **Por quê.** As seções A, B e C checam poucas propriedades. Não pegam a maioria das fronteiras (`>` × `>=`) nem a ordem de `riscos`: com a suíte inteira, o mutation do `valuation_engine` foi de 60,2% no F0-3.
 
   **O que o item faz.** Grava as saídas atuais de `ValuationEngine().processar` e `FIIEngine().analisar` em `tests/fixtures/golden_motores.jsonl`: uma linha por caso, com entrada e saída, até ~1 MB. O teste compara por igualdade exata: o dict inteiro, incluindo a ordem de `riscos` e o texto de `metodos_usados`. Como `nan == nan` é falso depois de ler o JSONL, o item traz um comparador próprio (recursivo, com NaN igual a NaN e `==` nos demais floats); `pytest.approx` não é permitido.
