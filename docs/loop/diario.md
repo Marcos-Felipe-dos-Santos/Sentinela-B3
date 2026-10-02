@@ -156,3 +156,15 @@
 - **Resíduos:** nenhum no motor; nada para o F1-13 além do que a limpeza já lista.
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** o caminho "método não calculado → NaN" no `fii_engine.py` (a V1 já exibia NaN nesse caso; a limpeza do NaN é decisão da Fase 2).
+
+### F1-8 — refactor: extract FII price-to-book lens
+- **Status:** sucesso
+- **O que foi feito:** a lente de P/VP do FII (antes `fii_engine.py:116-121`) foi movida para `sentinela/methods/fii_nav.py` (1.0.0, regime `SEM_TAXA`, `applies_to` FII). Como na V1 o patrimônio não forma valor justo e o P/VP só pesa no score, o `fii_nav` é a lente: devolve o P/VP como valor (`Ratio`) e a faixa como alerta do resultado (prêmio alto acima de 1,15; prêmio moderado acima de 1,05; desconto abaixo de 0,85; neutra, sem alerta; limites estritos como na V1), com `FiiNavParams` montado a partir do `MacroContext`. O motor converte a faixa em pontos (−15, −7, +10, 0) com `_PONTOS_PVP`, na mesma posição do score. A resolução do P/VP (`valor_cota` da CVM > `dados['pvp']` > 1,0) continua no motor até o F2A-11. Valor justo ancorado no patrimônio não foi antecipado (pergunta 3 do dossiê, Fase 2B). A faixa sai como alerta porque o contrato de `MethodResult` não tem campo próprio (o F1-2 está fechado); o rótulo das três faixas é constante do módulo.
+- **Dificuldades:** nenhuma.
+- **Como resolvi:** testes do método primeiro, depois o módulo e a delegação; golden (2.247 casos, com P/VP em torno de 0,85, 1,05 e 1,15, ausente e da CVM) e seções A, B e C verdes sem alteração.
+- **Testes:** 573 passed + 1 skipped + 1 xfailed → 601 passed + 1 skipped + 1 xfailed (16 em `tests/test_methods_fii_nav.py`, 9 em `tests/test_fii_engine_pvp.py` e 3 da parametrização de `tests/test_contratos_import.py`). Nenhum teste existente mudou.
+- **Mutation:** `sentinela.methods.fii_nav*`: 16 mortos de 16 → **100%**. `fii_engine*` com preço justo e lente extraídos: 281 mortos, 34 sobreviventes → 89,2%.
+- **Divergência conhecida (fora do golden):** P/VP infinito pontuava −15 (ou +10 com −inf) na V1; agora a lente não é calculada e não pontua. NaN já não pontuava.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** o uso do alerta do resultado para carregar a faixa.

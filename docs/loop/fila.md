@@ -243,7 +243,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** gate de refactor; `tests/test_methods_fii_yield.py`; mutation de `sentinela.methods.fii_yield*` no diário.
 
-- [ ] **F1-8** · refactor · `refactor: extract FII price-to-book lens`
+- [x] **F1-8** · refactor · `refactor: extract FII price-to-book lens`
   Na V1, o patrimônio não forma valor justo: o P/VP só pesa no score (`fii_engine.py:116-121`), e a seção B (F-9) fixa isso. Por isso, o `fii_nav.py` 1.0.0 é a lente de P/VP, com regime `SEM_TAXA`.
   - Devolve o P/VP e a faixa: prêmio alto (acima de 1,15), prêmio moderado (acima de 1,05), desconto (abaixo de 0,85) ou neutra.
   - O motor converte a faixa em pontos: −15, −7, +10 e 0.

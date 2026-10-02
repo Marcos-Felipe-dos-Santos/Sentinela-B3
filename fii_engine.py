@@ -8,11 +8,21 @@ from cvm_fii_map import get_cnpj_fii
 from cvm_fii_provider import CVMFIIProvider
 from sentinela.domain.units import BRL, RateNominal, Ratio
 from sentinela.methods.base import MethodInputs, MethodResult
+from sentinela.methods.fii_nav import (
+    FAIXA_DESCONTO,
+    FAIXA_PREMIO_ALTO,
+    FAIXA_PREMIO_MODERADO,
+    FiiNav,
+    FiiNavParams,
+)
 from sentinela.methods.fii_yield import FiiYield, FiiYieldParams
 
 logger = logging.getLogger("FII")
 
 _FII_YIELD = FiiYield()
+_FII_NAV = FiiNav()
+# pontos de score por faixa de P/VP; a faixa neutra não pontua
+_PONTOS_PVP = {FAIXA_PREMIO_ALTO: -15, FAIXA_PREMIO_MODERADO: -7, FAIXA_DESCONTO: 10}
 
 VACANCIA_CONHECIDA = {
     # Estimativas manuais; revisar periodicamente.
@@ -58,6 +68,19 @@ class FIIEngine:
             vacancia=None if vacancia is None else Ratio(vacancia),
         )
         return _FII_YIELD.calcular(inputs, FiiYieldParams(fator_ir=MACRO.FII_FATOR_IR))
+
+    def _faixa_pvp(self, pvp):
+        """Lente de P/VP; None quando o P/VP não é finito (a lente não é calculada)."""
+        if not math.isfinite(pvp):
+            return None
+        return _FII_NAV.calcular(
+            MethodInputs(as_of=date.today(), pvp=Ratio(pvp)),
+            FiiNavParams(
+                premio_alto=MACRO.FII_PVP_PREMIO_ALTO,
+                premio_moderado=MACRO.FII_PVP_PREMIO_MODERADO,
+                desconto=MACRO.FII_PVP_DESCONTO,
+            ),
+        )
 
     def analisar(self, dados: dict) -> dict:
         if not dados:
@@ -139,12 +162,10 @@ class FIIEngine:
         elif dy_efetivo < (selic_liquida * MACRO.FII_DY_SELIC_RATIO_MIN):
             score -= 20
 
-        if pvp > MACRO.FII_PVP_PREMIO_ALTO:
-            score -= 15  # pagando prêmio excessivo sobre o patrimônio
-        elif pvp > MACRO.FII_PVP_PREMIO_MODERADO:
-            score -= 7   # prêmio moderado
-        elif pvp < MACRO.FII_PVP_DESCONTO:
-            score += 10  # desconto relevante = margem de segurança
+        # Faixa de P/VP em sentinela/methods/fii_nav.py; os pontos ficam aqui.
+        lente_pvp = self._faixa_pvp(pvp)
+        if isinstance(lente_pvp, MethodResult):
+            score += sum(_PONTOS_PVP.get(faixa, 0) for faixa in lente_pvp.alertas)
 
         if vacancia is not None and vacancia > 0.15:
             score -= int(100 * vacancia)
