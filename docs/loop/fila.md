@@ -111,7 +111,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   Não apaga arquivo não rastreado nem branch: esses vão para a lista do Marcos no diário.
   **Aceite:** suíte verde; seções A, B e C do F0-3 inalteradas; inventário atualizado com o que saiu.
 
-- [ ] **F0-9** · chore · `chore: quarantine V1 outputs under methodological review`
+- [x] **F0-9** · chore · `chore: quarantine V1 outputs under methodological review`
   Só no `app.py`, sem tocar em módulo de cálculo:
   - aviso fixo em todas as abas: resultados em revisão metodológica, com link para o `docs/PLANO.md` — não usar para decisão;
   - a "Alocação Sugerida" do Markowitz deixa de ser exibida (o cálculo continua até o F2C-9);
