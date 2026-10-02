@@ -1,11 +1,18 @@
 import logging
+import math
+from datetime import date
 from typing import Optional
 
 from config import get_selic_atual, MACRO, _normalizar_dy
 from cvm_fii_map import get_cnpj_fii
 from cvm_fii_provider import CVMFIIProvider
+from sentinela.domain.units import BRL, RateNominal, Ratio
+from sentinela.methods.base import MethodInputs, MethodResult
+from sentinela.methods.fii_yield import FiiYield, FiiYieldParams
 
 logger = logging.getLogger("FII")
+
+_FII_YIELD = FiiYield()
 
 VACANCIA_CONHECIDA = {
     # Estimativas manuais; revisar periodicamente.
@@ -34,6 +41,23 @@ class FIIEngine:
         except Exception as exc:
             logger.warning("[FII %s] CVM error: %s", ticker, exc)
             return None
+
+    def _calcular_rendimento(self, p, dy, vacancia, selic):
+        """Monta MethodInputs uma única vez e delega o preço justo ao método.
+
+        Devolve None quando algum valor não é finito: o método não é calculado.
+        """
+        valores = (p, dy, selic) if vacancia is None else (p, dy, selic, vacancia)
+        if not all(math.isfinite(v) for v in valores):
+            return None
+        inputs = MethodInputs(
+            as_of=date.today(),
+            preco=BRL(p),
+            dy=Ratio(dy),
+            selic=RateNominal(selic),
+            vacancia=None if vacancia is None else Ratio(vacancia),
+        )
+        return _FII_YIELD.calcular(inputs, FiiYieldParams(fator_ir=MACRO.FII_FATOR_IR))
 
     def analisar(self, dados: dict) -> dict:
         if not dados:
@@ -93,17 +117,19 @@ class FIIEngine:
             vacancia = VACANCIA_CONHECIDA[ticker]
             vacancia_fonte = "manual"
 
-        # ── DY efetivo (ajustado por vacância) ───────────────────────────────
-        if vacancia is not None:
-            dy_efetivo = dy * (1 - vacancia)
-        else:
-            dy_efetivo = dy
-
+        # ── Bazin adaptado para FIIs (yield vs taxa livre de risco) ──────────
+        # Fórmula, DY efetivo (ajustado por vacância) e Selic líquida em
+        # sentinela/methods/fii_yield.py.
         selic = get_selic_atual()
-        selic_liquida = selic * MACRO.FII_FATOR_IR
-
-        # Bazin adaptado para FIIs (yield vs taxa livre de risco)
-        preco_justo = (p * dy_efetivo) / selic_liquida
+        rendimento = self._calcular_rendimento(p, dy, vacancia, selic)
+        if isinstance(rendimento, MethodResult):
+            preco_justo = rendimento.valor.valor
+            dy_efetivo = rendimento.obter("dy_efetivo").valor
+            selic_liquida = rendimento.obter("selic_liquida").valor
+        else:
+            # método não calculado (valor não finito): a V1 propagava NaN até a saída
+            preco_justo = dy_efetivo = float("nan")
+            selic_liquida = selic * MACRO.FII_FATOR_IR
         upside = (preco_justo / p) - 1
 
         # ── Score ─────────────────────────────────────────────────────────────

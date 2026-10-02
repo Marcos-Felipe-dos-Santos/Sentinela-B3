@@ -233,7 +233,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** gate de refactor; `tests/test_methods_gordon.py`; mutation de `sentinela.methods.gordon*` no diário.
 
-- [ ] **F1-7** · refactor · `refactor: extract FII yield method`
+- [x] **F1-7** · refactor · `refactor: extract FII yield method`
   Move `fii_engine.py:96-107` para `fii_yield.py`, com regime `NOMINAL`:
   - preço justo = preço × DY efetivo ÷ (Selic × 0,85);
   - DY efetivo = DY × (1 − vacância), quando há vacância;

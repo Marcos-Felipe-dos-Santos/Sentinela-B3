@@ -143,3 +143,16 @@
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** o tratamento do fallback do payout (LPA ≤ 0), preservado de propósito.
+
+### F1-7 — refactor: extract FII yield method
+- **Status:** sucesso
+- **O que foi feito:** o preço justo do FII (antes `fii_engine.py:96-107`) foi movido para `sentinela/methods/fii_yield.py` (1.0.0, regime `NOMINAL`, `applies_to` FII, nome "Bazin FII" para o rótulo de `metodos_usados` não mudar), com `FiiYieldParams(fator_ir)` montado a partir de `MACRO.FII_FATOR_IR`. Preço justo = (preço × DY efetivo) ÷ (Selic × 0,85); DY efetivo = DY × (1 − vacância) quando há vacância (a vacância não é insumo exigido), mesma ordem de operações da V1 (teste com `==`). DY efetivo e Selic líquida voltam como intermediários, e o score, o teste de DY e a resolução da vacância (CVM > `VACANCIA_CONHECIDA`) ficam no motor, na mesma ordem (o provedor CVM só é chamado depois do teste de DY). `VACANCIA_CONHECIDA` continua em `fii_engine.py` (sai no F2A-13). O motor ganhou `_calcular_rendimento(p, dy, vacancia, selic)`: monta `MethodInputs` uma única vez e delega; a Selic continua lida por `fii_engine.get_selic_atual()` e entra como `RateNominal`.
+- **Método não calculado:** o golden fixa um FII com DY NaN, em que a V1 propagava NaN até a saída (`fair_value`, `upside`, `Bazin FII: R$nan`, `dy_efetivo`). Como o `units.py` rejeita NaN, quando algum valor (preço, DY, Selic, vacância) não é finito o motor não chama o método e preserva a V1: `preco_justo` e `dy_efetivo` ficam NaN e a Selic líquida é `selic × 0,85`. É a regra "o comportamento idêntico manda" registrada no F1-16; a abstenção por valor não finito não vira `None` de vacância (isso ignoraria a vacância, e o resultado mudaria).
+- **Dificuldades:** o item pedia "Selic líquida" como intermediário e o caso acima; resolvido como descrito.
+- **Como resolvi:** testes do método primeiro, depois o módulo e a delegação; golden (2.247 casos, com DY NaN, vacância manual e da CVM, provedor que levanta exceção) e seções A, B e C verdes sem alteração.
+- **Testes:** 539 passed + 1 skipped + 1 xfailed → 573 passed + 1 skipped + 1 xfailed (16 em `tests/test_methods_fii_yield.py`, 15 em `tests/test_fii_engine_rendimento.py` e 3 da parametrização de `tests/test_contratos_import.py`). Nenhum teste existente mudou.
+- **Mutation:** `sentinela.methods.fii_yield*`: 51 mortos de 51 → **100%**. `fii_engine*` com o preço justo extraído: 269 mortos, 31 sobreviventes → 89,7% (88,7% antes).
+- **Divergência conhecida (fora do golden):** Selic zero no FII levantava `ZeroDivisionError` na V1; agora o método se abstém e o motor segue pelo caminho de método não calculado (NaN). Preço ou Selic infinitos davam `inf` na V1; agora seguem o mesmo caminho (NaN).
+- **Resíduos:** nenhum no motor; nada para o F1-13 além do que a limpeza já lista.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** o caminho "método não calculado → NaN" no `fii_engine.py` (a V1 já exibia NaN nesse caso; a limpeza do NaN é decisão da Fase 2).
