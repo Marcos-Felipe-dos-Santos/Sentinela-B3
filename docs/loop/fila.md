@@ -193,7 +193,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - um módulo temporário que importa `config` derruba o teste. Isso é feito uma vez, não é commitado e fica registrado no diário;
   - gate da fase.
 
-- [ ] **F1-3** · refactor · `refactor: extract Graham method`
+- [x] **F1-3** · refactor · `refactor: extract Graham method`
   Move `valuation_engine.py:83-95` para `sentinela/methods/graham.py`, com regime `SEM_TAXA`:
   - piso de P/L 7 (linha 87);
   - limite de P/VP pelo perfil (linha 85);

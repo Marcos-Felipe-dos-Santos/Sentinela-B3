@@ -1,11 +1,55 @@
 import logging
 import math
 import statistics
+from datetime import date
+
 from config import get_selic_atual, DISTRESSED_TICKERS, MACRO, _normalizar_dy
+from sentinela.domain.enums import Perfil
+from sentinela.domain.units import BRL, Ratio
+from sentinela.methods.base import MethodInputs, MethodResult
+from sentinela.methods.graham import Graham, GrahamParams
 
 logger = logging.getLogger("Valuation")
 
+_GRAHAM = Graham()
+
+
+def _finito(valor):
+    """Valor não finito vira None antes de entrar em MethodInputs."""
+    return valor if math.isfinite(valor) else None
+
+
 class ValuationEngine:
+    def _montar_inputs(self, p, pl, pvp, is_growth, pl_confiavel):
+        """Converte os dados já normalizados da V1 em MethodInputs (uma única vez)."""
+        p, pl, pvp = _finito(p), _finito(pl), _finito(pvp)
+        vpa = None
+        if p is not None and pvp is not None:
+            vpa = _finito(p / pvp) if pvp > 0 else 0.0
+        return MethodInputs(
+            as_of=date.today(),
+            preco=None if p is None else BRL(p),
+            pl=None if pl is None else Ratio(pl),
+            pvp=None if pvp is None else Ratio(pvp),
+            vpa=None if vpa is None else BRL(vpa),
+            perfil=Perfil.CRESCIMENTO if is_growth else Perfil.RENDA,
+            pl_confiavel=pl_confiavel,
+        )
+
+    def _avaliar_metodos(self, inputs):
+        """Resultado de cada método extraído, na ordem da V1."""
+        return {
+            "Graham": _GRAHAM.calcular(
+                inputs,
+                GrahamParams(
+                    pl_limite=MACRO.GRAHAM_PL_LIMITE,
+                    pl_piso=MACRO.GRAHAM_PL_FLOOR,
+                    pvp_limite_renda=MACRO.GRAHAM_PVP_LIMITE_RENDA,
+                    pvp_limite_crescimento=MACRO.GRAHAM_PVP_LIMITE_CRESCIMENTO,
+                ),
+            ),
+        }
+
     def processar(self, dados):
         if not dados or not dados.get('preco_atual'):
             return None
@@ -53,7 +97,6 @@ class ValuationEngine:
             )
 
         lpa = (p / pl)  if pl  > 0 else 0
-        vpa = (p / pvp) if pvp > 0 else 0
 
         selic = get_selic_atual()
 
@@ -81,18 +124,17 @@ class ValuationEngine:
         metodos = {}
 
         # ── 1. GRAHAM ─────────────────────────────────────────────────────────
-        # Limite P/L aumentado de 20→25 para acomodar cíclicos em pico de lucro
-        limite_pvp = MACRO.GRAHAM_PVP_LIMITE_CRESCIMENTO if is_growth else MACRO.GRAHAM_PVP_LIMITE_RENDA
-        limite_pl  = MACRO.GRAHAM_PL_LIMITE
-        pl_graham  = max(pl, MACRO.GRAHAM_PL_FLOOR)   # floor para evitar FV absurdo com PL baixo
-
+        # Fórmula e condições em sentinela/methods/graham.py.
         # Se PL veio do Yahoo com flag de baixa confiabilidade (PL negativo ou >80),
         # Graham é ignorado mesmo dentro do limite — melhor não aplicar com dado suspeito
-        if not pl_confiavel:
+        resultados = self._avaliar_metodos(
+            self._montar_inputs(p, pl, pvp, is_growth, pl_confiavel)
+        )
+        graham = resultados["Graham"]
+        if isinstance(graham, MethodResult):
+            metodos['Graham'] = graham.valor.valor
+        elif not pl_confiavel:
             logger.info(f"[{dados.get('ticker','?')}] Graham IGNORADO — pl_confiavel=False (PL via Yahoo suspeito)")
-        elif pl > 0 and pvp > 0 and pl <= limite_pl and pvp <= limite_pvp:
-            lpa_adj = p / pl_graham
-            metodos['Graham'] = (22.5 * lpa_adj * vpa) ** 0.5
 
         # ── 2. BAZIN ─────────────────────────────────────────────────────────
         # Só para RENDA com DY confiável; usa taxa mínima = max(selic, 5%)

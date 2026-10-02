@@ -21,5 +21,6 @@ source_paths = [
 ]
 also_copy = ["app.py", "auditoria.py", "auditar_recomendacoes.py", "limpar_banco.py", "backtesting/", "scripts/", "pytest.ini"]
 # Com xfail_strict ligado, um XPASS acidental conta como mutante morto: só na mutação ele é desligado.
-pytest_add_cli_args = ["-o", "xfail_strict=False"]
+# O código instrumentado do mutmut importa pathlib e urllib: o teste de import isolado do F1-10 não vale na mutação (a AST vale).
+pytest_add_cli_args = ["-o", "xfail_strict=False", "--deselect", "tests/test_contratos_import.py::test_import_isolado_nao_carrega_modulos_proibidos"]
 pytest_add_cli_args_test_selection = ["tests/"]
