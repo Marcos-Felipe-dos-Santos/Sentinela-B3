@@ -193,10 +193,6 @@ class ValuationEngine:
 
         # ── RECOMENDAÇÃO ──────────────────────────────────────────────────────
         rec = "NEUTRO"
-        tecnico_negativo = dados.get('tecnico_negativo', False)
-        if tecnico_negativo:
-            riscos.append("Técnico negativo")
-            confianca -= 10
 
         if upside > MACRO.REC_UPSIDE_COMPRA and score >= MACRO.REC_SCORE_COMPRA and confianca >= MACRO.REC_CONFIANCA_COMPRA:
             rec = "COMPRA"

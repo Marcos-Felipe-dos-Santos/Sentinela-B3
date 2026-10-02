@@ -112,7 +112,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - o diário lista os tickers cujos fundamentos CVM mudam (o único leitor do mapa em produção é `market_engine.py:481`), os que saíram e a linha de comando do `invalidar_cache_cvm.py`;
   - gate da fase.
 
-- [ ] **F1-11** · fix · `fix: stop valuation engine from reading technical signal`
+- [x] **F1-11** · fix · `fix: stop valuation engine from reading technical signal`
   `valuation_engine.py:196-199` lê `tecnico_negativo`, mas nenhum código de produção escreve essa chave. Só `tests/test_valuation_engine.py:368` a usa, e o cache de fundamentos não a restaura (só aceita `FUNDAMENTAL_KEYS`). No app, nada muda.
 
   No contrato de `processar`, porém, a chave tem efeito: com ela, `riscos` ganha "Técnico negativo", a confiança cai 10 e, por esses dois caminhos, a classificação pode mudar (linhas 201-213). Por isso o item é `fix`, fica fora da extração e vem antes do golden.

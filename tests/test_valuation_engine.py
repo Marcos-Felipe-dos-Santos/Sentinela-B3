@@ -365,12 +365,11 @@ def test_scraper_falhou_nao_sobrescreve_venda() -> None:
         'pvp': 5.0,
         'dy': 0.06,
         'erro_scraper': True,
-        'tecnico_negativo': True,
     }
     with patch('valuation_engine.get_selic_atual', return_value=0.145):
         resultado = ValuationEngine().processar(dados)
 
-    # upside < -15% + tecnico_negativo = VENDA; scraper guard não interfere
+    # upside < -15% = VENDA; scraper guard não interfere
     assert resultado['recomendacao'] != 'DADOS INSUFICIENTES — AGUARDAR'
 
 
@@ -447,3 +446,20 @@ def test_fair_value_usa_mediana_com_tres_metodos() -> None:
         resultado = ValuationEngine().processar(dados)
 
     assert resultado['fair_value'] == pytest.approx(106.07, abs=0.5)
+
+
+def test_sinal_tecnico_nao_altera_resultado() -> None:
+    """Métodos e classificação não leem sinal técnico (armadilha 12)."""
+    base = {
+        'ticker': 'TST3',
+        'preco_atual': 100.0,
+        'roe': 0.02,
+        'pl': 50.0,
+        'pvp': 5.0,
+        'dy': 0.06,
+    }
+    with patch('valuation_engine.get_selic_atual', return_value=0.145):
+        sem = ValuationEngine().processar(dict(base))
+        com = ValuationEngine().processar({**base, 'tecnico_negativo': True})
+
+    assert com == sem

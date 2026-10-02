@@ -19,3 +19,14 @@
   (sem `--aplicar` ele só lista).
 - **Para a proposta da 2A (F1-19), fora do item:** `_seed_manual_map` (`INSERT OR IGNORE`) e o resto da classe `CVMTickerMap`, só instanciada em testes; `cvm_fii_map.py` (conferência pela regra do ISIN e os 3 FIIs ausentes do Informe Mensal); ticker novo depois de evento societário (F2A-1).
 - **Para o Marcos revisar:** a classificação `fca_2025` (ELET3, NTCO3, JBSS3 e PETZ3 saíram do FCA 2026 por evento societário; a CVM pode não receber DFP nova desses códigos), a CSNA3 e o GOLL4 mantido como `codigo_proprio`.
+
+### F1-11 — fix: stop valuation engine from reading technical signal
+- **Status:** sucesso
+- **O que foi feito:** teste `test_sinal_tecnico_nao_altera_resultado` primeiro, em xfail estrito (falhava porque `riscos` e `confianca` mudavam com a chave); depois a remoção das linhas que liam `tecnico_negativo` em `valuation_engine.py` (antes 196-199) → XPASS, marca retirada. No teste existente `test_scraper_falhou_nao_sobrescreve_venda`, a chave sai e o comentário deixa de citá-la; a asserção não mudou.
+- **Dificuldades:** nenhuma.
+- **Como resolvi:** —
+- **Testes:** 286 passed + 1 xfailed → 287 passed + 1 xfailed (o xfailed é o que já existia). `git grep -n tecnico_negativo -- '*.py'` só encontra o teste novo. Seção A/B/C intocada (`git diff --exit-code v2-fase-0`).
+- **Efeito medido:** no app, nenhum (nenhum código de produção escreve a chave). No contrato de `processar`, a chave deixa de acrescentar "Técnico negativo" a `riscos` e de baixar a confiança em 10.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma. O `CLAUDE.md` (armadilha 12) passa a "resolvida" no F1-18.
+- **Para o Marcos revisar:** nada específico.
