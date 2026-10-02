@@ -32,12 +32,12 @@ python -m mutmut run "technical_engine*"           # mutação de um módulo (co
 python -m mutmut export-cicd-stats                 # mortos e sobreviventes, para o mutation score
 ruff check .
 ruff format <arquivos alterados>                   # nunca no repositório inteiro
-python -m vulture . vulture_whitelist.py --min-confidence 80   # código morto
+python -m vulture . vulture_whitelist.py --min-confidence 80 --exclude venv,mutants,outputs,data   # código morto
 deptry .                                           # dependências sem uso ou faltando
 ```
 
 O mutmut 3 só roda em Linux (WSL) e só muta código dentro de funções.
-A lista de exceções do vulture (`vulture_whitelist.py`) nasce no item F0-8, com o motivo de cada exceção.
+A lista de exceções do vulture (`vulture_whitelist.py`) traz o motivo de cada exceção.
 
 ---
 

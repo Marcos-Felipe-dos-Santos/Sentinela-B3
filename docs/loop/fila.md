@@ -101,7 +101,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   Cada achado recebe uma categoria: **remover já** (sem efeito em comportamento), **remover na fase X** (com o item do `docs/PLANO.md`), **investigar** (uso incerto — chamado por nome, callback do Streamlit, acesso por outro módulo) ou **manter** (falso positivo, com motivo).
 
-- [ ] **F0-8** · limpeza · `chore: remove pure residue`
+- [x] **F0-8** · limpeza · `chore: remove pure residue`
   Só os itens **remover já** do inventário, fora dos intocáveis:
   - arquivo rastreado sai com `git rm`; artefato que deve continuar existindo localmente (como o banco `.db`) sai com `git rm --cached`;
   - lacunas do `.gitignore` corrigidas;

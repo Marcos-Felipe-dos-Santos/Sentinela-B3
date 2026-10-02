@@ -33,14 +33,14 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 warnings.filterwarnings("ignore")
 
-import yfinance as yf  # noqa: E402
+import yfinance as yf
 
-from config import MACRO, _normalizar_dy  # noqa: E402
-from cvm_fii_map import FII_CNPJ_MAP  # noqa: E402
-from cvm_provider import CVMProvider  # noqa: E402
-from cvm_ticker_map import _TICKER_TO_CVM  # noqa: E402
-from sentinela.services.asset_classifier import AssetClassifier  # noqa: E402
-from valuation_engine import ValuationEngine  # noqa: E402
+from config import MACRO, _normalizar_dy
+from cvm_fii_map import FII_CNPJ_MAP
+from cvm_provider import CVMProvider
+from cvm_ticker_map import _TICKER_TO_CVM
+from sentinela.services.asset_classifier import AssetClassifier
+from valuation_engine import ValuationEngine
 
 CACHE = ROOT / "outputs" / "dossie_cache"
 CACHE.mkdir(parents=True, exist_ok=True)
@@ -953,7 +953,7 @@ def secao_cobertura(cad, fca, fii):
 # ── Carteira (fora do git) ────────────────────────────────────────────────────
 
 
-def carteira(cad, fca, fii, db_path):
+def carteira(cad, fca, db_path):
     import sqlite3
 
     caminho = Path(db_path)
@@ -1121,7 +1121,7 @@ Este documento **não decide nada**: reúne os números para as decisões D-* e 
 
     try:
         txt = carteira(
-            cad, fca, fii, sys.argv[1] if len(sys.argv) > 1 else "sentinela_v6.db"
+            cad, fca, sys.argv[1] if len(sys.argv) > 1 else "sentinela_v6.db"
         )
     except Exception as exc:
         txt = f"# Dossiê da carteira\n\n_Indisponível: {type(exc).__name__}: {exc}_\n"

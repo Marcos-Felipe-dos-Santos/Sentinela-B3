@@ -33,7 +33,7 @@ def _requests_get_so_bcb(url, *args, **kwargs):
 
 
 with mock.patch("requests.get", _requests_get_so_bcb):
-    import config  # noqa: E402  (instancia MACRO com a Selic semeada)
+    import config  # instancia MACRO com a Selic semeada
 
 # ── Guarda de rede ─────────────────────────────────────────────────────────────
 # Qualquer connect de socket (exceto AF_UNIX) vira falha. Como o código de produção

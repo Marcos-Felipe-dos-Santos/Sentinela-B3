@@ -337,9 +337,8 @@ class MarketEngine:
         # 4. Fundamentus: fallback only when Brapi is unavailable/incomplete.
         classifier = getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER)
         missing_after_providers = list_missing_required_fields(dados, classifier)
-        fundamentus_ok = False
         if not brapi_ok or missing_after_providers:
-            fundamentus_ok = self._buscar_fundamentus(ticker, dados)
+            self._buscar_fundamentus(ticker, dados)
 
         if not dados.get('fonte_preco'):
             return None

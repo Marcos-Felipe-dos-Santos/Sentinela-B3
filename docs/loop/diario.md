@@ -108,3 +108,13 @@
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos (itens *investigar*):** `get_quote` e `buscar_noticias` sem chamador; `reportlab` e `openpyxl` sem uso (o `.gitignore` ignora `*.xlsx`, sinal de exportação que existiu); `cloudscraper` ausente do `requirements.txt` (depende do F0-4); `docs/cleanup_report.md` (relatório histórico de 8/5/2026 que cita arquivos já removidos). Branches remotos já integrados à `main` para apagar à mão: `feat/cvm-fii-provider`, `feat/cvm-provider`, `feat/macro-provider`, `feat/ui-improvements`, `refactor/economic-fixes`, `refactor/macro-context`.
 - **Para o Marcos revisar:** a seção 10, que é o que o F0-8 vai executar. Nada dela toca os arquivos intocáveis.
+
+### F0-8 — chore: remove pure residue
+- **Status:** sucesso
+- **O que foi feito:** executei só a lista "remover já" do inventário (seção 10): atribuições `fundamentus_ok` (a chamada `_buscar_fundamentus` ficou); `import numpy as np` em dois pontos de `auditoria.py`; `QUALITY_CAN_BE_BUY`, `CYCLICAL_NEEDS_CAUTION` e `FIIS` em `auditar_recomendacoes.py`; `TIMEOUT_API` e `RISK_FREE_RATE_FALLBACK` em `config.py` (fora das seções intocáveis); imports sem uso e `wal_path` em três arquivos de teste; `noqa` obsoletos e o parâmetro `fii` sem uso no script do dossiê; cinco padrões no `.gitignore`; `vulture_whitelist.py` com o motivo de cada exceção. A frase do `CLAUDE.md` sobre o whitelist foi para o presente. A seção 11 do inventário registra o resultado.
+- **Dificuldades:** o `ruff` acusa B018 em expressões soltas, que é o formato clássico de whitelist do vulture. **Como resolvi:** as exceções são itens de uma lista (`USADOS`), que o vulture lê como uso e o `ruff` aceita.
+- **Testes:** 278 → 278 (277 passam e 1 xfail estrito); as seções A, B e C de `test_financeiro_pre_refactor.py` inalteradas; nenhum teste removido nem enfraquecido (só imports e uma variável sem uso).
+- **Ferramentas depois da limpeza:** vulture ≥ 80% sem achados; `ruff check .` completo 332 → 317 erros; `deptry` com os 3 achados *investigar*.
+- **Resíduos:** saíram os itens acima. Ficaram para o Marcos apagar à mão (o loop não apaga arquivo não rastreado nem branch): `data/cvm/`, `outputs/dossie_cache/`, `mutants/` e os seis branches remotos já integrados à `main` listados no inventário.
+- **Decisões que ficaram para o Marcos:** os itens *investigar* do inventário (`get_quote`, `buscar_noticias`, `reportlab`, `openpyxl`, `cloudscraper`, `docs/cleanup_report.md`).
+- **Para o Marcos revisar:** o diff de `market_engine.py` (3 linhas) e de `config.py` (2 linhas), os módulos de produção com código removido (os scripts `auditoria.py` e `auditar_recomendacoes.py` também perderam linhas sem uso; `tests/conftest.py` perdeu um `noqa`).

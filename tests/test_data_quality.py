@@ -2,8 +2,6 @@
 
 Todos os dados são sintéticos — sem chamadas de rede.
 """
-import pytest
-
 from data_quality import (
     DataQualityReport,
     _BADGE_CVM,

@@ -1,6 +1,6 @@
 # Inventário de resíduos — Fase 0
 
-**Gerado no F0-7, em 1/10/2026, sem remover nada.** O F0-8 executa só a categoria **remover já** e atualiza este arquivo com o que saiu.
+**Gerado no F0-7, em 1/10/2026, sem remover nada.** O F0-8 executou só a categoria **remover já**; a seção 11 registra o resultado e as linhas executadas aparecem como "removido no F0-8".
 
 Categorias:
 
@@ -43,10 +43,10 @@ O `CLAUDE.md` prevê `vulture_whitelist.py` com o motivo de cada exceção. O F0
 
 | Local | Achado | Categoria | Motivo / item |
 |---|---|---|---|
-| `auditar_recomendacoes.py:38-40` | `QUALITY_CAN_BE_BUY`, `CYCLICAL_NEEDS_CAUTION`, `FIIS` | **remover já** | Definidos e nunca lidos (busca por nome em todo o repositório). Os nomes também usam vocabulário a aposentar |
-| `config.py:33` | `TIMEOUT_API` | **remover já** | Nenhum leitor no repositório, nem nos testes. Fora das seções intocáveis |
-| `config.py:120` | `RISK_FREE_RATE_FALLBACK` | **remover já** | Alias estático sem leitor; o próprio comentário manda usar `get_selic_atual()`. Fora das seções intocáveis |
-| `market_engine.py:340, 342` | `fundamentus_ok` | **remover já** | Variável atribuída e nunca lida (também é o F841). Remover a atribuição, mantendo a chamada `_buscar_fundamentus(...)`, que tem efeito colateral |
+| `auditar_recomendacoes.py:38-40` | `QUALITY_CAN_BE_BUY`, `CYCLICAL_NEEDS_CAUTION`, `FIIS` | removido no F0-8 | Definidos e nunca lidos (busca por nome em todo o repositório). Os nomes também usam vocabulário a aposentar |
+| `config.py:33` | `TIMEOUT_API` | removido no F0-8 | Nenhum leitor no repositório, nem nos testes. Fora das seções intocáveis |
+| `config.py:120` | `RISK_FREE_RATE_FALLBACK` | removido no F0-8 | Alias estático sem leitor; o próprio comentário manda usar `get_selic_atual()`. Fora das seções intocáveis |
+| `market_engine.py:340, 342` | `fundamentus_ok` | removido no F0-8 | Variável atribuída e nunca lida (também é o F841). Remover a atribuição, mantendo a chamada `_buscar_fundamentus(...)`, que tem efeito colateral |
 | `market_engine.py:678` | `buscar_noticias` | investigar | Nenhum chamador; a Fase 5 constrói o módulo de notícias. Decidir se sai agora ou com a Fase 5 |
 | `brapi_provider.py:125` | `get_quote` | investigar | Nenhum chamador, nem nos testes; a cascata usa `get_fundamentals`. Pode ser o caminho do preço da brapi (`CLAUDE.md`, "preço: brapi só se o yfinance falhar"), então a decisão é do Marcos |
 | `cvm_provider.py:63` | `baixar_itr` | remover na fase | Será usado pelo TTM — F2A-7 |
@@ -63,13 +63,13 @@ O `CLAUDE.md` prevê `vulture_whitelist.py` com o motivo de cada exceção. O F0
 
 | Local | Regra | Categoria | Motivo |
 |---|---|---|---|
-| `auditoria.py:220` | F401 `numpy` | **remover já** | `import numpy as np` dentro de função; nenhum `np.` na função (conferido por leitura) |
-| `auditoria.py:536` | F401 `numpy` | **remover já** | Idem, em `auditar_tecnica` |
-| `market_engine.py:342` | F841 `fundamentus_ok` | **remover já** | Ver 1.2 |
-| `tests/test_data_quality.py:5` | F401 `pytest` | **remover já** | Import sem uso; não altera nenhum teste |
-| `tests/test_peers_engine.py:5` | F401 `patch` | **remover já** | Idem |
-| `tests/test_peers_engine.py:7` | F401 `pytest` | **remover já** | Idem |
-| `tests/test_database.py:39` | F841 `wal_path` | **remover já** | Variável atribuída e nunca lida no teste (as linhas seguintes só têm comentário e `db.reset_db()`) |
+| `auditoria.py:220` | F401 `numpy` | removido no F0-8 | `import numpy as np` dentro de função; nenhum `np.` na função (conferido por leitura) |
+| `auditoria.py:536` | F401 `numpy` | removido no F0-8 | Idem, em `auditar_tecnica` |
+| `market_engine.py:342` | F841 `fundamentus_ok` | removido no F0-8 | Ver 1.2 |
+| `tests/test_data_quality.py:5` | F401 `pytest` | removido no F0-8 | Import sem uso; não altera nenhum teste |
+| `tests/test_peers_engine.py:5` | F401 `patch` | removido no F0-8 | Idem |
+| `tests/test_peers_engine.py:7` | F401 `pytest` | removido no F0-8 | Idem |
+| `tests/test_database.py:39` | F841 `wal_path` | removido no F0-8 | Variável atribuída e nunca lida no teste (as linhas seguintes só têm comentário e `db.reset_db()`) |
 | `config.py:41, 44` | ERA001 | manter | Falso positivo: títulos de seção da lista de FIIs (`# Papel (CRI/CRA)`, `# Tijolo (Lajes/Galpões)`) |
 | `tests/test_data_quality.py:62, 73, 192, 215` | ERA001 | manter | Falso positivo: rótulos de seção e comentários explicativos |
 | `tests/test_valuation_engine.py:285, 287` | ERA001 | manter | Falso positivo: aritmética explicada em comentário (`# k = selic + 0.07 -> ...`) |
@@ -188,7 +188,7 @@ Entradas sem alvo local, inofensivas: `verificar_setup.bat`, `.agent/`, `.gemini
 |---|---|---|---|
 | `README.md:167` | `venv\Scripts\activate` | remover na fase 6 | Caminho do Windows ao lado de `source venv/bin/activate` (linha 170). O ambiente oficial é o WSL. O README fica travado na Fase 6; o ticket C-A do `docs/jules-backlog.md` já mexe no README e pode levar esta linha |
 | `docs/cleanup_report.md` | `Readme.md`, `logs/auditoria_recomendacoes.txt`, `backtesting/backtest_results_v2.csv`, `v3.csv`, `.streamlit/secrets.toml`, `Thumbs.db` | investigar | Relatório de 8/5/2026 sobre a limpeza anterior; os arquivos citados já foram removidos. É histórico, mas aparece como documento vivo em `docs/`. Decidir entre mover para o histórico ou apagar |
-| `CLAUDE.md` | `vulture_whitelist.py` | remover na fase 0 (F0-8) | Arquivo criado no F0-8, como o `CLAUDE.md` já descreve; o F0-8 troca esta linha para "feito" |
+| `CLAUDE.md` | `vulture_whitelist.py` | feito no F0-8 | Arquivo criado no F0-8, como o `CLAUDE.md` descreve |
 | `docs/PLANO.md` | `docs/operacao.md`, `sentinela/cli.py` | manter | Arquivos futuros (Fase 4) |
 | `docs/PLANO.md`, `docs/loop/fila.md`, `docs/jules-backlog.md` | `docs/loop/fila-faseN-proposta.md`, `docs/loop/pr-fase-N.md`, `tests/test_technical_engine_spec.py` e semelhantes | manter | Arquivos futuros, gerados pelo loop ou pelo Jules |
 | `docs/decisoes/scraper-fundamentus.md` | `robots.txt` | manter | Menção genérica, não um caminho do repositório |
@@ -227,3 +227,33 @@ O loop não apaga branch. A lista abaixo é para o Marcos.
 9. Reexecutar vulture, ruff e deptry e atualizar este inventário.
 
 Nada acima toca `valuation_engine.py`, `fii_engine.py`, `portfolio_engine.py`, nem as seções `MacroContext` e `_normalizar_dy`. Os itens 3 e 4 estão em `config.py`/`auditar_recomendacoes.py` fora dessas seções.
+
+---
+
+## 11. Execução do F0-8
+
+Executado em 1/10/2026, um commit (`chore: remove pure residue`). Antes de cada remoção, nova busca por nome em todo o repositório confirmou que nada usava o item.
+
+| # | Item | Resultado |
+|---|---|---|
+| 1 | `fundamentus_ok` em `market_engine.py` | Atribuições removidas; a chamada `self._buscar_fundamentus(ticker, dados)` ficou |
+| 2 | `import numpy as np` em `auditoria.py` (2 pontos) | Removidos |
+| 3 | `QUALITY_CAN_BE_BUY`, `CYCLICAL_NEEDS_CAUTION`, `FIIS` | Removidos de `auditar_recomendacoes.py` |
+| 4 | `TIMEOUT_API`, `RISK_FREE_RATE_FALLBACK` | Removidos de `config.py` (fora das seções intocáveis) |
+| 5 | Imports sem uso em `tests/test_data_quality.py` e `tests/test_peers_engine.py`; `wal_path` em `tests/test_database.py` | Removidos; nenhum teste foi alterado ou enfraquecido |
+| 6 | `noqa: E402` obsoletos em `scripts/dossie_fase2.py` e `tests/conftest.py`; parâmetro `fii` de `carteira()` | Removidos |
+| 7 | `.gitignore` | Acrescentados `.mutmut-cache`, `*.db-journal`, `*.sqlite-wal`, `*.sqlite-shm`, `*.tmp` |
+| 8 | `vulture_whitelist.py` | Criado, com o motivo de cada exceção (seções 1.1 e 1.2). Como o `ruff` acusa B018 em expressões soltas, as exceções são itens de uma lista (`USADOS`) |
+
+Arquivos intocáveis (`valuation_engine.py`, `fii_engine.py`, `portfolio_engine.py`, `MacroContext`, `_normalizar_dy`): sem alteração.
+
+Resultado das ferramentas depois da limpeza:
+
+- `vulture --min-confidence 80` (com o whitelist): **sem achados**.
+- `vulture --min-confidence 60`, fora dos testes: `get_quote`, `buscar_noticias` e `baixar_itr` (itens *investigar* ou *remover na fase*, mantidos de propósito) e `USADOS` (a própria lista do whitelist, ruído de 60%).
+- `ruff check --select F401,F841`: sem achados. `ERA001` restam 8 falsos positivos (seção 2).
+- `ruff check .` completo: **317 erros** (332 antes), 214 com correção automática.
+- `deptry`: 3 achados, todos da categoria *investigar* (seção 4).
+- Testes: 277 passam e 1 xfail estrito, igual a antes; as seções A, B e C de `tests/test_financeiro_pre_refactor.py` seguem iguais.
+
+**Para o Marcos apagar à mão** (o loop nunca apaga arquivo não rastreado nem branch): `data/cvm/` (ZIPs do DFP, ~60 MB), `outputs/dossie_cache/`, `mutants/` e os branches remotos da seção 9.
