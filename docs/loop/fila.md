@@ -151,7 +151,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - mutation de `valuation_engine*` e de `fii_engine*` ≥ 80%, descontados os mutantes que só alteram mensagem de log (listados no diário);
   - a rodada limpa do mutmut encontra o fixture. Se não encontrar, acrescentar o caminho em `also_copy` no `[tool.mutmut]`.
 
-- [ ] **F1-1** · feat · `feat: add unit types for money, ratios, rates and share counts`
+- [x] **F1-1** · feat · `feat: add unit types for money, ratios, rates and share counts`
   Cria `sentinela/domain/units.py`. É aditivo, sem consumidor em produção.
   - Tipos: `BRL`, `Ratio`, `Percent`, `RateNominal`, `RateReal` e `QuantidadeAcoes`, esta com `Escala` (unidade ou mil, sempre informada — armadilha 10).
   - Os tipos são imutáveis, e a construção rejeita NaN e infinito.

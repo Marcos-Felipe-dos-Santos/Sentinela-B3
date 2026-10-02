@@ -52,3 +52,14 @@
   - **conflito entre o golden e uma frase do rito da extração.** O rito (cabeçalho da fila) diz "valor não finito vira `None` no motor, antes de montar `MethodInputs`", mas o golden fixa o que a V1 faz hoje com NaN em ROE, P/L e DY (por exemplo, NaN no ROE não ativa a penalidade de ROE baixo; `None` viraria 0 e ativaria). Leitura adotada para o F1-3 a F1-8: o comportamento idêntico ao da V1 manda, e a conversão para `None` só vale onde o resultado é o mesmo; onde não for, o motor preserva o NaN e a mudança fica para um item `fix:` da Fase 2, com a regeneração das linhas afetadas do golden. Tirei da grade os casos de ±inf e de NaN em preço e P/VP que acrescentei numa primeira versão, para não ampliar o conflito; os NaN que ficam são os que o item pede.
   - o golden fixa os rótulos COMPRA/NEUTRO/VENDA; a troca de vocabulário (F2C-4) terá de regenerar as linhas afetadas. O golden tem ~1,02 MB, no limite do "até ~1 MB".
 - **Para o Marcos revisar:** `QUALIDADE — AGUARDAR` é código inalcançável na V1 (score máximo de 60 com upside ≤ 0, contra o limite de 75); registrado, não alterado. `test_scraper_falhou_nao_sobrescreve_venda` (observado na revisão do F1-11) só asserta `!=`, e o golden cobre o caso.
+
+### F1-1 — feat: add unit types for money, ratios, rates and share counts
+- **Status:** sucesso
+- **O que foi feito:** `sentinela/domain/units.py` (aditivo, sem consumidor em produção; só importa `math`, `dataclasses` e `enum`): `BRL`, `Ratio`, `Percent`, `RateNominal`, `RateReal` e `QuantidadeAcoes` com `Escala` (`UNIDADE`, `MIL`, sempre informada, sem valor padrão). Dataclasses congeladas com `slots`; a construção rejeita NaN e infinito (`ValueError`) e tipo não numérico, inclusive `bool` (`TypeError`); inteiro vira float. Soma e subtração só entre o mesmo tipo (`TypeError` em qualquer outro, inclusive número puro e taxa real × nominal); `QuantidadeAcoes` só soma na mesma escala. Conversões explícitas: `Percent.para_ratio`, `Ratio.para_percent`, `QuantidadeAcoes.em_unidades`. Sem conversão real ↔ nominal (F2B-1).
+- **Dificuldades:** nenhuma.
+- **Como resolvi:** testes escritos primeiro (falhavam na coleta, por módulo inexistente) e depois a implementação.
+- **Testes:** 291 passed + 1 skipped + 1 xfailed → 331 passed + 1 skipped + 1 xfailed (40 novos em `tests/test_units.py`, incluindo os cinco do aceite).
+- **Mutation (`sentinela.domain.units*`):** 68 mutantes, 66 mortos na primeira rodada; os 2 sobreviventes só mudavam o nome do tipo na mensagem de erro, e os testes agora conferem a mensagem → **68/68 (100%)**.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** a escolha de rejeitar `bool` como valor numérico.
