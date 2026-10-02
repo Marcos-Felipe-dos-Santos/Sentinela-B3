@@ -321,7 +321,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - `CLAUDE.md` e `AGENTS.md` sem contradição entre si.
 
 - [ ] **F1-19** · levantamento · `docs: propose phase 2A queue`
-  O `fable-architect` propõe a fila da Fase 2A em `docs/loop/fila-fase2a-proposta.md`, a partir da seção "Fase 2A" do PLANO, do dossiê e do inventário. A proposta traz:
+  O `fable-architect` propõe a fila da Fase 2A em `docs/loop/fila-fase2a-proposta.md`, a partir da seção "Fase 2A" do PLANO, do dossiê, do inventário e das decisões do checkpoint da Fase 0. A proposta precisa ler `docs/decisoes/checkpoint-fase0.md` e seguir o que ele já decidiu. A proposta traz:
   - um item por commit, com tipo, escopo e aceite;
   - teste xfail antes de cada correção;
   - marcação do que depende de pergunta do dossiê (1, 5, 6 e 7) ou de limiar ainda aberto (divergência de ações, liquidez), com o efeito de cada resposta;
@@ -345,7 +345,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - **`[tool.ruff]` no `pyproject.toml`:** reproduz o conjunto efetivo de regras que gerou o inventário (`ruff check --show-settings`), com `target-version = "py313"`, excluindo `venv`, `mutants`, `outputs` e `data`, e sem regra nova.
   - **CI:** passa a instalar `requirements-dev.txt` e ganha passos em modo relatório, com `continue-on-error`: `ruff check . --statistics --exit-zero`, `python -m vulture . vulture_whitelist.py --min-confidence 80 --exclude venv,mutants,outputs,data` e `deptry .`. O gate bloqueante continua o do protocolo: `ruff check --select E9,F63,F7,F82 .` e pytest.
   - **`scripts/dossie_fase2.py`:** só as correções automáticas. B023, PLR0124 (`x != x` é teste de NaN) e os campos sem leitor de `mercado()` ficam no inventário, porque o script só se valida com rede.
-  - **Itens *investigar*** decididos no checkpoint da Fase 0 que caiam fora dos intocáveis, como `reportlab`, `openpyxl` e `docs/cleanup_report.md`. `buscar_noticias` e `get_quote` ficam para o F2A-13.
+  - **Itens *investigar*** decididos no checkpoint da Fase 0 (`docs/decisoes/checkpoint-fase0.md`, seção 3): remove `reportlab` e `openpyxl` do `requirements.txt` e `docs/cleanup_report.md` com `git rm`. `buscar_noticias` e `get_quote` ficam para o F2A-13.
   - **`vulture_whitelist.py`:** recebe só falsos positivos novos, cada um com o motivo.
 
   Depois, roda de novo o vulture, o `ruff check . --statistics` e o deptry, e atualiza `docs/limpeza/inventario.md` (antes → depois).

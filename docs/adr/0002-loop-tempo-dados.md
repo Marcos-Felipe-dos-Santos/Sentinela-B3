@@ -1,6 +1,6 @@
 # ADR 0002 — Execução por loop, tempo como entrada e dados oficiais primeiro
 
-**Status:** D1–D4, D14 e D15 aceitas · D5–D13 propostas, para aceite ou recusa no checkpoint da Fase 0
+**Status:** D1 a D15 aceitas (D5–D13 no checkpoint da Fase 0, em 2026-10-02: `docs/decisoes/checkpoint-fase0.md`)
 **Data:** 2026-09-22
 **Relação:** complementa o ADR-0001. Os princípios e contratos do 0001 continuam valendo; a ordem das fases passa a ser a do `docs/PLANO.md`.
 

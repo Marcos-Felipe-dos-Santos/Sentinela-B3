@@ -119,8 +119,9 @@ Três tickets **sequenciais** (mesmo arquivo; não abrir em paralelo). **Janela:
 - **Título:** `fix: select most recent CVM statement row deterministically`
 - **Arquivos:** `cvm_provider.py` (função `_conta`, linhas 162-167), `tests/test_cvm_provider.py`.
 - **Cenário de falha:** a CVM republica um DFP; a versão nova entra em outra posição do CSV; `rows.iloc[0]` escolhe pela ordem física e o ROE muda entre duas execuções sem mudança de código.
-- **DECISÃO DO MARCOS ANTES DE ABRIR ESTE TICKET:** a correção da auditoria (ordenar por `DT_REFER`) não separa uma republicação, que mantém o mesmo `DT_REFER` e muda a coluna `VERSAO` (presente na fixture de `tests/test_cvm_provider.py`). Além disso, a regra "erro se houver mais de uma linha na mesma data" dispararia justamente na republicação e o ano sumiria em silêncio (`calcular_indicadores` envolve o ano em `try`). Critério candidato: `VERSAO` decrescente, com `DT_REFER` como chave secundária. Até o Marcos escolher o critério, o ticket **não é aberto**.
-- **Correção esperada (após a decisão):** o critério escolhido antes de `iloc[0]`; propagar `DT_REFER` e a versão usada como `cvm_dt_refer` e `cvm_versao` em `dados`.
+- **Contexto:** a correção da auditoria (ordenar por `DT_REFER`) não separa uma republicação, que mantém o mesmo `DT_REFER` e muda a coluna `VERSAO` (presente na fixture de `tests/test_cvm_provider.py`). Além disso, a regra "erro se houver mais de uma linha na mesma data" dispararia justamente na republicação e o ano sumiria em silêncio (`calcular_indicadores` envolve o ano em `try`).
+- **Critério (decidido no checkpoint da Fase 0, `docs/decisoes/checkpoint-fase0.md`, seção 5):** usar a maior `VERSAO` de cada (CNPJ, `DT_REFER`), sem misturar contas de versões diferentes: todas as contas de um período vêm da mesma versão.
+- **Correção esperada:** o critério antes de `iloc[0]`; propagar `DT_REFER` e a versão usada como `cvm_dt_refer` e `cvm_versao` em `dados`.
 - **Aceite:** `tests/test_cvm_provider.py::test_conta_prefere_dt_refer_mais_recente` (xfail estrito → XPASS), `::test_conta_republicada_usa_maior_versao`, `::test_cvm_dt_refer_propagado` (nomes sujeitos ao critério decidido).
 
 **B4.3 · E-7 — download atômico dos ZIPs**
