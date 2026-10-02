@@ -14,14 +14,15 @@ Suíte: ~255 testes, 23 módulos em `tests/`, ~2 s.
 
 ## Fase atual
 
-**Fase 0 — Preparação.** O mantenedor trabalha num branch local por fase e só
+**Fase 1 — Fundação.** O mantenedor trabalha num branch local por fase e só
 publica no fim de cada fase. Baseie seu branch sempre na `main` mais recente.
 
 Arquivos travados enquanto esta fase estiver em andamento. Não abra PR que toque
 em nenhum deles:
 
 ```
-CLAUDE.md  AGENTS.md  docs/  pytest.ini  pyproject.toml  .gitignore  tests/conftest.py  .github/  app.py
+valuation_engine.py  fii_engine.py  sentinela/domain/  sentinela/methods/  sentinela/reports/
+cvm_ticker_map.py  tests/test_cvm_ticker_map.py  tests/fixtures/
 ```
 
 Esta seção é atualizada pelo mantenedor a cada fase.
