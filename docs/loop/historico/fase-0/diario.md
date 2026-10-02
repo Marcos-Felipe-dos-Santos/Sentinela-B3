@@ -140,3 +140,12 @@
 - **Decisões que ficaram para o Marcos:** aprovar a fila; D5, D9 e D11; a pergunta 0 do dossiê (mapa CVM) e a regra dos 11 tickers sem negociação ativa; o critério do E-8 para o ticket B4.2 do Jules; se o PR da fase pode misturar F1-15 e F1-11 (comportamento) com o refactor (a regra vale por commit); o destino do golden a partir da 2A.
 - **Para o Marcos revisar:** a ordem de execução (correções e golden antes das extrações) e o item F1-15, porque altera o mapa que alimenta os fundamentos CVM de 38 tickers. Algumas referências de linha da proposta (por exemplo `config.py` 39-52) foram conferidas pelo arquiteto, não por mim; o F1-18 refaz a conferência.
 - **Ajustes após a revisão (aprovada):** a proposta ganhou a ressalva sobre os 10 tickers que saem do mapa (podem ser entrega pendente do FCA), a decisão sobre o cache de fundamentos de 7 dias no F1-15, o comparador próprio de NaN no golden (F1-16), `dy_confiavel` entre as exigências do Gordon (F1-6) e a nota de que só o F1-11 precisa vir antes do golden. Conteúdo do arquiteto mantido nos demais pontos.
+
+### F0-11 — docs: add phase 0 summary and archive loop files
+- **Status:** sucesso
+- **O que foi feito:** escrevi `docs/loop/pr-fase-0.md` a partir do diário (itens e commits, testes antes → depois, decisões pendentes, resíduos, o que revisar primeiro e limites conhecidos); marquei este item `[x]`; movi com `git mv` a fila, o diário e o resumo para `docs/loop/historico/fase-0/`; criei o `docs/loop/fila.md` novo só com a linha `[DECISÃO]` apontando o histórico e a proposta da Fase 1.
+- **Dificuldades:** nenhuma.
+- **Testes:** 284 → 284 (283 passam e 1 xfail estrito); a contagem "283 → 283" das entradas do F0-9 e do F0-10 trata o xfail à parte; só documentação.
+- **Resíduos:** nenhum novo. Os que ficaram para o Marcos estão no resumo.
+- **Decisões que ficaram para o Marcos:** as do checkpoint `[DECISÃO]` e as listadas no resumo.
+- **Para o Marcos revisar:** `docs/loop/historico/fase-0/pr-fase-0.md`, que serve de corpo do PR da fase.
