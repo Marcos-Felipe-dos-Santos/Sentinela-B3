@@ -30,7 +30,6 @@ OLLAMA_MODEL = "llama3"
 # PARÂMETROS
 # ==========================================
 MAX_WORKERS = min(8, (os.cpu_count() or 1) + 4)
-TIMEOUT_API = 15
 
 # ==========================================
 # FIIs CONHECIDOS (B3)
@@ -116,8 +115,6 @@ def get_selic_atual() -> float:
         )
         return SELIC_FALLBACK
 
-
-RISK_FREE_RATE_FALLBACK = SELIC_FALLBACK  # alias estático — preferir get_selic_atual()
 
 # Fallbacks para indicadores macro dinâmicos
 CDI_FALLBACK      = 0.143   # CDI ≈ Selic (BCB SGS série 12 anualizada)

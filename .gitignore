@@ -168,3 +168,14 @@ site/
 # Pipfile.lock
 
 verificar_setup.bat
+
+data/
+.claude/settings.local.json
+mutants/
+
+# Artefatos de ferramentas (mutmut antigo, SQLite, temporários)
+.mutmut-cache
+*.db-journal
+*.sqlite-wal
+*.sqlite-shm
+*.tmp

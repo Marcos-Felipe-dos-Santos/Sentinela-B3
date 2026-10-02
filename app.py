@@ -185,6 +185,15 @@ def buscar_dados_ticker_cached(ticker: str) -> Optional[Dict[str, Any]]:
 st.sidebar.title("🦅 Sentinela B3")
 modo = st.sidebar.radio("Menu", ["Terminal", "Carteira", "Gestor", "Config"])
 
+# Quarentena da V1 (F0-9): vale para todas as telas, antes de qualquer resultado.
+PLANO_URL = "https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3/blob/main/docs/PLANO.md"
+st.warning(
+    "**Resultados em revisão metodológica — não use para decisão.** "
+    "Os métodos, as taxas e a classificação desta versão estão sendo refeitos "
+    f"([`docs/PLANO.md`]({PLANO_URL})). Não é consultoria financeira.",
+    icon="⚠️",
+)
+
 # ==========================================
 # 1. TERMINAL
 # ==========================================
@@ -502,7 +511,7 @@ elif modo == "Gestor":
                     col1, col2, col3 = st.columns(3)
                     col1.metric(
                         "Sharpe Otimizado", f"{sharpe:.2f}",
-                        help="Retorno ajustado ao risco. Acima de 1.0 é considerado bom."
+                        help="Retorno ajustado ao risco, estimado com um ano de dados: sem significância estatística."
                     )
                     col2.metric(
                         "Retorno Anual Est.", f"{retorno:.1f}%",
@@ -513,9 +522,11 @@ elif modo == "Gestor":
                         help="Desvio padrão anualizado dos retornos da carteira otimizada."
                     )
 
-                    st.subheader("Alocação Sugerida (Máximo Sharpe)")
-                    pesos = {k: v for k, v in res.items() if not k.startswith('_')}
-                    st.bar_chart(pd.Series(pesos, name="Alocação %"))
+                    st.info(
+                        "A divisão por ativo foi retirada da tela: a otimização usa um ano "
+                        "de dados e uma divisão fixa entre FIIs e ações, sem significância "
+                        "estatística. O otimizador será aposentado na Fase 2C."
+                    )
 
 # ==========================================
 # 4. CONFIG (RESTAURADA v12.1)

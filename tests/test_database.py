@@ -36,7 +36,6 @@ def test_database_reset_db(db, db_path):
     # Write some data to create wal/shm
     db.salvar_analise({'ticker': 'TEST3', 'score_final': 80})
     
-    wal_path = f"{db_path}-wal"
     # Even if they don't exist yet, we check reset_db executes without error
     # and reinitializes
     db.reset_db()

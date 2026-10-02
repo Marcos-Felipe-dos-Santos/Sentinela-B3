@@ -2,9 +2,7 @@
 
 import sys
 import os
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 # Garantir que o diretório raiz do projeto está no path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))

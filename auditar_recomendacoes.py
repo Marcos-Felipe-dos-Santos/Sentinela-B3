@@ -35,9 +35,6 @@ TICKERS_AUDITORIA: List[str] = [
 
 # ── Buckets de sanidade ──────────────────────────────────────────────────────
 HIGH_RISK_SHOULD_NOT_BE_STRONG_BUY = ["AMER3", "OIBR3", "CASH3", "VIIA3"]
-QUALITY_CAN_BE_BUY = ["ITUB4", "BBAS3", "WEGE3"]
-CYCLICAL_NEEDS_CAUTION = ["PETR4", "VALE3"]
-FIIS = ["HGLG11", "MXRF11", "CVBI11"]
 
 LOG_DIR = "logs"
 LOG_FILE = os.path.join(LOG_DIR, "auditoria_recomendacoes.txt")

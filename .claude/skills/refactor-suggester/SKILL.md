@@ -1,4 +1,4 @@
-﻿---
+---
 name: refactor-suggester
 description: Sugere refatoração incremental e segura. Nunca altera arquivos.
 context: fork

@@ -1,25 +1,30 @@
-﻿---
+---
 name: safe-commit
-description: Revisa alterações, valida testes e prepara commit seguro. Invoke manualmente.
-disable-model-invocation: true
-context: fork
-agent: senior-reviewer
-argument-hint: [tipo-ou-escopo-opcional]
+description: Commita exatamente o stage aprovado pelo /review-diff, sem perguntar e sem fazer stage. Passo 10 do loop.
+argument-hint: [titulo-conventional-commit-do-item]
+allowed-tools: Bash(git status *), Bash(git diff *), Bash(git commit *), Bash(python -m pytest *), Bash(ruff check *)
 ---
 
-Prepare commit com escopo: $ARGUMENTS
+Commite o item com o título: $ARGUMENTS
 
-1. Rode `git status` e `git diff --staged`
-2. Verifique arquivos que nao devem entrar: .env, __pycache__, *.db, *.log
-3. Confirme: `python -m pytest tests/ -x -q`
-4. Confirme: `ruff check .`
-5. Sugira mensagem (feat/fix/test/docs/refactor/chore)
-6. Execute `git commit` SOMENTE se aprovado explicitamente
-7. NUNCA execute git push
+Roda inline, na sessão principal, sem perguntar nada. Não faz stage: commita
+exatamente o que o `/review-diff` aprovou. Se faltar algo no stage, a falha é do
+passo 8 de `docs/loop/protocolo.md`, não desta skill.
+
+1. Confirme que o último `/review-diff` deste item deu PODE COMMITAR e que
+   `git diff --staged --stat` é o mesmo que foi revisado.
+2. Rode `git status --porcelain` e confira:
+   - nada do item ficou fora do stage (`??` ou mudança não staged em arquivo do item)
+   - o stage contém `docs/loop/diario.md` e `docs/loop/fila.md`
+   - o stage não contém `.env`, `__pycache__`, `*.db`, `*.log`, `outputs/` nem `mutants/`
+3. Rode `python -m pytest -q` e `ruff check --select E9,F63,F7,F82 .`; os dois verdes.
+4. `git commit -m "<título>" -m "Co-Authored-By: <trailer indicado pelo Claude Code na sessão>"`.
+   Título = $ARGUMENTS, o Conventional Commit do item.
+
+Se qualquer checagem falhar: não commite. Troque o `[x]` do item por `[!]` na fila,
+registre o motivo no diário e pare o loop.
+
+Nunca: `git add`, `git push`, `git commit --amend`, `--no-verify`, mais de um commit por item.
 
 Saída:
-- Arquivos que entrarão
-- Arquivos que devem ser excluídos
-- Resultado dos testes
-- Mensagem de commit sugerida
-- Comando exato a executar
+- Hash e título do commit, ou a checagem que falhou

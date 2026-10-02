@@ -217,7 +217,6 @@ def auditar_dados_scraper(ticker: str):
         print(f"  Pregões: {len(hist)}")
         print(f"  Preço mín/máx 1 ano: R${hist['Close'].min():.2f} / R${hist['Close'].max():.2f}")
         print(f"  Preço atual (último Close): R${hist['Close'].iloc[-1]:.2f}")
-        import numpy as np
         vol_anual = hist['Close'].pct_change().std() * (252**0.5)
         print(f"  Volatilidade anualizada: {vol_anual*100:.1f}%")
         hist_json = {
@@ -533,8 +532,6 @@ def auditar_valuation(ticker: str, dados: dict):
 
 def auditar_tecnica(ticker: str, dados: dict):
     print(hdr(f"4. ANÁLISE TÉCNICA — {ticker}"))
-    import numpy as np
-
     hist = dados.get('historico')
     if hist is None or hist.empty:
         print(warn("  Histórico indisponível."))

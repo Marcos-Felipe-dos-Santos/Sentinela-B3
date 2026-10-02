@@ -1,4 +1,4 @@
-﻿---
+---
 name: changelog-generator
 description: Gera resumo legível das mudanças recentes.
 context: fork
