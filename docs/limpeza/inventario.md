@@ -142,6 +142,8 @@ Nenhum `.py` é órfão no sentido estrito. Os que ninguém importa em produçã
 | `backtesting/backtest_engine.py` | CLI e teste | remover na fase 3 | Backtest real no F3-8; os CSVs fabricados saem junto |
 | `sentinela/services/analyze_asset.py`, `sentinela/repositories/analysis_repository.py` | só testes | remover na fase 3 | Camada nova desconectada (E-21); o F3-6 liga o `AnalysisService` ao `app.py` |
 | `scripts/dossie_fase2.py` | execução manual | manter | Reproduz o dossiê da Fase 2 |
+| `scripts/gerar_mapa_cvm.py` e `tests/fixtures/cvm_codigos_oficiais.csv` (criados no F1-15) | execução manual; a fixture também pelo teste do mapa | remover na fase 2A (F2A-1) | Geram e conferem o mapa ticker → CD_CVM a partir de um retrato do FCA; saem quando o F2A-1 automatizar o mapa |
+| `scripts/invalidar_cache_cvm.py` e o teste dele (criados no F1-15) | execução manual, pelo Marcos, no checkpoint da Fase 1 | remover na fase 2A (F2A-1) | Sai junto com o gerador. Não sai no F1-13: a limpeza vem antes do checkpoint em que o script é rodado |
 
 ---
 
@@ -256,4 +258,4 @@ Resultado das ferramentas depois da limpeza:
 - `deptry`: 3 achados, todos da categoria *investigar* (seção 4).
 - Testes: 277 passam e 1 xfail estrito, igual a antes; as seções A, B e C de `tests/test_financeiro_pre_refactor.py` seguem iguais.
 
-**Para o Marcos apagar à mão** (o loop nunca apaga arquivo não rastreado nem branch): `data/cvm/` (ZIPs do DFP, ~60 MB), `outputs/dossie_cache/`, `mutants/` e os branches remotos da seção 9.
+**Para o Marcos apagar à mão** (o loop nunca apaga arquivo não rastreado nem branch): `data/cvm/` (ZIPs do DFP, ~60 MB), `outputs/dossie_cache/` (só depois do F1-15, que gera o mapa a partir do cadastro e do FCA guardados ali), `mutants/` e os branches remotos da seção 9.

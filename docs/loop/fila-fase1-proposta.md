@@ -59,7 +59,7 @@ Auditoria: `docs/auditoria/2026-09-red-team.md` · Dossiê: `docs/decisoes/dossi
 - B4.1 a B4.3 e C-D precisam estar mergeados antes de ativar a 2A. O C-E só tem janela nesta fase.
 - B1, B2, B3, C-A, C-B e C-C podem correr em paralelo.
 
-**Decisões:** as marcas `[D5]`, `[D9]` e `[D11]` indicam itens que dependem das propostas do ADR-0002. A marca `[pergunta 0]` indica dependência da resposta à pergunta 0 do dossiê. O efeito de cada recusa está na última seção.
+**Decisões:** as marcas `[D5]`, `[D9]` e `[D11]` indicam itens que dependem das propostas do ADR-0002. O efeito de cada recusa está na última seção.
 
 **Privacidade:** o repositório é público. Nenhum dado da carteira do Marcos (posições, pesos, lista de ativos) entra em arquivo versionado — nem em fixture, nem no golden, nem no diário.
 - Fixtures usam tickers genéricos (`TST3`, `TST11`) ou os dos mapas públicos do código.
@@ -69,28 +69,47 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
 ## Itens
 
-- [ ] **F1-15** · fix · `fix: align manual ticker map with official CVM codes` · **[pergunta 0]**
-  **Decisão proposta.** O Marcos confirma ou ajusta antes de ativar; sem decisão, o item sai e a correção espera o F2A-1. Em `cvm_ticker_map.py`:
-  - os 38 tickers da tabela "Código do mapa de outra empresa" (dossiê, seção 0) recebem o "CD_CVM oficial";
-  - dos 11 sem negociação ativa, saem os 10 cujo código é de outra empresa ou não existe;
-  - o GOLL4 fica, porque o código 19569 é da própria GOL;
-  - a PETR4 (9512) não muda;
-  - nenhum código fora do dossiê é inventado.
+- [ ] **F1-15** · fix · `fix: regenerate CVM ticker map from official registry`
+  **Decidido pelo Marcos (pergunta 0 do dossiê, 2/10/2026).** O mapa de `cvm_ticker_map.py` passa a ser gerado do caminho oficial (FCA → CNPJ → cadastro da CVM), sem digitação à mão.
 
-  **Ressalva sobre os 10 tickers que saem:** o dossiê (limite 4) avisa que "sem negociação ativa" pode ser só entrega pendente do FCA do ano corrente; CSNA3 e AZUL4, por exemplo, provavelmente ainda negociam. A remoção é uma proposta a confirmar ticker a ticker, não um fato verificado.
+  **Geração (`scripts/gerar_mapa_cvm.py`):**
+  - reaproveita `cd_oficial` de `scripts/dossie_fase2.py` por import, sem movê-lo nem alterá-lo;
+  - lê o cache de 1/10 em `outputs/dossie_cache/` (`cad_cia_aberta.csv` e `fca_valor_mobiliario.csv`, este o FCA de 2026);
+  - o FCA do ano anterior (2025) não está nesse cache: o script o baixa uma única vez para a mesma pasta (rede só de leitura, CVM) e registra a data no diário;
+  - grava `tests/fixtures/cvm_codigos_oficiais.csv` só com `ticker`, `cnpj`, `cd_cvm` e `situacao`;
+  - regenera o bloco `_MANUAL_MAP` de `cvm_ticker_map.py` a partir da fixture; rodar o script de novo não produz diff.
 
-  **Cache de fundamentos:** `market_engine.py:347` preenche lacunas com o cache SQLite de 7 dias, que pode guardar fundamentos da empresa errada. `CVMTickerMap._seed_manual_map` usa `INSERT OR IGNORE`, então bancos locais antigos mantêm os códigos antigos (só os testes usam a classe). O item decide uma das duas saídas e registra no diário: invalidar o cache só desses tickers, ou aceitar o risco por até 7 dias.
+  **Regra por ticker do mapa atual (coluna `situacao`):**
+  - `fca_2026`: código de negociação ativo no FCA de 2026 → CD_CVM oficial;
+  - `fca_2025`: ausente em 2026 e ativo no FCA de 2025 → CD_CVM oficial pelo FCA de 2025;
+  - `codigo_proprio`: ausente nos dois anos, mas o código do mapa é da própria empresa (a empresa do código já teve ticker com a mesma raiz de 4 letras no FCA, em qualquer data, a mesma regra da seção 0 do dossiê) → o código fica (é o caso do GOLL4);
+  - `fora`: ausente nos dois anos e com código de outra empresa ou inexistente → sai do mapa, com `cd_cvm` vazio na fixture.
 
-  **Teste primeiro**, contra `tests/fixtures/cvm_codigos_oficiais.csv`, montado a partir das tabelas do dossiê (sem rede). É um único teste que compara o mapa inteiro, sem parametrizar: com `xfail_strict`, o caso da PETR4, que já bate, viraria XPASS.
+  Situação de negociação é filtro de universo e de liquidez (F2A-10, F3-5), não de mapa. O diário lista os tickers `fora`, com CSNA3 e AZUL4 destacados, e os `fca_2025`. Ticker novo depois de evento societário é decisão do F2A-1.
+
+  **Cache de fundamentos (`scripts/invalidar_cache_cvm.py`):**
+  - apaga de `fundamentals_cache` só os tickers passados na linha de comando, com SQL parametrizado;
+  - sem `--aplicar`, só lista o que apagaria;
+  - o loop **nunca** roda o script contra o banco local: o diário traz a linha de comando com os tickers cujo código mudou ou que saíram, e o Marcos roda no checkpoint;
+  - teste próprio, com banco em `tmp_path`: apaga só os tickers pedidos e nada sem `--aplicar`.
+
+  **Teste primeiro:** `tests/test_cvm_ticker_map.py::test_mapa_manual_bate_com_cadastro_oficial`, um único teste para o mapa inteiro, contra a fixture (sem rede): o mapa tem exatamente os tickers não `fora`, cada um com o `cd_cvm` da fixture. Não parametrizar: com `xfail_strict`, a PETR4, que já bate, viraria XPASS.
+
+  **Testes que mudam:** `tests/test_cvm_ticker_map.py:12` e `:45` fixam 19348 (Itaú) como código da VALE3; passam a 4170, com justificativa no diário. Nenhum outro teste existente muda.
 
   **Cuidados:**
-  - As asserções de `tests/test_cvm_ticker_map.py:12` e `:45` fixam o código errado da VALE3 (19348 é do Itaú). Elas mudam de propósito, com justificativa no diário.
-  - O mapa é indexado pelo código, então nenhuma chave pode se repetir. Exemplo: o 22470, da Magazine Luiza, hoje está com JBSS3.
-  - Fora do item: a classe `CVMTickerMap` (só os testes a instanciam) e o `cvm_fii_map.py`, ambos do F2A-1.
+  - importar `scripts/dossie_fase2.py` executa o topo do módulo (pasta de cache, `config` com a chamada ao BCB, yfinance), mas não o `main()`; nenhum arquivo do dossiê é regravado;
+  - o mapa é indexado pelo código, então nenhuma chave pode se repetir. Exemplo: o 22470, da Magazine Luiza, hoje está com JBSS3;
+  - nenhum código fora da fixture é inventado.
+
+  **Fora do item (para o F2A-1, registrado no diário para o F1-19 levar à proposta da 2A):**
+  - `_seed_manual_map` (`INSERT OR IGNORE`) e o resto da classe `CVMTickerMap`, que só os testes instanciam;
+  - `cvm_fii_map.py`: a conferência pela regra do ISIN e os 3 FIIs ausentes do Informe Mensal.
 
   **Aceite:**
-  - `tests/test_cvm_ticker_map.py::test_mapa_manual_bate_com_cadastro_oficial` e `::test_ticker_sem_negociacao_ativa_fica_fora_do_mapa` passam por xfail estrito → XPASS → marca retirada;
-  - o diário lista os tickers cujos fundamentos CVM mudam (o único leitor do mapa em produção é `market_engine.py:481`) e diz o que foi feito com o cache de fundamentos;
+  - `test_mapa_manual_bate_com_cadastro_oficial` passa por xfail estrito → XPASS → marca retirada;
+  - `python scripts/gerar_mapa_cvm.py` rodado de novo não altera `cvm_ticker_map.py` nem a fixture;
+  - o diário lista os tickers cujos fundamentos CVM mudam (o único leitor do mapa em produção é `market_engine.py:481`), os que saíram e a linha de comando do `invalidar_cache_cvm.py`;
   - gate da fase.
 
 - [ ] **F1-11** · fix · `fix: stop valuation engine from reading technical signal`
@@ -371,7 +390,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - **D5 recusada:** o F1-2 sai sem `as_of` (nem como campo opcional) e sem `test_inputs_exigem_as_of`, e o F1-18 ajusta o `CLAUDE.md`. O resto da fase não muda.
   - **D9 recusada:** o F1-12 sai. Nada na fase depende dele, mas some a única entrega visível (PLANO, seção 13).
   - **D11 recusada:** o F1-10 fica só com o contrato do ADR-0001 (sem `sentinela/news`) e com a regra dura do protocolo (sem rede, banco e relógio). `technical_engine`, `sentinela/data` e provedores deixam de ser barrados no CI, e o F1-18 ajusta o contrato de isolamento do `CLAUDE.md`. O F1-11 não depende da D11.
-- **Pergunta 0 do dossiê (F1-15).** É preciso autorizar a correção e confirmar a regra dos 11 tickers sem negociação ativa (o GOLL4 fica?). Se o Marcos recusar, o item sai e o mapa só é corrigido no F2A-1. Até lá, os fundamentos CVM de 38 tickers continuam sendo de outra empresa, com aparência de dado oficial.
+- **Pergunta 0 do dossiê (F1-15).** Respondida em 2/10/2026: a correção está autorizada e as regras estão no próprio item (FCA de dois anos, GOLL4 fica, cache invalidado pelo Marcos no checkpoint).
 - **Mistura no PR da fase.** A regra "refactor e mudança de comportamento nunca juntos" vale por commit (PLANO e `CLAUDE.md`). O ADR-0001 falava em PR. Se o Marcos preferir PR sem mistura, o F1-15 e o F1-11 vão num PR próprio, antes do PR da fase.
 - **Jules.**
   - B4.1 → B4.2 → B4.3 e C-D precisam estar mergeados antes de ativar a 2A.
