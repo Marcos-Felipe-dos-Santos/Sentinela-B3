@@ -297,7 +297,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - `deptry .` sem achado novo;
   - gate da fase.
 
-- [ ] **F1-18** · docs · `docs: sync agent instructions with extracted methods`
+- [x] **F1-18** · docs · `docs: sync agent instructions with extracted methods`
   Valida contra o código e corrige três arquivos: `CLAUDE.md`, `AGENTS.md` (menos a seção "Fase atual", que é do Marcos) e a tabela da Fase 1 do `docs/PLANO.md` (IDs finais, e a lente de P/VP no lugar do "FII NAV").
 
   **No `CLAUDE.md`:**

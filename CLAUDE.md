@@ -25,7 +25,7 @@ Python + Streamlit (V1; interface FastAPI + HTMX prevista para a Fase 7), local-
 
 ```bash
 streamlit run app.py                               # app (V1)
-python -m pytest tests/ -x --tb=short              # suíte (~255 testes, 23 módulos, ~2 s)
+python -m pytest tests/ -x --tb=short              # suíte (~655 testes, 44 módulos, ~5 s)
 python -m pytest tests/test_x.py::test_y -v        # teste único
 python -m pytest tests/ --cov=. --cov-report=term-missing
 python -m mutmut run "technical_engine*"           # mutação de um módulo (config em [tool.mutmut])
@@ -45,27 +45,33 @@ A lista de exceções do vulture (`vulture_whitelist.py`) traz o motivo de cada 
 
 | Módulo | Linhas | Papel |
 |---|---|---|
-| `app.py` | 543 | Streamlit, 4 abas, orquestração real. **Cobertura 0%** |
-| `market_engine.py` | 691 | Cascata de coleta e merge de fontes |
-| `valuation_engine.py` | 249 | Graham, Bazin, Lynch, Gordon, score, classificação (na V1, "recomendação") |
-| `fii_engine.py` | 152 | Valuation de FII |
-| `config.py` | 317 | Constantes, `MacroContext`, `_normalizar_dy` |
+| `app.py` | 554 | Streamlit, 4 abas, orquestração real. **Cobertura 0%** |
+| `market_engine.py` | 690 | Cascata de coleta e merge de fontes |
+| `valuation_engine.py` | 341 | Orquestra os métodos de `sentinela/methods/` (Graham, Bazin, Lynch, Gordon), score, classificação (na V1, "recomendação") |
+| `fii_engine.py` | 199 | Valuation de FII: orquestra `fii_yield` e `fii_nav`, score |
+| `config.py` | 314 | Constantes, `MacroContext`, `_normalizar_dy` |
 | `data_quality.py` | 236 | Completude, badge, `validacao_cruzada` (linha 170) |
 | `database.py` | 217 | SQLite WAL, queries parametrizadas |
 | `portfolio_engine.py` | 145 | Markowitz / máximo Sharpe |
 | `technical_engine.py` | 103 | RSI, MACD, Bollinger, ATR, MAs |
 | `peers_engine.py` | 96 | Comparação setorial (mapa hardcoded, ~40 tickers) |
 | `ai_core.py` | 188 | LLM: Groq → Gemini → Ollama |
-| `auditoria.py` | 936 | Sanidade runtime. **Não é suíte de testes. Cobertura 0%** |
-| `auditar_recomendacoes.py` | 401 | Validação contra tickers conhecidos |
+| `auditoria.py` | 933 | Sanidade runtime. **Não é suíte de testes. Cobertura 0%** |
+| `auditar_recomendacoes.py` | 398 | Validação contra tickers conhecidos |
 | `limpar_banco.py` | 196 | Manutenção do SQLite. Cobertura 0% |
 
 **Provedores:** `cvm_provider.py`, `cvm_fii_provider.py`, `brapi_provider.py`,
 `fundamentus_scraper.py`, `cvm_ticker_map.py`, `cvm_fii_map.py`
 
-**Camada nova (`sentinela/`) — implementada, testada, NÃO conectada.**
-`AnalysisService.analyze` duplica `app.py:200-235`. Só os testes importam.
-Não adicione a mesma feature nas duas camadas.
+**Camada nova (`sentinela/`).** Já usados pela V1: `sentinela/methods/` (`base.py` e os seis
+métodos) e `domain/units.py`, chamados por `valuation_engine.py` e `fii_engine.py`
+(extraídos na Fase 1, comportamento da V1); `services/asset_classifier.py` (`app.py`,
+`market_engine.py`, `portfolio_engine.py`, `auditar_recomendacoes.py`) e `domain/provenance.py`
+e `enums.py` (`market_engine.py`, `valuation_engine.py`). `sentinela/reports/rastreabilidade.py`
+roda por linha de comando (`python -m`), fora do app. **NÃO conectados** (só os testes
+importam): `methods/registry.py`, `domain/models.py` (usado por `services/analyze_asset.py` e
+`repositories/`), `services/analyze_asset.py` (`AnalysisService.analyze` duplica
+`app.py:208-244`) e `repositories/`. Não adicione a mesma feature nas duas camadas.
 
 **`backtesting/`** — gate temporal de preço correto, fundamentos de entrada sintéticos.
 
@@ -73,12 +79,12 @@ Não adicione a mesma feature nas duas camadas.
 
 ## Fluxo de dados real
 
-`market_engine.buscar_dados_ticker:327-342` — **não** é a ordem do README:
+`market_engine.buscar_dados_ticker:327-341` — **não** é a ordem do README:
 
 ```
 1. yfinance   → preco_atual, historico, _shares_outstanding, fundamentos base
 2. brapi      → sobrescreve fundamentos; só preenche preço se yfinance falhou
-3. CVM        → sobrescreve fundamentos; deriva lpa/vpa/pl/pvp (linhas 503-519)
+3. CVM        → sobrescreve fundamentos; deriva lpa/vpa/pl/pvp (linhas 501-518)
 4. Fundamentus→ só preenche lacunas
 5. cache SQLite (7d) → fallback manual FII
 ```
@@ -93,7 +99,7 @@ Preço: yfinance > brapi, sempre fechamento **D-1**.
 - Selic via BCB SGS 432, cache 24h, fallback hardcoded
 - Bazin exige `dy >= 0.05`; FII compara com `Selic × 0.85`; fair value é **mediana**
 - Métodos divergindo > 2x → flag de risco, confiança reduzida
-- `_normalizar_dy` (`config.py:311`): `>1` → percentual; `>0.25` → inválido (devolve `(0.0, False)`: DY zerado e não confiável)
+- `_normalizar_dy` (`config.py:308`): `>1` → percentual; `>0.25` → inválido (devolve `(0.0, False)`: DY zerado e não confiável)
 - Vocabulário: "classificação", "sinal positivo", "classificação heurística". Nunca "recomendação", "compra" ou "venda" em código novo, tabela, coluna ou tela. A V1 ainda exibe COMPRA/NEUTRO/VENDA; a troca é o F2C-4
 - Nunca "alocação sugerida" nem qualquer sugestão de carteira: a V2 descreve risco, não recomenda alocação
 - **Alvo (D15, Fase 2B):** taxa de desconto real (NTN-B longa + prêmio, via `cost_of_equity_real`), com k e g no mesmo regime. A Selic deixa de ser taxa de desconto
@@ -104,20 +110,20 @@ Preço: yfinance > brapi, sempre fechamento **D-1**.
 
 Erros que **passam nos testes** e produzem resultado errado. Leia antes de tocar em valuation.
 
-**1. Real vs nominal no Gordon** (`valuation_engine.py:120-130`)
+**1. Real vs nominal no Gordon** (`sentinela/methods/gordon.py`)
 `cost_of_equity_real()` devolve taxa real; `g = ROE × retenção` é nominal.
 Trocar Selic por NTN-B sem converter os dois derruba `k − g` de ~13,75% para ~6%
 e mais que dobra todos os fair values. Escolha um regime, converta tudo.
 
 **2. Validação cruzada tautológica** (`data_quality.py:170`)
-Compara `pl` com `preco/lpa`, mas `market_engine.py:513` **define** `pl = preco/lpa`.
+Compara `pl` com `preco/lpa`, mas `market_engine.py:512` **define** `pl = preco/lpa`.
 Divergência sempre zero. Ajustar o limiar não resolve.
 
-**3. LPA/VPA sem reconciliação** (`market_engine.py:503-519`)
+**3. LPA/VPA sem reconciliação** (`market_engine.py:501-518`)
 Lucro consolidado da CVM ÷ `sharesOutstanding` do yfinance, sem checar escopo de
 classe. Para dual-class o erro pode ser fator ~2, e sai com badge 🟢.
 
-**4. Três normalizadores de DY** (`config.py:311`, `market_engine.py:377-379`, `brapi_provider.py:35`)
+**4. Três normalizadores de DY** (`config.py:308`, `market_engine.py:377-378`, `brapi_provider.py:35`)
 Regras incompatíveis em cascata. 30% pode virar 0,3% sem alerta. Não crie um quarto.
 
 **5. Colapso metodológico**
@@ -133,9 +139,9 @@ atuais. `backtest_results_v1.csv` veio de versão anterior do engine. Não é ev
 `_limpar_valor` tem teste, mas fraco (`test_fundamentus_scraper.py:22` aceita `None` ou qualquer float).
 `tests/conftest.py` só mocka a Selic: semeia o BCB (14,75%, igual ao fallback) durante o import de
 `config` — contorno do E-6, não correção — e bloqueia `socket.connect`, falhando o teste e a sessão
-que tentarem rede. Fora isso ajusta `sys.path` e `basetemp` no Windows. 9 dos 23 módulos não usam mock.
+que tentarem rede. Fora isso ajusta `sys.path` e `basetemp` no Windows. 27 dos 44 módulos não usam mock.
 
-**8. `config.py:308` faz rede no import**
+**8. `config.py:305` faz rede no import**
 `MACRO = MacroContext()` chama a API do BCB ao importar. Em CI ou daemon isso vira
 chamada externa a cada execução, e a Selic fica congelada pelo tempo do processo.
 A suíte contorna isso com a semente do `tests/conftest.py`; a correção (E-6) é anterior ao monitoramento contínuo.
@@ -154,9 +160,10 @@ Múltiplo numa data usa o preço bruto daquela data e as ações do mesmo docume
 lucro. Retorno usa série ajustada. Um desdobramento entre a demonstração e o preço
 erra o LPA por fator inteiro — a mesma família do item 3.
 
-**12. `tecnico_negativo`**
-Lido pelo `valuation_engine`, nunca escrito pelo `technical_engine`. Caminho morto,
-e contrário ao isolamento: métodos não leem sinal técnico.
+**12. `tecnico_negativo` — resolvida (F1-11)**
+O `valuation_engine` lia a chave, que nenhum código de produção escrevia: caminho morto,
+e contrário ao isolamento (métodos não leem sinal técnico). A leitura saiu; um teste
+(`test_sinal_tecnico_nao_altera_resultado`) garante que o sinal não altera o resultado.
 
 **13. Limites do mutmut 3**
 Só muta código dentro de funções: constantes de módulo (como as de `config.py`)
@@ -168,7 +175,7 @@ ETFs viram FIIs e BDRs viram ações comuns. Units, que também terminam em 11, 
 o mesmo risco. Classe vem de dado oficial (F2A-1), nunca do sufixo.
 
 **15. Cobertura dos mapas manuais**
-Só ~50 ações e 30 FIIs estão mapeados para a CVM; fora deles, os fundamentos vêm do
+Só 45 ações (mapa regenerado do cadastro oficial da CVM no F1-15) e 30 FIIs estão mapeados; fora deles, os fundamentos vêm do
 fallback. A classe que atualizaria o mapa (`CVMTickerMap`) só é instanciada nos testes,
 e o `refresh` grava `cd_cvm`/CNPJ sem nunca preencher `ticker`; a leitura de coluna
 inexistente citada na auditoria não foi verificada (exige rede).
@@ -207,7 +214,7 @@ sentinela/
 `technical_engine` nem `sentinela/data/`, e não faz rede, banco ou leitura de
 relógio. Garantido por teste no grafo de import (F1-10), não por disciplina.
 
-**Contrato de método:** cada método declara `version`, `regime` (REAL|NOMINAL),
+**Contrato de método:** cada método declara `version`, `regime` (REAL|NOMINAL|SEM_TAXA),
 `requires`, `assumptions` e `applies_to`, e devolve `MethodResult | Abstention`.
 Sem insumo, abstém-se — não devolve número conservador.
 
@@ -215,8 +222,8 @@ Sem insumo, abstém-se — não devolve número conservador.
 
 ## Fases
 
-0. **Preparação** — em execução (`docs/loop/fila.md`)
-1. **Fundação** — `units.py`, contrato de método e extração de `methods/`, comportamento idêntico
+0. **Preparação** — concluída (tag `v2-fase-0`)
+1. **Fundação** — em execução (`docs/loop/fila.md`): `units.py`, contrato de método e extração de `methods/`, comportamento idêntico, golden dos motores
 2. **2A Dados corretos** (dados de referência, E-1, DY único, E-2, cinco anos, dívida líquida, bancos, liquidez), **2B Taxa real, bancos e escopo** e **2C Qualidade e apresentação** (normalização, lente de qualidade, histerese, vocabulário, lentes, fim do Markowitz)
 3. **Tempo como entrada** — E-6, E-14, ponto-no-tempo, `analisar(ticker, as_of)`, backtest real
 4. **Operação diária, rastreabilidade e risco da carteira**
@@ -264,7 +271,8 @@ Arquivos travados por fase: `docs/PLANO.md`, seção 8.
 
 - Correção: teste xfail provando o bug → implementação → XPASS.
 - Refactor: nenhum teste existente muda; as seções A, B e C de
-  `tests/test_financeiro_pre_refactor.py` são o juiz.
+  `tests/test_financeiro_pre_refactor.py` e o golden dos motores
+  (`tests/test_equivalencia_motores.py`, grade em `tests/fixtures/golden_motores.jsonl`) são o juiz.
 - Depois: `/review-diff` → `/safe-commit` (sem push) → checkpoint da fase → push manual.
 - `xfail_strict = true` é obrigatório, senão XPASS não falha e o gate é fictício.
 - Antipadrão recorrente: teste que asserta sem verificar. Valide por mutação.

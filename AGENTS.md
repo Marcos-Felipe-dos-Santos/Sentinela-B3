@@ -8,7 +8,7 @@
 Plataforma educacional de análise de ações e FIIs da B3.
 Python 3.13 + Streamlit (interface FastAPI + HTMX prevista para a Fase 7), local-first, SQLite.
 **Não é consultoria financeira.**
-Suíte: ~255 testes, 23 módulos em `tests/`, ~2 s.
+Suíte: ~655 testes, 44 módulos em `tests/`, ~5 s.
 
 ---
 
@@ -70,6 +70,8 @@ sentinela/api/**        sentinela/web/**
 backtesting/fundamentos_point_in_time.csv
 backtesting/backtest_results_v1.csv
 tests/test_financeiro_pre_refactor.py
+tests/test_equivalencia_motores.py  tests/golden_motores.py
+tests/fixtures/golden_motores.jsonl
 docs/loop/**
 ```
 
