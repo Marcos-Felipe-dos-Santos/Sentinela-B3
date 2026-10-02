@@ -164,7 +164,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - mutation ≥ 80% em `sentinela.domain.units*`;
   - gate da fase.
 
-- [ ] **F1-2** · feat · `feat: add valuation method contract with frozen inputs` · **[D5]**
+- [x] **F1-2** · feat · `feat: add valuation method contract with frozen inputs` · **[D5]**
   Cria `sentinela/methods/__init__.py` e `base.py`, e acrescenta `Regime` (`REAL`, `NOMINAL`, `SEM_TAXA`) a `sentinela/domain/enums.py`.
   - **`MethodInputs`** é uma dataclass congelada, com `as_of: date` obrigatório [D5]. Os campos são tipados pelo `units.py`: preço, LPA, VPA, P/L, P/VP, DY, ROE, Selic (`RateNominal`), vacância, perfil e as flags de confiabilidade da V1.
   - **Resultado:** ou `MethodResult` (método, versão, valor com unidade, intermediários nomeados, alertas), ou `Abstention` (método, versão, motivo).

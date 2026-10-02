@@ -63,3 +63,19 @@
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** a escolha de rejeitar `bool` como valor numérico.
+
+### F1-2 — feat: add valuation method contract with frozen inputs
+- **Status:** sucesso
+- **O que foi feito:** `sentinela/methods/__init__.py` e `base.py`; `Regime` (`REAL`, `NOMINAL`, `SEM_TAXA`) e `Perfil` (`RENDA`, `CRESCIMENTO`) em `sentinela/domain/enums.py`.
+  - `MethodInputs`: dataclass congelada, `as_of: date` obrigatório [D5] (datetime é recusado), campos tipados pelo `units.py` (preço, LPA, VPA: `BRL`; P/L, P/VP, DY, ROE, vacância: `Ratio`; Selic: `RateNominal`; perfil) e as três flags da V1; tipo errado levanta `TypeError`, inclusive `RateReal` na Selic.
+  - `MethodResult` (método, versão, valor com unidade, `intermediarios` nomeados, alertas) e `Abstention` (método, versão, motivo não vazio).
+  - `ValuationMethod`: declara `nome`, `version` (MAJOR.MINOR.PATCH), `regime`, `requires`, `assumptions`, `applies_to` e `params_type` (dataclass congelada, sem valor padrão), tudo validado na declaração da subclasse. `calcular` é fixo e checa os insumos: faltando algum exigido, devolve `Abstention("insumo ausente: ...")` antes de chamar `_calcular`, que cada método implementa. Subclasse que sobrescreve `calcular` é recusada.
+  - Regime × taxa: `TIPO_TAXA` mapeia o regime ao tipo da taxa; como a Selic é `RateNominal`, só método `NOMINAL` pode exigi-la em `requires`. Uma versão REAL terá insumo de taxa real próprio (F2B-1).
+  - Os métodos não importam `config` (só `sentinela.domain`).
+- **Dificuldades:** a Selic é o único insumo de taxa do contrato; Lynch é NOMINAL sem exigir Selic, então a regra é "só NOMINAL pode exigir Selic", não "NOMINAL exige Selic".
+- **Como resolvi:** testes primeiro (falhavam na coleta), depois a implementação.
+- **Testes:** 331 passed + 1 skipped + 1 xfailed → 353 passed + 1 skipped + 1 xfailed (22 novos em `tests/test_methods_contrato.py`, com os quatro do aceite).
+- **Mutation (`sentinela.methods.base*`):** 183 mutantes, 164 mortos, 19 sobreviventes → **89,6%**. Os 19 só alteram texto de mensagem de erro (`XX…XX`, caixa, `type(None).__name__`), sem efeito no contrato.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma. Se a D5 for recusada, `as_of` e `test_inputs_exigem_as_of` saem (ver fila).
+- **Para o Marcos revisar:** `MethodResult.valor` e `Intermediario.valor` aceitam qualquer tipo de `units.py` (o P/VP do `fii_nav` volta como `Ratio`, não `BRL`).
