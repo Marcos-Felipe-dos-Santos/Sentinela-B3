@@ -273,7 +273,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - `python -m mutmut run "sentinela.methods*"` e `python -m mutmut export-cicd-stats` dão mortos ÷ (mortos + sobreviventes) ≥ 80% no pacote, com o número de cada módulo no diário;
   - gate da fase.
 
-- [ ] **F1-12** · feat · `feat: add static traceability report v0` · **[D9]**
+- [x] **F1-12** · feat · `feat: add static traceability report v0` · **[D9]**
   `python -m sentinela.reports.rastreabilidade <TICKER>` grava `outputs/rastreabilidade/<TICKER>-<data>.html`, fora do git.
 
   **Fonte dos dados.** Lê a cascata e os motores da V1 como estão: a mesma sequência do `app.py`, sem IA e sem gravar análise. A cascata ainda grava o cache de fundamentos, como no app. O detalhe por método vem do passo interno criado no F1-3 e no F1-7, sem cálculo novo.
