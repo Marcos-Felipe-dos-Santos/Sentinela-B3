@@ -320,7 +320,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - cada linha citada conferida com `grep -n` e listada no diário;
   - `CLAUDE.md` e `AGENTS.md` sem contradição entre si.
 
-- [ ] **F1-19** · levantamento · `docs: propose phase 2A queue`
+- [x] **F1-19** · levantamento · `docs: propose phase 2A queue`
   O `fable-architect` propõe a fila da Fase 2A em `docs/loop/fila-fase2a-proposta.md`, a partir da seção "Fase 2A" do PLANO, do dossiê, do inventário e das decisões do checkpoint da Fase 0. A proposta precisa ler `docs/decisoes/checkpoint-fase0.md` e seguir o que ele já decidiu. A proposta traz:
   - um item por commit, com tipo, escopo e aceite;
   - teste xfail antes de cada correção;

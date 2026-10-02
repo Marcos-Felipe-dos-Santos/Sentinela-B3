@@ -221,3 +221,22 @@
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos:** nenhuma. A seção "Fase atual" do `AGENTS.md` já trava os arquivos da Fase 1 (inclusive `sentinela/reports/`, `cvm_ticker_map.py` e `tests/fixtures/`) e é do Marcos; não foi tocada.
 - **Para o Marcos revisar:** a tabela de linhas e contagens do `CLAUDE.md`.
+
+### F1-19 — docs: propose phase 2A queue
+- **Status:** sucesso
+- **O que foi feito:** o `fable-architect` (somente leitura) propôs a fila da Fase 2A, que gravei em `docs/loop/fila-fase2a-proposta.md` (841 linhas, 28 itens, F2A-1 a F2A-28 mais a linha `[DECISÃO]`); nada foi implementado. A primeira tentativa do agente caiu por limite de uso da sessão, sem entregar nada; refiz a delegação com o mesmo escopo.
+- **Conteúdo, conferido contra o aceite:**
+  - formato da fila: cabeçalho "Proposta, não ativa", condições de ativação (merges do Jules B4.1, B4.2, B4.3 e C-D na `main`), intocáveis, regra do golden, gate da fase, rito dos dados, legenda, itens e a seção final "Riscos e decisões do Marcos";
+  - um item por commit, com tipo, título em Conventional Commit e aceite: 27 dos 28 itens têm "Aceite" escrito; o F2A-14 (resumo e arquivamento) segue o formato do F1-14, em cinco passos, como a fila atual;
+  - xfail estrito antes de cada correção (itens `fix:`), um único refactor (F2A-17, sem mudança de saída);
+  - itens marcados com a pergunta do dossiê ou o limiar de que dependem (**[P1]**, **[P5]**, **[P6]**, **[P7]**, **[D7]**, **[LIQUIDEZ]**, **[CORREÇÕES]**, **[golden]**), com o efeito de cada resposta possível na última seção;
+  - limpeza (F2A-13) é o penúltimo item e o resumo (F2A-14) o último, seguidos da linha `[DECISÃO]`;
+  - segue o `docs/decisoes/checkpoint-fase0.md`: por exemplo o scraper do Fundamentus sai na 2A (seção 2 do checkpoint), um PR por fase, as respostas às perguntas do dossiê;
+  - nenhuma decisão do Marcos tomada pelo texto: a [LIQUIDEZ], a regra do golden (opções a, b e c) e a tabela de [CORREÇÕES] (inclui a CSNA3, cujo `Codigo_Negociacao` no FCA é o próprio CD_CVM) ficam como decisões dele, e sem resposta o F2A-10 sai da fila e os itens [golden] param em `[!]`;
+  - vocabulário proibido só aparece nas frases que o proíbem (`grep`), e nenhum dado da carteira.
+- **Dificuldades:** o escopo cresceu de 14 itens (PLANO) para 28: o agente acrescentou F2A-15 a F2A-28 (ferramenta de diff do golden, cache da CVM, COTAHIST, levantamento de fontes, correções de fonte, liquidez, entre outros), a partir do diário da Fase 1 e do checkpoint.
+- **Como resolvi:** li o início (cabeçalho, gate, rito) e o fim (`[DECISÃO]` e riscos) inteiros, e conferi o meio por `grep` (itens, tipos, aceites, vocabulário, carteira).
+- **Testes:** 653 passed + 1 skipped + 1 xfailed (sem mudança; item só de documentação).
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** a regra do golden na 2A (a Fase 1 exigia um único commit no fixture; a proposta troca por regeneração só das linhas afetadas, com ferramenta de diff), a [LIQUIDEZ] e a tabela de [CORREÇÕES]; aprovar o aumento do escopo (28 itens) e as "escolhas de desenho que a aprovação confirma".
+- **Para o Marcos revisar:** os itens novos F2A-15 a F2A-28 e a seção "Riscos e decisões do Marcos"; as linhas citadas na proposta são de 2/10/2026 e envelhecem.
