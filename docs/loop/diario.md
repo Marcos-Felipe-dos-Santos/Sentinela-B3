@@ -106,3 +106,15 @@
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** o `as_of=date.today()` no motor, que lê o relógio (o motor não está sob o contrato de pureza; os métodos estão).
+
+### F1-4 — refactor: extract Bazin method
+- **Status:** sucesso
+- **O que foi feito:** a fórmula e as condições do Bazin (antes `valuation_engine.py`, bloco "2. BAZIN") foram movidas para `sentinela/methods/bazin.py` (1.0.0, regime `NOMINAL`, `applies_to` STOCK e UNIT), com `BazinParams` (DY mínimo 5%, limite de armadilha 15%, taxa mínima 5%) montado pelo motor a partir do `MacroContext`. Valor justo = (DY × preço) ÷ máx(Selic, taxa mínima), na mesma ordem de operações da V1 (conferido por teste com `==`). Abstenções com motivo: perfil crescimento, DY não confiável, DY abaixo do mínimo (limite inclusivo, `>=`), mais o resultado não finito. DY acima do limite de armadilha não tira o método: volta como `alertas` do resultado, e o motor mantém "DY muito alto (possível armadilha)" e a confiança −10 no mesmo ponto de `riscos` (logo depois do Graham, antes dos riscos seguintes). `_montar_inputs` ganhou `dy`, `selic` (`RateNominal`, lida por `get_selic_atual()`, que continua o ponto de patch) e `dy_confiavel`, como parâmetros opcionais para não alterar os testes do F1-3; `_avaliar_metodos` devolve também o Bazin.
+- **Dificuldades:** nenhuma.
+- **Como resolvi:** testes do método primeiro (falhavam na coleta), depois o módulo e a delegação; golden (2.247 casos) e seções A, B e C verdes sem alteração.
+- **Testes:** 442 passed + 1 skipped + 1 xfailed → 471 passed + 1 skipped + 1 xfailed (20 em `tests/test_methods_bazin.py`, 6 em `tests/test_valuation_engine_inputs_taxa.py` e 3 da parametrização de `tests/test_contratos_import.py` sobre o módulo novo). Nenhum teste existente mudou.
+- **Mutation:** `sentinela.methods.bazin*`: 61 mortos de 61 → **100%**.
+- **Divergência conhecida (fora do golden):** DY infinito entrava na V1 como `Bazin: inf` com o alerta de armadilha; agora `None` → abstenção, sem alerta. É a conversão que o rito da fila determina (valor não finito vira `None`). DY NaN já não calculava na V1 (comparação falsa).
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** nada além do ponto acima.

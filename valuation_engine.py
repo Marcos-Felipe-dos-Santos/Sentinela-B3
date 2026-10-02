@@ -5,13 +5,15 @@ from datetime import date
 
 from config import get_selic_atual, DISTRESSED_TICKERS, MACRO, _normalizar_dy
 from sentinela.domain.enums import Perfil
-from sentinela.domain.units import BRL, Ratio
+from sentinela.domain.units import BRL, RateNominal, Ratio
 from sentinela.methods.base import MethodInputs, MethodResult
+from sentinela.methods.bazin import ALERTA_DY_ARMADILHA, Bazin, BazinParams
 from sentinela.methods.graham import Graham, GrahamParams
 
 logger = logging.getLogger("Valuation")
 
 _GRAHAM = Graham()
+_BAZIN = Bazin()
 
 
 def _finito(valor):
@@ -20,9 +22,13 @@ def _finito(valor):
 
 
 class ValuationEngine:
-    def _montar_inputs(self, p, pl, pvp, is_growth, pl_confiavel):
+    def _montar_inputs(
+        self, p, pl, pvp, is_growth, pl_confiavel, dy=None, selic=None, dy_confiavel=True
+    ):
         """Converte os dados já normalizados da V1 em MethodInputs (uma única vez)."""
         p, pl, pvp = _finito(p), _finito(pl), _finito(pvp)
+        dy = None if dy is None else _finito(dy)
+        selic = None if selic is None else _finito(selic)
         vpa = None
         if p is not None and pvp is not None:
             vpa = _finito(p / pvp) if pvp > 0 else 0.0
@@ -32,8 +38,11 @@ class ValuationEngine:
             pl=None if pl is None else Ratio(pl),
             pvp=None if pvp is None else Ratio(pvp),
             vpa=None if vpa is None else BRL(vpa),
+            dy=None if dy is None else Ratio(dy),
+            selic=None if selic is None else RateNominal(selic),
             perfil=Perfil.CRESCIMENTO if is_growth else Perfil.RENDA,
             pl_confiavel=pl_confiavel,
+            dy_confiavel=dy_confiavel,
         )
 
     def _avaliar_metodos(self, inputs):
@@ -46,6 +55,14 @@ class ValuationEngine:
                     pl_piso=MACRO.GRAHAM_PL_FLOOR,
                     pvp_limite_renda=MACRO.GRAHAM_PVP_LIMITE_RENDA,
                     pvp_limite_crescimento=MACRO.GRAHAM_PVP_LIMITE_CRESCIMENTO,
+                ),
+            ),
+            "Bazin": _BAZIN.calcular(
+                inputs,
+                BazinParams(
+                    dy_min=MACRO.BAZIN_DY_MIN,
+                    dy_armadilha=MACRO.BAZIN_DY_ARMADILHA,
+                    taxa_min=MACRO.BAZIN_TAXA_MIN,
                 ),
             ),
         }
@@ -128,7 +145,9 @@ class ValuationEngine:
         # Se PL veio do Yahoo com flag de baixa confiabilidade (PL negativo ou >80),
         # Graham é ignorado mesmo dentro do limite — melhor não aplicar com dado suspeito
         resultados = self._avaliar_metodos(
-            self._montar_inputs(p, pl, pvp, is_growth, pl_confiavel)
+            self._montar_inputs(
+                p, pl, pvp, is_growth, pl_confiavel, dy=dy, selic=selic, dy_confiavel=dy_confiavel
+            )
         )
         graham = resultados["Graham"]
         if isinstance(graham, MethodResult):
@@ -137,16 +156,15 @@ class ValuationEngine:
             logger.info(f"[{dados.get('ticker','?')}] Graham IGNORADO — pl_confiavel=False (PL via Yahoo suspeito)")
 
         # ── 2. BAZIN ─────────────────────────────────────────────────────────
-        # Só para RENDA com DY confiável; usa taxa mínima = max(selic, 5%)
-        # Bazin foi criado para pagadoras de dividendos consistentes.
-        # Gate de 5% evita avaliar pelo modelo de renda empresas com DY
-        # simbólico (0-4%), que produziria fair value incorretamente baixo.
-        if not is_growth and dy >= MACRO.BAZIN_DY_MIN and dy_confiavel:
-            if dy > MACRO.BAZIN_DY_ARMADILHA:
+        # Fórmula e condições em sentinela/methods/bazin.py.
+        # O alerta de DY acima de 15% volta como alerta do resultado; o motor mantém
+        # o risco e o desconto de confiança no mesmo ponto de `riscos`.
+        bazin = resultados["Bazin"]
+        if isinstance(bazin, MethodResult):
+            if ALERTA_DY_ARMADILHA in bazin.alertas:
                 riscos.append("DY muito alto (possível armadilha)")
                 confianca -= 10
-            taxa_minima = max(selic, MACRO.BAZIN_TAXA_MIN)
-            metodos['Bazin'] = (dy * p) / taxa_minima
+            metodos['Bazin'] = bazin.valor.valor
 
         # ── 3. PETER LYNCH ───────────────────────────────────────────────────
         # Só para CRESCIMENTO com DY confiável e lpa > 0 e roe > 0

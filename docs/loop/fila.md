@@ -203,7 +203,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** gate de refactor; `tests/test_methods_graham.py`; mutation de `sentinela.methods.graham*` no diário.
 
-- [ ] **F1-4** · refactor · `refactor: extract Bazin method`
+- [x] **F1-4** · refactor · `refactor: extract Bazin method`
   Move `valuation_engine.py:97-107` para `bazin.py`, com regime `NOMINAL`:
   - DY mínimo de 5% (seção A);
   - só no perfil renda e com DY confiável;
