@@ -8,6 +8,7 @@ from sentinela.domain.enums import Perfil
 from sentinela.domain.units import BRL, RateNominal, Ratio
 from sentinela.methods.base import MethodInputs, MethodResult
 from sentinela.methods.bazin import ALERTA_DY_ARMADILHA, Bazin, BazinParams
+from sentinela.methods.gordon import Gordon, GordonParams
 from sentinela.methods.lynch import Lynch, LynchParams
 from sentinela.methods.graham import Graham, GrahamParams
 
@@ -16,6 +17,7 @@ logger = logging.getLogger("Valuation")
 _GRAHAM = Graham()
 _BAZIN = Bazin()
 _LYNCH = Lynch()
+_GORDON = Gordon()
 
 
 def _finito(valor):
@@ -88,6 +90,16 @@ class ValuationEngine:
                     g_max=MACRO.LYNCH_G_MAX,
                     pl_multiplicador=MACRO.LYNCH_PL_MULTIPLICADOR,
                     pl_max=MACRO.LYNCH_PL_MAX,
+                ),
+            ),
+            "Gordon": _GORDON.calcular(
+                inputs,
+                GordonParams(
+                    dy_min=MACRO.GORDON_DY_MIN,
+                    roe_min=MACRO.GORDON_ROE_MIN,
+                    g_max=MACRO.GORDON_G_MAX,
+                    premio_risco=MACRO.GORDON_PREMIO_RISCO,
+                    payout_max=MACRO.GORDON_PAYOUT_MAX,
                 ),
             ),
         }
@@ -207,16 +219,11 @@ class ValuationEngine:
             metodos['Lynch'] = lynch.valor.valor
 
         # ── 4. GORDON ─────────────────────────────────────────────────────────
-        # Modelo de dividendos; exige DY confiável e real (>4%) e ROE sólido
-        if dy_confiavel and dy > MACRO.GORDON_DY_MIN and roe > MACRO.GORDON_ROE_MIN:
-            payout_ratio_g = min((dy * p) / lpa, MACRO.GORDON_PAYOUT_MAX) if lpa > 0 else 0.5
-            retencao_g = 1 - payout_ratio_g
-            g = roe * retencao_g
-            g = min(g, MACRO.GORDON_G_MAX)
-            k = selic + MACRO.GORDON_PREMIO_RISCO
-            if k > g:
-                div_prox = (dy * p) * (1 + g)
-                metodos['Gordon'] = div_prox / (k - g)
+        # Fórmula e condições em sentinela/methods/gordon.py (regime nominal; a troca
+        # por taxa real é o F2B-1).
+        gordon = resultados["Gordon"]
+        if isinstance(gordon, MethodResult):
+            metodos['Gordon'] = gordon.valor.valor
 
         # ── CÁLCULO FINAL ─────────────────────────────────────────────────────
         valores_validos = list(metodos.values())

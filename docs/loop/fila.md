@@ -222,7 +222,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** gate de refactor; `tests/test_methods_lynch.py`; mutation de `sentinela.methods.lynch*` no diário.
 
-- [ ] **F1-6** · refactor · `refactor: extract Gordon method`
+- [x] **F1-6** · refactor · `refactor: extract Gordon method`
   Move `valuation_engine.py:120-130` para `gordon.py`, com regime `NOMINAL`:
   - exige `dy_confiavel`, DY acima de 4% e ROE acima de 10%;
   - k = Selic + 7%;

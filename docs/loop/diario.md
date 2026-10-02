@@ -130,3 +130,16 @@
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** nada além do ponto acima.
+
+### F1-6 — refactor: extract Gordon method
+- **Status:** sucesso
+- **O que foi feito:** a fórmula e as condições do Gordon (antes `valuation_engine.py`, bloco "4. GORDON") foram movidas para `sentinela/methods/gordon.py` (1.0.0, regime `NOMINAL`, `applies_to` STOCK e UNIT), com `GordonParams` (DY mínimo 4%, ROE mínimo 10%, teto de g 8%, prêmio de risco 7%, teto de payout 0,95) montado pelo motor a partir do `MacroContext`. Exige DY confiável, DY acima de 4% e ROE acima de 10% (limites estritos, como na V1); k = Selic + 7% e g = ROE × retenção com teto; k ≤ g vira `Abstention`. Com LPA ≤ 0, o payout é 0,5: o fallback da V1 fica e está declarado em `assumptions` (só vira abstenção na Fase 2, com versão nova). Sem taxa real aqui: o regime é nominal e a troca é o F2B-1 (armadilha 1). Intermediários nomeados: `payout`, `g`, `k`, `dividendo_proximo`. Mesma ordem de operações da V1, conferida por teste com `==` em três combinações. A Selic continua lida por `valuation_engine.get_selic_atual()` e entra como `RateNominal`. `_montar_inputs` já tinha DY, ROE, LPA e Selic; `_avaliar_metodos` devolve agora os quatro métodos (Graham, Bazin, Lynch, Gordon) na ordem da V1.
+- **Dificuldades:** nenhuma.
+- **Como resolvi:** testes do método primeiro, depois o módulo e a delegação; golden (2.247 casos, que inclui a Selic em torno de k = g) e seções A, B e C verdes sem alteração.
+- **Testes:** 509 passed + 1 skipped + 1 xfailed → 539 passed + 1 skipped + 1 xfailed (27 em `tests/test_methods_gordon.py` e 3 da parametrização de `tests/test_contratos_import.py`). Nenhum teste existente mudou.
+- **Mutation:** `sentinela.methods.gordon*`: 111 mortos de 111 → **100%**. `valuation_engine*` com os quatro métodos extraídos: 608 mortos, 83 sobreviventes → 88,0% (86,8% depois do F1-3).
+- **Divergência conhecida (fora do golden):** DY, ROE, LPA ou preço infinitos entravam na V1 como números (por exemplo `Gordon: inf` com DY infinito); agora viram `None` e o Gordon se abstém, pelo rito da fila; resultado que estoura para infinito também vira abstenção. NaN já não calculava na V1.
+- **Sobras de método no motor (para o F1-13):** nenhuma encontrada: `ruff check --select F valuation_engine.py` limpo. Os comentários de bloco no motor apontam para os módulos novos. O motivo da abstenção do Bazin com DY não confiável sai como "DY abaixo do mínimo" no fluxo real (o `_normalizar_dy` devolve DY 0 nesse caso); o número não muda e o texto só importa quando o motivo for exibido (F2C).
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** o tratamento do fallback do payout (LPA ≤ 0), preservado de propósito.
