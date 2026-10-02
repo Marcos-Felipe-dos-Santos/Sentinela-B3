@@ -258,3 +258,13 @@
 - **Resíduos:** removidos `reportlab`, `openpyxl` e `docs/cleanup_report.md` (rastreados, recuperáveis pelo histórico). Nada para o Marcos apagar à mão além do que o diário do F1-15 já lista.
 - **Decisões que ficaram para o Marcos:** (1) trocar `data/` por `/data/` no `.gitignore` antes de ativar a 2A (senão `sentinela/data/` fica ignorado e o código da 2A não entra no git); (2) o `--exclude venv,mutants,outputs,data` do vulture (comando do `CLAUDE.md` e do CI) vira `*data*` e também pula `database.py`, `data_quality.py`, os testes deles e `sentinela/data/`: trocar por `./data/*` num item próprio. A exclusão do ruff foi verificada com `ruff check --no-respect-gitignore --show-files`: `./data` exclui só a pasta da raiz.
 - **Para o Marcos revisar:** o bloco `select` de 413 códigos no `pyproject.toml` (explícito de propósito, para o conjunto não depender da versão do ruff) e o alvo py313, que acrescentou 2 achados. Como o ruff lê esse `select` também no gate bloqueante (`--select E9,...`), um ruff mais novo que renomeie um código quebraria o CI: por isso o `requirements-dev.txt` passou de `ruff>=0.6.0` para `ruff>=0.16.9,<0.17`. A citação `tests/test_fundamentus_scraper.py:22` do `docs/jules-backlog.md:94` agora é `:24` (arquivo do Jules; não mexi).
+
+### F1-14 — docs: add phase 1 summary and archive loop files
+- **Status:** sucesso
+- **O que foi feito:** (1) escrevi `docs/loop/pr-fase-1.md` a partir do diário: itens e commits, testes antes → depois, mutation por módulo da linha de base do F0-3 ao final, as duas mudanças de comportamento (F1-15 e F1-11) com o efeito medido, as divergências conhecidas por valor não finito, as decisões pendentes (inclusive os pontos da revisão da proposta da 2A, o `.gitignore`, o vulture e a versão do ruff), os resíduos para o Marcos (com a linha de comando do `invalidar_cache_cvm.py`) e o que revisar primeiro; (2) registrei este item e o marquei `[x]`; (3) movi com `git mv` a fila e o diário para `docs/loop/historico/fase-1/`; o `pr-fase-1.md` nunca foi rastreado em `docs/loop/`, então foi criado direto no destino (entra como arquivo novo, não como rename); (4) criei um `docs/loop/fila.md` novo só com a linha `[DECISÃO]`; (5) stage, `/review-diff`, `/safe-commit` e `cat docs/loop/fila.md`. A fila arquivada ainda abre com "Proposta, não ativa": fica como registro histórico.
+- **Dificuldades:** nenhuma.
+- **Como resolvi:** —
+- **Testes:** 653 passed + 1 skipped + 1 xfailed (sem mudança; item só de documentação e arquivamento).
+- **Resíduos:** nada removido.
+- **Decisões que ficaram para o Marcos:** as listadas em `pr-fase-1.md` (seção "Decisões pendentes").
+- **Para o Marcos revisar:** `docs/loop/historico/fase-1/pr-fase-1.md`, que serve de corpo do PR da fase.
