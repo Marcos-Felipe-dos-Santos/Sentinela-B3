@@ -179,7 +179,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - mutation ≥ 80% em `sentinela.methods.base*`;
   - gate da fase.
 
-- [ ] **F1-10** · test · `test: enforce purity contract on valuation methods` · **[D11]**
+- [x] **F1-10** · test · `test: enforce purity contract on valuation methods` · **[D11]**
   Entra antes da primeira extração, para que cada método já nasça verificado. Cria `tests/test_contratos_import.py`, com duas verificações:
   1. **Pela AST** de `sentinela/methods/**/*.py` e dos módulos de `sentinela/domain/` que eles importam:
      - não há import de `sentinela.news`, `sentinela.data`, `sentinela.services`, `sentinela.repositories`, `sentinela.reports`, `technical_engine`, `config`, `market_engine`, `database`, provedores e mapas da raiz, `ai_core`, `requests`, `urllib`, `http`, `socket`, `sqlite3`, `yfinance`, `logging`, `os`, `pathlib` ou `time`;

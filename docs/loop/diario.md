@@ -79,3 +79,17 @@
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos:** nenhuma. Se a D5 for recusada, `as_of` e `test_inputs_exigem_as_of` saem (ver fila).
 - **Para o Marcos revisar:** `MethodResult.valor` e `Intermediario.valor` aceitam qualquer tipo de `units.py` (o P/VP do `fii_nav` volta como `Ratio`, não `BRL`).
+
+### F1-10 — test: enforce purity contract on valuation methods
+- **Status:** sucesso
+- **O que foi feito:** `tests/test_contratos_import.py`, no `pytest` do CI, sem dependência nova.
+  - **AST** de `sentinela/methods/**/*.py` e do fecho dos módulos de `sentinela/domain/` que eles importam (inclusive os `__init__` dos pacotes pai, que o import executa: `sentinela/domain/__init__.py`, `models.py`, `provenance.py`, `enums.py`, `units.py`): barra a lista do item (`sentinela.news/data/services/repositories/reports`, `technical_engine`, `config`, `market_engine`, `database`, provedores e mapas da raiz, `ai_core`, `requests`, `urllib`, `http`, `socket`, `sqlite3`, `yfinance`, `logging`, `os`, `pathlib`, `time`), mais `valuation_engine` e `fii_engine` (os motores da V1 chamam os métodos, não o contrário); barra chamadas a `now`, `today`, `utcnow` e `open`. Imports relativos são resolvidos contra o pacote.
+  - **Import isolado:** cada módulo da grade é importado num subprocesso com `socket.connect` bloqueado; os módulos carregados por esse import (descontando os que o interpretador já carrega) não podem estar na lista. Pega import transitivo. Módulos que o interpretador já carrega no início (`os`, `time`, `socket`, `logging`) só são pegos pela AST.
+  - Testes do próprio detector (imports e chamadas proibidos e permitidos, import relativo), para o detector não passar em branco.
+  - A grade de arquivos é calculada na coleta: métodos novos entram sozinhos (F1-3 a F1-8).
+- **Verificação de violação (feita uma vez, não commitada):** um `sentinela/methods/_tmp_violacao.py` com `import config` derrubou `test_metodos_nao_importam_modulos_proibidos` e `test_import_isolado_nao_carrega_modulos_proibidos`; com `datetime.now()` e com `open('f')` derrubou `test_metodos_nao_leem_relogio_nem_arquivo` (o `open` também o isolado); com `import time`, a AST. O arquivo foi removido (era meu, criado para o teste) e não entrou no stage.
+- **Dificuldades:** o item cita `os`, `time`, `socket` e `logging`, que o interpretador já tem carregados: o isolado não os enxerga, então a AST é a barreira deles.
+- **Testes:** 353 passed + 1 skipped + 1 xfailed → 405 passed + 1 skipped + 1 xfailed (52 novos, parametrizados por arquivo da grade).
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** se a D11 for recusada, a lista cai para o contrato do ADR-0001 (ver fila).
+- **Para o Marcos revisar:** a inclusão de `valuation_engine` e `fii_engine` na lista barrada, além do pedido.
