@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, fields, is_dataclass
-from typing import Any, Optional, TypeVar
-
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -70,10 +69,10 @@ class MarketSnapshot:
     preco_atual: Any = None
     historico: Any = None
     quote_type: str = ""
-    fonte_preco: Optional[str] = None
-    fonte_fundamentos: Optional[str] = None
-    source: Optional[str] = None
-    collected_at: Optional[str] = None
+    fonte_preco: str | None = None
+    fonte_fundamentos: str | None = None
+    source: str | None = None
+    collected_at: str | None = None
     confidence: Any = None
     warnings: list[Any] = field(default_factory=list)
     extra: dict[str, Any] = field(default_factory=dict)
@@ -82,7 +81,7 @@ class MarketSnapshot:
         self.warnings = _as_list(self.warnings)
 
     @classmethod
-    def from_dict(cls, data: Any) -> "MarketSnapshot":
+    def from_dict(cls, data: Any) -> MarketSnapshot:
         return _build_dataclass(cls, data)
 
     def to_dict(self) -> dict[str, Any]:
@@ -109,9 +108,9 @@ class FundamentalsSnapshot:
     ativo_total: Any = None
     ativo_circulante: Any = None
     vacancia: Any = None
-    tipo: Optional[str] = None
-    source: Optional[str] = None
-    collected_at: Optional[str] = None
+    tipo: str | None = None
+    source: str | None = None
+    collected_at: str | None = None
     confidence: Any = None
     warnings: list[Any] = field(default_factory=list)
     extra: dict[str, Any] = field(default_factory=dict)
@@ -120,7 +119,7 @@ class FundamentalsSnapshot:
         self.warnings = _as_list(self.warnings)
 
     @classmethod
-    def from_dict(cls, data: Any) -> "FundamentalsSnapshot":
+    def from_dict(cls, data: Any) -> FundamentalsSnapshot:
         return _build_dataclass(cls, data)
 
     def to_dict(self) -> dict[str, Any]:
@@ -135,12 +134,12 @@ class DataQualityReport:
     dados_manual: bool = False
     campos_faltantes: list[Any] = field(default_factory=list)
     riscos_dados: list[Any] = field(default_factory=list)
-    pl_confiavel: Optional[bool] = None
-    dy_confiavel: Optional[bool] = None
+    pl_confiavel: bool | None = None
+    dy_confiavel: bool | None = None
     confianca: Any = None
     score: Any = None
-    source: Optional[str] = None
-    collected_at: Optional[str] = None
+    source: str | None = None
+    collected_at: str | None = None
     confidence: Any = None
     warnings: list[Any] = field(default_factory=list)
     extra: dict[str, Any] = field(default_factory=dict)
@@ -151,7 +150,7 @@ class DataQualityReport:
         self.warnings = _as_list(self.warnings)
 
     @classmethod
-    def from_dict(cls, data: Any) -> "DataQualityReport":
+    def from_dict(cls, data: Any) -> DataQualityReport:
         return _build_dataclass(cls, data)
 
     def to_dict(self) -> dict[str, Any]:
@@ -168,10 +167,10 @@ class ValuationResult:
     perfil: str = ""
     confianca: Any = None
     riscos: list[Any] = field(default_factory=list)
-    pl_confiavel: Optional[bool] = None
-    dy_confiavel: Optional[bool] = None
-    source: Optional[str] = None
-    collected_at: Optional[str] = None
+    pl_confiavel: bool | None = None
+    dy_confiavel: bool | None = None
+    source: str | None = None
+    collected_at: str | None = None
     confidence: Any = None
     warnings: list[Any] = field(default_factory=list)
     extra: dict[str, Any] = field(default_factory=dict)
@@ -181,7 +180,7 @@ class ValuationResult:
         self.warnings = _as_list(self.warnings)
 
     @classmethod
-    def from_dict(cls, data: Any) -> "ValuationResult":
+    def from_dict(cls, data: Any) -> ValuationResult:
         return _build_dataclass(cls, data)
 
     def to_dict(self) -> dict[str, Any]:
@@ -203,8 +202,8 @@ class TechnicalResult:
     bb_lower: Any = None
     bb_signal: str = ""
     atr: Any = None
-    source: Optional[str] = None
-    collected_at: Optional[str] = None
+    source: str | None = None
+    collected_at: str | None = None
     confidence: Any = None
     warnings: list[Any] = field(default_factory=list)
     extra: dict[str, Any] = field(default_factory=dict)
@@ -213,7 +212,7 @@ class TechnicalResult:
         self.warnings = _as_list(self.warnings)
 
     @classmethod
-    def from_dict(cls, data: Any) -> "TechnicalResult":
+    def from_dict(cls, data: Any) -> TechnicalResult:
         return _build_dataclass(cls, data)
 
     def to_dict(self) -> dict[str, Any]:
@@ -225,17 +224,17 @@ class AnalysisResult:
     ticker: str = ""
     is_fii: bool = False
     success: bool = True
-    error: Optional[str] = None
+    error: str | None = None
     market: MarketSnapshot = field(default_factory=MarketSnapshot)
     fundamentals: FundamentalsSnapshot = field(default_factory=FundamentalsSnapshot)
     data_quality: DataQualityReport = field(default_factory=DataQualityReport)
     valuation: ValuationResult = field(default_factory=ValuationResult)
     technical: TechnicalResult = field(default_factory=TechnicalResult)
     peers: dict[str, Any] = field(default_factory=dict)
-    ai_analysis: Optional[str] = None
+    ai_analysis: str | None = None
     raw: dict[str, Any] = field(default_factory=dict)
-    source: Optional[str] = None
-    collected_at: Optional[str] = None
+    source: str | None = None
+    collected_at: str | None = None
     confidence: Any = None
     warnings: list[Any] = field(default_factory=list)
     extra: dict[str, Any] = field(default_factory=dict)
@@ -251,7 +250,7 @@ class AnalysisResult:
         self.warnings = _as_list(self.warnings)
 
     @classmethod
-    def from_dict(cls, data: Any) -> "AnalysisResult":
+    def from_dict(cls, data: Any) -> AnalysisResult:
         raw = _as_dict(data)
         known = {item.name for item in fields(cls) if item.init and item.name != "extra"}
 

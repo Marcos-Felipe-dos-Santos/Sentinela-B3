@@ -1,5 +1,5 @@
 -r requirements.txt
-ruff>=0.6.0
+ruff>=0.16.9,<0.17
 mutmut>=3.0.0,<4.0.0
 pytest-cov>=5.0.0,<6.0.0
 vulture>=2.11

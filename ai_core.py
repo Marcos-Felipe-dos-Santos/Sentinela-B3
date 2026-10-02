@@ -1,11 +1,12 @@
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeout
 from typing import Any
 
 import requests
 
-from config import GEMINI_MODEL, GROQ_MODEL, OLLAMA_URL, OLLAMA_MODEL
+from config import GEMINI_MODEL, GROQ_MODEL, OLLAMA_MODEL, OLLAMA_URL
 
 # CORRIGIDO: removido `import html` que foi importado mas nunca usado
 

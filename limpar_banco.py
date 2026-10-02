@@ -16,7 +16,7 @@ import json
 import logging
 import sqlite3
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 try:
     from config import FIIS_CONHECIDOS, UNITS_CONHECIDAS
@@ -30,11 +30,11 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 DB_PATH = Path("sentinela_v6.db")
-Remocao = Tuple[str, str, str]
-Manter = Tuple[str, str, str, float, float, str]
+Remocao = tuple[str, str, str]
+Manter = tuple[str, str, str, float, float, str]
 
 
-def carregar_analises(db_path: Path) -> List[sqlite3.Row]:
+def carregar_analises(db_path: Path) -> list[sqlite3.Row]:
     """Carrega as análises salvas no banco local.
 
     Args:
@@ -56,7 +56,7 @@ def carregar_analises(db_path: Path) -> List[sqlite3.Row]:
         conn.close()
 
 
-def analisar_linhas(rows: List[sqlite3.Row]) -> Tuple[List[Remocao], List[Manter]]:
+def analisar_linhas(rows: list[sqlite3.Row]) -> tuple[list[Remocao], list[Manter]]:
     """Classifica análises entre remoção e preservação."""
     remover = []
     manter = []
@@ -66,7 +66,7 @@ def analisar_linhas(rows: List[sqlite3.Row]) -> Tuple[List[Remocao], List[Manter
         data = row['data_analise']
 
         try:
-            dados: Dict[str, Any] = json.loads(row['dados_completos'])
+            dados: dict[str, Any] = json.loads(row['dados_completos'])
         except (json.JSONDecodeError, TypeError):
             logger.warning("JSON corrompido para %s em %s", ticker, data)
             remover.append((ticker, data, "JSON corrompido"))
@@ -113,7 +113,7 @@ def analisar_linhas(rows: List[sqlite3.Row]) -> Tuple[List[Remocao], List[Manter
     return remover, manter
 
 
-def imprimir_relatorio(remover: List[Remocao], manter: List[Manter]) -> None:
+def imprimir_relatorio(remover: list[Remocao], manter: list[Manter]) -> None:
     """Imprime o relatório de limpeza."""
     print("== REMOVER ==")
     if not remover:
@@ -130,7 +130,7 @@ def imprimir_relatorio(remover: List[Remocao], manter: List[Manter]) -> None:
         )
 
 
-def executar_limpeza(db_path: Path, remover: List[Remocao]) -> None:
+def executar_limpeza(db_path: Path, remover: list[Remocao]) -> None:
     """Remove do banco as análises classificadas como problemáticas."""
     conn = sqlite3.connect(db_path)
     try:

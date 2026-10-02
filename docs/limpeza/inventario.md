@@ -259,3 +259,39 @@ Resultado das ferramentas depois da limpeza:
 - Testes: 277 passam e 1 xfail estrito, igual a antes; as seções A, B e C de `tests/test_financeiro_pre_refactor.py` seguem iguais.
 
 **Para o Marcos apagar à mão** (o loop nunca apaga arquivo não rastreado nem branch): `data/cvm/` (ZIPs do DFP, ~60 MB), `outputs/dossie_cache/` (só depois do F1-15, que gera o mapa a partir do cadastro e do FCA guardados ali), `mutants/` e os branches remotos da seção 9.
+
+---
+
+## 12. Execução do F1-13 (Fase 1)
+
+Executado em 2/10/2026, um commit (`chore: clean up phase 1 residue`). As categorias *remover na fase 1* da seção 3.1 e os itens *investigar* decididos no checkpoint da Fase 0 (seção 3 de `docs/decisoes/checkpoint-fase0.md`).
+
+| # | Item | Resultado |
+|---|---|---|
+| 1 | Correções automáticas seguras (UP045, UP006, UP037, I001, F541, FURB188, PYI041) | Aplicadas em `sentinela/`, `valuation_engine.py`, `technical_engine.py`, `database.py`, `ai_core.py`, `auditar_recomendacoes.py` (o `fundamentus_scraper.py` está no escopo, mas não tinha nada a corrigir); em `auditoria.py` e `limpar_banco.py` sem I001 (cobertura 0%); em `backtesting/` sem RUF046 (F3-8); em `scripts/` e `tests/`, fora os intocáveis da fase (o gate, o golden, os testes dos tickers do Jules e `tests/test_cvm_ticker_map.py`). Nenhuma asserção mudou: só imports, anotações, f-strings e um `removesuffix` |
+| 2 | Imports que perderam uso com as correções (F401) | 10 removidos (`typing.Optional`, `List`, `Dict`, `Tuple` em 6 arquivos). Nenhuma sobra de método encontrada em `valuation_engine.py` nem em `fii_engine.py` (`ruff --select F` limpo) |
+| 3 | `[tool.ruff]` no `pyproject.toml` | Reproduz o conjunto efetivo do ruff 0.16.9 sem configuração (413 regras, comparado por `ruff check --show-settings` antes e depois: idênticos), com `target-version = "py313"` e `extend-exclude` de `venv`, `mutants`, `outputs` e `./data` (a barra inicial evita excluir `sentinela/data/`). Com o alvo py313 o total subiu em 2 achados (218 → 220) |
+| 4 | CI | Instala `requirements-dev.txt` e ganha três passos em modo relatório, com `continue-on-error`: `ruff check . --statistics --exit-zero`, `vulture` (confiança ≥ 80) e `deptry .`. O gate bloqueante segue sendo `ruff check --select E9,F63,F7,F82 .` e o pytest. YAML validado |
+| 5 | `scripts/dossie_fase2.py` | Só as correções automáticas (nenhuma sobrou para ele). B023 (8), PLR0124 (3, `x != x` é teste de NaN), BLE001 (5), PERF102 (3), RUF015 (3) e DTZ011 (1) ficam: o script só se valida com rede |
+| 6 | Itens *investigar* decididos | `reportlab` e `openpyxl` removidos do `requirements.txt`; `docs/cleanup_report.md` removido com `git rm`. `buscar_noticias` e `get_quote` ficam para o F2A-13 |
+| 7 | `vulture_whitelist.py` | Nenhum falso positivo novo: sem alteração |
+
+Antes → depois (as três ferramentas, depois da limpeza):
+
+| Ferramenta | Antes | Depois |
+|---|---|---|
+| `ruff check .` completo | **326 erros**, 214 com correção automática | **205 erros**, 96 com correção automática |
+| UP045 / UP006 | 74 / 62 | 30 / 35 (os restantes ficam em arquivos travados: `market_engine.py`, `brapi_provider.py`, `app.py`, `fii_engine.py`, `cvm_ticker_map.py`, providers CVM) |
+| I001 | 25 | 10 (travados, e `auditoria.py`/`limpar_banco.py`) |
+| F541 / UP037 / FURB188 / PYI041 | 18 / 11 / 2 / 1 | 0 / 0 / 0 / 0 |
+| F401 | 0 | 0 |
+| `vulture --min-confidence 80` (com o whitelist) | sem achados | sem achados |
+| `deptry .` | 4 achados | **2** (`cloudscraper`, que depende do scraper, e `pytest`, que é dependência de teste no `requirements.txt`) |
+
+Resultado do que ficou: os achados da seção 3.2 (BLE001, DTZ, SIM117, B023, PLR0124 e o estilo) seguem como estão; RUF046 (10) espera o F3-8.
+
+**Alcance do `--exclude data` do vulture (para o Marcos):** o vulture trata o padrão sem curinga como `*data*` sobre o caminho inteiro, então o comando do `CLAUDE.md`, do CI e deste inventário também pula `database.py`, `data_quality.py`, `tests/test_database.py`, `tests/test_data_quality.py` e, daqui para a frente, `sentinela/data/`. O "sem achados" não cobre esses arquivos. Sugestão: trocar por `./data/*` (ou caminhos absolutos) e atualizar o `CLAUDE.md` junto, num item próprio.
+
+**Lacuna do `.gitignore` achada na execução (para o Marcos):** a linha 172, `data/`, não é ancorada e também ignora `sentinela/data/`, onde a proposta da Fase 2A põe código novo (`git check-ignore -v sentinela/data/x.py` → `.gitignore:172`). Trocar por `/data/` antes de ativar a 2A. O loop não mexe nessa decisão.
+
+Testes: 653 passam, 1 pulado e 1 xfail estrito, igual a antes. As seções A, B e C e o golden seguem iguais.

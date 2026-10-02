@@ -7,8 +7,7 @@ from sentinela.services.asset_classifier import AssetClassifier
 
 def _normalize_like_app_flow(ticker):
     ticker_norm = str(ticker or "").upper().strip()
-    if ticker_norm.endswith(".SA"):
-        ticker_norm = ticker_norm[:-3]
+    ticker_norm = ticker_norm.removesuffix(".SA")
     return ticker_norm.strip()
 
 

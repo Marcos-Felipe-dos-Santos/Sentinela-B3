@@ -49,8 +49,7 @@ class AssetClassifier:
 
     def normalize_ticker(self, ticker: str | None) -> str:
         ticker_norm = str(ticker or "").upper().strip()
-        if ticker_norm.endswith(".SA"):
-            ticker_norm = ticker_norm[:-3]
+        ticker_norm = ticker_norm.removesuffix(".SA")
         return ticker_norm.strip()
 
     def _normalize_collection(self, tickers: Any) -> set[str]:

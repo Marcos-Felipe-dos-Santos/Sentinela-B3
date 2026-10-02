@@ -332,7 +332,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** arquivo no formato desta fila; todo item com aceite verificável; nenhuma decisão do Marcos tomada pelo texto.
 
-- [ ] **F1-13** · limpeza · `chore: clean up phase 1 residue`
+- [x] **F1-13** · limpeza · `chore: clean up phase 1 residue`
   Faz só o que segue, conforme o inventário (seções 3.1 e 3.3) e o PLANO (seção 11):
   - **Sobras de método** no `valuation_engine.py` e no `fii_engine.py` que estejam registradas no diário das extrações, e imports que perderam uso.
   - **Correções automáticas seguras** da seção 3.1 do inventário (UP045, UP006, UP037, I001, F541, FURB188, PYI041), nestes arquivos:

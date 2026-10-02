@@ -1,6 +1,8 @@
-import pytest
-from fii_engine import FIIEngine, VACANCIA_CONHECIDA
 from unittest.mock import patch
+
+import pytest
+
+from fii_engine import VACANCIA_CONHECIDA, FIIEngine
 
 
 class FakeFIIProvider:

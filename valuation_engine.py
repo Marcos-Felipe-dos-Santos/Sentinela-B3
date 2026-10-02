@@ -3,14 +3,14 @@ import math
 import statistics
 from datetime import date
 
-from config import get_selic_atual, DISTRESSED_TICKERS, MACRO, _normalizar_dy
+from config import DISTRESSED_TICKERS, MACRO, _normalizar_dy, get_selic_atual
 from sentinela.domain.enums import Perfil
 from sentinela.domain.units import BRL, RateNominal, Ratio
 from sentinela.methods.base import MethodInputs, MethodResult
 from sentinela.methods.bazin import ALERTA_DY_ARMADILHA, Bazin, BazinParams
 from sentinela.methods.gordon import Gordon, GordonParams
-from sentinela.methods.lynch import Lynch, LynchParams
 from sentinela.methods.graham import Graham, GrahamParams
+from sentinela.methods.lynch import Lynch, LynchParams
 
 logger = logging.getLogger("Valuation")
 

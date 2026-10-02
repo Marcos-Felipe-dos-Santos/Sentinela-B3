@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -19,10 +19,10 @@ class AnalysisService:
         valuation_engine: Any,
         fii_engine: Any,
         technical_engine: Any,
-        peers_engine: Optional[Any] = None,
-        ai_engine: Optional[Any] = None,
-        repository: Optional[Any] = None,
-        asset_classifier: Optional[Any] = None,
+        peers_engine: Any | None = None,
+        ai_engine: Any | None = None,
+        repository: Any | None = None,
+        asset_classifier: Any | None = None,
     ) -> None:
         self.market_engine = market_engine
         self.valuation_engine = valuation_engine

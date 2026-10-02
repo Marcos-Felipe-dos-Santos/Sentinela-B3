@@ -1,6 +1,9 @@
-import pytest
-from ai_core import SentinelaAI
 from unittest.mock import MagicMock, patch
+
+import pytest
+
+from ai_core import SentinelaAI
+
 
 @pytest.fixture
 def ai():

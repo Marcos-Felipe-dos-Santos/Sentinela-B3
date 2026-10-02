@@ -7,7 +7,7 @@ import json
 import sqlite3
 from contextlib import closing
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sentinela.domain.models import AnalysisResult
 
@@ -181,12 +181,12 @@ class AnalysisRepository:
             )
             return [self._row_to_dict(row) for row in cursor.fetchall()]
 
-    def get_latest(self, ticker: str) -> Optional[dict]:
+    def get_latest(self, ticker: str) -> dict | None:
         """Return the most recent run for a ticker, or None."""
         runs = self.list_runs(ticker, limit=1)
         return runs[0] if runs else None
 
-    def count_runs(self, ticker: Optional[str] = None) -> int:
+    def count_runs(self, ticker: str | None = None) -> int:
         """Count all runs or only runs for one ticker."""
         with closing(self._get_conn()) as conn:
             if ticker is None:
@@ -226,13 +226,13 @@ class AnalysisRepository:
         return str(value or "").upper().replace(".SA", "").strip()
 
     @staticmethod
-    def _text_or_none(value: Any) -> Optional[str]:
+    def _text_or_none(value: Any) -> str | None:
         if value is None:
             return None
         return str(value)
 
     @staticmethod
-    def _float_or_none(value: Any) -> Optional[float]:
+    def _float_or_none(value: Any) -> float | None:
         if value is None or value == "":
             return None
         try:
@@ -260,7 +260,7 @@ class AnalysisRepository:
             current = current[key]
         return current
 
-    def _asset_type(self, payload: dict[str, Any]) -> Optional[str]:
+    def _asset_type(self, payload: dict[str, Any]) -> str | None:
         value = self._first_present(
             payload,
             "tipo_ativo",
