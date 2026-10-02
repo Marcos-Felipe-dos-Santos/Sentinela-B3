@@ -168,3 +168,14 @@
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** o uso do alerta do resultado para carregar a faixa.
+
+### F1-9 — feat: add method registry pinned to V1 behavior
+- **Status:** sucesso
+- **O que foi feito:** `sentinela/methods/registry.py`: catálogo dos seis métodos (Graham, Bazin, Lynch, Gordon, Bazin FII e P/VP do FII) com nome, versão, regime, `requires`, `assumptions` e `applies_to` (`entradas()`, `obter(nome)`), e o `CHANGELOG`, cuja entrada 1.0.0 diz "comportamento da V1, extraído na Fase 1, sem mudança de número". `validar` (chamada no import) recusa nome repetido e changelog que não termina na versão do método. O `applies_to` é declarado e não aplicado: descreve o roteamento da V1 (ações para STOCK e UNIT, FII para FII; nenhum método declara ETF nem BDR); aplicar e estreitar é o F2B-4. O registro não importa `config`.
+- **Teste dos parâmetros:** `test_parametros_da_1_0_0_fixados` fixa, para cada método, os campos de `params_type` e o valor de cada constante do `MacroContext` de que o motor os monta (25, 7, 2,5, 3; 5%, 15%, 5%; 0,95, 25%, 1,5, 35; 4%, 10%, 8%, 7%, 0,95; 0,85; 1,15, 1,05, 0,85), mais as constantes de fórmula que moram nos módulos (22,5 do Graham e o payout 0,5 do Gordon sem LPA). Mudar uma constante, ou acrescentar um campo de parâmetro, sem criar versão nova quebra a suíte.
+- **Dificuldades:** nenhuma.
+- **Como resolvi:** testes primeiro (falhavam na coleta), depois o registro.
+- **Testes:** 601 passed + 1 skipped + 1 xfailed → 614 passed + 1 skipped + 1 xfailed (10 em `tests/test_registry.py` e 3 da parametrização de `tests/test_contratos_import.py` sobre o módulo novo). Os cinco do aceite existem com os nomes da fila.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** o nome "P/VP do FII" para a lente do `fii_nav` (o PLANO falava em "FII NAV"; o F1-18 corrige a tabela).

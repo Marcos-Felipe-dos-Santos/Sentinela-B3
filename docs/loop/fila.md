@@ -252,7 +252,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** gate de refactor; `tests/test_methods_fii_nav.py`; mutation de `sentinela.methods.fii_nav*` no diário.
 
-- [ ] **F1-9** · feat · `feat: add method registry pinned to V1 behavior`
+- [x] **F1-9** · feat · `feat: add method registry pinned to V1 behavior`
   Cria `sentinela/methods/registry.py`, com o catálogo dos seis métodos (nome, versão, regime, `requires`, `assumptions`, `applies_to`) e o changelog. A entrada 1.0.0 diz: "comportamento da V1, extraído na Fase 1, sem mudança de número".
   - `applies_to` é declarado, mas não aplicado. Descreve o roteamento da V1: ações para `STOCK` e `UNIT`, FII para `FII`. O classificador atual nunca devolve `ETF` nem `BDR`. Aplicar e estreitar é o F2B-4.
   - Um teste fixa os valores dos parâmetros da 1.0.0 lidos do `MacroContext`: mudar uma constante sem criar versão nova quebra a suíte.
