@@ -118,3 +118,15 @@
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** nada além do ponto acima.
+
+### F1-5 — refactor: extract Lynch method
+- **Status:** sucesso
+- **O que foi feito:** a fórmula e as condições do Lynch (antes `valuation_engine.py`, bloco "3. PETER LYNCH") foram movidas para `sentinela/methods/lynch.py` (1.0.0, regime `NOMINAL`: g = ROE × retenção é nominal; `applies_to` STOCK e UNIT), com `LynchParams` (teto de payout 0,95, teto de g 25%, multiplicador 1,5, teto de P/L justo 35) montado pelo motor a partir do `MacroContext`. Só no perfil crescimento, com DY confiável e P/L, LPA e ROE positivos; mesma ordem de operações da V1 (conferida por teste com `==`, em três combinações). Intermediários nomeados: `payout`, `g`, `pl_justo`. Abstenções com motivo: perfil renda, DY não confiável, P/L, LPA ou ROE não positivo, e resultado não finito. `_montar_inputs` ganhou `roe` e `lpa` (opcionais, para não alterar os testes anteriores) e `_avaliar_metodos` devolve também o Lynch; o motor guarda o valor em `metodos['Lynch']` na mesma posição da V1.
+- **Dificuldades:** o primeiro `ruff format` rodado por engano no `valuation_engine.py` reformatou o arquivo inteiro; descartei esse resultado (`git checkout`) e reapliquei só as edições do item, para o diff do motor ficar restrito ao escopo (40 inserções, 11 remoções).
+- **Como resolvi:** testes do método primeiro, depois o módulo e a delegação; golden (2.247 casos) e seções A, B e C verdes sem alteração.
+- **Testes:** 471 passed + 1 skipped + 1 xfailed → 509 passed + 1 skipped + 1 xfailed (30 em `tests/test_methods_lynch.py`, 5 em `tests/test_valuation_engine_inputs_lynch.py` e 3 da parametrização de `tests/test_contratos_import.py`). Nenhum teste existente mudou.
+- **Mutation:** `sentinela.methods.lynch*`: 109 mortos de 109 → **100%**.
+- **Divergência conhecida (fora do golden):** ROE, DY ou LPA infinitos (ou preço infinito) entravam na V1 como números (por exemplo ROE infinito dava g no teto); agora viram `None` e o Lynch se abstém, pelo rito da fila. NaN em qualquer desses já não calculava na V1.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** nada além do ponto acima.

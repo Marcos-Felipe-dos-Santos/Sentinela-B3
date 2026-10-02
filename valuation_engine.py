@@ -8,12 +8,14 @@ from sentinela.domain.enums import Perfil
 from sentinela.domain.units import BRL, RateNominal, Ratio
 from sentinela.methods.base import MethodInputs, MethodResult
 from sentinela.methods.bazin import ALERTA_DY_ARMADILHA, Bazin, BazinParams
+from sentinela.methods.lynch import Lynch, LynchParams
 from sentinela.methods.graham import Graham, GrahamParams
 
 logger = logging.getLogger("Valuation")
 
 _GRAHAM = Graham()
 _BAZIN = Bazin()
+_LYNCH = Lynch()
 
 
 def _finito(valor):
@@ -23,12 +25,24 @@ def _finito(valor):
 
 class ValuationEngine:
     def _montar_inputs(
-        self, p, pl, pvp, is_growth, pl_confiavel, dy=None, selic=None, dy_confiavel=True
+        self,
+        p,
+        pl,
+        pvp,
+        is_growth,
+        pl_confiavel,
+        dy=None,
+        selic=None,
+        dy_confiavel=True,
+        roe=None,
+        lpa=None,
     ):
         """Converte os dados já normalizados da V1 em MethodInputs (uma única vez)."""
         p, pl, pvp = _finito(p), _finito(pl), _finito(pvp)
         dy = None if dy is None else _finito(dy)
         selic = None if selic is None else _finito(selic)
+        roe = None if roe is None else _finito(roe)
+        lpa = None if lpa is None else _finito(lpa)
         vpa = None
         if p is not None and pvp is not None:
             vpa = _finito(p / pvp) if pvp > 0 else 0.0
@@ -38,6 +52,8 @@ class ValuationEngine:
             pl=None if pl is None else Ratio(pl),
             pvp=None if pvp is None else Ratio(pvp),
             vpa=None if vpa is None else BRL(vpa),
+            lpa=None if lpa is None else BRL(lpa),
+            roe=None if roe is None else Ratio(roe),
             dy=None if dy is None else Ratio(dy),
             selic=None if selic is None else RateNominal(selic),
             perfil=Perfil.CRESCIMENTO if is_growth else Perfil.RENDA,
@@ -63,6 +79,15 @@ class ValuationEngine:
                     dy_min=MACRO.BAZIN_DY_MIN,
                     dy_armadilha=MACRO.BAZIN_DY_ARMADILHA,
                     taxa_min=MACRO.BAZIN_TAXA_MIN,
+                ),
+            ),
+            "Lynch": _LYNCH.calcular(
+                inputs,
+                LynchParams(
+                    payout_max=MACRO.LYNCH_PAYOUT_MAX,
+                    g_max=MACRO.LYNCH_G_MAX,
+                    pl_multiplicador=MACRO.LYNCH_PL_MULTIPLICADOR,
+                    pl_max=MACRO.LYNCH_PL_MAX,
                 ),
             ),
         }
@@ -146,7 +171,16 @@ class ValuationEngine:
         # Graham é ignorado mesmo dentro do limite — melhor não aplicar com dado suspeito
         resultados = self._avaliar_metodos(
             self._montar_inputs(
-                p, pl, pvp, is_growth, pl_confiavel, dy=dy, selic=selic, dy_confiavel=dy_confiavel
+                p,
+                pl,
+                pvp,
+                is_growth,
+                pl_confiavel,
+                dy=dy,
+                selic=selic,
+                dy_confiavel=dy_confiavel,
+                roe=roe,
+                lpa=lpa,
             )
         )
         graham = resultados["Graham"]
@@ -167,15 +201,10 @@ class ValuationEngine:
             metodos['Bazin'] = bazin.valor.valor
 
         # ── 3. PETER LYNCH ───────────────────────────────────────────────────
-        # Só para CRESCIMENTO com DY confiável e lpa > 0 e roe > 0
-        if is_growth and pl > 0 and dy_confiavel and lpa > 0 and roe > 0:
-            payout_ratio = min((dy * p) / lpa, MACRO.LYNCH_PAYOUT_MAX)
-            retencao = 1 - payout_ratio
-            g = roe * retencao
-            g = min(g, MACRO.LYNCH_G_MAX)
-            pl_justo = MACRO.LYNCH_PL_MULTIPLICADOR * (g * 100)
-            pl_justo = min(pl_justo, MACRO.LYNCH_PL_MAX)
-            metodos['Lynch'] = lpa * pl_justo
+        # Fórmula e condições em sentinela/methods/lynch.py.
+        lynch = resultados["Lynch"]
+        if isinstance(lynch, MethodResult):
+            metodos['Lynch'] = lynch.valor.valor
 
         # ── 4. GORDON ─────────────────────────────────────────────────────────
         # Modelo de dividendos; exige DY confiável e real (>4%) e ROE sólido

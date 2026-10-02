@@ -213,7 +213,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** gate de refactor; `tests/test_methods_bazin.py`; mutation de `sentinela.methods.bazin*` no diário.
 
-- [ ] **F1-5** · refactor · `refactor: extract Lynch method`
+- [x] **F1-5** · refactor · `refactor: extract Lynch method`
   Move `valuation_engine.py:109-118` para `lynch.py`, com regime `NOMINAL` (g = ROE × retenção é nominal):
   - só no perfil crescimento;
   - exige P/L, LPA e ROE positivos e DY confiável;
