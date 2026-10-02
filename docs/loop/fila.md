@@ -119,7 +119,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** suíte verde; seções A, B e C inalteradas; o app sobe sem erro. A conferência visual fica para o Marcos no checkpoint.
 
-- [ ] **F0-10** · levantamento · `docs: propose phase 1 queue`
+- [x] **F0-10** · levantamento · `docs: propose phase 1 queue`
   O `fable-architect` propõe a fila da Fase 1 em `docs/loop/fila-fase1-proposta.md`, a partir da seção "Fase 1" do `docs/PLANO.md`:
   - um item por commit, com tipo, escopo e aceite;
   - gate = seções A, B e C do F0-3 inalteradas;
