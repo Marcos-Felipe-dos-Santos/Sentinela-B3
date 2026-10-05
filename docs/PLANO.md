@@ -409,9 +409,9 @@ IDs conforme a auditoria normalizada no F0-0 (`docs/auditoria/2026-09-red-team.m
 | Alavancagem pelo endividamento contábil total | F2A-8 |
 | Bancos sem regras próprias | F2A-9, F2B-3, F2B-4 |
 | Markowitz com um ano de dados, divisão fixa 40/60 e "Alocação Sugerida" | F0-9, F2C-9, F4-7 |
-| Cobertura por mapas manuais; atualizador que não preenche ticker | F2A-1, F2A-13 |
+| Cobertura por mapas manuais; atualizador que não preenche ticker | F2A-1, F2A-31, F2A-13 |
 | Segmento do FII e controle acionário baixados e não lidos | F2A-2 |
-| BDRs tratados como ações e ETFs como FIIs | F2A-1, F2B-4 |
+| BDRs tratados como ações e ETFs como FIIs | F2A-1, F2A-20, F2A-29, F2B-4 |
 | Histórico de preço de um ano; séries macro só com o último valor | F3-4, F3-1 |
 | Três normalizadores de DY | F2A-4 |
 | E-6 — Selic congelada no import | F3-1 |
@@ -428,6 +428,12 @@ IDs conforme a auditoria normalizada no F0-0 (`docs/auditoria/2026-09-red-team.m
 | Dois bancos SQLite | F3-2 e F3-9 |
 | Mapa de pares fixo; MGLU3 duplicado | F2C-7 |
 | `BRAPI_TOKEN` fora do `.env.example` | Jules, grupo C |
+| E-15 — ROE do yfinance sem guarda (cenário de falha do achado) | F2A-30 |
+| ROE e P/L ausentes ou não finitos no score (ausente vira 0 e penaliza) | F2C-3 |
+| F-7 — JCP no DY | F2C-1 |
+| DY do Informe Mensal de FII | F2B-2 |
+| Ponto de extensão público no lugar dos singletons dos motores | F3-6 |
+| Texto de dívida em pt-BR no motor de ações, sem fonte depois da saída do Fundamentus | F2B-5 |
 
 ## 11. Resíduos e limpeza (D14)
 
