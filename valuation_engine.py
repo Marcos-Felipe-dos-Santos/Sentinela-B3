@@ -1,11 +1,109 @@
 import logging
 import math
 import statistics
-from config import get_selic_atual, DISTRESSED_TICKERS, MACRO, _normalizar_dy
+from datetime import date
+
+from config import DISTRESSED_TICKERS, MACRO, _normalizar_dy, get_selic_atual
+from sentinela.domain.enums import Perfil
+from sentinela.domain.units import BRL, RateNominal, Ratio
+from sentinela.methods.base import MethodInputs, MethodResult
+from sentinela.methods.bazin import ALERTA_DY_ARMADILHA, Bazin, BazinParams
+from sentinela.methods.gordon import Gordon, GordonParams
+from sentinela.methods.graham import Graham, GrahamParams
+from sentinela.methods.lynch import Lynch, LynchParams
 
 logger = logging.getLogger("Valuation")
 
+_GRAHAM = Graham()
+_BAZIN = Bazin()
+_LYNCH = Lynch()
+_GORDON = Gordon()
+
+
+def _finito(valor):
+    """Valor não finito vira None antes de entrar em MethodInputs."""
+    return valor if math.isfinite(valor) else None
+
+
 class ValuationEngine:
+    def _montar_inputs(
+        self,
+        p,
+        pl,
+        pvp,
+        is_growth,
+        pl_confiavel,
+        dy=None,
+        selic=None,
+        dy_confiavel=True,
+        roe=None,
+        lpa=None,
+    ):
+        """Converte os dados já normalizados da V1 em MethodInputs (uma única vez)."""
+        p, pl, pvp = _finito(p), _finito(pl), _finito(pvp)
+        dy = None if dy is None else _finito(dy)
+        selic = None if selic is None else _finito(selic)
+        roe = None if roe is None else _finito(roe)
+        lpa = None if lpa is None else _finito(lpa)
+        vpa = None
+        if p is not None and pvp is not None:
+            vpa = _finito(p / pvp) if pvp > 0 else 0.0
+        return MethodInputs(
+            as_of=date.today(),
+            preco=None if p is None else BRL(p),
+            pl=None if pl is None else Ratio(pl),
+            pvp=None if pvp is None else Ratio(pvp),
+            vpa=None if vpa is None else BRL(vpa),
+            lpa=None if lpa is None else BRL(lpa),
+            roe=None if roe is None else Ratio(roe),
+            dy=None if dy is None else Ratio(dy),
+            selic=None if selic is None else RateNominal(selic),
+            perfil=Perfil.CRESCIMENTO if is_growth else Perfil.RENDA,
+            pl_confiavel=pl_confiavel,
+            dy_confiavel=dy_confiavel,
+        )
+
+    def _avaliar_metodos(self, inputs):
+        """Resultado de cada método extraído, na ordem da V1."""
+        return {
+            "Graham": _GRAHAM.calcular(
+                inputs,
+                GrahamParams(
+                    pl_limite=MACRO.GRAHAM_PL_LIMITE,
+                    pl_piso=MACRO.GRAHAM_PL_FLOOR,
+                    pvp_limite_renda=MACRO.GRAHAM_PVP_LIMITE_RENDA,
+                    pvp_limite_crescimento=MACRO.GRAHAM_PVP_LIMITE_CRESCIMENTO,
+                ),
+            ),
+            "Bazin": _BAZIN.calcular(
+                inputs,
+                BazinParams(
+                    dy_min=MACRO.BAZIN_DY_MIN,
+                    dy_armadilha=MACRO.BAZIN_DY_ARMADILHA,
+                    taxa_min=MACRO.BAZIN_TAXA_MIN,
+                ),
+            ),
+            "Lynch": _LYNCH.calcular(
+                inputs,
+                LynchParams(
+                    payout_max=MACRO.LYNCH_PAYOUT_MAX,
+                    g_max=MACRO.LYNCH_G_MAX,
+                    pl_multiplicador=MACRO.LYNCH_PL_MULTIPLICADOR,
+                    pl_max=MACRO.LYNCH_PL_MAX,
+                ),
+            ),
+            "Gordon": _GORDON.calcular(
+                inputs,
+                GordonParams(
+                    dy_min=MACRO.GORDON_DY_MIN,
+                    roe_min=MACRO.GORDON_ROE_MIN,
+                    g_max=MACRO.GORDON_G_MAX,
+                    premio_risco=MACRO.GORDON_PREMIO_RISCO,
+                    payout_max=MACRO.GORDON_PAYOUT_MAX,
+                ),
+            ),
+        }
+
     def processar(self, dados):
         if not dados or not dados.get('preco_atual'):
             return None
@@ -53,7 +151,6 @@ class ValuationEngine:
             )
 
         lpa = (p / pl)  if pl  > 0 else 0
-        vpa = (p / pvp) if pvp > 0 else 0
 
         selic = get_selic_atual()
 
@@ -81,53 +178,52 @@ class ValuationEngine:
         metodos = {}
 
         # ── 1. GRAHAM ─────────────────────────────────────────────────────────
-        # Limite P/L aumentado de 20→25 para acomodar cíclicos em pico de lucro
-        limite_pvp = MACRO.GRAHAM_PVP_LIMITE_CRESCIMENTO if is_growth else MACRO.GRAHAM_PVP_LIMITE_RENDA
-        limite_pl  = MACRO.GRAHAM_PL_LIMITE
-        pl_graham  = max(pl, MACRO.GRAHAM_PL_FLOOR)   # floor para evitar FV absurdo com PL baixo
-
+        # Fórmula e condições em sentinela/methods/graham.py.
         # Se PL veio do Yahoo com flag de baixa confiabilidade (PL negativo ou >80),
         # Graham é ignorado mesmo dentro do limite — melhor não aplicar com dado suspeito
-        if not pl_confiavel:
+        resultados = self._avaliar_metodos(
+            self._montar_inputs(
+                p,
+                pl,
+                pvp,
+                is_growth,
+                pl_confiavel,
+                dy=dy,
+                selic=selic,
+                dy_confiavel=dy_confiavel,
+                roe=roe,
+                lpa=lpa,
+            )
+        )
+        graham = resultados["Graham"]
+        if isinstance(graham, MethodResult):
+            metodos['Graham'] = graham.valor.valor
+        elif not pl_confiavel:
             logger.info(f"[{dados.get('ticker','?')}] Graham IGNORADO — pl_confiavel=False (PL via Yahoo suspeito)")
-        elif pl > 0 and pvp > 0 and pl <= limite_pl and pvp <= limite_pvp:
-            lpa_adj = p / pl_graham
-            metodos['Graham'] = (22.5 * lpa_adj * vpa) ** 0.5
 
         # ── 2. BAZIN ─────────────────────────────────────────────────────────
-        # Só para RENDA com DY confiável; usa taxa mínima = max(selic, 5%)
-        # Bazin foi criado para pagadoras de dividendos consistentes.
-        # Gate de 5% evita avaliar pelo modelo de renda empresas com DY
-        # simbólico (0-4%), que produziria fair value incorretamente baixo.
-        if not is_growth and dy >= MACRO.BAZIN_DY_MIN and dy_confiavel:
-            if dy > MACRO.BAZIN_DY_ARMADILHA:
+        # Fórmula e condições em sentinela/methods/bazin.py.
+        # O alerta de DY acima de 15% volta como alerta do resultado; o motor mantém
+        # o risco e o desconto de confiança no mesmo ponto de `riscos`.
+        bazin = resultados["Bazin"]
+        if isinstance(bazin, MethodResult):
+            if ALERTA_DY_ARMADILHA in bazin.alertas:
                 riscos.append("DY muito alto (possível armadilha)")
                 confianca -= 10
-            taxa_minima = max(selic, MACRO.BAZIN_TAXA_MIN)
-            metodos['Bazin'] = (dy * p) / taxa_minima
+            metodos['Bazin'] = bazin.valor.valor
 
         # ── 3. PETER LYNCH ───────────────────────────────────────────────────
-        # Só para CRESCIMENTO com DY confiável e lpa > 0 e roe > 0
-        if is_growth and pl > 0 and dy_confiavel and lpa > 0 and roe > 0:
-            payout_ratio = min((dy * p) / lpa, MACRO.LYNCH_PAYOUT_MAX)
-            retencao = 1 - payout_ratio
-            g = roe * retencao
-            g = min(g, MACRO.LYNCH_G_MAX)
-            pl_justo = MACRO.LYNCH_PL_MULTIPLICADOR * (g * 100)
-            pl_justo = min(pl_justo, MACRO.LYNCH_PL_MAX)
-            metodos['Lynch'] = lpa * pl_justo
+        # Fórmula e condições em sentinela/methods/lynch.py.
+        lynch = resultados["Lynch"]
+        if isinstance(lynch, MethodResult):
+            metodos['Lynch'] = lynch.valor.valor
 
         # ── 4. GORDON ─────────────────────────────────────────────────────────
-        # Modelo de dividendos; exige DY confiável e real (>4%) e ROE sólido
-        if dy_confiavel and dy > MACRO.GORDON_DY_MIN and roe > MACRO.GORDON_ROE_MIN:
-            payout_ratio_g = min((dy * p) / lpa, MACRO.GORDON_PAYOUT_MAX) if lpa > 0 else 0.5
-            retencao_g = 1 - payout_ratio_g
-            g = roe * retencao_g
-            g = min(g, MACRO.GORDON_G_MAX)
-            k = selic + MACRO.GORDON_PREMIO_RISCO
-            if k > g:
-                div_prox = (dy * p) * (1 + g)
-                metodos['Gordon'] = div_prox / (k - g)
+        # Fórmula e condições em sentinela/methods/gordon.py (regime nominal; a troca
+        # por taxa real é o F2B-1).
+        gordon = resultados["Gordon"]
+        if isinstance(gordon, MethodResult):
+            metodos['Gordon'] = gordon.valor.valor
 
         # ── CÁLCULO FINAL ─────────────────────────────────────────────────────
         valores_validos = list(metodos.values())
@@ -193,10 +289,6 @@ class ValuationEngine:
 
         # ── RECOMENDAÇÃO ──────────────────────────────────────────────────────
         rec = "NEUTRO"
-        tecnico_negativo = dados.get('tecnico_negativo', False)
-        if tecnico_negativo:
-            riscos.append("Técnico negativo")
-            confianca -= 10
 
         if upside > MACRO.REC_UPSIDE_COMPRA and score >= MACRO.REC_SCORE_COMPRA and confianca >= MACRO.REC_CONFIANCA_COMPRA:
             rec = "COMPRA"

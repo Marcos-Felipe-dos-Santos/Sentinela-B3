@@ -8,20 +8,21 @@
 Plataforma educacional de análise de ações e FIIs da B3.
 Python 3.13 + Streamlit (interface FastAPI + HTMX prevista para a Fase 7), local-first, SQLite.
 **Não é consultoria financeira.**
-Suíte: ~255 testes, 23 módulos em `tests/`, ~2 s.
+Suíte: ~655 testes, 44 módulos em `tests/`, ~5 s.
 
 ---
 
 ## Fase atual
 
-**Fase 0 — Preparação.** O mantenedor trabalha num branch local por fase e só
+**Fase 1 — Fundação.** O mantenedor trabalha num branch local por fase e só
 publica no fim de cada fase. Baseie seu branch sempre na `main` mais recente.
 
 Arquivos travados enquanto esta fase estiver em andamento. Não abra PR que toque
 em nenhum deles:
 
 ```
-CLAUDE.md  AGENTS.md  docs/  pytest.ini  pyproject.toml  .gitignore  tests/conftest.py  .github/  app.py
+valuation_engine.py  fii_engine.py  sentinela/domain/  sentinela/methods/  sentinela/reports/
+cvm_ticker_map.py  tests/test_cvm_ticker_map.py  tests/fixtures/
 ```
 
 Esta seção é atualizada pelo mantenedor a cada fase.
@@ -69,6 +70,8 @@ sentinela/api/**        sentinela/web/**
 backtesting/fundamentos_point_in_time.csv
 backtesting/backtest_results_v1.csv
 tests/test_financeiro_pre_refactor.py
+tests/test_equivalencia_motores.py  tests/golden_motores.py
+tests/fixtures/golden_motores.jsonl
 docs/loop/**
 ```
 

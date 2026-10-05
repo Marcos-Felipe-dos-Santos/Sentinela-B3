@@ -1,8 +1,10 @@
-import pytest
-from database import DatabaseManager
 import os
-
 import tempfile
+
+import pytest
+
+from database import DatabaseManager
+
 
 @pytest.fixture
 def db_path():

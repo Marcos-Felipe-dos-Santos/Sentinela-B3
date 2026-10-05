@@ -169,7 +169,7 @@ site/
 
 verificar_setup.bat
 
-data/
+/data/
 .claude/settings.local.json
 mutants/
 

@@ -278,7 +278,7 @@ def auditar_valuation(ticker: str, dados: dict):
         if dy_raw > 0 and dy_raw < 1:
             print(f"  {ok(f'DY={dy_raw:.4f} já em decimal = {dy_raw*100:.2f}%')}")
 
-    print(f"\n  Inputs brutos (do scraper):")
+    print("\n  Inputs brutos (do scraper):")
     print(f"    DY bruto (scraper) : {dy_raw}  (confiável={dy_confiavel})")
     print(f"    Preço atual : R$ {p:.2f}")
     print(f"    P/L         : {pl:.2f}")
@@ -296,7 +296,7 @@ def auditar_valuation(ticker: str, dados: dict):
     # pl_confiavel: False quando Yahoo retornou PL negativo ou >80 (TTM atípico)
     pl_confiavel = bool(dados.get('pl_confiavel', True))
 
-    print(f"\n  Variáveis derivadas:")
+    print("\n  Variáveis derivadas:")
     print(f"    VPA (P / P/VP)     : R$ {vpa:.2f}")
     if pl > 0:
         print(f"    LPA real (P / P/L) : R$ {p/pl:.2f}")
@@ -609,7 +609,7 @@ Responda em Português com exatamente 3 tópicos:
 3. Veredito final (Compra / Neutro / Venda) — justifique com base no valuation e qualidade."""
 
     print(f"\n  Tamanho: {len(prompt)} chars, {len(linhas)} campos enviados")
-    print(f"\n  Campos enviados:")
+    print("\n  Campos enviados:")
     for l in linhas:
         print(f"    {l}")
     print(f"\n  ┌── PROMPT COMPLETO {'─'*40}")
@@ -784,8 +784,8 @@ def auditar_referencia(ticker: str, dados: dict):
         else:
             print(f"  {label:<22}: {val}")
 
-    print(f"\n  → Se algum valor divergir do Fundamentus, o bug está em")
-    print(f"    fundamentus_scraper.py → _limpar_valor() ou buscar_dados()\n")
+    print("\n  → Se algum valor divergir do Fundamentus, o bug está em")
+    print("    fundamentus_scraper.py → _limpar_valor() ou buscar_dados()\n")
 
     _rel['tickers'][ticker]['referencia_manual'] = {
         "url":    f"https://www.fundamentus.com.br/detalhes.php?papel={ticker}",
@@ -835,7 +835,7 @@ def main():
         if not tickers:
             tickers = ['PETR4', 'ITUB4', 'WEGE3']
             print(f"  {warn('Nenhum ticker informado — usando padrão: PETR4, ITUB4, WEGE3')}")
-            print(f"  Uso: python auditoria.py VALE3 BBAS3\n")
+            print("  Uso: python auditoria.py VALE3 BBAS3\n")
 
         _rel['meta']['tickers'] = tickers
 
@@ -870,7 +870,7 @@ def main():
             if is_fii:
                 print(hdr(f"3. VALUATION — {ticker}"))
                 print(f"\n  {warn('Perfil FII detectado (quoteType='+repr(qt)+')')}")
-                print(f"  Em produção: fii_engine.analisar() é chamado em vez de val_engine.processar()")
+                print("  Em produção: fii_engine.analisar() é chamado em vez de val_engine.processar()")
                 try:
                     from fii_engine import FIIEngine
                     analise = FIIEngine().analisar(dados)
@@ -924,7 +924,7 @@ def main():
     except Exception as e:
         print(f"  {err(f'Erro ao salvar JSON: {e}')}")
 
-    print(f"\n  Envie os dois arquivos para análise:")
+    print("\n  Envie os dois arquivos para análise:")
     print(f"    📄 {txt_path}")
     print(f"    📊 {json_path}\n")
 

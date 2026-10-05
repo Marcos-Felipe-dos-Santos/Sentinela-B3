@@ -1,7 +1,9 @@
-import pytest
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytest
+
 from technical_engine import TechnicalEngine
+
 
 @pytest.fixture
 def engine():

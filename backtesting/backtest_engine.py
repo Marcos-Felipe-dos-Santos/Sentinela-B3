@@ -4,7 +4,7 @@ import re
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 import yfinance as yf
@@ -13,7 +13,7 @@ from valuation_engine import ValuationEngine
 
 logger = logging.getLogger("Backtest")
 
-FundamentosProvider = Callable[[str, pd.Timestamp], Optional[dict[str, Any]]]
+FundamentosProvider = Callable[[str, pd.Timestamp], dict[str, Any] | None]
 MODELOS_VALUATION = ("Graham", "Bazin", "Gordon", "Lynch")
 
 
@@ -31,11 +31,11 @@ class BacktestEngine:
 
     def __init__(
         self,
-        tickers: Optional[list[str]] = None,
+        tickers: list[str] | None = None,
         start_date: str = "2024-01-01",
         end_date: str = "2026-05-04",
         horizonte_dias: int = 90,
-        fundamentos_provider: Optional[FundamentosProvider] = None,
+        fundamentos_provider: FundamentosProvider | None = None,
         fundamentos_match: str = "same_month",
     ) -> None:
         self.tickers = tickers or ["PETR4.SA", "ITUB4.SA", "VALE3.SA"]
@@ -92,7 +92,7 @@ class BacktestEngine:
         self,
         ticker: str,
         data_analise: datetime | pd.Timestamp | str,
-        fundamentos_historicos: Optional[dict[str, Any]] = None,
+        fundamentos_historicos: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Simula a analise disponivel no dia informado, sem lookahead de preco.
@@ -172,7 +172,7 @@ class BacktestEngine:
         ticker: str,
         data_analise: datetime | pd.Timestamp | str,
         recomendacao: str,
-        score: int | float,
+        score: float,
     ) -> dict[str, Any]:
         """
         Valida se a recomendacao foi coerente com o retorno 90 dias depois.
@@ -212,7 +212,7 @@ class BacktestEngine:
 
     def rodar_backtest(
         self,
-        fundamentos_historicos: Optional[dict[str, Any]] = None,
+        fundamentos_historicos: dict[str, Any] | None = None,
     ) -> pd.DataFrame:
         """Executa simulacoes mensais para todos os tickers."""
         if not self.dados_historico:
@@ -277,8 +277,8 @@ class BacktestEngine:
         self,
         ticker_base: str,
         data_analise: pd.Timestamp,
-        fundamentos_historicos: Optional[dict[str, Any]] = None,
-    ) -> Optional[dict[str, Any]]:
+        fundamentos_historicos: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
         if self.fundamentos_provider:
             snapshot = self.fundamentos_provider(ticker_base, data_analise)
             if snapshot:
@@ -413,7 +413,7 @@ class BacktestEngine:
 
 
 def rodar_backtest_completo(
-    fundamentos_historicos: Optional[dict[str, Any]] = None,
+    fundamentos_historicos: dict[str, Any] | None = None,
     fundamentos_csv: str | Path | None = None,
 ) -> pd.DataFrame:
     """
@@ -672,7 +672,7 @@ def _extrair_fvs_metodos(dados: dict[str, Any]) -> dict[str, float]:
     return metodos
 
 
-def _normalizar_modelo(valor: Any) -> Optional[str]:
+def _normalizar_modelo(valor: Any) -> str | None:
     texto = str(valor or "").strip().lower()
     if not texto:
         return None
@@ -687,7 +687,7 @@ def _normalizar_modelo(valor: Any) -> Optional[str]:
     return None
 
 
-def _to_float(valor: Any) -> Optional[float]:
+def _to_float(valor: Any) -> float | None:
     if valor is None or pd.isna(valor):
         return None
     if isinstance(valor, str):

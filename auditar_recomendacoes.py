@@ -13,21 +13,21 @@ import os
 import sys
 from datetime import datetime
 from io import StringIO
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pandas as pd
 
-from market_engine import MarketEngine
-from valuation_engine import ValuationEngine
 from fii_engine import FIIEngine
-from technical_engine import TechnicalEngine
+from market_engine import MarketEngine
 from sentinela.services.asset_classifier import AssetClassifier
+from technical_engine import TechnicalEngine
+from valuation_engine import ValuationEngine
 
 # ══════════════════════════════════════════════════════════════════════════════
 # CONFIGURAÇÃO
 # ══════════════════════════════════════════════════════════════════════════════
 
-TICKERS_AUDITORIA: List[str] = [
+TICKERS_AUDITORIA: list[str] = [
     "AMER3", "OIBR3", "MGLU3", "CASH3", "VIIA3",
     "PETR4", "VALE3", "ITUB4", "WEGE3", "BBAS3",
     "HGLG11", "MXRF11", "CVBI11",
@@ -61,14 +61,14 @@ def _fmt_bool(val) -> str:
     return "Sim" if bool(val) else "Não"
 
 
-def _historico_disponivel(dados: Optional[Dict[str, Any]]) -> bool:
+def _historico_disponivel(dados: dict[str, Any] | None) -> bool:
     if not dados:
         return False
     hist = dados.get('historico')
     return hist is not None and not getattr(hist, 'empty', True)
 
 
-def classificar_qualidade_dados(dados: Optional[Dict[str, Any]]) -> str:
+def classificar_qualidade_dados(dados: dict[str, Any] | None) -> str:
     """Classifica dados para a metrica de falha da auditoria."""
     if not dados or not dados.get('preco_atual'):
         return "no_data"
@@ -79,7 +79,7 @@ def classificar_qualidade_dados(dados: Optional[Dict[str, Any]]) -> str:
     return "full"
 
 
-def calcular_metricas_dados(amostras: List[Optional[Dict[str, Any]]]) -> Dict[str, Any]:
+def calcular_metricas_dados(amostras: list[dict[str, Any] | None]) -> dict[str, Any]:
     """Calcula taxa de falha sem penalizar erro_scraper quando dados estao completos."""
     total = len(amostras)
     full_data_count = 0
@@ -108,7 +108,7 @@ def calcular_metricas_dados(amostras: List[Optional[Dict[str, Any]]]) -> Dict[st
     }
 
 
-def _excluir_da_taxa_operacional(registro: Dict[str, Any]) -> bool:
+def _excluir_da_taxa_operacional(registro: dict[str, Any]) -> bool:
     dados = registro.get("dados")
     analise = registro.get("analise") or {}
 
@@ -121,7 +121,7 @@ def _excluir_da_taxa_operacional(registro: Dict[str, Any]) -> bool:
     return False
 
 
-def calcular_metricas_operacionais(registros: List[Dict[str, Any]]) -> Dict[str, Any]:
+def calcular_metricas_operacionais(registros: list[dict[str, Any]]) -> dict[str, Any]:
     """Calcula falha apenas no universo operacionalmente analisavel."""
     operacionais = [
         registro for registro in registros
@@ -156,13 +156,13 @@ def auditar() -> str:
     asset_classifier = AssetClassifier()
 
     log("=" * 80)
-    log(f"  AUDITORIA DE RECOMENDAÇÕES — Sentinela B3")
+    log("  AUDITORIA DE RECOMENDAÇÕES — Sentinela B3")
     log(f"  Executado em: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     log("=" * 80)
 
-    alertas_totais: List[str] = []
-    amostras_dados: List[Optional[Dict[str, Any]]] = []
-    registros_operacionais: List[Dict[str, Any]] = []
+    alertas_totais: list[str] = []
+    amostras_dados: list[dict[str, Any] | None] = []
+    registros_operacionais: list[dict[str, Any]] = []
 
     for ticker in TICKERS_AUDITORIA:
         log("")
@@ -251,17 +251,17 @@ def auditar() -> str:
             log(f"  Riscos:          {riscos if riscos else '(nenhum)'}")
             log(f"  Perfil:          {perfil}")
             log(f"  Métodos:         {metodos}")
-            log(f"  ──────────────── Fundamentalista ────────────────")
+            log("  ──────────────── Fundamentalista ────────────────")
             log(f"  DY:              {_fmt(dy)}")
             log(f"  P/L:             {_fmt(pl, '.2f')}")
             log(f"  P/VP:            {_fmt(pvp, '.2f')}")
             log(f"  ROE:             {_fmt(roe)}")
             log(f"  Dív.Líq/EBITDA:  {divida}")
-            log(f"  ──────────────── Técnica ────────────────────────")
+            log("  ──────────────── Técnica ────────────────────────")
             log(f"  Tendência:       {tendencia}")
             log(f"  RSI:             {rsi}")
             log(f"  MACD Rec:        {macd_rec}")
-            log(f"  ──────────────── Dados ──────────────────────────")
+            log("  ──────────────── Dados ──────────────────────────")
             log(f"  Fonte Preço:     {dados.get('fonte_preco', 'N/A')}")
             log(f"  Fonte Fund.:     {dados.get('fonte_fundamentos', 'N/A')}")
             log(f"  Erro Scraper:    {_fmt_bool(erro_scraper)}")
@@ -273,7 +273,7 @@ def auditar() -> str:
             log(f"  Dados yfinance:  {_fmt_bool(dados_yfinance)}")
 
             # ── 6. Validação de sanidade ─────────────────────────────────────
-            alertas_ticker: List[str] = []
+            alertas_ticker: list[str] = []
 
             # Regra 1: High-risk não deve ser COMPRA/COMPRA FORTE
             if ticker in HIGH_RISK_SHOULD_NOT_BE_STRONG_BUY and rec in ("COMPRA", "COMPRA FORTE"):
@@ -308,7 +308,7 @@ def auditar() -> str:
             # Regra 6: DY = 0 + COMPRA FORTE
             if dy == 0 and rec == "COMPRA FORTE":
                 alertas_ticker.append(
-                    f"⚠ DY = 0 (sem dividendos) com COMPRA FORTE"
+                    "⚠ DY = 0 (sem dividendos) com COMPRA FORTE"
                 )
 
             # Regra 7: FII com vacância alta + COMPRA FORTE
@@ -321,16 +321,16 @@ def auditar() -> str:
 
             # ── 7. Imprimir alertas ──────────────────────────────────────────
             if alertas_ticker:
-                log(f"  ╔══════════════════════════════════════════════════╗")
-                log(f"  ║  🚨 ALERTAS DE SANIDADE                        ║")
-                log(f"  ╚══════════════════════════════════════════════════╝")
+                log("  ╔══════════════════════════════════════════════════╗")
+                log("  ║  🚨 ALERTAS DE SANIDADE                        ║")
+                log("  ╚══════════════════════════════════════════════════╝")
                 for alerta in alertas_ticker:
                     log(f"  {alerta}")
                 alertas_totais.extend(
                     f"{ticker}: {a}" for a in alertas_ticker
                 )
             else:
-                log(f"  ✅ Nenhum alerta de sanidade.")
+                log("  ✅ Nenhum alerta de sanidade.")
 
         except Exception as e:
             if not registrou_metrica:
@@ -348,7 +348,7 @@ def auditar() -> str:
     metricas_operacionais = calcular_metricas_operacionais(registros_operacionais)
     log("")
     log("=" * 80)
-    log(f"  RESUMO DA AUDITORIA")
+    log("  RESUMO DA AUDITORIA")
     log("=" * 80)
     log(f"  Tickers analisados: {metricas_dados['total_tickers_analyzed']}")
     log(f"  full_data_count:    {metricas_dados['full_data_count']}")

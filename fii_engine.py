@@ -1,11 +1,28 @@
 import logging
+import math
+from datetime import date
 from typing import Optional
 
 from config import get_selic_atual, MACRO, _normalizar_dy
 from cvm_fii_map import get_cnpj_fii
 from cvm_fii_provider import CVMFIIProvider
+from sentinela.domain.units import BRL, RateNominal, Ratio
+from sentinela.methods.base import MethodInputs, MethodResult
+from sentinela.methods.fii_nav import (
+    FAIXA_DESCONTO,
+    FAIXA_PREMIO_ALTO,
+    FAIXA_PREMIO_MODERADO,
+    FiiNav,
+    FiiNavParams,
+)
+from sentinela.methods.fii_yield import FiiYield, FiiYieldParams
 
 logger = logging.getLogger("FII")
+
+_FII_YIELD = FiiYield()
+_FII_NAV = FiiNav()
+# pontos de score por faixa de P/VP; a faixa neutra não pontua
+_PONTOS_PVP = {FAIXA_PREMIO_ALTO: -15, FAIXA_PREMIO_MODERADO: -7, FAIXA_DESCONTO: 10}
 
 VACANCIA_CONHECIDA = {
     # Estimativas manuais; revisar periodicamente.
@@ -34,6 +51,36 @@ class FIIEngine:
         except Exception as exc:
             logger.warning("[FII %s] CVM error: %s", ticker, exc)
             return None
+
+    def _calcular_rendimento(self, p, dy, vacancia, selic):
+        """Monta MethodInputs uma única vez e delega o preço justo ao método.
+
+        Devolve None quando algum valor não é finito: o método não é calculado.
+        """
+        valores = (p, dy, selic) if vacancia is None else (p, dy, selic, vacancia)
+        if not all(math.isfinite(v) for v in valores):
+            return None
+        inputs = MethodInputs(
+            as_of=date.today(),
+            preco=BRL(p),
+            dy=Ratio(dy),
+            selic=RateNominal(selic),
+            vacancia=None if vacancia is None else Ratio(vacancia),
+        )
+        return _FII_YIELD.calcular(inputs, FiiYieldParams(fator_ir=MACRO.FII_FATOR_IR))
+
+    def _faixa_pvp(self, pvp):
+        """Lente de P/VP; None quando o P/VP não é finito (a lente não é calculada)."""
+        if not math.isfinite(pvp):
+            return None
+        return _FII_NAV.calcular(
+            MethodInputs(as_of=date.today(), pvp=Ratio(pvp)),
+            FiiNavParams(
+                premio_alto=MACRO.FII_PVP_PREMIO_ALTO,
+                premio_moderado=MACRO.FII_PVP_PREMIO_MODERADO,
+                desconto=MACRO.FII_PVP_DESCONTO,
+            ),
+        )
 
     def analisar(self, dados: dict) -> dict:
         if not dados:
@@ -93,17 +140,19 @@ class FIIEngine:
             vacancia = VACANCIA_CONHECIDA[ticker]
             vacancia_fonte = "manual"
 
-        # ── DY efetivo (ajustado por vacância) ───────────────────────────────
-        if vacancia is not None:
-            dy_efetivo = dy * (1 - vacancia)
-        else:
-            dy_efetivo = dy
-
+        # ── Bazin adaptado para FIIs (yield vs taxa livre de risco) ──────────
+        # Fórmula, DY efetivo (ajustado por vacância) e Selic líquida em
+        # sentinela/methods/fii_yield.py.
         selic = get_selic_atual()
-        selic_liquida = selic * MACRO.FII_FATOR_IR
-
-        # Bazin adaptado para FIIs (yield vs taxa livre de risco)
-        preco_justo = (p * dy_efetivo) / selic_liquida
+        rendimento = self._calcular_rendimento(p, dy, vacancia, selic)
+        if isinstance(rendimento, MethodResult):
+            preco_justo = rendimento.valor.valor
+            dy_efetivo = rendimento.obter("dy_efetivo").valor
+            selic_liquida = rendimento.obter("selic_liquida").valor
+        else:
+            # método não calculado (valor não finito): a V1 propagava NaN até a saída
+            preco_justo = dy_efetivo = float("nan")
+            selic_liquida = selic * MACRO.FII_FATOR_IR
         upside = (preco_justo / p) - 1
 
         # ── Score ─────────────────────────────────────────────────────────────
@@ -113,12 +162,10 @@ class FIIEngine:
         elif dy_efetivo < (selic_liquida * MACRO.FII_DY_SELIC_RATIO_MIN):
             score -= 20
 
-        if pvp > MACRO.FII_PVP_PREMIO_ALTO:
-            score -= 15  # pagando prêmio excessivo sobre o patrimônio
-        elif pvp > MACRO.FII_PVP_PREMIO_MODERADO:
-            score -= 7   # prêmio moderado
-        elif pvp < MACRO.FII_PVP_DESCONTO:
-            score += 10  # desconto relevante = margem de segurança
+        # Faixa de P/VP em sentinela/methods/fii_nav.py; os pontos ficam aqui.
+        lente_pvp = self._faixa_pvp(pvp)
+        if isinstance(lente_pvp, MethodResult):
+            score += sum(_PONTOS_PVP.get(faixa, 0) for faixa in lente_pvp.alertas)
 
         if vacancia is not None and vacancia > 0.15:
             score -= int(100 * vacancia)

@@ -174,15 +174,20 @@ Comportamento idêntico ao da V1. Refactor e mudança de comportamento nunca no 
 |---|---|
 | F1-1 | `units.py` (aditivo) |
 | F1-2 | Contrato de método: `MethodInputs` congelado com `as_of` [D5], `MethodResult \| Abstention`, `applies_to` |
-| F1-3 a F1-8 | Extração de um método por item (Graham, Bazin, Lynch, Gordon, FII yield, FII NAV); o motor V1 passa a delegar |
+| F1-3 a F1-8 | Extração de um método por item (Graham, Bazin, Lynch, Gordon, FII yield e a lente de P/VP do FII, `fii_nav`); o motor V1 passa a delegar |
 | F1-9 | `registry.py`, com versão 1.0.0 = comportamento V1 |
 | F1-10 | Contratos de import no CI [D11] |
 | F1-11 | Remoção do caminho morto `tecnico_negativo` |
 | F1-12 | Relatório de rastreabilidade v0, estático, com os dados de hoje [D9] |
+| F1-15 | Correção do mapa ticker → CD_CVM, regenerado do cadastro oficial (pergunta 0 do dossiê) |
+| F1-16 | Golden dos motores V1: grade de fronteira, comparação exata (o juiz da extração) |
+| F1-17 | Mutation ≥ 80% em `sentinela/methods/` |
+| F1-18 | Sincronização de `CLAUDE.md`, `AGENTS.md` e desta tabela |
+| F1-19 | Proposta da fila da Fase 2A |
 | F1-13 | Limpeza: código de método que sobrou no `valuation_engine.py` e no `fii_engine.py`; `ruff` completo, `deptry` e `vulture` (em modo relatório) no CI |
 | F1-14 | Resumo e arquivamento |
 
-**Gate:** seções A, B e C inalteradas; mutation ≥ 80% em `sentinela/methods/`; contratos verdes.
+**Gate:** seções A, B e C e o golden dos motores inalterados; mutation ≥ 80% em `sentinela/methods/`; contratos verdes.
 **Antes de começar:** a fila final vem do F0-10, revisada no checkpoint. A tabela acima é o formato esperado.
 
 ### Fase 2A — Dados corretos

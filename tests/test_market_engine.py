@@ -1,7 +1,7 @@
-import market_engine
 import pandas as pd
 import pytest
 
+import market_engine
 from market_engine import (
     MarketEngine,
     _is_fii_ticker,

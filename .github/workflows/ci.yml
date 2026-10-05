@@ -16,8 +16,18 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt ruff
+          pip install -r requirements-dev.txt
       - name: Lint (gate de erros reais)
         run: ruff check --select E9,F63,F7,F82 .
       - name: Tests
         run: python -m pytest tests/ --tb=short
+      # Passos em modo relatório: não bloqueiam. O gate bloqueante é o lint de erros reais e o pytest.
+      - name: Ruff completo (relatório)
+        continue-on-error: true
+        run: ruff check . --statistics --exit-zero
+      - name: Código morto (relatório)
+        continue-on-error: true
+        run: python -m vulture . vulture_whitelist.py --min-confidence 80 --exclude "venv,mutants,outputs,$PWD/data/*"
+      - name: Dependências (relatório)
+        continue-on-error: true
+        run: deptry .

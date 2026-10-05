@@ -1,8 +1,11 @@
-import pytest
-import pandas as pd
-import numpy as np
-from portfolio_engine import PortfolioEngine
 from unittest.mock import patch
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from portfolio_engine import PortfolioEngine
+
 
 @pytest.fixture
 def engine():

@@ -22,7 +22,7 @@ def _as_list(value: Any) -> list[str]:
     return [str(value)]
 
 
-def _as_provenance(value: Any) -> "FieldProvenance":
+def _as_provenance(value: Any) -> FieldProvenance:
     if isinstance(value, FieldProvenance):
         return value
     return FieldProvenance.from_dict(value)
@@ -54,7 +54,7 @@ class FieldProvenance:
         self.extra = _as_dict(self.extra)
 
     @classmethod
-    def from_dict(cls, data: dict | None) -> "FieldProvenance":
+    def from_dict(cls, data: dict | None) -> FieldProvenance:
         raw = _as_dict(data)
         known = {
             "source",
@@ -98,7 +98,7 @@ class FieldProvenance:
         if warning:
             self.warnings.append(str(warning))
 
-    def with_warning(self, warning: str) -> "FieldProvenance":
+    def with_warning(self, warning: str) -> FieldProvenance:
         clone = replace(self, warnings=list(self.warnings), extra=dict(self.extra))
         clone.add_warning(warning)
         return clone
@@ -120,7 +120,7 @@ class FieldValue:
         self.extra = _as_dict(self.extra)
 
     @classmethod
-    def from_dict(cls, data: dict | None) -> "FieldValue":
+    def from_dict(cls, data: dict | None) -> FieldValue:
         if not isinstance(data, dict):
             return cls(value=data)
 
@@ -175,7 +175,7 @@ class ProvenancedPayload:
         self.extra = _as_dict(self.extra)
 
     @classmethod
-    def from_dict(cls, data: dict | None) -> "ProvenancedPayload":
+    def from_dict(cls, data: dict | None) -> ProvenancedPayload:
         raw = _as_dict(data)
         raw_fields = raw.get("fields")
         fields = raw_fields if isinstance(raw_fields, dict) else {}

@@ -69,7 +69,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
 ## Itens
 
-- [ ] **F1-15** · fix · `fix: regenerate CVM ticker map from official registry`
+- [x] **F1-15** · fix · `fix: regenerate CVM ticker map from official registry`
   **Decidido pelo Marcos (pergunta 0 do dossiê, 2/10/2026).** O mapa de `cvm_ticker_map.py` passa a ser gerado do caminho oficial (FCA → CNPJ → cadastro da CVM), sem digitação à mão.
 
   **Geração (`scripts/gerar_mapa_cvm.py`):**
@@ -112,7 +112,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - o diário lista os tickers cujos fundamentos CVM mudam (o único leitor do mapa em produção é `market_engine.py:481`), os que saíram e a linha de comando do `invalidar_cache_cvm.py`;
   - gate da fase.
 
-- [ ] **F1-11** · fix · `fix: stop valuation engine from reading technical signal`
+- [x] **F1-11** · fix · `fix: stop valuation engine from reading technical signal`
   `valuation_engine.py:196-199` lê `tecnico_negativo`, mas nenhum código de produção escreve essa chave. Só `tests/test_valuation_engine.py:368` a usa, e o cache de fundamentos não a restaura (só aceita `FUNDAMENTAL_KEYS`). No app, nada muda.
 
   No contrato de `processar`, porém, a chave tem efeito: com ela, `riscos` ganha "Técnico negativo", a confiança cai 10 e, por esses dois caminhos, a classificação pode mudar (linhas 201-213). Por isso o item é `fix`, fica fora da extração e vem antes do golden.
@@ -124,7 +124,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - `git grep -n tecnico_negativo -- '*.py'` só encontra o teste novo;
   - gate da fase.
 
-- [ ] **F1-16** · test · `test: pin valuation engine outputs on a boundary grid`
+- [x] **F1-16** · test · `test: pin valuation engine outputs on a boundary grid`
   **Por quê.** As seções A, B e C checam poucas propriedades. Não pegam a maioria das fronteiras (`>` × `>=`) nem a ordem de `riscos`: com a suíte inteira, o mutation do `valuation_engine` foi de 60,2% no F0-3.
 
   **O que o item faz.** Grava as saídas atuais de `ValuationEngine().processar` e `FIIEngine().analisar` em `tests/fixtures/golden_motores.jsonl`: uma linha por caso, com entrada e saída, até ~1 MB. O teste compara por igualdade exata: o dict inteiro, incluindo a ordem de `riscos` e o texto de `metodos_usados`. Como `nan == nan` é falso depois de ler o JSONL, o item traz um comparador próprio (recursivo, com NaN igual a NaN e `==` nos demais floats); `pytest.approx` não é permitido.
@@ -151,7 +151,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - mutation de `valuation_engine*` e de `fii_engine*` ≥ 80%, descontados os mutantes que só alteram mensagem de log (listados no diário);
   - a rodada limpa do mutmut encontra o fixture. Se não encontrar, acrescentar o caminho em `also_copy` no `[tool.mutmut]`.
 
-- [ ] **F1-1** · feat · `feat: add unit types for money, ratios, rates and share counts`
+- [x] **F1-1** · feat · `feat: add unit types for money, ratios, rates and share counts`
   Cria `sentinela/domain/units.py`. É aditivo, sem consumidor em produção.
   - Tipos: `BRL`, `Ratio`, `Percent`, `RateNominal`, `RateReal` e `QuantidadeAcoes`, esta com `Escala` (unidade ou mil, sempre informada — armadilha 10).
   - Os tipos são imutáveis, e a construção rejeita NaN e infinito.
@@ -164,7 +164,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - mutation ≥ 80% em `sentinela.domain.units*`;
   - gate da fase.
 
-- [ ] **F1-2** · feat · `feat: add valuation method contract with frozen inputs` · **[D5]**
+- [x] **F1-2** · feat · `feat: add valuation method contract with frozen inputs` · **[D5]**
   Cria `sentinela/methods/__init__.py` e `base.py`, e acrescenta `Regime` (`REAL`, `NOMINAL`, `SEM_TAXA`) a `sentinela/domain/enums.py`.
   - **`MethodInputs`** é uma dataclass congelada, com `as_of: date` obrigatório [D5]. Os campos são tipados pelo `units.py`: preço, LPA, VPA, P/L, P/VP, DY, ROE, Selic (`RateNominal`), vacância, perfil e as flags de confiabilidade da V1.
   - **Resultado:** ou `MethodResult` (método, versão, valor com unidade, intermediários nomeados, alertas), ou `Abstention` (método, versão, motivo).
@@ -179,7 +179,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - mutation ≥ 80% em `sentinela.methods.base*`;
   - gate da fase.
 
-- [ ] **F1-10** · test · `test: enforce purity contract on valuation methods` · **[D11]**
+- [x] **F1-10** · test · `test: enforce purity contract on valuation methods` · **[D11]**
   Entra antes da primeira extração, para que cada método já nasça verificado. Cria `tests/test_contratos_import.py`, com duas verificações:
   1. **Pela AST** de `sentinela/methods/**/*.py` e dos módulos de `sentinela/domain/` que eles importam:
      - não há import de `sentinela.news`, `sentinela.data`, `sentinela.services`, `sentinela.repositories`, `sentinela.reports`, `technical_engine`, `config`, `market_engine`, `database`, provedores e mapas da raiz, `ai_core`, `requests`, `urllib`, `http`, `socket`, `sqlite3`, `yfinance`, `logging`, `os`, `pathlib` ou `time`;
@@ -193,7 +193,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - um módulo temporário que importa `config` derruba o teste. Isso é feito uma vez, não é commitado e fica registrado no diário;
   - gate da fase.
 
-- [ ] **F1-3** · refactor · `refactor: extract Graham method`
+- [x] **F1-3** · refactor · `refactor: extract Graham method`
   Move `valuation_engine.py:83-95` para `sentinela/methods/graham.py`, com regime `SEM_TAXA`:
   - piso de P/L 7 (linha 87);
   - limite de P/VP pelo perfil (linha 85);
@@ -203,7 +203,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** gate de refactor; `tests/test_methods_graham.py`; mutation de `sentinela.methods.graham*` no diário.
 
-- [ ] **F1-4** · refactor · `refactor: extract Bazin method`
+- [x] **F1-4** · refactor · `refactor: extract Bazin method`
   Move `valuation_engine.py:97-107` para `bazin.py`, com regime `NOMINAL`:
   - DY mínimo de 5% (seção A);
   - só no perfil renda e com DY confiável;
@@ -213,7 +213,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** gate de refactor; `tests/test_methods_bazin.py`; mutation de `sentinela.methods.bazin*` no diário.
 
-- [ ] **F1-5** · refactor · `refactor: extract Lynch method`
+- [x] **F1-5** · refactor · `refactor: extract Lynch method`
   Move `valuation_engine.py:109-118` para `lynch.py`, com regime `NOMINAL` (g = ROE × retenção é nominal):
   - só no perfil crescimento;
   - exige P/L, LPA e ROE positivos e DY confiável;
@@ -222,7 +222,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** gate de refactor; `tests/test_methods_lynch.py`; mutation de `sentinela.methods.lynch*` no diário.
 
-- [ ] **F1-6** · refactor · `refactor: extract Gordon method`
+- [x] **F1-6** · refactor · `refactor: extract Gordon method`
   Move `valuation_engine.py:120-130` para `gordon.py`, com regime `NOMINAL`:
   - exige `dy_confiavel`, DY acima de 4% e ROE acima de 10%;
   - k = Selic + 7%;
@@ -233,7 +233,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** gate de refactor; `tests/test_methods_gordon.py`; mutation de `sentinela.methods.gordon*` no diário.
 
-- [ ] **F1-7** · refactor · `refactor: extract FII yield method`
+- [x] **F1-7** · refactor · `refactor: extract FII yield method`
   Move `fii_engine.py:96-107` para `fii_yield.py`, com regime `NOMINAL`:
   - preço justo = preço × DY efetivo ÷ (Selic × 0,85);
   - DY efetivo = DY × (1 − vacância), quando há vacância;
@@ -243,7 +243,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** gate de refactor; `tests/test_methods_fii_yield.py`; mutation de `sentinela.methods.fii_yield*` no diário.
 
-- [ ] **F1-8** · refactor · `refactor: extract FII price-to-book lens`
+- [x] **F1-8** · refactor · `refactor: extract FII price-to-book lens`
   Na V1, o patrimônio não forma valor justo: o P/VP só pesa no score (`fii_engine.py:116-121`), e a seção B (F-9) fixa isso. Por isso, o `fii_nav.py` 1.0.0 é a lente de P/VP, com regime `SEM_TAXA`.
   - Devolve o P/VP e a faixa: prêmio alto (acima de 1,15), prêmio moderado (acima de 1,05), desconto (abaixo de 0,85) ou neutra.
   - O motor converte a faixa em pontos: −15, −7, +10 e 0.
@@ -252,7 +252,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** gate de refactor; `tests/test_methods_fii_nav.py`; mutation de `sentinela.methods.fii_nav*` no diário.
 
-- [ ] **F1-9** · feat · `feat: add method registry pinned to V1 behavior`
+- [x] **F1-9** · feat · `feat: add method registry pinned to V1 behavior`
   Cria `sentinela/methods/registry.py`, com o catálogo dos seis métodos (nome, versão, regime, `requires`, `assumptions`, `applies_to`) e o changelog. A entrada 1.0.0 diz: "comportamento da V1, extraído na Fase 1, sem mudança de número".
   - `applies_to` é declarado, mas não aplicado. Descreve o roteamento da V1: ações para `STOCK` e `UNIT`, FII para `FII`. O classificador atual nunca devolve `ETF` nem `BDR`. Aplicar e estreitar é o F2B-4.
   - Um teste fixa os valores dos parâmetros da 1.0.0 lidos do `MacroContext`: mudar uma constante sem criar versão nova quebra a suíte.
@@ -261,7 +261,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - `tests/test_registry.py::test_registro_tem_os_seis_metodos`, `::test_todo_modulo_de_metodo_esta_registrado`, `::test_regime_coerente_com_a_taxa`, `::test_parametros_da_1_0_0_fixados` e `::test_changelog_tem_a_1_0_0`;
   - gate da fase.
 
-- [ ] **F1-17** · test · `test: raise mutation score of valuation methods to 80%`
+- [x] **F1-17** · test · `test: raise mutation score of valuation methods to 80%`
   Fecha o gate de mutação da fase:
   - roda a mutação no pacote;
   - escreve testes para os sobreviventes não equivalentes (a especificação da 1.0.0 é o comportamento da V1, fixado pelo golden);
@@ -273,7 +273,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - `python -m mutmut run "sentinela.methods*"` e `python -m mutmut export-cicd-stats` dão mortos ÷ (mortos + sobreviventes) ≥ 80% no pacote, com o número de cada módulo no diário;
   - gate da fase.
 
-- [ ] **F1-12** · feat · `feat: add static traceability report v0` · **[D9]**
+- [x] **F1-12** · feat · `feat: add static traceability report v0` · **[D9]**
   `python -m sentinela.reports.rastreabilidade <TICKER>` grava `outputs/rastreabilidade/<TICKER>-<data>.html`, fora do git.
 
   **Fonte dos dados.** Lê a cascata e os motores da V1 como estão: a mesma sequência do `app.py`, sem IA e sem gravar análise. A cascata ainda grava o cache de fundamentos, como no app. O detalhe por método vem do passo interno criado no F1-3 e no F1-7, sem cálculo novo.
@@ -297,7 +297,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - `deptry .` sem achado novo;
   - gate da fase.
 
-- [ ] **F1-18** · docs · `docs: sync agent instructions with extracted methods`
+- [x] **F1-18** · docs · `docs: sync agent instructions with extracted methods`
   Valida contra o código e corrige três arquivos: `CLAUDE.md`, `AGENTS.md` (menos a seção "Fase atual", que é do Marcos) e a tabela da Fase 1 do `docs/PLANO.md` (IDs finais, e a lente de P/VP no lugar do "FII NAV").
 
   **No `CLAUDE.md`:**
@@ -320,7 +320,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - cada linha citada conferida com `grep -n` e listada no diário;
   - `CLAUDE.md` e `AGENTS.md` sem contradição entre si.
 
-- [ ] **F1-19** · levantamento · `docs: propose phase 2A queue`
+- [x] **F1-19** · levantamento · `docs: propose phase 2A queue`
   O `fable-architect` propõe a fila da Fase 2A em `docs/loop/fila-fase2a-proposta.md`, a partir da seção "Fase 2A" do PLANO, do dossiê, do inventário e das decisões do checkpoint da Fase 0. A proposta precisa ler `docs/decisoes/checkpoint-fase0.md` e seguir o que ele já decidiu. A proposta traz:
   - um item por commit, com tipo, escopo e aceite;
   - teste xfail antes de cada correção;
@@ -332,7 +332,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** arquivo no formato desta fila; todo item com aceite verificável; nenhuma decisão do Marcos tomada pelo texto.
 
-- [ ] **F1-13** · limpeza · `chore: clean up phase 1 residue`
+- [x] **F1-13** · limpeza · `chore: clean up phase 1 residue`
   Faz só o que segue, conforme o inventário (seções 3.1 e 3.3) e o PLANO (seção 11):
   - **Sobras de método** no `valuation_engine.py` e no `fii_engine.py` que estejam registradas no diário das extrações, e imports que perderam uso.
   - **Correções automáticas seguras** da seção 3.1 do inventário (UP045, UP006, UP037, I001, F541, FURB188, PYI041), nestes arquivos:
@@ -358,7 +358,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - referências de linha do `CLAUDE.md` e do `AGENTS.md` para os arquivos tocados conferidas;
   - inventário atualizado.
 
-- [ ] **F1-14** · docs · `docs: add phase 1 summary and archive loop files`
+- [x] **F1-14** · docs · `docs: add phase 1 summary and archive loop files`
   Nesta ordem:
   1. escrever `docs/loop/pr-fase-1.md` a partir do diário, com:
      - itens e commits;
