@@ -27,7 +27,7 @@ jobs:
         run: ruff check . --statistics --exit-zero
       - name: Código morto (relatório)
         continue-on-error: true
-        run: python -m vulture . vulture_whitelist.py --min-confidence 80 --exclude venv,mutants,outputs,data
+        run: python -m vulture . vulture_whitelist.py --min-confidence 80 --exclude "venv,mutants,outputs,$PWD/data/*"
       - name: Dependências (relatório)
         continue-on-error: true
         run: deptry .

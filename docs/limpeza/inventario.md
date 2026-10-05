@@ -14,8 +14,8 @@ Escopo da análise: arquivos rastreados e código do repositório, exceto `venv/
 Comandos usados (reproduzíveis):
 
 ```bash
-python -m vulture . --min-confidence 80 --exclude venv,mutants,outputs,data
-python -m vulture . --min-confidence 60 --exclude venv,mutants,outputs,data
+python -m vulture . --min-confidence 80 --exclude "venv,mutants,outputs,$PWD/data/*"
+python -m vulture . --min-confidence 60 --exclude "venv,mutants,outputs,$PWD/data/*"
 ruff check --select F401,F841,ERA001 . --exclude venv,mutants,outputs,data
 ruff check . --statistics --exclude venv,mutants,outputs,data
 deptry . --exclude "venv|mutants|outputs|data"

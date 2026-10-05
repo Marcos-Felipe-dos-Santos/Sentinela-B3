@@ -3,7 +3,7 @@
 Branch `v2/fase-1` · um commit por item, mais o de ativação da fila, sobre a tag `v2-fase-0` · Fila e diário: `docs/loop/historico/fase-1/`.
 Plano: `docs/PLANO.md` (seção 6, "Fase 1"). **Não é consultoria financeira.**
 
-A fase tira a fórmula dos quatro métodos de ação e dos dois do FII de dentro dos motores V1, para `sentinela/methods/`, com contrato, versão e tipos de unidade, **sem mudar o número que o app mostra**. Duas mudanças de comportamento, cada uma num commit `fix:` próprio. O juiz da extração é o golden (2.247 casos, comparação exata).
+A fase tira a fórmula dos quatro métodos de ação e dos dois do FII de dentro dos motores V1, para `sentinela/methods/`, com contrato, versão e tipos de unidade, **sem mudar o número que o app mostra**. Três mudanças de comportamento: duas num commit `fix:` próprio (F1-15 e F1-11) e a dos valores não finitos, que entrou com a extração (F1-3 a F1-8). O juiz da extração é o golden (2.247 casos, comparação exata).
 
 ## Itens e commits
 
@@ -51,10 +51,11 @@ Nos motores, o par entre parênteses é mortos/sobreviventes; nos módulos novos
 
 Os sobreviventes dos dois motores são equivalentes ou só mudam log, e estão listados no diário do F1-16 (por exemplo, `QUALIDADE — AGUARDAR` é inalcançável: com upside ≤ 0 o score máximo é 60, abaixo de 75). O `[tool.mutmut]` ganhou `scripts/` em `also_copy` e passou a deselecionar o teste de import isolado do F1-10 só na mutação (o código instrumentado do mutmut importa `pathlib`/`urllib`).
 
-## As duas mudanças de comportamento
+## As três mudanças de comportamento
 
 1. **F1-15 — mapa ticker → CD_CVM.** O mapa manual apontava, para a maioria dos tickers, para outra empresa (os fundamentos da CVM de uma empresa iam para o ticker de outra, com cara de dado oficial). O mapa agora é gerado do caminho oficial (FCA 2026 e 2025 → CNPJ → cadastro da CVM) por `scripts/gerar_mapa_cvm.py`, com a fixture `tests/fixtures/cvm_codigos_oficiais.csv`. **Efeito medido:** dos 50 tickers antigos, **43 mudam de código** (VALE3 passou de 19348, que é o Itaú, para 4170), **2 ficam** (PETR4 e o GOLL4, código da própria empresa), **5 saem** do mapa e voltam ao fallback (CSNA3, BRFS3, EMBR3, CPLE6, SOMA3); o mapa fica com 45. Único leitor em produção: `market_engine.py:481`.
 2. **F1-11 — `tecnico_negativo`.** O `valuation_engine` lia essa chave, que nenhum código de produção escrevia: no app nada muda. **Efeito medido (no contrato de `processar`):** antes, com a chave, `riscos` ganhava "Técnico negativo" e a confiança caía 10; agora o resultado é idêntico ao de quem não a passa (`test_sinal_tecnico_nao_altera_resultado`). O golden não tem caso com a chave.
+3. **F1-3 a F1-8 — valores não finitos.** NaN, infinito e Selic zero no FII agora levam à abstenção do método. Os `units.py` rejeitam valor não finito, que vira `None` antes de montar `MethodInputs`. **Efeito:** onde a V1 propagava um número (DY, ROE, LPA ou preço infinito davam `inf`; Selic zero no FII dava `ZeroDivisionError`), o método se abstém e, no FII, o motor segue o caminho "método não calculado" (NaN). Com NaN em P/L, P/VP, ROE ou DY, a V1 já não calculava, e o resultado é o mesmo. Não entrou num commit `fix:` próprio, e sim junto com os `refactor:` da extração; o golden não cobre esses casos. Detalhes na seção seguinte e nos diários F1-3 a F1-8.
 
 ## Divergências conhecidas da extração (fora do golden)
 

@@ -32,7 +32,7 @@ python -m mutmut run "technical_engine*"           # mutação de um módulo (co
 python -m mutmut export-cicd-stats                 # mortos e sobreviventes, para o mutation score
 ruff check .
 ruff format <arquivos alterados>                   # nunca no repositório inteiro
-python -m vulture . vulture_whitelist.py --min-confidence 80 --exclude venv,mutants,outputs,data   # código morto
+python -m vulture . vulture_whitelist.py --min-confidence 80 --exclude "venv,mutants,outputs,$PWD/data/*"   # código morto
 deptry .                                           # dependências sem uso ou faltando
 ```
 
