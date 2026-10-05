@@ -290,8 +290,8 @@ Antes → depois (as três ferramentas, depois da limpeza):
 
 Resultado do que ficou: os achados da seção 3.2 (BLE001, DTZ, SIM117, B023, PLR0124 e o estilo) seguem como estão; RUF046 (10) espera o F3-8.
 
-**Alcance do `--exclude data` do vulture (para o Marcos):** o vulture trata o padrão sem curinga como `*data*` sobre o caminho inteiro, então o comando do `CLAUDE.md`, do CI e deste inventário também pula `database.py`, `data_quality.py`, `tests/test_database.py`, `tests/test_data_quality.py` e, daqui para a frente, `sentinela/data/`. O "sem achados" não cobre esses arquivos. Sugestão: trocar por `./data/*` (ou caminhos absolutos) e atualizar o `CLAUDE.md` junto, num item próprio.
+**Alcance do `--exclude data` do vulture (resolvido em `05bb38f`):** o vulture trata o padrão sem curinga como `*data*` sobre o caminho inteiro, então o comando do `CLAUDE.md`, do CI e deste inventário também pulava `database.py`, `data_quality.py`, `tests/test_database.py`, `tests/test_data_quality.py` e `sentinela/data/`; o "sem achados" acima não cobre esses arquivos. O padrão virou `"$PWD/data/*"` no `CLAUDE.md` e no CI. O `./data/*` não serve: o vulture compara o padrão com o caminho absoluto, e ele não casa com nada.
 
-**Lacuna do `.gitignore` achada na execução (para o Marcos):** a linha 172, `data/`, não é ancorada e também ignora `sentinela/data/`, onde a proposta da Fase 2A põe código novo (`git check-ignore -v sentinela/data/x.py` → `.gitignore:172`). Trocar por `/data/` antes de ativar a 2A. O loop não mexe nessa decisão.
+**Lacuna do `.gitignore` achada na execução (resolvida em `05bb38f`):** a linha 172, `data/`, não era ancorada e também ignorava `sentinela/data/`, onde a proposta da Fase 2A põe código novo (`git check-ignore -v sentinela/data/x.py` → `.gitignore:172`). Virou `/data/`.
 
 Testes: 653 passam, 1 pulado e 1 xfail estrito, igual a antes. As seções A, B e C e o golden seguem iguais.
