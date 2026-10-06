@@ -77,38 +77,28 @@ class CVMProvider:
 
     def _read_raw(self, zip_path: Path, tipo: str) -> pd.DataFrame:
         csv_name = self._find_csv_name(zip_path, tipo)
-        with zipfile.ZipFile(zip_path) as zf:
-            with zf.open(csv_name) as f:
-                return pd.read_csv(
-                    io.TextIOWrapper(f, encoding="latin-1"),
-                    sep=";",
-                    dtype=str,
-                    low_memory=False,
-                )
+        with zipfile.ZipFile(zip_path) as zf, zf.open(csv_name) as f:
+            return pd.read_csv(
+                io.TextIOWrapper(f, encoding="latin-1"),
+                sep=";",
+                dtype=str,
+                low_memory=False,
+            )
 
-    def parsear_demonstrativo(self, zip_path: Path, tipo: str) -> pd.DataFrame:
+    def parsear_demonstrativo(self, zip_path: Path, tipo: str, include_cd_cvm: bool = False) -> pd.DataFrame:
         """
-        Lê o CSV do tipo dentro do ZIP e retorna DataFrame limpo com 5 colunas:
+        Lê o CSV do tipo dentro do ZIP e retorna DataFrame limpo.
+        Por padrão, retorna 5 colunas:
         CNPJ_CIA, DT_REFER, CD_CONTA, DS_CONTA, VL_CONTA.
+
+        Se include_cd_cvm for True, inclui a coluna CD_CVM.
+
+        Aplica a escala monetária (MIL -> BRL) em VL_CONTA.
 
         Filtros aplicados:
         - ORDEM_EXERC == "ÚLTIMO"  (descarta reapresentações)
         - GRUPO_DFP contém "Consolidado"
         """
-        df = self._read_raw(zip_path, tipo)
-
-        if "ORDEM_EXERC" in df.columns:
-            df = df[df["ORDEM_EXERC"] == "ÚLTIMO"]
-        if "GRUPO_DFP" in df.columns:
-            df = df[df["GRUPO_DFP"].str.contains("Consolidado", na=False)]
-
-        df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"], errors="coerce")
-
-        cols = [c for c in _OUTPUT_COLS if c in df.columns]
-        return df[cols].reset_index(drop=True)
-
-    def _parsear_com_cvm(self, zip_path: Path, tipo: str) -> pd.DataFrame:
-        """Versão interna: inclui CD_CVM e aplica escala monetária (MIL → BRL)."""
         df = self._read_raw(zip_path, tipo)
 
         if "ORDEM_EXERC" in df.columns:
@@ -125,7 +115,12 @@ class CVMProvider:
             mask_mil = df["ESCALA_MOEDA"].str.upper() == "MIL"
             df.loc[mask_mil, "VL_CONTA"] = df.loc[mask_mil, "VL_CONTA"] * 1000
 
-        return df
+        cols = [c for c in _OUTPUT_COLS if c in df.columns]
+        if include_cd_cvm and "CD_CVM" in df.columns:
+            cols.append("CD_CVM")
+
+        return df[cols].reset_index(drop=True)
+
 
     # ------------------------------------------------------------------
     # Cálculo de indicadores históricos
@@ -146,9 +141,9 @@ class CVMProvider:
             ano = ano_atual - delta
             try:
                 zip_path = self.baixar_dfp(ano)
-                bpa = self._parsear_com_cvm(zip_path, "BPA_con")
-                bpp = self._parsear_com_cvm(zip_path, "BPP_con")
-                dre = self._parsear_com_cvm(zip_path, "DRE_con")
+                bpa = self.parsear_demonstrativo(zip_path, "BPA_con", include_cd_cvm=True)
+                bpp = self.parsear_demonstrativo(zip_path, "BPP_con", include_cd_cvm=True)
+                dre = self.parsear_demonstrativo(zip_path, "DRE_con", include_cd_cvm=True)
 
                 def _filtrar(df: pd.DataFrame) -> pd.DataFrame:
                     if "CD_CVM" in df.columns:
