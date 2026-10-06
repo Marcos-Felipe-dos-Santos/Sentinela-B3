@@ -11,7 +11,11 @@ from cvm_download import baixar_arquivo
 @pytest.fixture
 def mock_sleep(monkeypatch):
     import time
-    monkeypatch.setattr(time, "sleep", lambda x: None)
+    sleeps = []
+    def fake_sleep(x):
+        sleeps.append(x)
+    monkeypatch.setattr(time, "sleep", fake_sleep)
+    return sleeps
 
 def test_zip_corrompido_nao_substitui_cache(tmp_path):
     dest = tmp_path / "arquivo.zip"
@@ -21,7 +25,7 @@ def test_zip_corrompido_nao_substitui_cache(tmp_path):
     os.utime(dest, (0, 0))
 
     mock_response = MagicMock()
-    # Para o chunk iterado retornar o lixo e nao gerar exception de network
+    mock_response.__enter__.return_value = mock_response
     mock_response.iter_content.return_value = [b"isso nao e um zip"]
     mock_response.raise_for_status = MagicMock()
 
@@ -64,3 +68,4 @@ def test_retry_com_backoff(tmp_path, mock_sleep):
             baixar_arquivo("http://fake.url", dest)
 
         assert mock_get.call_count == 3
+        assert mock_sleep == [1, 2]

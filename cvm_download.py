@@ -39,17 +39,10 @@ def baixar_arquivo(url: str, dest: Path) -> Path:
                             f.write(chunk)
 
             # Valida o ZIP
-            try:
-                with zipfile.ZipFile(tmp_path) as zf:
-                    bad_file = zf.testzip()
-                    if bad_file:
-                        raise zipfile.BadZipFile(f"Arquivo corrompido no ZIP: {bad_file}")
-            except zipfile.BadZipFile:
-                # Vamos tratar BadZipFile como falha e tentar novamente?
-                # A especificação diz: "validar com zipfile.ZipFile(tmp).testzip()".
-                # Não é explícito se deve retentar se for corrompido, mas como pode ser corrupção de rede, vamos subir a exceção e deixar o retry ou não?
-                # Se for BadZipFile, na especificação o teste espera pytest.raises(zipfile.BadZipFile), não erro de HTTP. Então vamos subir a exceção direto se for no mock de lixo (já que não é erro de rede/requests.HTTPError).
-                raise
+            with zipfile.ZipFile(tmp_path) as zf:
+                bad_file = zf.testzip()
+                if bad_file:
+                    raise zipfile.BadZipFile(f"Arquivo corrompido no ZIP: {bad_file}")
 
             # Substituição atômica
             os.replace(tmp_path, dest)
@@ -72,5 +65,6 @@ def baixar_arquivo(url: str, dest: Path) -> Path:
             if tmp_path.exists():
                 tmp_path.unlink()
             raise
+
 
     return dest
