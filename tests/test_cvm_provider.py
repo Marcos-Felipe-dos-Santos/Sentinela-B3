@@ -190,3 +190,140 @@ def test_parser_unico_sem_duplicata(tmp_path):
     df = provider.parsear_demonstrativo(zip_path, "BPA_con", include_cd_cvm=True)
     assert "CD_CVM" in df.columns
     assert df.iloc[0]["VL_CONTA"] == pytest.approx(500_000_000.0)
+
+# ---------------------------------------------------------------------------
+# Extra tests for better mutation coverage in _find_csv_name, _read_raw, parsear_demonstrativo
+# ---------------------------------------------------------------------------
+
+def test_find_csv_name_not_found_raises(tmp_path):
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [_ROW_BASE])
+
+    with pytest.raises(FileNotFoundError, match="Tipo 'DRE_con' não encontrado"):
+        provider._find_csv_name(zip_path, "DRE_con")
+
+def test_find_csv_name_wrong_extension(tmp_path):
+    """Garante que if tipo in name and name.lower().endswith(".csv") é cumprido.
+    Colocamos um arquivo com o tipo, mas que não termina em .csv."""
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    zip_path = tmp_path / "dfp_2023_fake.zip"
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.writestr(f"dfp_cia_aberta_BPA_con_2023.txt", b"fake data")
+
+    with pytest.raises(FileNotFoundError, match="Tipo 'BPA_con' não encontrado"):
+        provider._find_csv_name(zip_path, "BPA_con")
+
+def test_read_raw_low_memory(tmp_path):
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [_ROW_BASE])
+
+    df = provider._read_raw(zip_path, "BPA_con")
+    assert not df.empty
+
+def test_parsear_demonstrativo_na_handling(tmp_path):
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    row_na = {**_ROW_BASE, "VL_CONTA": "xyz", "CD_CVM": "abc"}
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [row_na])
+
+    df = provider.parsear_demonstrativo(zip_path, "BPA_con", include_cd_cvm=True)
+    assert pd.isna(df.iloc[0]["VL_CONTA"])
+    assert pd.isna(df.iloc[0]["CD_CVM"])
+
+def test_parsear_demonstrativo_no_cd_cvm_or_escala_moeda(tmp_path):
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    row_no_cd = _ROW_BASE.copy()
+    del row_no_cd["CD_CVM"]
+    del row_no_cd["ESCALA_MOEDA"]
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [row_no_cd])
+
+    df = provider.parsear_demonstrativo(zip_path, "BPA_con", include_cd_cvm=True)
+    assert "CD_CVM" not in df.columns
+    assert df.iloc[0]["VL_CONTA"] == 500000.0  # Sem escala MIL
+
+def test_parsear_demonstrativo_escala_moeda_outra(tmp_path):
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    row_outra = {**_ROW_BASE, "ESCALA_MOEDA": "UNIDADE"}
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [row_outra])
+
+    df = provider.parsear_demonstrativo(zip_path, "BPA_con")
+    assert df.iloc[0]["VL_CONTA"] == 500000.0
+
+def test_parsear_demonstrativo_grupo_dfp_na(tmp_path):
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    row_na_grupo = {**_ROW_BASE}
+    del row_na_grupo["GRUPO_DFP"]
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [row_na_grupo])
+
+    df = provider.parsear_demonstrativo(zip_path, "BPA_con")
+    assert len(df) == 1
+
+def test_parsear_demonstrativo_grupo_dfp_none_or_nan(tmp_path):
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    row_nan_grupo = {**_ROW_BASE, "GRUPO_DFP": ""}
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [row_nan_grupo])
+
+    df = provider.parsear_demonstrativo(zip_path, "BPA_con")
+    assert len(df) == 0
+
+
+def test_parsear_demonstrativo_cd_cvm_typing(tmp_path):
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    row_na = {**_ROW_BASE, "CD_CVM": "1234"}
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [row_na])
+
+    df = provider.parsear_demonstrativo(zip_path, "BPA_con", include_cd_cvm=True)
+    assert df["CD_CVM"].dtype.name == "Int64"
+    assert df.iloc[0]["CD_CVM"] == 1234
+
+def test_read_raw_separador_invalido(tmp_path):
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [_ROW_BASE])
+
+    # Sobrescrevemos read_csv do pandas no teste pra garantir que é chamado com os kwargs corretos
+    import pandas as pd
+    original_read_csv = pd.read_csv
+
+    def mock_read_csv(*args, **kwargs):
+        assert kwargs.get("sep") == ";"
+        assert kwargs.get("low_memory") is False
+        assert kwargs.get("dtype") is str
+        return original_read_csv(*args, **kwargs)
+
+    pd.read_csv = mock_read_csv
+    try:
+        df = provider._read_raw(zip_path, "BPA_con")
+        assert not df.empty
+    finally:
+        pd.read_csv = original_read_csv
+
+def test_read_raw_encoding_latin1(tmp_path):
+    # Cifrão, acentos
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    row_encoding = {**_ROW_BASE, "DS_CONTA": "Ação de R$ 1,00"}
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [row_encoding])
+
+    df = provider._read_raw(zip_path, "BPA_con")
+    assert df.iloc[0]["DS_CONTA"] == "Ação de R$ 1,00"
+
+
+def test_read_raw_encoding_latin1_capitalized(tmp_path):
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    row_encoding = {**_ROW_BASE, "DS_CONTA": "Ação de R$ 1,00"}
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [row_encoding])
+
+    # Sobrescrevemos read_csv do pandas no teste pra garantir que é chamado com "latin-1" e não "LATIN-1"
+    import pandas as pd
+    import io
+    original_read_csv = pd.read_csv
+
+    def mock_read_csv(filepath_or_buffer, *args, **kwargs):
+        assert isinstance(filepath_or_buffer, io.TextIOWrapper)
+        assert filepath_or_buffer.encoding == "latin-1"
+        return original_read_csv(filepath_or_buffer, *args, **kwargs)
+
+    pd.read_csv = mock_read_csv
+    try:
+        df = provider._read_raw(zip_path, "BPA_con")
+        assert not df.empty
+    finally:
+        pd.read_csv = original_read_csv
