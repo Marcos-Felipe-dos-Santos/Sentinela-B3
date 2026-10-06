@@ -25,7 +25,7 @@ _CONTAS: dict[str, str] = {
     "lucro_liquido":      "3.11",
 }
 
-_OUTPUT_COLS = ["CNPJ_CIA", "DT_REFER", "CD_CONTA", "DS_CONTA", "VL_CONTA"]
+_OUTPUT_COLS = ["CNPJ_CIA", "DT_REFER", "VERSAO", "CD_CONTA", "DS_CONTA", "VL_CONTA"]
 
 
 class CVMProvider:
@@ -154,11 +154,37 @@ class CVMProvider:
                 bpp_emp = _filtrar(bpp)
                 dre_emp = _filtrar(dre)
 
+                metadata: dict = {}
+
                 def _conta(df: pd.DataFrame, codigo: str) -> float | None:
                     rows = df[df["CD_CONTA"] == codigo]
                     if rows.empty:
                         return None
-                    val = rows.iloc[0]["VL_CONTA"]
+
+                    if "DT_REFER" in rows.columns and "VERSAO" in rows.columns:
+                        rows = rows.sort_values(by=["DT_REFER", "VERSAO"], ascending=[False, False])
+                    elif "DT_REFER" in rows.columns:
+                        rows = rows.sort_values(by=["DT_REFER"], ascending=[False])
+
+                    # Se já temos metadados, devemos filtrar a conta pela mesma versão. Se não existir, falha.
+                    if metadata:
+                        dt = metadata.get("cvm_dt_refer")
+                        ver = metadata.get("cvm_versao")
+                        if dt and "DT_REFER" in rows.columns:
+                            rows = rows[rows["DT_REFER"].astype(str) == dt]
+                        if ver and "VERSAO" in rows.columns:
+                            rows = rows[rows["VERSAO"].astype(str) == ver]
+
+                        if rows.empty:
+                            return None
+
+                    row = rows.iloc[0]
+
+                    if not metadata and "DT_REFER" in row and "VERSAO" in row:
+                        metadata["cvm_dt_refer"] = str(row["DT_REFER"]) if pd.notna(row["DT_REFER"]) else None
+                        metadata["cvm_versao"] = str(row["VERSAO"]) if pd.notna(row["VERSAO"]) else None
+
+                    val = row["VL_CONTA"]
                     return float(val) if pd.notna(val) else None
 
                 ativo_total        = _conta(bpa_emp, _CONTAS["ativo_total"])
@@ -182,6 +208,8 @@ class CVMProvider:
                     "roe":                None,
                     "margem_liquida":     None,
                     "divida_pl":          None,
+                    "cvm_dt_refer":       metadata.get("cvm_dt_refer"),
+                    "cvm_versao":         metadata.get("cvm_versao"),
                 }
 
                 if pl and pl != 0:
