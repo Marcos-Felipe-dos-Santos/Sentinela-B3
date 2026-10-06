@@ -162,7 +162,10 @@ class CVMProvider:
 
                 if not df_concat.empty and "DT_REFER" in df_concat.columns:
                     if "VERSAO" in df_concat.columns:
-                        df_concat = df_concat.sort_values(by=["DT_REFER", "VERSAO"], ascending=[False, False])
+                        # Converte VERSAO para numérico temporariamente para ordenação correta (ex: "10" > "9")
+                        df_concat["_VERSAO_NUM"] = pd.to_numeric(df_concat["VERSAO"], errors="coerce").fillna(0)
+                        df_concat = df_concat.sort_values(by=["DT_REFER", "_VERSAO_NUM"], ascending=[False, False])
+                        df_concat = df_concat.drop(columns=["_VERSAO_NUM"])
                     else:
                         df_concat = df_concat.sort_values(by=["DT_REFER"], ascending=[False])
 

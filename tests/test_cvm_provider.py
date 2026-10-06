@@ -346,11 +346,7 @@ def test_conta_prefere_dt_refer_mais_recente(tmp_path, monkeypatch):
     zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [row1, row2])
 
     monkeypatch.setattr(provider, "baixar_dfp", lambda ano: zip_path)
-    # mock others as empty
-    monkeypatch.setattr(provider, "parsear_demonstrativo", lambda path, tipo, include_cd_cvm=False:
-        provider._read_raw(path, tipo) if tipo == "BPA_con" else pd.DataFrame(columns=_OUTPUT_COLS + ["VERSAO", "CD_CVM"]))
 
-    # actually parsear_demonstrativo parses from _make_zip
     def mock_parse(path, tipo, include_cd_cvm=False, include_versao=False):
         if tipo == "BPA_con":
             df = pd.DataFrame([row1, row2])
@@ -463,3 +459,32 @@ def test_conta_republicada_nao_mistura_versao(tmp_path, monkeypatch):
     # E o passivo deve pegar da V2
     assert ind["passivo_total"] == pytest.approx(400_000_000.0)
     assert ind.get("cvm_versao") == "2"
+
+
+
+def test_conta_republicada_usa_maior_versao_numerica(tmp_path, monkeypatch):
+    """
+    A ordenação da VERSAO deve ser numérica, não lexicográfica.
+    Versão 10 deve vencer da versão 9.
+    """
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+
+    row1 = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "9", "VL_CONTA": "900000"}
+    row2 = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "10", "VL_CONTA": "1000000"}
+
+    def mock_parse(path, tipo, include_cd_cvm=False, include_versao=False):
+        if tipo == "BPA_con":
+            df = pd.DataFrame([row1, row2])
+            df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"]) * 1000
+            df["CD_CVM"] = 9512
+            return df
+        return pd.DataFrame(columns=_OUTPUT_COLS + ["CD_CVM"])
+
+    monkeypatch.setattr(provider, "baixar_dfp", lambda ano: tmp_path / "fake.zip")
+    monkeypatch.setattr(provider, "parsear_demonstrativo", mock_parse)
+
+    resultado = provider.calcular_indicadores(9512, anos=1)
+    ind = next(iter(resultado.values()))
+
+    assert ind["ativo_total"] == pytest.approx(1_000_000_000.0)
+    assert ind.get("cvm_versao") == "10"
