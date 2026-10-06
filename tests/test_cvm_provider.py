@@ -146,16 +146,21 @@ def test_cache_nao_rebaixa(tmp_path, monkeypatch):
     call_count = {"n": 0}
 
     class FakeResponse:
-        content = b"fake-zip-content"
+        content = b'PK\x03\x04\x14\x00\x00\x00\x00\x00c\x9cF]\xbb\xfa\xbc\x14\n\x00\x00\x00\n\x00\x00\x00\x08\x00\x00\x00test.csvvalid dataPK\x01\x02\x14\x03\x14\x00\x00\x00\x00\x00c\x9cF]\xbb\xfa\xbc\x14\n\x00\x00\x00\n\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x01\x00\x00\x00\x00test.csvPK\x05\x06\x00\x00\x00\x00\x01\x00\x01\x006\x00\x00\x000\x00\x00\x00\x00\x00'
 
         def raise_for_status(self):
             pass
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+
+        def iter_content(self, chunk_size=8192):
+            yield self.content
 
     def fake_get(url, **kwargs):
         call_count["n"] += 1
         return FakeResponse()
 
-    monkeypatch.setattr("cvm_provider.requests.get", fake_get)
+    monkeypatch.setattr("cvm_download.requests.get", fake_get)
 
     p1 = provider.baixar_dfp(2023)
     p2 = provider.baixar_dfp(2023)
@@ -208,7 +213,7 @@ def test_find_csv_name_wrong_extension(tmp_path):
     provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
     zip_path = tmp_path / "dfp_2023_fake.zip"
     with zipfile.ZipFile(zip_path, "w") as zf:
-        zf.writestr(f"dfp_cia_aberta_BPA_con_2023.txt", b"fake data")
+        zf.writestr("dfp_cia_aberta_BPA_con_2023.txt", b"fake data")
 
     with pytest.raises(FileNotFoundError, match="Tipo 'BPA_con' não encontrado"):
         provider._find_csv_name(zip_path, "BPA_con")
@@ -312,8 +317,9 @@ def test_read_raw_encoding_latin1_capitalized(tmp_path):
     zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [row_encoding])
 
     # Sobrescrevemos read_csv do pandas no teste pra garantir que é chamado com "latin-1" e não "LATIN-1"
-    import pandas as pd
     import io
+
+    import pandas as pd
     original_read_csv = pd.read_csv
 
     def mock_read_csv(filepath_or_buffer, *args, **kwargs):

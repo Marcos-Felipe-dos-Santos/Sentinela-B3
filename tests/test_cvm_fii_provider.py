@@ -7,7 +7,6 @@ import pytest
 from cvm_fii_map import FII_CNPJ_MAP, get_cnpj_fii, get_ticker_fii
 from cvm_fii_provider import CVMFIIProvider
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -129,10 +128,13 @@ def test_cache_nao_rebaixa_fii(tmp_path, monkeypatch):
     call_count = {"n": 0}
 
     class FakeResp:
-        content = b"fake-zip"
+        content = b'PK\x03\x04\x14\x00\x00\x00\x00\x00c\x9cF]\xbb\xfa\xbc\x14\n\x00\x00\x00\n\x00\x00\x00\x08\x00\x00\x00test.csvvalid dataPK\x01\x02\x14\x03\x14\x00\x00\x00\x00\x00c\x9cF]\xbb\xfa\xbc\x14\n\x00\x00\x00\n\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x01\x00\x00\x00\x00test.csvPK\x05\x06\x00\x00\x00\x00\x01\x00\x01\x006\x00\x00\x000\x00\x00\x00\x00\x00'
         def raise_for_status(self): pass
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def iter_content(self, chunk_size=8192): yield self.content
 
-    monkeypatch.setattr("cvm_fii_provider.requests.get",
+    monkeypatch.setattr("cvm_download.requests.get",
                         lambda *a, **kw: (call_count.__setitem__("n", call_count["n"] + 1) or FakeResp()))
 
     p1 = provider.baixar_informe(2024)
