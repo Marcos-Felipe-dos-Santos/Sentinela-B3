@@ -65,6 +65,3 @@ def baixar_arquivo(url: str, dest: Path) -> Path:
             if tmp_path.exists():
                 tmp_path.unlink()
             raise
-
-
-    return dest

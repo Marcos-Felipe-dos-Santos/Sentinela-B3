@@ -1,8 +1,24 @@
 [tool.mutmut]
 # Layout plano: os módulos ficam na raiz. Fora da mutação: tests/, venv/, backtesting/.
 source_paths = [
+    "ai_core.py",
+    "brapi_provider.py",
+    "config.py",
+    "cvm_download.py",
+    "cvm_fii_map.py",
+    "cvm_fii_provider.py",
     "cvm_provider.py",
-    "cvm_download.py"
+    "cvm_ticker_map.py",
+    "data_quality.py",
+    "database.py",
+    "fii_engine.py",
+    "fundamentus_scraper.py",
+    "market_engine.py",
+    "peers_engine.py",
+    "portfolio_engine.py",
+    "technical_engine.py",
+    "valuation_engine.py",
+    "sentinela/",
 ]
 also_copy = ["app.py", "auditoria.py", "auditar_recomendacoes.py", "limpar_banco.py", "backtesting/", "scripts/", "pytest.ini"]
 # Com xfail_strict ligado, um XPASS acidental conta como mutante morto: só na mutação ele é desligado.
