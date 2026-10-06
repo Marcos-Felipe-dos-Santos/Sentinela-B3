@@ -121,7 +121,7 @@ def test_calcular_indicadores_mock(tmp_path, monkeypatch):
     tipo_map = {"BPA_con": bpa_df, "BPP_con": bpp_df, "DRE_con": dre_df}
 
     monkeypatch.setattr(provider, "baixar_dfp",       lambda ano: tmp_path / "fake.zip")
-    monkeypatch.setattr(provider, "parsear_demonstrativo", lambda path, tipo, include_cd_cvm=False: tipo_map[tipo])
+    monkeypatch.setattr(provider, "parsear_demonstrativo", lambda path, tipo, include_cd_cvm=False, include_versao=False: tipo_map[tipo])
 
     resultado = provider.calcular_indicadores(9512, anos=1)
 
@@ -348,10 +348,10 @@ def test_conta_prefere_dt_refer_mais_recente(tmp_path, monkeypatch):
     monkeypatch.setattr(provider, "baixar_dfp", lambda ano: zip_path)
     # mock others as empty
     monkeypatch.setattr(provider, "parsear_demonstrativo", lambda path, tipo, include_cd_cvm=False:
-        provider._read_raw(path, tipo) if tipo == "BPA_con" else pd.DataFrame(columns=_OUTPUT_COLS))
+        provider._read_raw(path, tipo) if tipo == "BPA_con" else pd.DataFrame(columns=_OUTPUT_COLS + ["VERSAO", "CD_CVM"]))
 
     # actually parsear_demonstrativo parses from _make_zip
-    def mock_parse(path, tipo, include_cd_cvm=False):
+    def mock_parse(path, tipo, include_cd_cvm=False, include_versao=False):
         if tipo == "BPA_con":
             df = pd.DataFrame([row1, row2])
             df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"]) * 1000
@@ -381,7 +381,7 @@ def test_conta_republicada_usa_maior_versao(tmp_path, monkeypatch):
     row1 = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "1", "VL_CONTA": "100000"}
     row2 = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "2", "VL_CONTA": "300000"}
 
-    def mock_parse(path, tipo, include_cd_cvm=False):
+    def mock_parse(path, tipo, include_cd_cvm=False, include_versao=False):
         if tipo == "BPA_con":
             df = pd.DataFrame([row1, row2]) # A ordem física coloca a V1 primeiro!
             df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"]) * 1000
@@ -407,7 +407,7 @@ def test_cvm_dt_refer_propagado(tmp_path, monkeypatch):
 
     row1 = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "3", "VL_CONTA": "100000"}
 
-    def mock_parse(path, tipo, include_cd_cvm=False):
+    def mock_parse(path, tipo, include_cd_cvm=False, include_versao=False):
         if tipo == "BPA_con":
             df = pd.DataFrame([row1])
             df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"]) * 1000
@@ -428,26 +428,28 @@ def test_cvm_dt_refer_propagado(tmp_path, monkeypatch):
 def test_conta_republicada_nao_mistura_versao(tmp_path, monkeypatch):
     """
     Se uma conta existe na V1 mas foi removida na V2, não deve pegar a da V1.
+    Acrescente um teste em que a versão nova não tem justamente a primeira conta consultada.
+    A primeira conta consultada é "ativo_total" (1).
     """
     provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
 
     row_v1_ativo = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "1", "CD_CONTA": "1", "VL_CONTA": "100000"}
     row_v1_passivo = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "1", "CD_CONTA": "2", "VL_CONTA": "200000"}
-    row_v2_ativo = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "2", "CD_CONTA": "1", "VL_CONTA": "300000"}
-    # V2 não tem passivo
+    # V2 NÃO TEM ATIVO, MAS TEM PASSIVO
+    row_v2_passivo = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "2", "CD_CONTA": "2", "VL_CONTA": "400000"}
 
-    def mock_parse(path, tipo, include_cd_cvm=False):
+    def mock_parse(path, tipo, include_cd_cvm=False, include_versao=False):
         if tipo == "BPA_con":
-            df = pd.DataFrame([row_v1_ativo, row_v2_ativo])
+            df = pd.DataFrame([row_v1_ativo])
             df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"]) * 1000
             df["CD_CVM"] = 9512
             return df
         if tipo == "BPP_con":
-            df = pd.DataFrame([row_v1_passivo])
+            df = pd.DataFrame([row_v1_passivo, row_v2_passivo])
             df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"]) * 1000
             df["CD_CVM"] = 9512
             return df
-        return pd.DataFrame(columns=_OUTPUT_COLS + ["CD_CVM"])
+        return pd.DataFrame(columns=_OUTPUT_COLS + ["CD_CVM", "VERSAO"])
 
     monkeypatch.setattr(provider, "baixar_dfp", lambda ano: tmp_path / "fake.zip")
     monkeypatch.setattr(provider, "parsear_demonstrativo", mock_parse)
@@ -455,5 +457,9 @@ def test_conta_republicada_nao_mistura_versao(tmp_path, monkeypatch):
     resultado = provider.calcular_indicadores(9512, anos=1)
     ind = next(iter(resultado.values()))
 
-    assert ind["ativo_total"] == pytest.approx(300_000_000.0)
-    assert ind["passivo_total"] is None  # Não pegou da V1
+    # O ativo total é a primeira conta a ser consultada por _conta().
+    # Como a V2 (maior versão do período) não tem ativo, ele deve retornar None (ausente).
+    assert ind["ativo_total"] is None
+    # E o passivo deve pegar da V2
+    assert ind["passivo_total"] == pytest.approx(400_000_000.0)
+    assert ind.get("cvm_versao") == "2"

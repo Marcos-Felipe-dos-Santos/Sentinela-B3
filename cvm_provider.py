@@ -25,7 +25,7 @@ _CONTAS: dict[str, str] = {
     "lucro_liquido":      "3.11",
 }
 
-_OUTPUT_COLS = ["CNPJ_CIA", "DT_REFER", "VERSAO", "CD_CONTA", "DS_CONTA", "VL_CONTA"]
+_OUTPUT_COLS = ["CNPJ_CIA", "DT_REFER", "CD_CONTA", "DS_CONTA", "VL_CONTA"]
 
 
 class CVMProvider:
@@ -85,7 +85,7 @@ class CVMProvider:
                 low_memory=False,
             )
 
-    def parsear_demonstrativo(self, zip_path: Path, tipo: str, include_cd_cvm: bool = False) -> pd.DataFrame:
+    def parsear_demonstrativo(self, zip_path: Path, tipo: str, include_cd_cvm: bool = False, include_versao: bool = False) -> pd.DataFrame:
         """
         Lê o CSV do tipo dentro do ZIP e retorna DataFrame limpo.
         Por padrão, retorna 5 colunas:
@@ -118,6 +118,8 @@ class CVMProvider:
         cols = [c for c in _OUTPUT_COLS if c in df.columns]
         if include_cd_cvm and "CD_CVM" in df.columns:
             cols.append("CD_CVM")
+        if include_versao and "VERSAO" in df.columns:
+            cols.append("VERSAO")
 
         return df[cols].reset_index(drop=True)
 
@@ -141,9 +143,9 @@ class CVMProvider:
             ano = ano_atual - delta
             try:
                 zip_path = self.baixar_dfp(ano)
-                bpa = self.parsear_demonstrativo(zip_path, "BPA_con", include_cd_cvm=True)
-                bpp = self.parsear_demonstrativo(zip_path, "BPP_con", include_cd_cvm=True)
-                dre = self.parsear_demonstrativo(zip_path, "DRE_con", include_cd_cvm=True)
+                bpa = self.parsear_demonstrativo(zip_path, "BPA_con", include_cd_cvm=True, include_versao=True)
+                bpp = self.parsear_demonstrativo(zip_path, "BPP_con", include_cd_cvm=True, include_versao=True)
+                dre = self.parsear_demonstrativo(zip_path, "DRE_con", include_cd_cvm=True, include_versao=True)
 
                 def _filtrar(df: pd.DataFrame) -> pd.DataFrame:
                     if "CD_CVM" in df.columns:
@@ -154,37 +156,42 @@ class CVMProvider:
                 bpp_emp = _filtrar(bpp)
                 dre_emp = _filtrar(dre)
 
+                # Descobre a maior VERSAO do DT_REFER mais recente
                 metadata: dict = {}
+                df_concat = pd.concat([bpa_emp, bpp_emp, dre_emp], ignore_index=True)
+
+                if not df_concat.empty and "DT_REFER" in df_concat.columns:
+                    if "VERSAO" in df_concat.columns:
+                        df_concat = df_concat.sort_values(by=["DT_REFER", "VERSAO"], ascending=[False, False])
+                    else:
+                        df_concat = df_concat.sort_values(by=["DT_REFER"], ascending=[False])
+
+                    row = df_concat.iloc[0]
+
+                    dt_ref = str(row["DT_REFER"]) if pd.notna(row["DT_REFER"]) else None
+                    ver = str(row["VERSAO"]) if "VERSAO" in row and pd.notna(row["VERSAO"]) else None
+
+                    metadata["cvm_dt_refer"] = dt_ref
+                    metadata["cvm_versao"] = ver
+
+                    def _filtrar_versao(df: pd.DataFrame) -> pd.DataFrame:
+                        if df.empty:
+                            return df
+                        if dt_ref and "DT_REFER" in df.columns:
+                            df = df[df["DT_REFER"].astype(str) == dt_ref]
+                        if ver and "VERSAO" in df.columns:
+                            df = df[df["VERSAO"].astype(str) == ver]
+                        return df
+
+                    bpa_emp = _filtrar_versao(bpa_emp)
+                    bpp_emp = _filtrar_versao(bpp_emp)
+                    dre_emp = _filtrar_versao(dre_emp)
 
                 def _conta(df: pd.DataFrame, codigo: str) -> float | None:
                     rows = df[df["CD_CONTA"] == codigo]
                     if rows.empty:
                         return None
-
-                    if "DT_REFER" in rows.columns and "VERSAO" in rows.columns:
-                        rows = rows.sort_values(by=["DT_REFER", "VERSAO"], ascending=[False, False])
-                    elif "DT_REFER" in rows.columns:
-                        rows = rows.sort_values(by=["DT_REFER"], ascending=[False])
-
-                    # Se já temos metadados, devemos filtrar a conta pela mesma versão. Se não existir, falha.
-                    if metadata:
-                        dt = metadata.get("cvm_dt_refer")
-                        ver = metadata.get("cvm_versao")
-                        if dt and "DT_REFER" in rows.columns:
-                            rows = rows[rows["DT_REFER"].astype(str) == dt]
-                        if ver and "VERSAO" in rows.columns:
-                            rows = rows[rows["VERSAO"].astype(str) == ver]
-
-                        if rows.empty:
-                            return None
-
-                    row = rows.iloc[0]
-
-                    if not metadata and "DT_REFER" in row and "VERSAO" in row:
-                        metadata["cvm_dt_refer"] = str(row["DT_REFER"]) if pd.notna(row["DT_REFER"]) else None
-                        metadata["cvm_versao"] = str(row["VERSAO"]) if pd.notna(row["VERSAO"]) else None
-
-                    val = row["VL_CONTA"]
+                    val = rows.iloc[0]["VL_CONTA"]
                     return float(val) if pd.notna(val) else None
 
                 ativo_total        = _conta(bpa_emp, _CONTAS["ativo_total"])
