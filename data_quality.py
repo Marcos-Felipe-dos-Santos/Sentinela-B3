@@ -44,7 +44,7 @@ _CVM_CAMPOS: frozenset[str] = frozenset({
 # Normaliza aliases usados em fonte_fundamentos (de market_engine.py SOURCE_ALIASES).
 _ALIAS: dict[str, str] = {
     "yfinance_partial":   "yfinance",
-    "fundamentals_cache": "fundamentus",
+    "fundamentals_cache": "cache",
     "manual_fii":         "manual",
 }
 
