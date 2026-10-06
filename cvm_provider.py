@@ -85,7 +85,7 @@ class CVMProvider:
                 low_memory=False,
             )
 
-    def parsear_demonstrativo(self, zip_path: Path, tipo: str, include_cd_cvm: bool = False) -> pd.DataFrame:
+    def parsear_demonstrativo(self, zip_path: Path, tipo: str, include_cd_cvm: bool = False, include_versao: bool = False) -> pd.DataFrame:
         """
         Lê o CSV do tipo dentro do ZIP e retorna DataFrame limpo.
         Por padrão, retorna 5 colunas:
@@ -118,6 +118,8 @@ class CVMProvider:
         cols = [c for c in _OUTPUT_COLS if c in df.columns]
         if include_cd_cvm and "CD_CVM" in df.columns:
             cols.append("CD_CVM")
+        if include_versao and "VERSAO" in df.columns:
+            cols.append("VERSAO")
 
         return df[cols].reset_index(drop=True)
 
@@ -141,9 +143,9 @@ class CVMProvider:
             ano = ano_atual - delta
             try:
                 zip_path = self.baixar_dfp(ano)
-                bpa = self.parsear_demonstrativo(zip_path, "BPA_con", include_cd_cvm=True)
-                bpp = self.parsear_demonstrativo(zip_path, "BPP_con", include_cd_cvm=True)
-                dre = self.parsear_demonstrativo(zip_path, "DRE_con", include_cd_cvm=True)
+                bpa = self.parsear_demonstrativo(zip_path, "BPA_con", include_cd_cvm=True, include_versao=True)
+                bpp = self.parsear_demonstrativo(zip_path, "BPP_con", include_cd_cvm=True, include_versao=True)
+                dre = self.parsear_demonstrativo(zip_path, "DRE_con", include_cd_cvm=True, include_versao=True)
 
                 def _filtrar(df: pd.DataFrame) -> pd.DataFrame:
                     if "CD_CVM" in df.columns:
@@ -153,6 +155,40 @@ class CVMProvider:
                 bpa_emp = _filtrar(bpa)
                 bpp_emp = _filtrar(bpp)
                 dre_emp = _filtrar(dre)
+
+                # Descobre a maior VERSAO do DT_REFER mais recente
+                metadata: dict = {}
+                df_concat = pd.concat([bpa_emp, bpp_emp, dre_emp], ignore_index=True)
+
+                if not df_concat.empty and "DT_REFER" in df_concat.columns:
+                    if "VERSAO" in df_concat.columns:
+                        # Converte VERSAO para numérico temporariamente para ordenação correta (ex: "10" > "9")
+                        df_concat["_VERSAO_NUM"] = pd.to_numeric(df_concat["VERSAO"], errors="coerce").fillna(0)
+                        df_concat = df_concat.sort_values(by=["DT_REFER", "_VERSAO_NUM"], ascending=[False, False])
+                        df_concat = df_concat.drop(columns=["_VERSAO_NUM"])
+                    else:
+                        df_concat = df_concat.sort_values(by=["DT_REFER"], ascending=[False])
+
+                    row = df_concat.iloc[0]
+
+                    dt_ref = str(row["DT_REFER"]) if pd.notna(row["DT_REFER"]) else None
+                    ver = str(row["VERSAO"]) if "VERSAO" in row and pd.notna(row["VERSAO"]) else None
+
+                    metadata["cvm_dt_refer"] = dt_ref
+                    metadata["cvm_versao"] = ver
+
+                    def _filtrar_versao(df: pd.DataFrame) -> pd.DataFrame:
+                        if df.empty:
+                            return df
+                        if dt_ref and "DT_REFER" in df.columns:
+                            df = df[df["DT_REFER"].astype(str) == dt_ref]
+                        if ver and "VERSAO" in df.columns:
+                            df = df[df["VERSAO"].astype(str) == ver]
+                        return df
+
+                    bpa_emp = _filtrar_versao(bpa_emp)
+                    bpp_emp = _filtrar_versao(bpp_emp)
+                    dre_emp = _filtrar_versao(dre_emp)
 
                 def _conta(df: pd.DataFrame, codigo: str) -> float | None:
                     rows = df[df["CD_CONTA"] == codigo]
@@ -182,6 +218,8 @@ class CVMProvider:
                     "roe":                None,
                     "margem_liquida":     None,
                     "divida_pl":          None,
+                    "cvm_dt_refer":       metadata.get("cvm_dt_refer"),
+                    "cvm_versao":         metadata.get("cvm_versao"),
                 }
 
                 if pl and pl != 0:

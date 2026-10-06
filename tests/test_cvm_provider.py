@@ -121,7 +121,7 @@ def test_calcular_indicadores_mock(tmp_path, monkeypatch):
     tipo_map = {"BPA_con": bpa_df, "BPP_con": bpp_df, "DRE_con": dre_df}
 
     monkeypatch.setattr(provider, "baixar_dfp",       lambda ano: tmp_path / "fake.zip")
-    monkeypatch.setattr(provider, "parsear_demonstrativo", lambda path, tipo, include_cd_cvm=False: tipo_map[tipo])
+    monkeypatch.setattr(provider, "parsear_demonstrativo", lambda path, tipo, include_cd_cvm=False, include_versao=False: tipo_map[tipo])
 
     resultado = provider.calcular_indicadores(9512, anos=1)
 
@@ -327,3 +327,164 @@ def test_read_raw_encoding_latin1_capitalized(tmp_path):
         assert not df.empty
     finally:
         pd.read_csv = original_read_csv
+
+# ---------------------------------------------------------------------------
+# Ticket B4.2 (E-8): Deterministic row selection
+# ---------------------------------------------------------------------------
+
+
+def test_conta_prefere_dt_refer_mais_recente(tmp_path, monkeypatch):
+    """
+    Quando há mais de um DT_REFER (ex: ano diferente não filtrado),
+    deve preferir o mais recente para a mesma conta.
+    """
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+
+    row1 = {**_ROW_BASE, "DT_REFER": "2022-12-31", "VERSAO": "1", "VL_CONTA": "100000"} # 100M
+    row2 = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "1", "VL_CONTA": "200000"} # 200M
+
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [row1, row2])
+
+    monkeypatch.setattr(provider, "baixar_dfp", lambda ano: zip_path)
+
+    def mock_parse(path, tipo, include_cd_cvm=False, include_versao=False):
+        if tipo == "BPA_con":
+            df = pd.DataFrame([row1, row2])
+            df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"]) * 1000
+            df["CD_CVM"] = 9512
+            return df
+        return pd.DataFrame(columns=_OUTPUT_COLS + ["CD_CVM"])
+
+    monkeypatch.setattr(provider, "parsear_demonstrativo", mock_parse)
+
+    resultado = provider.calcular_indicadores(9512, anos=1)
+    ind = next(iter(resultado.values()))
+
+    # Se ordenou por DT_REFER desc, deve pegar 2023
+    assert ind["ativo_total"] == pytest.approx(200_000_000.0)
+    assert ind.get("cvm_dt_refer") == "2023-12-31"
+
+
+def test_conta_republicada_usa_maior_versao(tmp_path, monkeypatch):
+    """
+    Quando a CVM republica (mesmo DT_REFER, maior VERSAO),
+    devemos usar a maior VERSAO e não a ordem física do CSV.
+    """
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+
+    # Ordem física: V2 (nova) aparece DEPOIS de V1 (antiga) em algumas republicações
+    # Queremos garantir que independente da ordem física, VERSAO 2 vence
+    row1 = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "1", "VL_CONTA": "100000"}
+    row2 = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "2", "VL_CONTA": "300000"}
+
+    def mock_parse(path, tipo, include_cd_cvm=False, include_versao=False):
+        if tipo == "BPA_con":
+            df = pd.DataFrame([row1, row2]) # A ordem física coloca a V1 primeiro!
+            df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"]) * 1000
+            df["CD_CVM"] = 9512
+            return df
+        return pd.DataFrame(columns=_OUTPUT_COLS + ["CD_CVM"])
+
+    monkeypatch.setattr(provider, "baixar_dfp", lambda ano: tmp_path / "fake.zip")
+    monkeypatch.setattr(provider, "parsear_demonstrativo", mock_parse)
+
+    resultado = provider.calcular_indicadores(9512, anos=1)
+    ind = next(iter(resultado.values()))
+
+    assert ind["ativo_total"] == pytest.approx(300_000_000.0)
+
+
+def test_cvm_dt_refer_propagado(tmp_path, monkeypatch):
+    """
+    Garante que os metadados DT_REFER e VERSAO da conta escolhida são
+    propagados para o dicionário final.
+    """
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+
+    row1 = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "3", "VL_CONTA": "100000"}
+
+    def mock_parse(path, tipo, include_cd_cvm=False, include_versao=False):
+        if tipo == "BPA_con":
+            df = pd.DataFrame([row1])
+            df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"]) * 1000
+            df["CD_CVM"] = 9512
+            return df
+        return pd.DataFrame(columns=_OUTPUT_COLS + ["CD_CVM"])
+
+    monkeypatch.setattr(provider, "baixar_dfp", lambda ano: tmp_path / "fake.zip")
+    monkeypatch.setattr(provider, "parsear_demonstrativo", mock_parse)
+
+    resultado = provider.calcular_indicadores(9512, anos=1)
+    ind = next(iter(resultado.values()))
+
+    assert ind.get("cvm_dt_refer") == "2023-12-31"
+    assert ind.get("cvm_versao") == "3"
+
+
+def test_conta_republicada_nao_mistura_versao(tmp_path, monkeypatch):
+    """
+    Se uma conta existe na V1 mas foi removida na V2, não deve pegar a da V1.
+    Acrescente um teste em que a versão nova não tem justamente a primeira conta consultada.
+    A primeira conta consultada é "ativo_total" (1).
+    """
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+
+    row_v1_ativo = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "1", "CD_CONTA": "1", "VL_CONTA": "100000"}
+    row_v1_passivo = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "1", "CD_CONTA": "2", "VL_CONTA": "200000"}
+    # V2 NÃO TEM ATIVO, MAS TEM PASSIVO
+    row_v2_passivo = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "2", "CD_CONTA": "2", "VL_CONTA": "400000"}
+
+    def mock_parse(path, tipo, include_cd_cvm=False, include_versao=False):
+        if tipo == "BPA_con":
+            df = pd.DataFrame([row_v1_ativo])
+            df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"]) * 1000
+            df["CD_CVM"] = 9512
+            return df
+        if tipo == "BPP_con":
+            df = pd.DataFrame([row_v1_passivo, row_v2_passivo])
+            df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"]) * 1000
+            df["CD_CVM"] = 9512
+            return df
+        return pd.DataFrame(columns=_OUTPUT_COLS + ["CD_CVM", "VERSAO"])
+
+    monkeypatch.setattr(provider, "baixar_dfp", lambda ano: tmp_path / "fake.zip")
+    monkeypatch.setattr(provider, "parsear_demonstrativo", mock_parse)
+
+    resultado = provider.calcular_indicadores(9512, anos=1)
+    ind = next(iter(resultado.values()))
+
+    # O ativo total é a primeira conta a ser consultada por _conta().
+    # Como a V2 (maior versão do período) não tem ativo, ele deve retornar None (ausente).
+    assert ind["ativo_total"] is None
+    # E o passivo deve pegar da V2
+    assert ind["passivo_total"] == pytest.approx(400_000_000.0)
+    assert ind.get("cvm_versao") == "2"
+
+
+
+def test_conta_republicada_usa_maior_versao_numerica(tmp_path, monkeypatch):
+    """
+    A ordenação da VERSAO deve ser numérica, não lexicográfica.
+    Versão 10 deve vencer da versão 9.
+    """
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+
+    row1 = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "9", "VL_CONTA": "900000"}
+    row2 = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "10", "VL_CONTA": "1000000"}
+
+    def mock_parse(path, tipo, include_cd_cvm=False, include_versao=False):
+        if tipo == "BPA_con":
+            df = pd.DataFrame([row1, row2])
+            df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"]) * 1000
+            df["CD_CVM"] = 9512
+            return df
+        return pd.DataFrame(columns=_OUTPUT_COLS + ["CD_CVM"])
+
+    monkeypatch.setattr(provider, "baixar_dfp", lambda ano: tmp_path / "fake.zip")
+    monkeypatch.setattr(provider, "parsear_demonstrativo", mock_parse)
+
+    resultado = provider.calcular_indicadores(9512, anos=1)
+    ind = next(iter(resultado.values()))
+
+    assert ind["ativo_total"] == pytest.approx(1_000_000_000.0)
+    assert ind.get("cvm_versao") == "10"
