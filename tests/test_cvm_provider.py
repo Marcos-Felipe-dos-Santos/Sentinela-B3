@@ -4,8 +4,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from cvm_provider import CVMProvider, _OUTPUT_COLS
-
+from cvm_provider import _OUTPUT_COLS, CVMProvider
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -44,7 +43,7 @@ _ROW_BASE = {
 # ---------------------------------------------------------------------------
 
 def test_parsear_demonstrativo_formato(tmp_path):
-    """DataFrame retornado deve ter exatamente as 5 colunas especificadas."""
+    """DataFrame retornado deve ter exatamente as 5 colunas especificadas. O valor testado com a base foi alterado para 500_000_000.0, porque a escala ESCALA_MOEDA MIL agora é aplicada corretamente, em vez de ignorada."""
     provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
     zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [_ROW_BASE])
 
@@ -53,7 +52,7 @@ def test_parsear_demonstrativo_formato(tmp_path):
     assert list(df.columns) == _OUTPUT_COLS
     assert len(df) == 1
     assert df.iloc[0]["CD_CONTA"] == "1"
-    assert df.iloc[0]["VL_CONTA"] == pytest.approx(500_000.0)
+    assert df.iloc[0]["VL_CONTA"] == pytest.approx(500_000_000.0)
 
 
 def test_parsear_demonstrativo_filtra_ordem_exerc(tmp_path):
@@ -122,7 +121,7 @@ def test_calcular_indicadores_mock(tmp_path, monkeypatch):
     tipo_map = {"BPA_con": bpa_df, "BPP_con": bpp_df, "DRE_con": dre_df}
 
     monkeypatch.setattr(provider, "baixar_dfp",       lambda ano: tmp_path / "fake.zip")
-    monkeypatch.setattr(provider, "_parsear_com_cvm", lambda path, tipo: tipo_map[tipo])
+    monkeypatch.setattr(provider, "parsear_demonstrativo", lambda path, tipo, include_cd_cvm=False: tipo_map[tipo])
 
     resultado = provider.calcular_indicadores(9512, anos=1)
 
@@ -164,3 +163,30 @@ def test_cache_nao_rebaixa(tmp_path, monkeypatch):
     assert p1 == p2
     assert p1.exists()
     assert call_count["n"] == 1  # segundo download usou cache
+
+
+# ---------------------------------------------------------------------------
+# test_parser_aplica_escala_mil e test_parser_unico_sem_duplicata
+# ---------------------------------------------------------------------------
+
+def test_parser_aplica_escala_mil(tmp_path):
+    """Se a ESCALA_MOEDA for MIL, o valor deve ser multiplicado por 1000."""
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [_ROW_BASE])
+
+    df = provider.parsear_demonstrativo(zip_path, "BPA_con")
+
+    assert len(df) == 1
+    assert df.iloc[0]["VL_CONTA"] == pytest.approx(500_000_000.0)
+
+
+def test_parser_unico_sem_duplicata(tmp_path):
+    """O parser público deve ter o mesmo comportamento que o antigo privado (aceitar CD_CVM e escalar)."""
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [_ROW_BASE])
+
+    assert not hasattr(provider, "_parsear_com_cvm"), "_parsear_com_cvm deve ser removido"
+
+    df = provider.parsear_demonstrativo(zip_path, "BPA_con", include_cd_cvm=True)
+    assert "CD_CVM" in df.columns
+    assert df.iloc[0]["VL_CONTA"] == pytest.approx(500_000_000.0)
