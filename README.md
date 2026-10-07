@@ -24,7 +24,7 @@ O projeto é voltado para investidores individuais e estudantes que querem enten
 
 - 📊 **Valuation fundamentalista** — Graham, Bazin, Lynch e Gordon com fair value agregado por mediana
 - 🏛️ **Dados oficiais da CVM** — DFP/ITR para ações (ROE, margens, dívida, receita) e Informe Mensal para FIIs
-- 🔗 **Cascata de fontes resiliente** — CVM → brapi → yfinance → Fundamentus com fallback automático
+- 🔗 **Cascata de fontes resiliente** — yfinance → brapi → CVM → Fundamentus com fallback automático
 - 🔍 **Qualidade de dados visível** — badge inline, completude por campo, score de confiança por fonte
 - 📡 **Macro context dinâmico** — Selic, CDI, IPCA 12m e yield real NTN-B buscados ao vivo (BCB + Tesouro Direto)
 - 📈 **Análise técnica** — RSI, MACD, Bandas de Bollinger, MA50/MA200 com gráfico candlestick interativo
@@ -41,8 +41,8 @@ O projeto é voltado para investidores individuais e estudantes que querem enten
 |-----------|-----------|-----|
 | Interface | Streamlit ≥ 1.32 | App web local, dark theme |
 | Linguagem | Python 3.13 | Toda a lógica |
-| Dados de mercado | yfinance ≥ 0.2.50 | Cotação, histórico OHLC, fundamentos fallback |
-| Cotação preferencial | brapi (REST) | Preço e DY para ativos BR |
+| Dados de mercado | yfinance ≥ 0.2.50 | Cotação preferencial, histórico OHLC, fundamentos fallback |
+| Cotação secundária | brapi (REST) | Preço secundário e fundamentos secundários |
 | Fundamentos oficiais | CVM Dados Abertos | DFP/ITR ZIP (dados.cvm.gov.br) |
 | FIIs oficiais | CVM Informe Mensal | Patrimônio líquido e vacância |
 | Scraping complementar | Fundamentus | Fallback de múltiplos |
@@ -61,15 +61,19 @@ O projeto é voltado para investidores individuais e estudantes que querem enten
 ### Cascata de fontes
 
 ```
-Ações — fundamentos
-  1. CVM Dados Abertos (DFP/ITR)   ← fonte primária, dados auditados
+Ações — execução
+  1. yfinance                       ← cotação preferencial, histórico e fundamentos base
+        preco_atual, historico, _shares_outstanding, fundamentos base
+  2. brapi                          ← sobrescreve fundamentos; preço se yfinance falhar
+        dividendYield, P/L, P/VP, preço_atual
+  3. CVM Dados Abertos (DFP/ITR)   ← fonte primária, sobrescreve fundamentos
         ROE, margens, receita, dívida, LPA, VPA
-  2. brapi                          ← cotação e DY preferencial
-        preço_atual, dividendYield, P/L, P/VP
-  3. yfinance                       ← fallback geral
-        todos os campos quando brapi falha
   4. Fundamentus (scraping)         ← fallback complementar
-        múltiplos quando yfinance está incompleto
+        múltiplos quando há lacunas
+
+Prioridade resultante:
+  Fundamentos: CVM > brapi > yfinance > Fundamentus
+  Preço: yfinance > brapi > Fundamentus
 
 FIIs — fundamentos
   1. CVM Informe Mensal             ← patrimônio, cotas, tipo de fundo
@@ -163,10 +167,7 @@ cd Sentinela-B3
 
 python -m venv venv
 
-# Windows
-venv\Scripts\activate
-
-# Linux / Mac
+# WSL / Linux / Mac (Ambiente oficial)
 source venv/bin/activate
 
 pip install -r requirements.txt
@@ -234,11 +235,12 @@ python -m pytest tests/ -v
 | Status | Item |
 |--------|------|
 | ✅ | Pipeline CVM para fundamentos oficiais (DFP/ITR) |
-| ✅ | CVMFIIProvider com Informe Mensal e cálculo de vacância |
+| ✅ | CVMFIIProvider com Informe Mensal |
 | ✅ | MacroContext dinâmico (Selic, CDI, IPCA, NTN-B longa) |
 | ✅ | DataQualityReport com completude, score e badge inline |
 | ✅ | Correções econômicas: gate Bazin ≥ 5%, Selic líquida no FII, mediana no fair value |
 | ✅ | Gráfico de valuation por método com barras horizontais Plotly |
+| 🔄 | Cálculo de vacância |
 | 🔄 | TTM (Trailing Twelve Months) via soma de ITRs trimestrais |
 | 🔄 | NTN-B longa como taxa de desconto no Gordon (em vez de Selic + 7%) |
 | 🔄 | Mapeamento CVM especializado para bancos (modelo P/VP justificado) |
