@@ -1,17 +1,17 @@
 import io
 import logging
 import zipfile
-from datetime import date, datetime, timedelta
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
-import requests
+
+from cvm_download import baixar_arquivo
 
 logger = logging.getLogger(__name__)
 
 _DFP_URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_{ano}.zip"
 _ITR_URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/itr_cia_aberta_{ano}.zip"
-_CACHE_TTL_DAYS = 7
 
 # Plano de contas CVM → chave semântica
 _CONTAS: dict[str, str] = {
@@ -40,29 +40,13 @@ class CVMProvider:
     def _cache_path(self, nome: str) -> Path:
         return self.cache_dir / nome
 
-    def _is_fresh(self, path: Path) -> bool:
-        if not path.exists():
-            return False
-        age = datetime.now() - datetime.fromtimestamp(path.stat().st_mtime)
-        return age < timedelta(days=_CACHE_TTL_DAYS)
-
-    def _baixar(self, url: str, dest: Path) -> Path:
-        if self._is_fresh(dest):
-            logger.debug("Cache válido: %s", dest)
-            return dest
-        logger.info("Baixando %s → %s", url, dest)
-        resp = requests.get(url, timeout=60, stream=True)
-        resp.raise_for_status()
-        dest.write_bytes(resp.content)
-        return dest
-
     def baixar_dfp(self, ano: int) -> Path:
         """Baixa o ZIP de DFP do ano e retorna o Path local (com cache 7d)."""
-        return self._baixar(_DFP_URL.format(ano=ano), self._cache_path(f"dfp_{ano}.zip"))
+        return baixar_arquivo(_DFP_URL.format(ano=ano), self._cache_path(f"dfp_{ano}.zip"))
 
     def baixar_itr(self, ano: int) -> Path:
         """Baixa o ZIP de ITR do ano e retorna o Path local (com cache 7d)."""
-        return self._baixar(_ITR_URL.format(ano=ano), self._cache_path(f"itr_{ano}.zip"))
+        return baixar_arquivo(_ITR_URL.format(ano=ano), self._cache_path(f"itr_{ano}.zip"))
 
     # ------------------------------------------------------------------
     # Leitura e parse de CSVs dentro do ZIP

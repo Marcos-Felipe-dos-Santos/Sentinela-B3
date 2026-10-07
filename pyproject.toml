@@ -4,6 +4,7 @@ source_paths = [
     "ai_core.py",
     "brapi_provider.py",
     "config.py",
+    "cvm_download.py",
     "cvm_fii_map.py",
     "cvm_fii_provider.py",
     "cvm_provider.py",
