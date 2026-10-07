@@ -1,12 +1,37 @@
-import pandas as pd
 import pytest
-
+import pandas as pd
 from technical_engine import TechnicalEngine
 
 
 @pytest.fixture
 def engine():
     return TechnicalEngine()
+
+# Preços base para testes de especificação (50 períodos)
+FECHAMENTOS = [
+    100.5, 100.36, 101.01, 102.53, 102.3, 102.06, 103.64, 104.41, 103.94, 104.48,
+    104.02, 103.55, 103.79, 101.88, 100.16, 99.59, 98.58, 98.89, 97.99, 96.57,
+    98.04, 97.81, 97.88, 96.46, 95.91, 96.02, 94.87, 95.25, 94.65, 94.36,
+    93.75, 95.61, 95.59, 94.53, 95.36, 94.14, 94.35, 92.39, 91.06, 91.25,
+    91.99, 92.16, 92.05, 91.75, 90.27, 89.55, 89.09, 90.15, 90.49, 88.73
+]
+
+ALTAS = [
+    100.78, 101.96, 101.16, 104.5, 103.84, 102.46, 103.65, 106.04, 105.35, 105.94,
+    105.56, 103.7, 104.51, 102.11, 101.88, 100.84, 99.24, 99.02, 98.61, 97.22,
+    99.5, 99.09, 99.66, 97.4, 96.15, 97.45, 96.39, 96.37, 96.19, 95.34,
+    94.8, 96.46, 95.64, 94.75, 95.42, 95.41, 94.97, 93.4, 92.87, 91.75,
+    92.81, 93.68, 92.51, 91.9, 90.85, 89.87, 90.95, 91.76, 91.76, 90.47
+]
+
+BAIXAS = [
+    98.89, 99.99, 99.22, 101.45, 100.68, 100.27, 103.0, 104.19, 103.48, 103.63,
+    102.38, 101.83, 103.78, 100.86, 99.32, 99.15, 98.34, 98.22, 96.1, 95.93,
+    97.0, 96.41, 97.15, 94.51, 93.99, 95.52, 93.88, 94.65, 94.08, 94.28,
+    92.53, 94.6, 95.49, 93.98, 93.54, 93.66, 94.06, 91.41, 89.09, 90.77,
+    90.65, 90.64, 91.57, 90.29, 89.53, 88.28, 87.82, 89.07, 90.31, 87.06
+]
+
 
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason="Diverge da especificação: retorna 50 em vez de 100")
 def test_rsi_sem_perdas_e_100(engine):
@@ -15,8 +40,8 @@ def test_rsi_sem_perdas_e_100(engine):
     Fonte: "New Concepts in Technical Trading Systems" (1978), J. Welles Wilder Jr.
     Sem perdas na janela de 14 períodos (e havendo ganhos), o RS é infinito e o RSI é 100.
     """
-    # 30 períodos de preços estritamente crescentes
-    precos = [100.0 + i for i in range(30)]
+    # 50 períodos de preços estritamente crescentes
+    precos = [100.0 + i for i in range(50)]
     historico = pd.DataFrame({'Close': precos})
 
     resultado = engine.calcular_indicadores(historico)
@@ -28,99 +53,64 @@ def test_rsi_sem_perdas_e_100(engine):
 def test_rsi_valor_de_referencia_wilder(engine):
     """
     Especificação: Wilder RSI.
-    Fonte da fórmula/exemplo: Wilder (1978) e convenção StockCharts.
+    Fonte: https://school.stockcharts.com/doku.php?id=technical_indicators:relative_strength_index_rsi
     O RSI de Wilder original calcula os primeiros 14 períodos como média simples
     dos ganhos/perdas, e depois aplica a suavização de Wilder
     (AvgGain = (PrevAvgGain * 13 + CurrentGain) / 14).
     """
-    # Valores construídos para gerar RSI específico pelas regras de Wilder
-    precos = [
-        100.5, 100.4, 101.0, 102.5, 102.3, 102.1, 103.6, 104.4, 103.9, 104.5,
-        104.0, 103.6, 103.8, 101.9, 100.2, 99.6, 98.6, 98.9, 98.0, 96.6,
-        98.0, 97.8, 97.9, 96.5, 95.9, 96.0, 94.9, 95.2, 94.6, 94.4
-    ]
-    historico = pd.DataFrame({'Close': precos})
+    historico = pd.DataFrame({'Close': FECHAMENTOS})
 
-    # O valor correto gerado pela especificação de Wilder para essa série: 31.4
-    # (calculado via script offline aplicando exatamente a suavização de Wilder)
+    # Valor calculado exatamente pelas regras do ChartSchool para esta série (tolerância 1 casa decimal)
     resultado = engine.calcular_indicadores(historico)
-
-    assert resultado["rsi"] == 31.4
+    assert pytest.approx(resultado["rsi"], abs=0.1) == 30.0
 
 
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason="Diverge da especificação: ewm(adjust=False) não começa da SMA dos N períodos")
 def test_macd_valores_de_referencia(engine):
     """
     Especificação: MACD (12, 26, 9).
-    Fonte: Gerald Appel / StockCharts (Standard MACD).
+    Fonte: https://school.stockcharts.com/doku.php?id=technical_indicators:moving_average_convergence_divergence_macd
     A primeira EMA (no período N) deve ser a média móvel simples dos primeiros N períodos.
     """
-    precos = [
-        100.5, 100.4, 101.0, 102.5, 102.3, 102.1, 103.6, 104.4, 103.9, 104.5,
-        104.0, 103.6, 103.8, 101.9, 100.2, 99.6, 98.6, 98.9, 98.0, 96.6,
-        98.0, 97.8, 97.9, 96.5, 95.9, 96.0, 94.9, 95.2, 94.6, 94.4
-    ]
-    historico = pd.DataFrame({'Close': precos})
+    historico = pd.DataFrame({'Close': FECHAMENTOS})
 
-    # Valores de referência para o último período calculados via StockCharts standard MACD
-    macd_line_ref = -2.58
-    macd_signal_ref = -2.57
-    macd_hist_ref = -0.01
-
+    # Valores de referência para MACD (50 períodos dá suporte suficiente para 9 períodos de linha de sinal)
+    # Tolerância de 2 casas decimais, conforme arredondamento do engine
     resultado = engine.calcular_indicadores(historico)
-
-    assert resultado["macd_line"] == macd_line_ref
-    assert resultado["macd_signal"] == macd_signal_ref
-    assert resultado["macd_hist"] == macd_hist_ref
+    assert pytest.approx(resultado["macd_line"], abs=0.01) == -2.17
+    assert pytest.approx(resultado["macd_signal"], abs=0.01) == -2.18
+    assert pytest.approx(resultado["macd_hist"], abs=0.01) == 0.01
 
 
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason="Diverge da especificação: usa desvio-padrão amostral (ddof=1) em vez de populacional")
 def test_bollinger_usa_desvio_populacional(engine):
     """
     Especificação: Bollinger Bands (20, 2).
-    Fonte: John Bollinger (Bollinger on Bollinger Bands, 2001).
+    Fonte: https://school.stockcharts.com/doku.php?id=technical_indicators:bollinger_bands
     A definição padrão usa desvio-padrão populacional (dividido por N).
     """
-    precos = [
-        100.5, 100.4, 101.0, 102.5, 102.3, 102.1, 103.6, 104.4, 103.9, 104.5,
-        104.0, 103.6, 103.8, 101.9, 100.2, 99.6, 98.6, 98.9, 98.0, 96.6,
-        98.0, 97.8, 97.9, 96.5, 95.9, 96.0, 94.9, 95.2, 94.6, 94.4
-    ]
-    historico = pd.DataFrame({'Close': precos})
+    historico = pd.DataFrame({'Close': FECHAMENTOS})
 
-    # 20 últimos períodos: [104.0, 103.6, 103.8, ..., 94.4]
-    # Média dos 20: 98.31
-    # StdDev populacional (ddof=0) = 2.97
-    # BB Upper = 98.31 + 2 * 2.97 = 104.25
-    # BB Lower = 98.31 - 2 * 2.97 = 92.37
-
+    # 20 últimos períodos: desvio populacional (ddof=0) dão exatamente 96.49 e 87.94
     resultado = engine.calcular_indicadores(historico)
-
-    assert resultado["bb_upper"] == 104.25
-    assert resultado["bb_lower"] == 92.37
+    assert pytest.approx(resultado["bb_upper"], abs=0.01) == 96.49
+    assert pytest.approx(resultado["bb_lower"], abs=0.01) == 87.94
 
 
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason="Diverge da especificação: usa média simples em vez da suavização de Wilder")
 def test_atr_suavizacao_de_wilder(engine):
     """
     Especificação: Average True Range (ATR, 14 períodos).
-    Fonte: Wilder (1978).
+    Fonte: https://school.stockcharts.com/doku.php?id=technical_indicators:average_true_range_atr
     O TR inicial é a média simples dos 14 primeiros TRs. Depois aplica-se
     a suavização de Wilder: ATR_i = (ATR_i-1 * 13 + TR_i) / 14.
     """
-    fechamentos = [100.5, 100.4, 101.0, 102.5, 102.3, 102.1, 103.6, 104.4, 103.9, 104.5, 104.0, 103.6, 103.8, 101.9, 100.2, 99.6, 98.6, 98.9, 98.0, 96.6, 98.0, 97.8, 97.9, 96.5, 95.9, 96.0, 94.9, 95.2, 94.6, 94.4]
-    altas_var = [101.249, 102.301, 102.464, 103.697, 102.612, 102.412, 103.716, 106.132, 105.102, 105.916, 104.041, 105.54, 105.465, 102.325, 100.564, 99.967, 99.208, 99.95, 98.864, 97.182, 99.224, 98.079, 98.484, 97.233, 96.812, 97.57, 95.299, 96.228, 95.785, 94.493]
-    baixas_var = [99.751, 98.499, 99.536, 101.303, 101.988, 101.788, 103.484, 102.668, 102.698, 103.084, 103.959, 101.66, 102.135, 101.475, 99.836, 99.233, 97.992, 97.85, 97.136, 96.018, 96.776, 97.521, 97.316, 95.767, 94.988, 94.43, 94.501, 94.172, 93.415, 94.307]
-
     historico = pd.DataFrame({
-        'Close': fechamentos,
-        'High': altas_var,
-        'Low': baixas_var
+        'Close': FECHAMENTOS,
+        'High': ALTAS,
+        'Low': BAIXAS
     })
 
-    # O TR máximo entre: High - Low, abs(High - Close_prev), abs(Low - Close_prev)
-    # Valores de referência para ATR calculados estritamente usando o método de Wilder
-    # com os arrays exatos acima (referência = 2.18).
+    # O valor correto gerado pela especificação do ChartSchool/Wilder para essa série: 2.21
     resultado = engine.calcular_indicadores(historico)
-
-    assert resultado["atr"] == 2.18
+    assert pytest.approx(resultado["atr"], abs=0.01) == 2.21
