@@ -1,8 +1,7 @@
 """Testes para peers_engine.py — foco em resiliência a falhas do scraper."""
 
-import sys
 import os
-import pytest
+import sys
 from unittest.mock import MagicMock
 
 # Garantir que o diretório raiz do projeto está no path
