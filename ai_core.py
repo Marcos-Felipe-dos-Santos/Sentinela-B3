@@ -64,7 +64,10 @@ class SentinelaAI:
     def _formatar_dados(self, dados):
         if isinstance(dados, dict):
             # Exclui campos volumosos que não agregam ao prompt
-            excluir = {'historico', 'analise_ia', 'tech', 'field_provenance'}
+            excluir = {
+                'historico', 'analise_ia', 'tech', 'field_provenance',
+                'acoes_por_unit', 'referencia_oficial',
+            }
             return "\n".join(
                 [f"- {k}: {v}" for k, v in dados.items()
                  if v is not None and k not in excluir]

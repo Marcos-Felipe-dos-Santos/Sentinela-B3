@@ -16,7 +16,11 @@ from sentinela.data.referencia.registro import Indice
 def cobertura(
     indice: Indice, fcas: list[tuple[int, pd.DataFrame]], informe: pd.DataFrame
 ) -> dict:
-    """Mapeáveis e mapeados por grupo. Companhias: pares (CNPJ, código) ativos no FCA; FIIs: listados em bolsa."""
+    """Mapeáveis e mapeados por grupo. Companhias: pares (CNPJ, código) ativos no FCA; FIIs: listados em bolsa.
+
+    Os tickers ligados pela tabela de correções aparecem em `correcoes`, por classe; os de
+    companhia contam como mapeados.
+    """
     ativos = linhas_ativas_do_fca(fca_mais_recente(fcas))
     codigos = {
         (linha["CNPJ_Companhia"], normalizar_codigo(linha["Codigo_Negociacao"]))
@@ -26,13 +30,18 @@ def cobertura(
     for excecao in indice.excecoes:
         motivos[excecao.motivo] = motivos.get(excecao.motivo, 0) + 1
     regras: dict[str, int] = {}
+    corrigidos: dict[str, list[str]] = {}
     for registro in indice.registros.values():
         regras[registro.regra] = regras.get(registro.regra, 0) + 1
+        if registro.correcao:
+            corrigidos.setdefault(registro.classe, []).append(registro.ticker)
     fiis = fiis_em_bolsa(informe)
     return {
         "companhias": {
             "codigos_ativos_no_fca": len(codigos),
-            "mapeados": regras.get("fca:codigo_ativo", 0),
+            "mapeados": regras.get("fca:codigo_ativo", 0)
+            + len(corrigidos.get("STOCK", []))
+            + len(corrigidos.get("UNIT", [])),
         },
         "fiis": {
             "listados_em_bolsa": len(fiis),
@@ -44,4 +53,5 @@ def cobertura(
             "unknown": regras.get("cotahist:cota_de_fundo", 0),
         },
         "excecoes_por_motivo": motivos,
+        "correcoes": {classe: sorted(t) for classe, t in sorted(corrigidos.items())},
     }

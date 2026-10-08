@@ -1,0 +1,3 @@
+ticker;cnpj;codigo_na_fonte;motivo;arquivo;coluna;data
+CSNA3;33.042.730/0001-04;4030;a CSN preenche o código de negociação das ações ordinárias com 4030, fora do formato de ticker;fca_cia_aberta_valor_mobiliario_2025.csv e fca_cia_aberta_valor_mobiliario_2026.csv (FCA, CVM);Codigo_Negociacao;2025-01-01
+TRXF11;28.548.288/0001-52;BRTRXFCTF003;o mesmo ISIN aparece em dois fundos: o TRX Real Estate (registrado em 2017-09-01) o informa desde 2025-01, e o Liquidez Projetos GD (CNPJ 63.134.454/0001-75, registrado em 2025-10-10) passou a informá-lo em 2025-11;inf_mensal_fii_geral_2025.csv e inf_mensal_fii_geral_2026.csv (Informe Mensal de FII, CVM), com registro_fundo.csv (cadastro de fundos, CVM);Codigo_ISIN (Informe) e Data_Registro (cadastro);2025-11-01

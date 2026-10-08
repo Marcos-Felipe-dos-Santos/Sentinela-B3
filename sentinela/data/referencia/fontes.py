@@ -18,6 +18,7 @@ import pandas as pd
 import requests
 
 from sentinela.data.providers import b3_cotahist
+from sentinela.data.referencia.correcoes import Correcao, ler_correcoes
 from sentinela.data.referencia.indice import carregar_indice, salvar_indice
 from sentinela.data.referencia.montagem import montar_indice
 from sentinela.data.referencia.registro import Indice
@@ -124,10 +125,12 @@ class Fontes:
     cotacoes: list
     meta: dict
     data: str
+    correcoes: list[Correcao]
 
 
 def carregar_fontes(agora: datetime, pasta_dados: Path) -> Fontes:
-    """Baixa (ou lê do cache) os arquivos oficiais."""
+    """Baixa (ou lê do cache) os arquivos oficiais e lê a tabela de correções."""
+    correcoes = ler_correcoes()
     cache = pasta_dados / "fontes"
     data = agora.date().isoformat()
     cadastro_csv = baixar_csv(URL_CADASTRO, cache / "cad_cia_aberta.csv", agora)
@@ -189,13 +192,15 @@ def carregar_fontes(agora: datetime, pasta_dados: Path) -> Fontes:
             "data": max(datas_cotahist),
         },
     }
-    return Fontes(fcas, cadastro, informe, cotacoes, fontes, data)
+    return Fontes(fcas, cadastro, informe, cotacoes, fontes, data, correcoes)
 
 
 def construir_indice(agora: datetime, pasta_dados: Path) -> Indice:
     """Baixa as fontes e monta o índice (não grava)."""
     f = carregar_fontes(agora, pasta_dados)
-    return montar_indice(f.fcas, f.cadastro, f.informe, f.cotacoes, f.meta, f.data)
+    return montar_indice(
+        f.fcas, f.cadastro, f.informe, f.cotacoes, f.meta, f.data, f.correcoes
+    )
 
 
 def obter_indice(agora: datetime, pasta_dados: Path) -> Indice:

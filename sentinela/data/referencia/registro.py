@@ -20,6 +20,7 @@ class Registro:
     setor: str | None = None
     controle_acionario: str | None = None
     segmento: str | None = None
+    correcao: dict | None = None
 
     def para_dict(self) -> dict:
         return asdict(self)

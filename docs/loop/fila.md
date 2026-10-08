@@ -311,7 +311,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário com os valores distintos de setor e de segmento;
   - gate da fase.
 
-- [ ] **F2A-19** · fix · `fix: resolve CVM codes and asset data from the official reference` · **[CORREÇÕES]**
+- [x] **F2A-19** · fix · `fix: resolve CVM codes and asset data from the official reference` · **[CORREÇÕES]**
   A cascata passa a ler o índice. O mapa manual de `cvm_ticker_map.py` vira fallback até o F2A-31, usado só quando o índice não tem o ticker ou não está disponível.
   - **Registro em `dados`.** No começo de `buscar_dados_ticker`, o registro do ticker entra em `dados`, com a fonte: `classe_ativo`, `especie`, `cnpj`, `cd_cvm`, `setor`, `segmento_fii`, `controle_acionario` e `acoes_por_unit`.
   - **CD_CVM.** `_buscar_cvm` usa o do índice; sem ele, o do mapa manual (`market_engine.py:481`). Sem nenhum dos dois, `riscos_dados` ganha "ticker fora da cobertura da CVM". Isso fecha o F-30 sem tocar no `app.py`, que já exibe `riscos_dados`.

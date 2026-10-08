@@ -1,5 +1,6 @@
 import logging
 import math
+from datetime import UTC, datetime
 from typing import Any, Dict, Optional
 
 import yfinance as yf
@@ -11,6 +12,7 @@ from cvm_provider import CVMProvider
 from cvm_ticker_map import get_cd_cvm
 from database import DatabaseManager
 from fundamentus_scraper import FundamentusScraper
+from sentinela.data.referencia.carga import ReferenciaOficial
 from sentinela.domain.provenance import FieldProvenance, FieldValue
 from sentinela.services.asset_classifier import AssetClassifier
 
@@ -55,6 +57,24 @@ _CVM_TO_MARKET: dict[str, str] = {
 }
 
 _DEFAULT_ASSET_CLASSIFIER = AssetClassifier()
+
+# Índice oficial (F2A-19): um por processo, compartilhado pelos motores e pelas threads.
+REFERENCIA_OFICIAL = ReferenciaOficial()
+
+# Registro do índice → chave em `dados`.
+_CAMPOS_DA_REFERENCIA = {
+    'classe_ativo': 'classe',
+    'especie': 'especie',
+    'cnpj': 'cnpj',
+    'cd_cvm': 'cd_cvm',
+    'setor': 'setor',
+    'segmento_fii': 'segmento',
+    'controle_acionario': 'controle_acionario',
+    'acoes_por_unit': 'acoes_por_unit',
+}
+RISCO_FORA_DA_REFERENCIA = 'ticker fora da referência oficial'
+RISCO_FORA_DA_CVM = 'ticker fora da cobertura da CVM'
+AVISO_CODIGO_DA_TABELA = 'cvm_code_from_correction_table'
 
 
 def is_missing(value: Any) -> bool:
@@ -198,6 +218,7 @@ class MarketEngine:
         self.cvm = CVMProvider()
         self.database = DatabaseManager()
         self.asset_classifier = asset_classifier or AssetClassifier()
+        self.referencia = REFERENCIA_OFICIAL
 
     def _is_fii_ticker(self, ticker: str, dados: Optional[Dict[str, Any]] = None) -> bool:
         return _is_fii_ticker(
@@ -280,6 +301,8 @@ class MarketEngine:
             warnings.append('scraper_error')
         if source == 'manual_fallback':
             warnings.append('manual_fallback')
+        if source == 'CVM' and (dados.get('referencia_oficial') or {}).get('correcao'):
+            warnings.append(AVISO_CODIGO_DA_TABELA)
 
         return warnings
 
@@ -324,6 +347,9 @@ class MarketEngine:
             'riscos_dados': [],
         }
 
+        # 0. Índice oficial: classe, CNPJ, CD_CVM e atributos do ticker.
+        self._aplicar_referencia(ticker, dados)
+
         # 1. yfinance: always first for price, history and fallback basics.
         self._buscar_yfinance(ticker, dados)
 
@@ -358,6 +384,33 @@ class MarketEngine:
         dados.setdefault('ticker', ticker)
         self._attach_field_provenance(dados)
         return dados
+
+    def _aplicar_referencia(self, ticker: str, dados: Dict[str, Any]) -> None:
+        """Copia para `dados` o registro do ticker no índice oficial, com a fonte.
+
+        Sem índice (rede e índice salvo indisponíveis), não faz nada: a cascata usa o mapa manual.
+        """
+        referencia = getattr(self, 'referencia', None)
+        if referencia is None:
+            return
+        indice = referencia.indice(datetime.now(UTC))
+        if indice is None:
+            return
+        registro = indice.buscar(ticker)
+        if registro is None:
+            motivo = next((e.motivo for e in indice.excecoes if e.codigo == ticker), None)
+            dados['riscos_dados'].append(
+                f"{RISCO_FORA_DA_REFERENCIA} ({motivo})" if motivo else RISCO_FORA_DA_REFERENCIA
+            )
+            return
+        for chave, campo in _CAMPOS_DA_REFERENCIA.items():
+            dados[chave] = getattr(registro, campo)
+        dados['referencia_oficial'] = {
+            'regra': registro.regra,
+            'fonte': registro.fonte,
+            'correcao': registro.correcao,
+            'gerado_em': indice.gerado_em,
+        }
 
     def _buscar_yfinance(self, ticker: str, dados: Dict[str, Any]) -> bool:
         """Busca dados via yfinance. Retorna True se obteve preco valido."""
@@ -478,9 +531,10 @@ class MarketEngine:
         if cvm is None:
             return False
 
-        cd_cvm = get_cd_cvm(ticker)
+        cd_cvm = dados.get('cd_cvm') or get_cd_cvm(ticker)
         if cd_cvm is None:
             dados['cvm_disponivel'] = False
+            dados.setdefault('riscos_dados', []).append(RISCO_FORA_DA_CVM)
             return False
 
         try:

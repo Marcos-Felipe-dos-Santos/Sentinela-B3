@@ -226,6 +226,20 @@ def _proveniencia(campo: str, dados: dict[str, Any]) -> str:
     return f"herdada de fonte_fundamentos: {dados.get('fonte_fundamentos') or 'desconhecida'}"
 
 
+def _texto_referencia(referencia: dict[str, Any]) -> str:
+    """Regra do índice oficial (F2A-19); com correção, o código veio da tabela, não da fonte."""
+    texto = f"{referencia.get('regra')} (índice de {referencia.get('gerado_em')})"
+    correcao = referencia.get("correcao")
+    if correcao:
+        texto += (
+            f"; código da tabela de correções, não do arquivo da fonte: "
+            f"{correcao.get('codigo_na_fonte')} → {correcao.get('ticker')} "
+            f"(evidência: {correcao.get('arquivo')}, {correcao.get('coluna')}, "
+            f"{correcao.get('data')})"
+        )
+    return texto
+
+
 def _bloco_metodo(registro) -> dict[str, Any]:
     inst, _, params, resultado = registro
     bloco: dict[str, Any] = {
@@ -356,6 +370,10 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
             ", ".join(map(str, dados.get("campos_faltantes") or [])) or "nenhum",
         ),
     ]
+
+    referencia = dados.get("referencia_oficial")
+    if referencia:
+        fontes.append(("Referência oficial", _texto_referencia(referencia)))
 
     sintese = [
         (

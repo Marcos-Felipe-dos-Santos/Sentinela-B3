@@ -14,6 +14,7 @@ from collections.abc import Iterable
 import pandas as pd
 
 from sentinela.data.providers.b3_cotahist import Cotacao
+from sentinela.data.referencia.correcoes import Correcao, validar_correcoes
 from sentinela.data.referencia.registro import Excecao, Indice, Registro
 from sentinela.domain.enums import AssetType
 
@@ -148,8 +149,12 @@ def linhas_ativas_do_fca(fca: pd.DataFrame) -> pd.DataFrame:
 
 
 def montar_companhias(
-    fca: pd.DataFrame, cadastro: pd.DataFrame, fonte_por_ano: dict
+    fca: pd.DataFrame,
+    cadastro: pd.DataFrame,
+    fonte_por_ano: dict,
+    correcoes: dict[tuple[str, str], Correcao] | None = None,
 ) -> tuple[list[Registro], list[Excecao]]:
+    correcoes = correcoes or {}
     cadastro_por_cnpj = cd_cvm_por_cnpj(cadastro)
     atributos = atributos_por_cnpj(cadastro)
     registros: list[Registro] = []
@@ -160,6 +165,9 @@ def montar_companhias(
         nome = (
             linha["Nome_Empresarial"] if pd.notna(linha["Nome_Empresarial"]) else None
         )
+        correcao = correcoes.get((cnpj, codigo))
+        if correcao is not None:
+            codigo = correcao.ticker
         if not codigo:
             excecoes.append(Excecao(codigo, "sem código de negociação", cnpj, nome))
             continue
@@ -175,7 +183,7 @@ def montar_companhias(
             Registro(
                 ticker=codigo,
                 classe=(AssetType.UNIT if eh_unit else AssetType.STOCK).value,
-                regra="fca:codigo_ativo",
+                regra=REGRA_CORRECAO if correcao else "fca:codigo_ativo",
                 fonte=fonte_por_ano[str(linha["_ano"])],
                 especie=None
                 if eh_unit
@@ -188,6 +196,7 @@ def montar_companhias(
                 else None,
                 setor=setor,
                 controle_acionario=controle,
+                correcao=correcao.para_dict() if correcao else None,
             )
         )
     return registros, excecoes
@@ -242,9 +251,16 @@ def fiis_em_bolsa(informe: pd.DataFrame) -> pd.DataFrame:
 
 
 def montar_fiis(
-    informe: pd.DataFrame, cotacoes: Iterable[Cotacao], fonte: dict
+    informe: pd.DataFrame,
+    cotacoes: Iterable[Cotacao],
+    fonte: dict,
+    correcoes: dict[tuple[str, str], Correcao] | None = None,
 ) -> tuple[list[Registro], list[Excecao]]:
-    """Junção do Informe Mensal com o COTAHIST pelo ISIN; reserva: letras 3 a 6 do ISIN + "11"."""
+    """Junção do Informe Mensal com o COTAHIST pelo ISIN; reserva: letras 3 a 6 do ISIN + "11".
+
+    A tabela de correções, chaveada por (CNPJ, ISIN), vale antes das duas.
+    """
+    correcoes = correcoes or {}
     por_isin = _isin_para_ticker(cotacoes)
     registros: list[Registro] = []
     excecoes: list[Excecao] = []
@@ -257,7 +273,10 @@ def montar_fiis(
         if len(isin) != 12:
             excecoes.append(Excecao(isin, "FII em bolsa sem ISIN válido", cnpj, nome))
             continue
-        if isin in por_isin:
+        correcao = correcoes.get((cnpj, isin))
+        if correcao is not None:
+            ticker, regra = correcao.ticker, REGRA_CORRECAO
+        elif isin in por_isin:
             ticker, regra = por_isin[isin], "fii:informe+cotahist_isin"
         else:
             ticker, regra = isin[2:6] + "11", "fii:reserva_isin"
@@ -270,6 +289,7 @@ def montar_fiis(
                 cnpj=cnpj,
                 nome=nome,
                 segmento=_texto(linha.get("Segmento_Atuacao")),
+                correcao=correcao.para_dict() if correcao else None,
             )
         )
     return registros, excecoes
@@ -308,7 +328,9 @@ def montar_outros(
     return list(registros.values())
 
 
+REGRA_CORRECAO = "correcao"
 _PRECEDENCIA = {
+    REGRA_CORRECAO: -1,
     "fca:codigo_ativo": 0,
     "fii:informe+cotahist_isin": 1,
     "fii:reserva_isin": 2,
@@ -316,9 +338,12 @@ _PRECEDENCIA = {
 MOTIVO_REPETIDO = "ticker repetido em CNPJs distintos"
 MOTIVO_RESERVA = "reserva do ISIN colide com ticker de fonte mais forte"
 MOTIVO_COMPANHIA = "ticker de FII colide com ticker de companhia do FCA"
+MOTIVO_CORRECAO = "ticker ligado a outro CNPJ pela tabela de correções"
 
 
-def _motivo_do_perdedor(registro: Registro) -> str:
+def _motivo_do_perdedor(registro: Registro, vencedor: Registro) -> str:
+    if vencedor.regra == REGRA_CORRECAO:
+        return MOTIVO_CORRECAO
     return MOTIVO_RESERVA if registro.regra == "fii:reserva_isin" else MOTIVO_COMPANHIA
 
 
@@ -341,7 +366,7 @@ def _resolver_repetidos(
             mantidos[ticker] = vencedores[0]
             perdedores = [r for r in grupo if r.cnpj != vencedores[0].cnpj]
             excecoes += [
-                Excecao(ticker, _motivo_do_perdedor(r), r.cnpj, r.nome)
+                Excecao(ticker, _motivo_do_perdedor(r, vencedores[0]), r.cnpj, r.nome)
                 for r in perdedores
             ]
         else:
@@ -358,12 +383,19 @@ def montar_indice(
     cotacoes: Iterable[Cotacao],
     fontes: dict,
     gerado_em: str,
+    correcoes: Iterable[Correcao] = (),
 ) -> Indice:
-    """Junta companhias, FIIs e outros; em ticker repetido entre CNPJs, vale a fonte mais forte."""
+    """Junta companhias, FIIs e outros; em ticker repetido entre CNPJs, vale a fonte mais forte.
+
+    A tabela de correções é validada aqui: linha sem evidência levanta `CorrecaoInvalida`.
+    """
+    por_chave = validar_correcoes(correcoes)
     cotacoes = list(cotacoes)
     fca = fca_mais_recente(fcas)
-    companhias, exc_companhias = montar_companhias(fca, cadastro, fontes["fca"])
-    fiis, exc_fiis = montar_fiis(informe, cotacoes, fontes["informe_fii"])
+    companhias, exc_companhias = montar_companhias(
+        fca, cadastro, fontes["fca"], por_chave
+    )
+    fiis, exc_fiis = montar_fiis(informe, cotacoes, fontes["informe_fii"], por_chave)
     mantidos, exc_repetidos = _resolver_repetidos([*companhias, *fiis])
     indice = Indice(
         gerado_em=gerado_em,
