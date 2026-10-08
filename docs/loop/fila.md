@@ -233,7 +233,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - nenhum módulo de produção alterado;
   - gate da fase.
 
-- [ ] **F2A-1** · feat · `feat: build official reference of tickers, issuers and asset classes` · **[P6]** **[P7]**
+- [x] **F2A-1** · feat · `feat: build official reference of tickers, issuers and asset classes` · **[P6]** **[P7]**
   Cria `sentinela/data/referencia/`: lê os arquivos oficiais, monta o índice ticker → registro e o grava em `data/referencia/indice.json`. É aditivo: os consumidores são o F2A-19 e o F2A-20.
 
   **Regras:**
@@ -277,6 +277,21 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - mutation ≥ 80% em `sentinela.data.referencia*`;
   - cobertura de 100% dos mapeáveis, ou cada exceção com motivo no diário;
   - gate da fase.
+
+  **Retomada (decisão do Marcos, 8/10/2026):**
+  1. **COTAHIST.** Usa os 3 últimos meses fechados: o laço começa no mês anterior ao atual. A cobertura e o diário são refeitos com os números novos.
+  2. **"Não entregue".** Só o HTTP 404 quer dizer "não entregue". `BadZipFile` e `KeyError` sobem, e `obter_indice` mantém o índice salvo.
+  3. **Robustez.**
+     - `obter_indice` também cai no índice salvo com `ValueError`;
+     - `Mercado` e `Valor_Mobiliario` são comparados com `strip()`;
+     - `informe_mais_recente` com todas as datas inválidas avisa, e ganha teste;
+     - `fca_mais_recente` devolve NaN, não `""`.
+  4. **Decisões.**
+     - o Balcão Não-Organizado fica fora;
+     - o índice não filtra por cotação (liquidez é do F2A-10);
+     - ETF fica `UNKNOWN` até haver ponte de ISIN;
+     - os 21 registros de FII repetidos ficam fora, e o TRXF11 vai para a tabela **[CORREÇÕES]** do F2A-19, com evidência oficial.
+  5. **Revisão.** A contagem de rodadas do `/review-diff` recomeça.
 
 - [ ] **F2A-2** · feat · `feat: add sector, FII segment and control type to the reference`
   Acrescenta ao índice, a partir de arquivos que o projeto já baixa:
