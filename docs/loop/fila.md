@@ -165,7 +165,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - `tests/test_cvm_provider_cache.py::test_segunda_leitura_nao_rele_o_csv` e `::test_zip_novo_invalida_o_cache`;
   - diário: tempo de `calcular_indicadores(cd, anos=5)` para um ticker do mapa público, com os ZIPs já em `data/cvm/`, antes → depois, e a memória do processo.
 
-- [ ] **F2A-18** · feat · `feat: add B3 COTAHIST provider` · **[D7]** **[P6]**
+- [x] **F2A-18** · feat · `feat: add B3 COTAHIST provider` · **[D7]** **[P6]**
   Cria `sentinela/data/__init__.py`, `sentinela/data/providers/__init__.py` e `sentinela/data/providers/b3_cotahist.py`. É aditivo: os consumidores são o F2A-1 e o F2A-26.
   - **Especificação externa:** o layout oficial das Séries Históricas da B3, citado no módulo. Vale o registro 01 (cotação); o 00 e o 99 são ignorados.
   - **Campos por registro:**
