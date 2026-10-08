@@ -111,7 +111,12 @@ def _is_present(v) -> bool:
 
 class DataQualityReport:
     def __init__(self, dados: dict):
-        self.dados = dados or {}
+        # F2A-6 (E-3): com o retrato da cascata (`valores_coletados`), os campos coletados
+        # são avaliados como a cascata os entregou, e não como os motores os sobrescreveram
+        # (`app.py`: `dados.update(analise)`). Sem retrato, valem os valores de `dados`.
+        dados = dados or {}
+        retrato = dados.get("valores_coletados")
+        self.dados = {**dados, **retrato} if isinstance(retrato, dict) else dados
 
     # ── API pública ────────────────────────────────────────────────────────
 

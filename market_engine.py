@@ -195,6 +195,22 @@ def list_missing_market_fields(dados: Dict[str, Any]) -> list[str]:
     ]
 
 
+def _retrato(dados: Dict[str, Any]) -> Dict[str, Any]:
+    """Cópia simples e serializável do preço e de FUNDAMENTAL_KEYS como a cascata os entregou (F2A-6, E-3).
+
+    Campo ausente ou não finito vira `None`; número vira `float`; texto fica texto.
+    """
+    retrato: Dict[str, Any] = {}
+    for chave in ('preco_atual', *FUNDAMENTAL_KEYS):
+        valor = dados.get(chave)
+        if isinstance(valor, str):
+            retrato[chave] = valor
+            continue
+        numero = _as_float(valor)
+        retrato[chave] = numero if numero is not None and math.isfinite(numero) else None
+    return retrato
+
+
 def _registrar_fonte_fundamentos(dados: Dict[str, Any], fonte: str) -> None:
     atual = dados.get('fonte_fundamentos')
     if not atual:
@@ -390,6 +406,7 @@ class MarketEngine:
         self._salvar_cache_se_valido(ticker, dados)
         dados.setdefault('ticker', ticker)
         self._attach_field_provenance(dados)
+        dados['valores_coletados'] = _retrato(dados)
         return dados
 
     def _aplicar_referencia(self, ticker: str, dados: Dict[str, Any]) -> None:

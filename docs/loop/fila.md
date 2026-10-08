@@ -381,7 +381,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden inalterado;
   - gate da fase.
 
-- [ ] **F2A-6** · fix · `fix: keep collected values intact for quality checks`
+- [x] **F2A-6** · fix · `fix: keep collected values intact for quality checks`
   E-3. O `app.py:236` faz `dados.update(analise)` antes do `DataQualityReport` (`app.py:264`) e da gravação. Como o `app.py` não muda nesta fase, a correção fica na cascata e no relatório de qualidade:
   - **Cópia na cascata.** No fim da cascata, `dados['valores_coletados']` guarda uma cópia dos campos de `FUNDAMENTAL_KEYS` e do preço, como a cascata os entregou: um dicionário simples, serializável.
   - **Relatório de qualidade.** `DataQualityReport` avalia a cópia quando ela existe. Os valores de `dados` só valem quando não existe cópia (testes e chamadas antigas).
