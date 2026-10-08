@@ -330,7 +330,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: os tickers do mapa público cujo código vem do índice, e as diferenças em relação ao mapa manual (esperado: nenhuma);
   - gate da fase.
 
-- [ ] **F2A-20** · fix · `fix: classify assets from official data instead of ticker suffix` · **[P7]**
+- [x] **F2A-20** · fix · `fix: classify assets from official data instead of ticker suffix` · **[P7]**
   `sentinela/services/asset_classifier.py` deixa de deduzir a classe do sufixo (armadilha 14, E-9). A ordem de consulta passa a ser:
   1. `dados['classe_ativo']`, que a cascata preenche desde o F2A-19. É o caminho do `app.py:216`, que não muda;
   2. o índice local, lido sem rede na primeira consulta, para quem chama sem `dados` (`portfolio_engine.py:114-115`);

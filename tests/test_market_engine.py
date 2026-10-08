@@ -124,8 +124,10 @@ def test_market_engine_known_fii_treated_as_fii():
     assert _is_fii_ticker("HGLG11", {}) is True
 
 
-def test_market_engine_suffix_11_non_unit_still_fii():
-    assert _is_fii_ticker("ABCD11", {}) is True
+def test_market_engine_suffix_11_without_official_data_is_not_fii():
+    # F2A-20: a classe vem de dados['classe_ativo'] (cascata), não do sufixo.
+    assert _is_fii_ticker("ABCD11", {}) is False
+    assert _is_fii_ticker("ABCD11", {"classe_ativo": "FII"}) is True
 
 
 def test_yfinance_data_is_preserved_when_fundamentus_fails(monkeypatch):

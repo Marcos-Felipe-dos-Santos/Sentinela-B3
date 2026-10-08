@@ -9,6 +9,7 @@ para não repetir o download a cada ticker.
 from __future__ import annotations
 
 import logging
+import os
 import threading
 import zipfile
 from datetime import datetime
@@ -23,15 +24,28 @@ from sentinela.data.referencia.registro import Indice
 logger = logging.getLogger(__name__)
 
 PAUSA_APOS_FALHA_SEGUNDOS = 3600
+VARIAVEL_PASTA_DE_DADOS = "SENTINELA_DADOS"
+
+
+def pasta_de_dados() -> Path:
+    """Pasta de dados local: a da variável `SENTINELA_DADOS` ou `data/` (F2A-20).
+
+    A suíte aponta a variável para uma pasta temporária, para nunca ler o índice da máquina.
+    """
+    return Path(os.environ.get(VARIAVEL_PASTA_DE_DADOS) or "data")
 
 
 class ReferenciaOficial:
-    def __init__(self, pasta_dados: Path = Path("data")) -> None:
-        self.pasta_dados = pasta_dados
+    def __init__(self, pasta_dados: Path | None = None) -> None:
+        self._pasta_dados = pasta_dados
         self._trava = threading.Lock()
         self._indice: Indice | None = None
         self._carregado_em: float | None = None
         self._falhou_em: float | None = None
+
+    @property
+    def pasta_dados(self) -> Path:
+        return self._pasta_dados or pasta_de_dados()
 
     def indice(self, agora: datetime) -> Indice | None:
         """O índice em memória, recarregado se o TTL venceu; `None` se não há índice."""
