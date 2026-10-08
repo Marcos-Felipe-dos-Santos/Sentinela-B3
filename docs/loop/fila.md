@@ -148,7 +148,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - rodado sem mudança no golden, lista zero casos;
   - gate da fase.
 
-- [ ] **F2A-17** · refactor · `refactor: cache parsed CVM statements per file`
+- [x] **F2A-17** · refactor · `refactor: cache parsed CVM statements per file`
   **Por quê.** E-16: cada `calcular_indicadores` relê os CSVs completos do ZIP. O F2A-3, o F2A-7 e o F2A-8 multiplicam as leituras (cinco anos, ITR, Composição do Capital, DVA), e o `peers_engine` dispara análises em paralelo.
 
   **O que muda:**

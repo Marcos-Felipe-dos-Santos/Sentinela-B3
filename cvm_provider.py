@@ -1,6 +1,8 @@
 import io
 import logging
+import threading
 import zipfile
+from collections import OrderedDict
 from datetime import date
 from pathlib import Path
 
@@ -26,6 +28,13 @@ _CONTAS: dict[str, str] = {
 }
 
 _OUTPUT_COLS = ["CNPJ_CIA", "DT_REFER", "CD_CONTA", "DS_CONTA", "VL_CONTA"]
+
+# Memoização por processo dos demonstrativos já filtrados (E-16). A chave inclui
+# mtime e tamanho do ZIP: download novo invalida a entrada.
+_CACHE_MAX_ENTRADAS = 32
+_cache_parse: OrderedDict[tuple, pd.DataFrame] = OrderedDict()
+_cache_trava = threading.Lock()
+_travas_chave: dict[tuple, threading.Lock] = {}
 
 
 class CVMProvider:
@@ -83,6 +92,30 @@ class CVMProvider:
         - ORDEM_EXERC == "ÚLTIMO"  (descarta reapresentações)
         - GRUPO_DFP contém "Consolidado"
         """
+        stat = Path(zip_path).stat()
+        chave = (
+            str(Path(zip_path).resolve()),
+            stat.st_mtime_ns,
+            stat.st_size,
+            tipo,
+            include_cd_cvm,
+            include_versao,
+        )
+        with _cache_trava:
+            trava = _travas_chave.setdefault(chave[:1] + chave[3:], threading.Lock())
+        with trava:
+            with _cache_trava:
+                if chave in _cache_parse:
+                    _cache_parse.move_to_end(chave)
+                    return _cache_parse[chave].copy()
+            df = self._parsear_sem_cache(zip_path, tipo, include_cd_cvm, include_versao)
+            with _cache_trava:
+                _cache_parse[chave] = df
+                while len(_cache_parse) > _CACHE_MAX_ENTRADAS:
+                    _cache_parse.popitem(last=False)
+        return df.copy()
+
+    def _parsear_sem_cache(self, zip_path: Path, tipo: str, include_cd_cvm: bool, include_versao: bool) -> pd.DataFrame:
         df = self._read_raw(zip_path, tipo)
 
         if "ORDEM_EXERC" in df.columns:
