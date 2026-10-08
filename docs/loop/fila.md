@@ -136,7 +136,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
 ## Itens
 
-- [ ] **F2A-15** · chore · `chore: add golden diff tool for scoped regeneration`
+- [x] **F2A-15** · chore · `chore: add golden diff tool for scoped regeneration`
   A partir desta fase, o golden muda nos itens que mudam saída. Este item cria a ferramenta que prova o escopo de cada mudança: `scripts/golden_diff.py`.
   - **Comparação.** Por (motor, id), entre o golden do `HEAD` (`git show`) e o da árvore de trabalho. Lista os casos alterados, incluídos e removidos. `--base <arquivo>` troca o `HEAD` por um arquivo.
   - **`--onde "<expressão>"`.** Sai com 1 se algum caso alterado não satisfizer a expressão, avaliada com `caso`, `entrada`, `saida_antiga` e `saida_nova`.
