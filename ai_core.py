@@ -66,7 +66,8 @@ class SentinelaAI:
             # Exclui campos volumosos que não agregam ao prompt
             excluir = {
                 'historico', 'analise_ia', 'tech', 'field_provenance',
-                'acoes_por_unit', 'referencia_oficial',
+                'acoes_por_unit', 'referencia_oficial', 'acoes_cvm',
+                'divergencia_acoes',
             }
             return "\n".join(
                 [f"- {k}: {v}" for k, v in dados.items()

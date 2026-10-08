@@ -354,7 +354,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - seções A, B e C intactas: o teste do Markowitz na seção B usa HGLG11, que segue FII pela lista;
   - gate da fase.
 
-- [ ] **F2A-3** · fix · `fix: derive per-share figures from CVM share composition` · **[P1]** **[D7]**
+- [x] **F2A-3** · fix · `fix: derive per-share figures from CVM share composition` · **[P1]** **[D7]**
   E-1 (armadilha 3). Esta é a decisão do checkpoint (seção 4, item 1):
   - **Ações.** As da Composição do Capital da DFP, ON + PN − tesouraria. Vêm do mesmo documento do lucro e do PL: mesmo CNPJ, `DT_REFER` e `VERSAO` (critério do B4.2).
   - **Escala** (armadilha 10). O CSV não traz a escala; vale a regra conferida no F2A-16. É unidade ou mil, a que deixar a razão (lucro ÷ ações) ÷ (LPA básico divulgado no mesmo documento) mais perto de 1, dentro da faixa que o F2A-16 mostrou separar os dois casos. A conversão passa por `QuantidadeAcoes` do `units.py`.

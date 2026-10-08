@@ -50,8 +50,8 @@ CAMPOS_FII = (
     ("tipo", "texto"),
 )
 PROVENIENCIA_DERIVADA = {
-    "lpa": "derivado no motor: preço ÷ P/L (E-1: sem reconciliação de escopo)",
-    "vpa": "derivado no motor: preço ÷ P/VP (E-1: sem reconciliação de escopo)",
+    "lpa": "derivado no motor: preço ÷ P/L",
+    "vpa": "derivado no motor: preço ÷ P/VP",
     "dy": "normalizado no motor (_normalizar_dy: acima de 1 é percentual, acima de 0,25 é inválido e zerado)",
     "perfil": "derivado no motor: ROE e DY",
     "selic": "sem proveniência registrada (E-6): BCB SGS 432 ou valor de contingência",
@@ -62,9 +62,11 @@ LIMITES = (
         "com cache de 24 horas ou de um valor de contingência fixo."
     ),
     (
-        "E-1: LPA e VPA são derivados do preço e dos múltiplos, sem reconciliar o escopo das ações "
-        "(lucro consolidado ÷ quantidade de ações de outra fonte); o selo de qualidade dos dados "
-        "não cobre isso."
+        "E-1: quando P/L e P/VP vêm da CVM, LPA e VPA são o lucro e o PL dos controladores ÷ as "
+        "ações (ON + PN − tesouraria) da Composição do Capital do mesmo documento, com a escala "
+        "inferida pelo LPA divulgado; são as ações do fim do período, e o LPA divulgado usa a "
+        "média ponderada do exercício. Com P/L e P/VP de outra fonte, LPA e VPA herdam o escopo "
+        "dela."
     ),
     (
         "A proveniência registrada pela cascata cobre cinco campos (preço, DY, P/L, P/VP e ROE); "
@@ -226,6 +228,26 @@ def _proveniencia(campo: str, dados: dict[str, Any]) -> str:
     return f"herdada de fonte_fundamentos: {dados.get('fonte_fundamentos') or 'desconhecida'}"
 
 
+def _proveniencia_derivada(campo: str, dados: dict[str, Any]) -> str:
+    """LPA e VPA (F2A-3): com P/L ou P/VP da CVM, dizem o documento e a escala usados."""
+    texto = PROVENIENCIA_DERIVADA[campo]
+    multiplo = {"lpa": "pl", "vpa": "pvp"}.get(campo)
+    acoes = dados.get("acoes_cvm")
+    fonte = ((dados.get("field_provenance") or {}).get(multiplo) or {}).get(
+        "provenance"
+    ) or {}
+    if not multiplo or not acoes or fonte.get("source") != "CVM":
+        return texto
+    documento = acoes.get("documento") or {}
+    return (
+        f"{texto}; P/{'L' if campo == 'lpa' else 'VP'} da CVM: "
+        f"{'lucro' if campo == 'lpa' else 'PL'} dos controladores ÷ "
+        f"{_numero(acoes.get('acoes'), 0)} ações da Composição do Capital "
+        f"(DFP de {documento.get('dt_refer')}, versão {documento.get('versao')}, "
+        f"escala {acoes.get('escala')}; {acoes.get('nota')})"
+    )
+
+
 def _texto_referencia(referencia: dict[str, Any]) -> str:
     """Regra do índice oficial (F2A-19); com correção, o código veio da tabela, não da fonte."""
     texto = f"{referencia.get('regra')} (índice de {referencia.get('gerado_em')})"
@@ -342,7 +364,7 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
                 "proveniencia": (
                     f"{analise.get('vacancia_fonte', 'desconhecida')}"
                     if campo == "vacancia"
-                    else PROVENIENCIA_DERIVADA[campo]
+                    else _proveniencia_derivada(campo, dados)
                 ),
             }
         )

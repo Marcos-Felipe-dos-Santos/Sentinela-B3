@@ -12,8 +12,10 @@ from cvm_provider import CVMProvider
 from cvm_ticker_map import get_cd_cvm
 from database import DatabaseManager
 from fundamentus_scraper import FundamentusScraper
+from sentinela.data import acoes_cvm
 from sentinela.data.referencia.carga import ReferenciaOficial
 from sentinela.domain.provenance import FieldProvenance, FieldValue
+from sentinela.domain.enums import AssetType
 from sentinela.services.asset_classifier import AssetClassifier
 
 logger = logging.getLogger("MarketEngine")
@@ -75,6 +77,9 @@ _CAMPOS_DA_REFERENCIA = {
 RISCO_FORA_DA_REFERENCIA = 'ticker fora da referência oficial'
 RISCO_FORA_DA_CVM = 'ticker fora da cobertura da CVM'
 AVISO_CODIGO_DA_TABELA = 'cvm_code_from_correction_table'
+AVISO_ACOES_FIM_DO_PERIODO = 'shares_end_of_period'
+RISCO_SEM_POR_ACAO_CVM = 'CVM não derivou LPA, VPA, P/L e P/VP'
+RISCO_ROE_CVM = 'CVM sem ROE'
 
 
 def is_missing(value: Any) -> bool:
@@ -303,6 +308,8 @@ class MarketEngine:
             warnings.append('manual_fallback')
         if source == 'CVM' and (dados.get('referencia_oficial') or {}).get('correcao'):
             warnings.append(AVISO_CODIGO_DA_TABELA)
+        if source == 'CVM' and field in {'pl', 'pvp'} and dados.get('acoes_cvm'):
+            warnings.append(AVISO_ACOES_FIM_DO_PERIODO)
 
         return warnings
 
@@ -523,9 +530,10 @@ class MarketEngine:
     def _buscar_cvm(self, ticker: str, dados: Dict[str, Any]) -> bool:
         """Preenche fundamentos a partir das DFPs oficiais da CVM.
 
-        Cobre: ROE, margens, PL, lucro, receita, ativo circulante/total,
-        alavancagem (proxy passivo/PL) e, se sharesOutstanding disponível,
-        também LPA, VPA, P/L e P/VP derivados do DFP.
+        Cobre: ROE (dos controladores), margens, PL, lucro, receita, ativo circulante/total,
+        alavancagem (proxy passivo/PL) e LPA, VPA, P/L e P/VP pela Composição do Capital do
+        mesmo documento (F2A-3, `sentinela.data.acoes_cvm`). O `sharesOutstanding` do
+        yfinance só entra na divergência (`dados['divergencia_acoes']`), nunca no cálculo.
         """
         cvm = getattr(self, 'cvm', None)
         if cvm is None:
@@ -552,24 +560,11 @@ class MarketEngine:
                 if v is not None:
                     cvm_campos[market_key] = v
 
-            # Derivados por ação — requer sharesOutstanding do yfinance
-            shares = dados.get('_shares_outstanding')
-            preco = _as_float(dados.get('preco_atual'))
-            lucro = ind.get('lucro_liquido')
-            pl_val = ind.get('patrimonio_liquido')
-
-            if shares and shares > 0:
-                if lucro is not None:
-                    lpa_cvm = lucro / shares
-                    cvm_campos['lpa'] = lpa_cvm
-                    if preco and preco > 0 and lpa_cvm != 0:
-                        cvm_campos['pl'] = preco / lpa_cvm
-
-                if pl_val is not None:
-                    vpa_cvm = pl_val / shares
-                    cvm_campos['vpa'] = vpa_cvm
-                    if preco and preco > 0 and vpa_cvm != 0:
-                        cvm_campos['pvp'] = preco / vpa_cvm
+            if ind.get('roe_motivo'):
+                dados.setdefault('riscos_dados', []).append(
+                    f"{RISCO_ROE_CVM}: {ind['roe_motivo']}"
+                )
+            cvm_campos.update(self._por_acao_cvm(ticker, dados, ind))
 
             preenchidos = merge_if_valid(
                 dados,
@@ -591,6 +586,58 @@ class MarketEngine:
 
         dados['cvm_disponivel'] = False
         return False
+
+    def _por_acao_cvm(
+        self, ticker: str, dados: Dict[str, Any], ind: Dict[str, Any]
+    ) -> Dict[str, float]:
+        """LPA, VPA, P/L e P/VP da Composição do Capital; sem eles, o motivo vai para `riscos_dados`.
+
+        Provedor que não informa `composicao_capital` (interface anterior ao F2A-3) não passou
+        pela etapa: nada é derivado e nada é registrado.
+        """
+        if 'composicao_capital' not in ind:
+            return {}
+        classifier = getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER)
+        eh_unit = classifier.classify(ticker, dados) == AssetType.UNIT
+        acoes_por_unit = dados.get('acoes_por_unit')
+        resultado = acoes_cvm.derivar_por_acao(
+            lucro_controladores=ind.get('lucro_controladores'),
+            pl_controladores=ind.get('pl_controladores'),
+            composicao=ind.get('composicao_capital'),
+            motivo_composicao=ind.get('composicao_motivo'),
+            lpa_divulgado=(ind.get('lpa_divulgado') or {}).get('valor'),
+            preco=_as_float(dados.get('preco_atual')),
+            eh_unit=eh_unit,
+            acoes_por_unit=acoes_por_unit,
+        )
+        if isinstance(resultado, acoes_cvm.Abstencao):
+            dados.setdefault('riscos_dados', []).append(
+                f"{RISCO_SEM_POR_ACAO_CVM}: {resultado.motivo}"
+            )
+            return {}
+        dados['acoes_cvm'] = resultado.detalhe(
+            {
+                'cnpj': ind.get('cnpj'),
+                'dt_refer': ind.get('cvm_dt_refer'),
+                'versao': ind.get('cvm_versao'),
+                'lpa_divulgado': ind.get('lpa_divulgado'),
+            }
+        )
+        dados['divergencia_acoes'] = acoes_cvm.divergencia_acoes(
+            ind['composicao_capital'],
+            resultado.escala,
+            especie=dados.get('especie'),
+            eh_unit=eh_unit,
+            acoes_por_unit=acoes_por_unit,
+            shares_outstanding=_as_float(dados.get('_shares_outstanding')),
+        )
+        campos = {
+            'lpa': resultado.lpa,
+            'vpa': resultado.vpa,
+            'pl': resultado.pl,
+            'pvp': resultado.pvp,
+        }
+        return {k: v for k, v in campos.items() if v is not None}
 
     def _buscar_fundamentus(self, ticker: str, dados: Dict[str, Any]) -> bool:
         """Busca dados via Fundamentus como complemento."""

@@ -9,6 +9,12 @@ from pathlib import Path
 import pandas as pd
 
 from cvm_download import baixar_arquivo
+from sentinela.data.acoes_cvm import (
+    MOTIVO_DOCUMENTO_DIFERENTE,
+    MOTIVO_SEM_COMPOSICAO,
+    Composicao,
+    roe_dos_controladores,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +41,126 @@ _CACHE_MAX_ENTRADAS = 32
 _cache_parse: OrderedDict[tuple, pd.DataFrame] = OrderedDict()
 _cache_trava = threading.Lock()
 _travas_chave: dict[tuple, threading.Lock] = {}
+
+# F2A-3: linhas 3.99 (LPA divulgado, em R$ por ação, sem a escala monetária) e Composição
+# do Capital, por arquivo. A chave inclui mtime e tamanho, como a do parse.
+_cache_por_acao: dict[tuple, tuple[pd.DataFrame, pd.DataFrame]] = {}
+_CACHE_POR_ACAO_MAX = 8
+_COLUNAS_COMPOSICAO = {
+    "on": "QT_ACAO_ORDIN_CAP_INTEGR",
+    "pn": "QT_ACAO_PREF_CAP_INTEGR",
+    "tesouraria_on": "QT_ACAO_ORDIN_TESOURO",
+    "tesouraria_pn": "QT_ACAO_PREF_TESOURO",
+    "tesouraria_total": "QT_ACAO_TOTAL_TESOURO",
+}
+
+
+def _numero(valor) -> float:
+    numero = pd.to_numeric(valor, errors="coerce")
+    return 0.0 if pd.isna(numero) else float(numero)
+
+
+def lucro_controladores(dre_emp: pd.DataFrame, lucro_total: float | None) -> float | None:
+    """Lucro atribuído aos sócios da controladora (3.11.01 ou 3.09.01, pela descrição).
+
+    Sem a linha, ou com ela e a dos não controladores (x.xx.02) zeradas, a companhia não
+    separa não controladores e o lucro é todo deles (3.11; KLBN11 e SBSP3 na DFP 2025).
+    """
+    contas = dre_emp[dre_emp["CD_CONTA"].str.match(r"^3\.(09|11)\.0[12]$", na=False)]
+    descricao = contas["DS_CONTA"].fillna("").str.lower()
+    minoritarios = contas[descricao.str.contains("não contr")]
+    # A 3.11.01 (lucro do período, com operações descontinuadas) vem antes da 3.09.01.
+    linhas = contas[
+        descricao.str.contains("controladora") & ~descricao.str.contains("não contr")
+    ].sort_values("CD_CONTA", ascending=False)
+    if linhas.empty:
+        return lucro_total
+    valor = linhas.iloc[0]["VL_CONTA"]
+    if pd.isna(valor):
+        return None
+    if float(valor) == 0 and lucro_total and all(
+        _numero(v) == 0 for v in minoritarios["VL_CONTA"]
+    ):
+        return lucro_total
+    return float(valor)
+
+
+def pl_controladores(bpp_emp: pd.DataFrame) -> float | None:
+    """PL dos controladores: 2.03 − 2.03.09 (não controladores).
+
+    Se a 2.03 não é o patrimônio líquido (modelo de banco, F2A-16), devolve `None`: o PL
+    certo dos bancos é do F2A-9.
+    """
+    pl = bpp_emp[bpp_emp["CD_CONTA"] == "2.03"]
+    if pl.empty or "patrimônio líquido" not in str(pl.iloc[0]["DS_CONTA"]).lower():
+        return None
+    total = pl.iloc[0]["VL_CONTA"]
+    if pd.isna(total):
+        return None
+    minoritarios = bpp_emp[bpp_emp["CD_CONTA"] == "2.03.09"]
+    if not minoritarios.empty and "não controladores" in str(
+        minoritarios.iloc[0]["DS_CONTA"]
+    ).lower():
+        return float(total) - _numero(minoritarios.iloc[0]["VL_CONTA"])
+    return float(total)
+
+
+def lpa_divulgado(linhas_399: pd.DataFrame) -> dict | None:
+    """LPA básico divulgado no documento, pela espécie da descrição: ON, depois PN.
+
+    O código da conta não define a espécie (a 3.99.01.01 é PN em algumas companhias); sem
+    linha por espécie, vale a 3.99.01 e, por fim, a 3.99, se diferentes de zero.
+    """
+    if linhas_399.empty:
+        return None
+    basico = linhas_399[linhas_399["CD_CONTA"].str.startswith("3.99.01.")]
+    descricao = basico["DS_CONTA"].fillna("").str.strip().str.upper()
+    candidatos = [
+        ("ON", basico[descricao == "ON"]),
+        ("PN", basico[descricao.str.startswith("PN")]),
+        ("BASICO", linhas_399[linhas_399["CD_CONTA"] == "3.99.01"]),
+        ("BASICO", linhas_399[linhas_399["CD_CONTA"] == "3.99"]),
+    ]
+    for especie, linhas in candidatos:
+        valores = pd.to_numeric(linhas["VL_CONTA"], errors="coerce")
+        valores = valores[valores.notna() & (valores != 0)]
+        if not valores.empty:
+            return {
+                "especie": especie,
+                "conta": str(linhas.loc[valores.index[0], "CD_CONTA"]),
+                "valor": float(valores.iloc[0]),
+            }
+    return None
+
+
+def composicao_do_documento(
+    cc: pd.DataFrame, cnpj: str | None, dt_refer: str | None, versao: str | None
+) -> tuple[Composicao | None, str | None]:
+    """Composição do Capital do mesmo documento (CNPJ, `DT_REFER`, `VERSAO`) ou o motivo da falta."""
+    if cc.empty or not cnpj:
+        return None, MOTIVO_SEM_COMPOSICAO
+    da_cia = cc[cc["CNPJ_CIA"] == cnpj]
+    if da_cia.empty:
+        return None, MOTIVO_SEM_COMPOSICAO
+    mesmo = da_cia[
+        (da_cia["DT_REFER"].astype(str) == str(dt_refer))
+        & (da_cia["VERSAO"].astype(str) == str(versao))
+    ]
+    if mesmo.empty:
+        return None, MOTIVO_DOCUMENTO_DIFERENTE
+    linha = mesmo.iloc[0]
+    valores = {campo: _numero(linha.get(coluna)) for campo, coluna in _COLUNAS_COMPOSICAO.items()}
+    if pd.isna(pd.to_numeric(linha.get("QT_ACAO_TOTAL_TESOURO"), errors="coerce")):
+        # Sem o total da tesouraria, vale a soma das espécies.
+        valores["tesouraria_total"] = valores["tesouraria_on"] + valores["tesouraria_pn"]
+    return (
+        Composicao(
+            **valores,
+            dt_refer=str(linha["DT_REFER"]),
+            versao=str(linha["VERSAO"]),
+        ),
+        None,
+    )
 
 
 class CVMProvider:
@@ -140,6 +266,36 @@ class CVMProvider:
 
         return df[cols].reset_index(drop=True)
 
+    def _dados_por_acao(self, zip_path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """(linhas 3.99 da DRE consolidada, sem escala monetária; Composição do Capital).
+
+        Frames vazios se o arquivo não existe ou não tem os CSVs: a CVM se abstém.
+        """
+        vazio = (pd.DataFrame(), pd.DataFrame())
+        try:
+            stat = Path(zip_path).stat()
+        except OSError:
+            return vazio
+        chave = (str(Path(zip_path).resolve()), stat.st_mtime_ns, stat.st_size)
+        with _cache_trava:
+            if chave in _cache_por_acao:
+                return _cache_por_acao[chave]
+        try:
+            dre = self._read_raw(zip_path, "DRE_con")
+            cc = self._read_raw(zip_path, "composicao_capital")
+            if "ORDEM_EXERC" in dre.columns:
+                dre = dre[dre["ORDEM_EXERC"] == "ÚLTIMO"]
+            linhas_399 = dre[dre["CD_CONTA"].astype(str).str.startswith("3.99")][
+                ["CNPJ_CIA", "DT_REFER", "VERSAO", "CD_CONTA", "DS_CONTA", "VL_CONTA"]
+            ].reset_index(drop=True)
+        except (OSError, KeyError, ValueError, zipfile.BadZipFile):
+            return vazio
+        with _cache_trava:
+            _cache_por_acao[chave] = (linhas_399, cc)
+            while len(_cache_por_acao) > _CACHE_POR_ACAO_MAX:
+                _cache_por_acao.pop(next(iter(_cache_por_acao)))
+        return linhas_399, cc
+
 
     # ------------------------------------------------------------------
     # Cálculo de indicadores históricos
@@ -223,6 +379,27 @@ class CVMProvider:
                 ebit               = _conta(dre_emp, _CONTAS["ebit"])
                 lucro              = _conta(dre_emp, _CONTAS["lucro_liquido"])
 
+                cnpj = next(
+                    (str(df["CNPJ_CIA"].iloc[0]) for df in (dre_emp, bpp_emp, bpa_emp)
+                     if not df.empty and "CNPJ_CIA" in df.columns),
+                    None,
+                )
+                lucro_ctrl = lucro_controladores(dre_emp, lucro)
+                pl_ctrl = pl_controladores(bpp_emp)
+                linhas_399, cc = self._dados_por_acao(zip_path)
+                if not linhas_399.empty and cnpj:
+                    linhas_399 = linhas_399[
+                        (linhas_399["CNPJ_CIA"] == cnpj)
+                        & (linhas_399["DT_REFER"].astype(str) == str(metadata.get("cvm_dt_refer")))
+                        & (linhas_399["VERSAO"].astype(str) == str(metadata.get("cvm_versao")))
+                    ]
+                else:
+                    linhas_399 = pd.DataFrame()
+                composicao, motivo_composicao = composicao_do_documento(
+                    cc, cnpj, metadata.get("cvm_dt_refer"), metadata.get("cvm_versao")
+                )
+                roe_ctrl, motivo_roe = roe_dos_controladores(lucro_ctrl, pl_ctrl)
+
                 ind: dict = {
                     "ativo_total":        ativo_total,
                     "ativo_circulante":   ativo_circulante,
@@ -237,11 +414,17 @@ class CVMProvider:
                     "divida_pl":          None,
                     "cvm_dt_refer":       metadata.get("cvm_dt_refer"),
                     "cvm_versao":         metadata.get("cvm_versao"),
+                    "cnpj":               cnpj,
+                    "lucro_controladores": lucro_ctrl,
+                    "pl_controladores":   pl_ctrl,
+                    "roe_motivo":         motivo_roe,
+                    "lpa_divulgado":      lpa_divulgado(linhas_399),
+                    "composicao_capital": composicao,
+                    "composicao_motivo":  motivo_composicao,
                 }
+                ind["roe"] = roe_ctrl
 
                 if pl and pl != 0:
-                    if lucro is not None:
-                        ind["roe"] = lucro / pl
                     if passivo_total is not None:
                         ind["divida_pl"] = (passivo_total - pl) / pl
 

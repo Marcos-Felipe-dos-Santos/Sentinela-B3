@@ -640,15 +640,12 @@ def test_cvm_failure_falls_back_gracefully(monkeypatch):
     assert dados["pl"] == pytest.approx(8.0)   # yfinance fallback intacto
 
 
-def test_cvm_computes_pl_pvp_from_shares(monkeypatch):
-    """Com sharesOutstanding disponível, CVM deriva P/L e P/VP."""
+def test_cvm_no_longer_divides_by_shares_outstanding(monkeypatch):
+    """F2A-3: o sharesOutstanding do yfinance não entra no LPA nem no VPA da CVM (E-1)."""
     shares = 13_000_000_000.0  # 13 bilhões de ações
     lucro  = 60_000_000_000.0  # 60 bi lucro
     pl_val = 300_000_000_000.0  # 300 bi PL
     preco  = 38.0
-
-    lpa_esperado = lucro / shares
-    vpa_esperado = pl_val / shares
 
     engine = _engine(
         monkeypatch,
@@ -660,10 +657,11 @@ def test_cvm_computes_pl_pvp_from_shares(monkeypatch):
 
     dados = engine.buscar_dados_ticker("PETR4")
 
-    assert dados["lpa"] == pytest.approx(lpa_esperado)
-    assert dados["vpa"] == pytest.approx(vpa_esperado)
-    assert dados["pl"]  == pytest.approx(preco / lpa_esperado)
-    assert dados["pvp"] == pytest.approx(preco / vpa_esperado)
+    # Sem P/L nem P/VP no yfinance, só a divisão pelo sharesOutstanding os produziria.
+    assert "lpa" not in dados
+    assert "vpa" not in dados
+    assert "pl" not in dados
+    assert "pvp" not in dados
 
 
 def test_cvm_overrides_brapi_fundamentals(monkeypatch):
