@@ -14,16 +14,26 @@ Suíte: ~655 testes, 44 módulos em `tests/`, ~5 s.
 
 ## Fase atual
 
-**Fase 1 — Fundação.** O mantenedor trabalha num branch local por fase e só
+**Fase 2A — Dados corretos.** O mantenedor trabalha num branch local por fase e só
 publica no fim de cada fase. Baseie seu branch sempre na `main` mais recente.
 
 Arquivos travados enquanto esta fase estiver em andamento. Não abra PR que toque
 em nenhum deles:
 
 ```
-valuation_engine.py  fii_engine.py  sentinela/domain/  sentinela/methods/  sentinela/reports/
-cvm_ticker_map.py  tests/test_cvm_ticker_map.py  tests/fixtures/
+market_engine.py  cvm_provider.py  cvm_fii_provider.py  cvm_ticker_map.py  cvm_fii_map.py
+fii_engine.py  valuation_engine.py  brapi_provider.py  data_quality.py  config.py
+fundamentus_scraper.py  ai_core.py  requirements.txt
+sentinela/data/  sentinela/domain/  sentinela/methods/  sentinela/services/  sentinela/reports/
+scripts/  tests/conftest.py  tests/fixtures/  tests/golden_motores.py
+tests/test_market_engine*.py  tests/test_cvm_*.py  tests/test_fii_engine*.py
+tests/test_valuation_engine*.py  tests/test_brapi_provider.py  tests/test_data_quality*.py
+tests/test_asset_classifier*.py  tests/test_fundamentus_scraper.py  tests/test_ai_core.py
+tests/test_methods_*.py  tests/test_registry.py  tests/test_rastreabilidade.py
 ```
+
+Tickets com janela nesta fase: B1, B3, C-A, C-B e C-C. O B2 está cancelado (o scraper
+sai nesta fase). O C-E perdeu a janela se não foi mergeado na Fase 1.
 
 Esta seção é atualizada pelo mantenedor a cada fase.
 
