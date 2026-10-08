@@ -293,7 +293,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
      - os 21 registros de FII repetidos ficam fora, e o TRXF11 vai para a tabela **[CORREÇÕES]** do F2A-19, com evidência oficial.
   5. **Revisão.** A contagem de rodadas do `/review-diff` recomeça.
 
-- [ ] **F2A-2** · feat · `feat: add sector, FII segment and control type to the reference`
+- [x] **F2A-2** · feat · `feat: add sector, FII segment and control type to the reference`
   Acrescenta ao índice, a partir de arquivos que o projeto já baixa:
   - o setor (`SETOR_ATIV` do cadastro);
   - a espécie de controle acionário (do cadastro ou do FCA, conforme o F2A-16);

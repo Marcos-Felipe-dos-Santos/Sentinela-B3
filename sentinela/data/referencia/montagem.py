@@ -87,19 +87,49 @@ def fca_mais_recente(fcas: Iterable[tuple[int, pd.DataFrame]]) -> pd.DataFrame:
     )
 
 
-def cd_cvm_por_cnpj(cadastro: pd.DataFrame) -> dict[str, tuple[int, str | None]]:
-    """CNPJ → (CD_CVM, nome); registro ativo primeiro (regra `cd_oficial` do dossiê)."""
+def _texto(valor) -> str | None:
+    """Texto sem espaços nas pontas; vazio ou ausente (NaN do CSV) vira `None`."""
+    if not isinstance(valor, str):
+        return None
+    return valor.strip() or None
+
+
+def _linhas_oficiais(cadastro: pd.DataFrame) -> dict[str, pd.Series]:
+    """CNPJ → linha do cadastro com CD_CVM; registro ativo primeiro (regra `cd_oficial` do dossiê)."""
     ativo = cadastro["SIT"].fillna("").str.upper().str.strip().eq("ATIVO").astype(int)
     ordenado = cadastro.assign(_ativo=ativo).sort_values(
         "_ativo", ascending=False, kind="stable"
     )
-    resultado: dict[str, tuple[int, str | None]] = {}
+    resultado: dict[str, pd.Series] = {}
     for _, linha in ordenado.iterrows():
         cnpj = linha["CNPJ_CIA"]
         if cnpj not in resultado and pd.notna(linha["CD_CVM"]):
-            nome = linha["DENOM_SOCIAL"] if pd.notna(linha["DENOM_SOCIAL"]) else None
-            resultado[cnpj] = (int(linha["CD_CVM"]), nome)
+            resultado[cnpj] = linha
     return resultado
+
+
+def cd_cvm_por_cnpj(cadastro: pd.DataFrame) -> dict[str, tuple[int, str | None]]:
+    """CNPJ → (CD_CVM, nome); registro ativo primeiro (regra `cd_oficial` do dossiê)."""
+    return {
+        cnpj: (
+            int(linha["CD_CVM"]),
+            linha["DENOM_SOCIAL"] if pd.notna(linha["DENOM_SOCIAL"]) else None,
+        )
+        for cnpj, linha in _linhas_oficiais(cadastro).items()
+    }
+
+
+def atributos_por_cnpj(
+    cadastro: pd.DataFrame,
+) -> dict[str, tuple[str | None, str | None]]:
+    """CNPJ → (setor, espécie de controle acionário), da mesma linha que dá o CD_CVM.
+
+    Colunas `SETOR_ATIV` e `CONTROLE_ACIONARIO` do cadastro de companhias abertas (F2A-2).
+    """
+    return {
+        cnpj: (_texto(linha.get("SETOR_ATIV")), _texto(linha.get("CONTROLE_ACIONARIO")))
+        for cnpj, linha in _linhas_oficiais(cadastro).items()
+    }
 
 
 def linhas_ativas_do_fca(fca: pd.DataFrame) -> pd.DataFrame:
@@ -121,6 +151,7 @@ def montar_companhias(
     fca: pd.DataFrame, cadastro: pd.DataFrame, fonte_por_ano: dict
 ) -> tuple[list[Registro], list[Excecao]]:
     cadastro_por_cnpj = cd_cvm_por_cnpj(cadastro)
+    atributos = atributos_por_cnpj(cadastro)
     registros: list[Registro] = []
     excecoes: list[Excecao] = []
     for _, linha in linhas_ativas_do_fca(fca).iterrows():
@@ -138,6 +169,7 @@ def montar_companhias(
             )
             continue
         cd_cvm, nome_cadastro = cadastro_por_cnpj.get(cnpj, (None, None))
+        setor, controle = atributos.get(cnpj, (None, None))
         eh_unit = linha["Valor_Mobiliario"] == _VALOR_UNIT
         registros.append(
             Registro(
@@ -154,6 +186,8 @@ def montar_companhias(
                 acoes_por_unit=parsear_acoes_por_unit(linha["Composicao_BDR_Unit"])
                 if eh_unit
                 else None,
+                setor=setor,
+                controle_acionario=controle,
             )
         )
     return registros, excecoes
@@ -235,6 +269,7 @@ def montar_fiis(
                 fonte=fonte,
                 cnpj=cnpj,
                 nome=nome,
+                segmento=_texto(linha.get("Segmento_Atuacao")),
             )
         )
     return registros, excecoes

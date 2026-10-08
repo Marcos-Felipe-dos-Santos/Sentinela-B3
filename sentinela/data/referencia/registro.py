@@ -17,6 +17,9 @@ class Registro:
     nome: str | None = None
     acoes_por_unit: dict | None = None
     motivo: str | None = None
+    setor: str | None = None
+    controle_acionario: str | None = None
+    segmento: str | None = None
 
     def para_dict(self) -> dict:
         return asdict(self)
