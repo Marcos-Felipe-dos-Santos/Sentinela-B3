@@ -181,7 +181,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   O download real fica no F2A-16, que registra o resultado. Um COTAHIST inacessível não para este item.
 
-- [ ] **F2A-16** · levantamento · `docs: survey official sources for phase 2A`
+- [x] **F2A-16** · levantamento · `docs: survey official sources for phase 2A`
   Confere nos arquivos reais os fatos de que os itens seguintes dependem. Grava `docs/decisoes/fontes-fase2a.md` e `scripts/levantamento_fase2a.py`.
   - **Rede e cache.** Rede só de leitura, com cache em `outputs/levantamento_cache/`. O script não importa `config` e não usa token da brapi (o loop não lê `.env`).
   - **Amostra.** Tickers dos mapas públicos do código, nunca a carteira.
