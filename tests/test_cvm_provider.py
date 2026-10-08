@@ -4,8 +4,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from cvm_provider import CVMProvider, _OUTPUT_COLS
-
+from cvm_provider import _OUTPUT_COLS, CVMProvider
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -44,7 +43,7 @@ _ROW_BASE = {
 # ---------------------------------------------------------------------------
 
 def test_parsear_demonstrativo_formato(tmp_path):
-    """DataFrame retornado deve ter exatamente as 5 colunas especificadas."""
+    """DataFrame retornado deve ter exatamente as 5 colunas especificadas. O valor testado com a base foi alterado para 500_000_000.0, porque a escala ESCALA_MOEDA MIL agora é aplicada corretamente, em vez de ignorada."""
     provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
     zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [_ROW_BASE])
 
@@ -53,7 +52,7 @@ def test_parsear_demonstrativo_formato(tmp_path):
     assert list(df.columns) == _OUTPUT_COLS
     assert len(df) == 1
     assert df.iloc[0]["CD_CONTA"] == "1"
-    assert df.iloc[0]["VL_CONTA"] == pytest.approx(500_000.0)
+    assert df.iloc[0]["VL_CONTA"] == pytest.approx(500_000_000.0)
 
 
 def test_parsear_demonstrativo_filtra_ordem_exerc(tmp_path):
@@ -122,7 +121,7 @@ def test_calcular_indicadores_mock(tmp_path, monkeypatch):
     tipo_map = {"BPA_con": bpa_df, "BPP_con": bpp_df, "DRE_con": dre_df}
 
     monkeypatch.setattr(provider, "baixar_dfp",       lambda ano: tmp_path / "fake.zip")
-    monkeypatch.setattr(provider, "_parsear_com_cvm", lambda path, tipo: tipo_map[tipo])
+    monkeypatch.setattr(provider, "parsear_demonstrativo", lambda path, tipo, include_cd_cvm=False, include_versao=False: tipo_map[tipo])
 
     resultado = provider.calcular_indicadores(9512, anos=1)
 
@@ -147,16 +146,21 @@ def test_cache_nao_rebaixa(tmp_path, monkeypatch):
     call_count = {"n": 0}
 
     class FakeResponse:
-        content = b"fake-zip-content"
+        content = b'PK\x03\x04\x14\x00\x00\x00\x00\x00c\x9cF]\xbb\xfa\xbc\x14\n\x00\x00\x00\n\x00\x00\x00\x08\x00\x00\x00test.csvvalid dataPK\x01\x02\x14\x03\x14\x00\x00\x00\x00\x00c\x9cF]\xbb\xfa\xbc\x14\n\x00\x00\x00\n\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x01\x00\x00\x00\x00test.csvPK\x05\x06\x00\x00\x00\x00\x01\x00\x01\x006\x00\x00\x000\x00\x00\x00\x00\x00'
 
         def raise_for_status(self):
             pass
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+
+        def iter_content(self, chunk_size=8192):
+            yield self.content
 
     def fake_get(url, **kwargs):
         call_count["n"] += 1
         return FakeResponse()
 
-    monkeypatch.setattr("cvm_provider.requests.get", fake_get)
+    monkeypatch.setattr("cvm_download.requests.get", fake_get)
 
     p1 = provider.baixar_dfp(2023)
     p2 = provider.baixar_dfp(2023)
@@ -164,3 +168,329 @@ def test_cache_nao_rebaixa(tmp_path, monkeypatch):
     assert p1 == p2
     assert p1.exists()
     assert call_count["n"] == 1  # segundo download usou cache
+
+
+# ---------------------------------------------------------------------------
+# test_parser_aplica_escala_mil e test_parser_unico_sem_duplicata
+# ---------------------------------------------------------------------------
+
+def test_parser_aplica_escala_mil(tmp_path):
+    """Se a ESCALA_MOEDA for MIL, o valor deve ser multiplicado por 1000."""
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [_ROW_BASE])
+
+    df = provider.parsear_demonstrativo(zip_path, "BPA_con")
+
+    assert len(df) == 1
+    assert df.iloc[0]["VL_CONTA"] == pytest.approx(500_000_000.0)
+
+
+def test_parser_unico_sem_duplicata(tmp_path):
+    """O parser público deve ter o mesmo comportamento que o antigo privado (aceitar CD_CVM e escalar)."""
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [_ROW_BASE])
+
+    assert not hasattr(provider, "_parsear_com_cvm"), "_parsear_com_cvm deve ser removido"
+
+    df = provider.parsear_demonstrativo(zip_path, "BPA_con", include_cd_cvm=True)
+    assert "CD_CVM" in df.columns
+    assert df.iloc[0]["VL_CONTA"] == pytest.approx(500_000_000.0)
+
+# ---------------------------------------------------------------------------
+# Extra tests for better mutation coverage in _find_csv_name, _read_raw, parsear_demonstrativo
+# ---------------------------------------------------------------------------
+
+def test_find_csv_name_not_found_raises(tmp_path):
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [_ROW_BASE])
+
+    with pytest.raises(FileNotFoundError, match="Tipo 'DRE_con' não encontrado"):
+        provider._find_csv_name(zip_path, "DRE_con")
+
+def test_find_csv_name_wrong_extension(tmp_path):
+    """Garante que if tipo in name and name.lower().endswith(".csv") é cumprido.
+    Colocamos um arquivo com o tipo, mas que não termina em .csv."""
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    zip_path = tmp_path / "dfp_2023_fake.zip"
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.writestr("dfp_cia_aberta_BPA_con_2023.txt", b"fake data")
+
+    with pytest.raises(FileNotFoundError, match="Tipo 'BPA_con' não encontrado"):
+        provider._find_csv_name(zip_path, "BPA_con")
+
+def test_read_raw_low_memory(tmp_path):
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [_ROW_BASE])
+
+    df = provider._read_raw(zip_path, "BPA_con")
+    assert not df.empty
+
+def test_parsear_demonstrativo_na_handling(tmp_path):
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    row_na = {**_ROW_BASE, "VL_CONTA": "xyz", "CD_CVM": "abc"}
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [row_na])
+
+    df = provider.parsear_demonstrativo(zip_path, "BPA_con", include_cd_cvm=True)
+    assert pd.isna(df.iloc[0]["VL_CONTA"])
+    assert pd.isna(df.iloc[0]["CD_CVM"])
+
+def test_parsear_demonstrativo_no_cd_cvm_or_escala_moeda(tmp_path):
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    row_no_cd = _ROW_BASE.copy()
+    del row_no_cd["CD_CVM"]
+    del row_no_cd["ESCALA_MOEDA"]
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [row_no_cd])
+
+    df = provider.parsear_demonstrativo(zip_path, "BPA_con", include_cd_cvm=True)
+    assert "CD_CVM" not in df.columns
+    assert df.iloc[0]["VL_CONTA"] == 500000.0  # Sem escala MIL
+
+def test_parsear_demonstrativo_escala_moeda_outra(tmp_path):
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    row_outra = {**_ROW_BASE, "ESCALA_MOEDA": "UNIDADE"}
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [row_outra])
+
+    df = provider.parsear_demonstrativo(zip_path, "BPA_con")
+    assert df.iloc[0]["VL_CONTA"] == 500000.0
+
+def test_parsear_demonstrativo_grupo_dfp_na(tmp_path):
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    row_na_grupo = {**_ROW_BASE}
+    del row_na_grupo["GRUPO_DFP"]
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [row_na_grupo])
+
+    df = provider.parsear_demonstrativo(zip_path, "BPA_con")
+    assert len(df) == 1
+
+def test_parsear_demonstrativo_grupo_dfp_none_or_nan(tmp_path):
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    row_nan_grupo = {**_ROW_BASE, "GRUPO_DFP": ""}
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [row_nan_grupo])
+
+    df = provider.parsear_demonstrativo(zip_path, "BPA_con")
+    assert len(df) == 0
+
+
+def test_parsear_demonstrativo_cd_cvm_typing(tmp_path):
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    row_na = {**_ROW_BASE, "CD_CVM": "1234"}
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [row_na])
+
+    df = provider.parsear_demonstrativo(zip_path, "BPA_con", include_cd_cvm=True)
+    assert df["CD_CVM"].dtype.name == "Int64"
+    assert df.iloc[0]["CD_CVM"] == 1234
+
+def test_read_raw_separador_invalido(tmp_path):
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [_ROW_BASE])
+
+    # Sobrescrevemos read_csv do pandas no teste pra garantir que é chamado com os kwargs corretos
+    import pandas as pd
+    original_read_csv = pd.read_csv
+
+    def mock_read_csv(*args, **kwargs):
+        assert kwargs.get("sep") == ";"
+        assert kwargs.get("low_memory") is False
+        assert kwargs.get("dtype") is str
+        return original_read_csv(*args, **kwargs)
+
+    pd.read_csv = mock_read_csv
+    try:
+        df = provider._read_raw(zip_path, "BPA_con")
+        assert not df.empty
+    finally:
+        pd.read_csv = original_read_csv
+
+def test_read_raw_encoding_latin1(tmp_path):
+    # Cifrão, acentos
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    row_encoding = {**_ROW_BASE, "DS_CONTA": "Ação de R$ 1,00"}
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [row_encoding])
+
+    df = provider._read_raw(zip_path, "BPA_con")
+    assert df.iloc[0]["DS_CONTA"] == "Ação de R$ 1,00"
+
+
+def test_read_raw_encoding_latin1_capitalized(tmp_path):
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    row_encoding = {**_ROW_BASE, "DS_CONTA": "Ação de R$ 1,00"}
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [row_encoding])
+
+    # Sobrescrevemos read_csv do pandas no teste pra garantir que é chamado com "latin-1" e não "LATIN-1"
+    import io
+
+    import pandas as pd
+    original_read_csv = pd.read_csv
+
+    def mock_read_csv(filepath_or_buffer, *args, **kwargs):
+        assert isinstance(filepath_or_buffer, io.TextIOWrapper)
+        assert filepath_or_buffer.encoding == "latin-1"
+        return original_read_csv(filepath_or_buffer, *args, **kwargs)
+
+    pd.read_csv = mock_read_csv
+    try:
+        df = provider._read_raw(zip_path, "BPA_con")
+        assert not df.empty
+    finally:
+        pd.read_csv = original_read_csv
+
+# ---------------------------------------------------------------------------
+# Ticket B4.2 (E-8): Deterministic row selection
+# ---------------------------------------------------------------------------
+
+
+def test_conta_prefere_dt_refer_mais_recente(tmp_path, monkeypatch):
+    """
+    Quando há mais de um DT_REFER (ex: ano diferente não filtrado),
+    deve preferir o mais recente para a mesma conta.
+    """
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+
+    row1 = {**_ROW_BASE, "DT_REFER": "2022-12-31", "VERSAO": "1", "VL_CONTA": "100000"} # 100M
+    row2 = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "1", "VL_CONTA": "200000"} # 200M
+
+    zip_path = _make_zip(tmp_path / "dfp_2023.zip", "BPA_con", [row1, row2])
+
+    monkeypatch.setattr(provider, "baixar_dfp", lambda ano: zip_path)
+
+    def mock_parse(path, tipo, include_cd_cvm=False, include_versao=False):
+        if tipo == "BPA_con":
+            df = pd.DataFrame([row1, row2])
+            df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"]) * 1000
+            df["CD_CVM"] = 9512
+            return df
+        return pd.DataFrame(columns=_OUTPUT_COLS + ["CD_CVM"])
+
+    monkeypatch.setattr(provider, "parsear_demonstrativo", mock_parse)
+
+    resultado = provider.calcular_indicadores(9512, anos=1)
+    ind = next(iter(resultado.values()))
+
+    # Se ordenou por DT_REFER desc, deve pegar 2023
+    assert ind["ativo_total"] == pytest.approx(200_000_000.0)
+    assert ind.get("cvm_dt_refer") == "2023-12-31"
+
+
+def test_conta_republicada_usa_maior_versao(tmp_path, monkeypatch):
+    """
+    Quando a CVM republica (mesmo DT_REFER, maior VERSAO),
+    devemos usar a maior VERSAO e não a ordem física do CSV.
+    """
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+
+    # Ordem física: V2 (nova) aparece DEPOIS de V1 (antiga) em algumas republicações
+    # Queremos garantir que independente da ordem física, VERSAO 2 vence
+    row1 = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "1", "VL_CONTA": "100000"}
+    row2 = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "2", "VL_CONTA": "300000"}
+
+    def mock_parse(path, tipo, include_cd_cvm=False, include_versao=False):
+        if tipo == "BPA_con":
+            df = pd.DataFrame([row1, row2]) # A ordem física coloca a V1 primeiro!
+            df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"]) * 1000
+            df["CD_CVM"] = 9512
+            return df
+        return pd.DataFrame(columns=_OUTPUT_COLS + ["CD_CVM"])
+
+    monkeypatch.setattr(provider, "baixar_dfp", lambda ano: tmp_path / "fake.zip")
+    monkeypatch.setattr(provider, "parsear_demonstrativo", mock_parse)
+
+    resultado = provider.calcular_indicadores(9512, anos=1)
+    ind = next(iter(resultado.values()))
+
+    assert ind["ativo_total"] == pytest.approx(300_000_000.0)
+
+
+def test_cvm_dt_refer_propagado(tmp_path, monkeypatch):
+    """
+    Garante que os metadados DT_REFER e VERSAO da conta escolhida são
+    propagados para o dicionário final.
+    """
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+
+    row1 = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "3", "VL_CONTA": "100000"}
+
+    def mock_parse(path, tipo, include_cd_cvm=False, include_versao=False):
+        if tipo == "BPA_con":
+            df = pd.DataFrame([row1])
+            df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"]) * 1000
+            df["CD_CVM"] = 9512
+            return df
+        return pd.DataFrame(columns=_OUTPUT_COLS + ["CD_CVM"])
+
+    monkeypatch.setattr(provider, "baixar_dfp", lambda ano: tmp_path / "fake.zip")
+    monkeypatch.setattr(provider, "parsear_demonstrativo", mock_parse)
+
+    resultado = provider.calcular_indicadores(9512, anos=1)
+    ind = next(iter(resultado.values()))
+
+    assert ind.get("cvm_dt_refer") == "2023-12-31"
+    assert ind.get("cvm_versao") == "3"
+
+
+def test_conta_republicada_nao_mistura_versao(tmp_path, monkeypatch):
+    """
+    Se uma conta existe na V1 mas foi removida na V2, não deve pegar a da V1.
+    Acrescente um teste em que a versão nova não tem justamente a primeira conta consultada.
+    A primeira conta consultada é "ativo_total" (1).
+    """
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+
+    row_v1_ativo = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "1", "CD_CONTA": "1", "VL_CONTA": "100000"}
+    row_v1_passivo = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "1", "CD_CONTA": "2", "VL_CONTA": "200000"}
+    # V2 NÃO TEM ATIVO, MAS TEM PASSIVO
+    row_v2_passivo = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "2", "CD_CONTA": "2", "VL_CONTA": "400000"}
+
+    def mock_parse(path, tipo, include_cd_cvm=False, include_versao=False):
+        if tipo == "BPA_con":
+            df = pd.DataFrame([row_v1_ativo])
+            df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"]) * 1000
+            df["CD_CVM"] = 9512
+            return df
+        if tipo == "BPP_con":
+            df = pd.DataFrame([row_v1_passivo, row_v2_passivo])
+            df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"]) * 1000
+            df["CD_CVM"] = 9512
+            return df
+        return pd.DataFrame(columns=_OUTPUT_COLS + ["CD_CVM", "VERSAO"])
+
+    monkeypatch.setattr(provider, "baixar_dfp", lambda ano: tmp_path / "fake.zip")
+    monkeypatch.setattr(provider, "parsear_demonstrativo", mock_parse)
+
+    resultado = provider.calcular_indicadores(9512, anos=1)
+    ind = next(iter(resultado.values()))
+
+    # O ativo total é a primeira conta a ser consultada por _conta().
+    # Como a V2 (maior versão do período) não tem ativo, ele deve retornar None (ausente).
+    assert ind["ativo_total"] is None
+    # E o passivo deve pegar da V2
+    assert ind["passivo_total"] == pytest.approx(400_000_000.0)
+    assert ind.get("cvm_versao") == "2"
+
+
+
+def test_conta_republicada_usa_maior_versao_numerica(tmp_path, monkeypatch):
+    """
+    A ordenação da VERSAO deve ser numérica, não lexicográfica.
+    Versão 10 deve vencer da versão 9.
+    """
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+
+    row1 = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "9", "VL_CONTA": "900000"}
+    row2 = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "10", "VL_CONTA": "1000000"}
+
+    def mock_parse(path, tipo, include_cd_cvm=False, include_versao=False):
+        if tipo == "BPA_con":
+            df = pd.DataFrame([row1, row2])
+            df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"]) * 1000
+            df["CD_CVM"] = 9512
+            return df
+        return pd.DataFrame(columns=_OUTPUT_COLS + ["CD_CVM"])
+
+    monkeypatch.setattr(provider, "baixar_dfp", lambda ano: tmp_path / "fake.zip")
+    monkeypatch.setattr(provider, "parsear_demonstrativo", mock_parse)
+
+    resultado = provider.calcular_indicadores(9512, anos=1)
+    ind = next(iter(resultado.values()))
+
+    assert ind["ativo_total"] == pytest.approx(1_000_000_000.0)
+    assert ind.get("cvm_versao") == "10"

@@ -1,17 +1,17 @@
 import io
 import logging
 import zipfile
-from datetime import date, datetime, timedelta
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
-import requests
+
+from cvm_download import baixar_arquivo
 
 logger = logging.getLogger(__name__)
 
 _DFP_URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_{ano}.zip"
 _ITR_URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/itr_cia_aberta_{ano}.zip"
-_CACHE_TTL_DAYS = 7
 
 # Plano de contas CVM → chave semântica
 _CONTAS: dict[str, str] = {
@@ -40,29 +40,13 @@ class CVMProvider:
     def _cache_path(self, nome: str) -> Path:
         return self.cache_dir / nome
 
-    def _is_fresh(self, path: Path) -> bool:
-        if not path.exists():
-            return False
-        age = datetime.now() - datetime.fromtimestamp(path.stat().st_mtime)
-        return age < timedelta(days=_CACHE_TTL_DAYS)
-
-    def _baixar(self, url: str, dest: Path) -> Path:
-        if self._is_fresh(dest):
-            logger.debug("Cache válido: %s", dest)
-            return dest
-        logger.info("Baixando %s → %s", url, dest)
-        resp = requests.get(url, timeout=60, stream=True)
-        resp.raise_for_status()
-        dest.write_bytes(resp.content)
-        return dest
-
     def baixar_dfp(self, ano: int) -> Path:
         """Baixa o ZIP de DFP do ano e retorna o Path local (com cache 7d)."""
-        return self._baixar(_DFP_URL.format(ano=ano), self._cache_path(f"dfp_{ano}.zip"))
+        return baixar_arquivo(_DFP_URL.format(ano=ano), self._cache_path(f"dfp_{ano}.zip"))
 
     def baixar_itr(self, ano: int) -> Path:
         """Baixa o ZIP de ITR do ano e retorna o Path local (com cache 7d)."""
-        return self._baixar(_ITR_URL.format(ano=ano), self._cache_path(f"itr_{ano}.zip"))
+        return baixar_arquivo(_ITR_URL.format(ano=ano), self._cache_path(f"itr_{ano}.zip"))
 
     # ------------------------------------------------------------------
     # Leitura e parse de CSVs dentro do ZIP
@@ -77,38 +61,28 @@ class CVMProvider:
 
     def _read_raw(self, zip_path: Path, tipo: str) -> pd.DataFrame:
         csv_name = self._find_csv_name(zip_path, tipo)
-        with zipfile.ZipFile(zip_path) as zf:
-            with zf.open(csv_name) as f:
-                return pd.read_csv(
-                    io.TextIOWrapper(f, encoding="latin-1"),
-                    sep=";",
-                    dtype=str,
-                    low_memory=False,
-                )
+        with zipfile.ZipFile(zip_path) as zf, zf.open(csv_name) as f:
+            return pd.read_csv(
+                io.TextIOWrapper(f, encoding="latin-1"),
+                sep=";",
+                dtype=str,
+                low_memory=False,
+            )
 
-    def parsear_demonstrativo(self, zip_path: Path, tipo: str) -> pd.DataFrame:
+    def parsear_demonstrativo(self, zip_path: Path, tipo: str, include_cd_cvm: bool = False, include_versao: bool = False) -> pd.DataFrame:
         """
-        Lê o CSV do tipo dentro do ZIP e retorna DataFrame limpo com 5 colunas:
+        Lê o CSV do tipo dentro do ZIP e retorna DataFrame limpo.
+        Por padrão, retorna 5 colunas:
         CNPJ_CIA, DT_REFER, CD_CONTA, DS_CONTA, VL_CONTA.
+
+        Se include_cd_cvm for True, inclui a coluna CD_CVM.
+
+        Aplica a escala monetária (MIL -> BRL) em VL_CONTA.
 
         Filtros aplicados:
         - ORDEM_EXERC == "ÚLTIMO"  (descarta reapresentações)
         - GRUPO_DFP contém "Consolidado"
         """
-        df = self._read_raw(zip_path, tipo)
-
-        if "ORDEM_EXERC" in df.columns:
-            df = df[df["ORDEM_EXERC"] == "ÚLTIMO"]
-        if "GRUPO_DFP" in df.columns:
-            df = df[df["GRUPO_DFP"].str.contains("Consolidado", na=False)]
-
-        df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"], errors="coerce")
-
-        cols = [c for c in _OUTPUT_COLS if c in df.columns]
-        return df[cols].reset_index(drop=True)
-
-    def _parsear_com_cvm(self, zip_path: Path, tipo: str) -> pd.DataFrame:
-        """Versão interna: inclui CD_CVM e aplica escala monetária (MIL → BRL)."""
         df = self._read_raw(zip_path, tipo)
 
         if "ORDEM_EXERC" in df.columns:
@@ -125,7 +99,14 @@ class CVMProvider:
             mask_mil = df["ESCALA_MOEDA"].str.upper() == "MIL"
             df.loc[mask_mil, "VL_CONTA"] = df.loc[mask_mil, "VL_CONTA"] * 1000
 
-        return df
+        cols = [c for c in _OUTPUT_COLS if c in df.columns]
+        if include_cd_cvm and "CD_CVM" in df.columns:
+            cols.append("CD_CVM")
+        if include_versao and "VERSAO" in df.columns:
+            cols.append("VERSAO")
+
+        return df[cols].reset_index(drop=True)
+
 
     # ------------------------------------------------------------------
     # Cálculo de indicadores históricos
@@ -146,9 +127,9 @@ class CVMProvider:
             ano = ano_atual - delta
             try:
                 zip_path = self.baixar_dfp(ano)
-                bpa = self._parsear_com_cvm(zip_path, "BPA_con")
-                bpp = self._parsear_com_cvm(zip_path, "BPP_con")
-                dre = self._parsear_com_cvm(zip_path, "DRE_con")
+                bpa = self.parsear_demonstrativo(zip_path, "BPA_con", include_cd_cvm=True, include_versao=True)
+                bpp = self.parsear_demonstrativo(zip_path, "BPP_con", include_cd_cvm=True, include_versao=True)
+                dre = self.parsear_demonstrativo(zip_path, "DRE_con", include_cd_cvm=True, include_versao=True)
 
                 def _filtrar(df: pd.DataFrame) -> pd.DataFrame:
                     if "CD_CVM" in df.columns:
@@ -158,6 +139,40 @@ class CVMProvider:
                 bpa_emp = _filtrar(bpa)
                 bpp_emp = _filtrar(bpp)
                 dre_emp = _filtrar(dre)
+
+                # Descobre a maior VERSAO do DT_REFER mais recente
+                metadata: dict = {}
+                df_concat = pd.concat([bpa_emp, bpp_emp, dre_emp], ignore_index=True)
+
+                if not df_concat.empty and "DT_REFER" in df_concat.columns:
+                    if "VERSAO" in df_concat.columns:
+                        # Converte VERSAO para numérico temporariamente para ordenação correta (ex: "10" > "9")
+                        df_concat["_VERSAO_NUM"] = pd.to_numeric(df_concat["VERSAO"], errors="coerce").fillna(0)
+                        df_concat = df_concat.sort_values(by=["DT_REFER", "_VERSAO_NUM"], ascending=[False, False])
+                        df_concat = df_concat.drop(columns=["_VERSAO_NUM"])
+                    else:
+                        df_concat = df_concat.sort_values(by=["DT_REFER"], ascending=[False])
+
+                    row = df_concat.iloc[0]
+
+                    dt_ref = str(row["DT_REFER"]) if pd.notna(row["DT_REFER"]) else None
+                    ver = str(row["VERSAO"]) if "VERSAO" in row and pd.notna(row["VERSAO"]) else None
+
+                    metadata["cvm_dt_refer"] = dt_ref
+                    metadata["cvm_versao"] = ver
+
+                    def _filtrar_versao(df: pd.DataFrame) -> pd.DataFrame:
+                        if df.empty:
+                            return df
+                        if dt_ref and "DT_REFER" in df.columns:
+                            df = df[df["DT_REFER"].astype(str) == dt_ref]
+                        if ver and "VERSAO" in df.columns:
+                            df = df[df["VERSAO"].astype(str) == ver]
+                        return df
+
+                    bpa_emp = _filtrar_versao(bpa_emp)
+                    bpp_emp = _filtrar_versao(bpp_emp)
+                    dre_emp = _filtrar_versao(dre_emp)
 
                 def _conta(df: pd.DataFrame, codigo: str) -> float | None:
                     rows = df[df["CD_CONTA"] == codigo]
@@ -187,6 +202,8 @@ class CVMProvider:
                     "roe":                None,
                     "margem_liquida":     None,
                     "divida_pl":          None,
+                    "cvm_dt_refer":       metadata.get("cvm_dt_refer"),
+                    "cvm_versao":         metadata.get("cvm_versao"),
                 }
 
                 if pl and pl != 0:

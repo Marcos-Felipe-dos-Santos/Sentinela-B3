@@ -10,12 +10,12 @@ Observação: vacância física NÃO está disponível no informe mensal.
 import io
 import logging
 import zipfile
-from datetime import date, datetime, timedelta
+from datetime import date
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
-import requests
+
+from cvm_download import baixar_arquivo
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +23,9 @@ _INF_URL = (
     "https://dados.cvm.gov.br/dados/FII/DOC/INF_MENSAL/DADOS/"
     "inf_mensal_fii_{ano}.zip"
 )
-_CACHE_TTL_DAYS = 7
 
 
-def _to_float(value) -> Optional[float]:
+def _to_float(value) -> float | None:
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return None
     try:
@@ -47,25 +46,9 @@ class CVMFIIProvider:
     def _cache_path(self, nome: str) -> Path:
         return self.cache_dir / nome
 
-    def _is_fresh(self, path: Path) -> bool:
-        if not path.exists():
-            return False
-        age = datetime.now() - datetime.fromtimestamp(path.stat().st_mtime)
-        return age < timedelta(days=_CACHE_TTL_DAYS)
-
-    def _baixar(self, url: str, dest: Path) -> Path:
-        if self._is_fresh(dest):
-            logger.debug("Cache válido: %s", dest)
-            return dest
-        logger.info("Baixando %s → %s", url, dest)
-        resp = requests.get(url, timeout=60, stream=True)
-        resp.raise_for_status()
-        dest.write_bytes(resp.content)
-        return dest
-
     def baixar_informe(self, ano: int) -> Path:
         """Baixa o ZIP do informe mensal FII do ano e retorna o Path local (cache 7d)."""
-        return self._baixar(
+        return baixar_arquivo(
             _INF_URL.format(ano=ano),
             self._cache_path(f"inf_mensal_fii_{ano}.zip"),
         )
@@ -98,7 +81,7 @@ class CVMFIIProvider:
     # API pública
     # ------------------------------------------------------------------
 
-    def obter_dados_fii(self, cnpj_fundo: str) -> Optional[dict]:
+    def obter_dados_fii(self, cnpj_fundo: str) -> dict | None:
         """Retorna os dados mais recentes do fundo, ou None se não encontrado.
 
         Campos no retorno:

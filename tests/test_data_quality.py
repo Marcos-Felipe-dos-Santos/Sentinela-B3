@@ -3,14 +3,13 @@
 Todos os dados são sintéticos — sem chamadas de rede.
 """
 from data_quality import (
-    DataQualityReport,
     _BADGE_CVM,
     _BADGE_PARCIAL,
     _BADGE_SEM_CVM,
+    DataQualityReport,
     _best_fonte,
     _normalize_fonte,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers de fixture
@@ -44,7 +43,7 @@ def test_normalize_yfinance_partial():
 
 
 def test_normalize_fundamentals_cache():
-    assert _normalize_fonte("fundamentals_cache") == "fundamentus"
+    assert _normalize_fonte("fundamentals_cache") == "cache"
 
 
 def test_normalize_manual_fii():
@@ -263,3 +262,15 @@ def test_validacao_roe_positivo_margem_negativa():
 
 def test_validacao_sem_dados_retorna_lista_vazia():
     assert DataQualityReport({}).validacao_cruzada() == []
+
+
+def test_fonte_cache_tem_confianca_propria():
+    assert _normalize_fonte("fundamentals_cache") == "cache"
+    dados = _dados_completos()
+    dados["fonte_fundamentos"] = "fundamentals_cache"
+    r = DataQualityReport(dados)
+    comp = r.completude()
+    # Cache (30) deve ter score menor ou igual a fundamentus (40) ou coleta fresca
+    for campo in ("dy", "pl"):
+        assert comp["campos"][campo]["fonte"] == "cache"
+        assert comp["campos"][campo]["confianca"] == 30
