@@ -3,7 +3,7 @@
 > **Proposta, não ativa.** Escrita no F1-19 pelo `fable-architect`. Quem a coloca em `docs/loop/fila.md` é o Marcos, depois de aprovar, responder às decisões marcadas e cumprir as condições de ativação.
 
 Branch: `v2/fase-2a` · Protocolo: `docs/loop/protocolo.md` · Diário: `docs/loop/diario.md`
-Plano: `docs/PLANO.md` (seção 6, "Fase 2A"; seções 8, 10 e 11) · Decisões: `docs/decisoes/checkpoint-fase0.md`, `docs/adr/0001-refactor-v2.md` e `docs/adr/0002-loop-tempo-dados.md`
+Plano: `docs/PLANO.md` (seção 6, "Fase 2A"; seções 8, 10 e 11) · Decisões: `docs/decisoes/checkpoint-fase0.md`, `docs/adr/0001-refactor-v2.md` e `docs/adr/0002-loop-tempo-dados.md` · Validade: `docs/adr/0003-validade-dados-metodo-auditoria.md` (aceito em 13/10/2026) · Auditoria externa: `docs/loop/auditoria-externa.md`
 Auditoria: `docs/auditoria/2026-09-red-team.md` · Dossiê: `docs/decisoes/dossie-fase2.md` · Inventário: `docs/limpeza/inventario.md` · Jules: `docs/jules-backlog.md` · Fase 1: `docs/loop/historico/fase-1/`
 
 **Condições de ativação** (todas, antes do `git mv`):
@@ -47,24 +47,25 @@ sai nesta fase). O C-E perdeu a janela se não foi mergeado na Fase 1.
 **Linhas citadas.** São de 2/10/2026, e só em arquivos que nem o F1-13 nem o Jules mexem antes da ativação: `market_engine.py`, `fii_engine.py`, `config.py`, `brapi_provider.py`, `app.py` e `portfolio_engine.py`. Nos demais arquivos, a fila cita a função.
 
 **Comportamento.** Esta fase corrige dados, então muda número e texto na saída.
-- Cada mudança tem um item `fix:` próprio, com teste xfail estrito antes (XPASS, depois marca retirada), e nunca divide o commit com refactor.
+- Cada mudança tem um item `fix:` próprio, com teste xfail estrito antes (xfail estrito → correção → marca retirada → PASS; ADR-0003, D27), e nunca divide o commit com refactor.
 - Os itens `feat:` acrescentam dado sem mudar a saída dos motores. O único refactor (F2A-17) não muda nada.
 - Saída dos motores muda (e por isso o golden) só nos itens marcados **[golden]**: F2A-22, F2A-4, F2A-29 (este, só com inclusões), F2A-11, F2A-23, F2A-24, F2A-25 e F2A-13 (este, só com remoções).
 - Os demais itens mudam a cascata (`dados`), o relatório de qualidade ou o relatório do F1-12.
 
-**IDs e ordem.** Os itens F2A-1 a F2A-14 mantêm o significado da tabela do PLANO, menos o F2A-10, que foi para a 2B; os novos são F2A-15 a F2A-31. A execução segue a ordem da lista, não a numérica:
+**IDs e ordem.** Os itens F2A-1 a F2A-14 mantêm o significado da tabela do PLANO, menos o F2A-10, que foi para a 2B; os novos são F2A-15 a F2A-31, e F2A-32 a F2A-38 vêm do ADR-0003. A execução segue a ordem da lista, não a numérica:
 1. ferramenta do golden e cache da CVM;
 2. COTAHIST e levantamento das fontes;
 3. dados de referência e os consumidores deles;
 4. E-1, E-3 e E-2;
-5. séries de cinco anos, dívida líquida, saída do Fundamentus e bancos;
-6. DY, abstenção de ETF, BDR e `UNKNOWN`, e ROE;
-7. FII;
-8. abstenções nos motores;
-9. ticker;
-10. métricas de liquidez;
-11. remoção dos mapas manuais;
-12. documentação, proposta da 2B, limpeza e resumo.
+5. itens do ADR-0003: proveniência, tabela de contas e a correção das leituras, ficha por ação, universo inicial, LPA divulgado por espécie e reservas de controladores (F2A-32, 33, 38, 34, 35, 36 e 37);
+6. séries de cinco anos, dívida líquida, saída do Fundamentus e bancos;
+7. DY, abstenção de ETF, BDR e `UNKNOWN`, e ROE;
+8. FII;
+9. abstenções nos motores;
+10. ticker;
+11. métricas de liquidez;
+12. remoção dos mapas manuais;
+13. documentação, proposta da 2B, limpeza e resumo.
 
 **Intocáveis nesta fase:**
 - `tests/test_financeiro_pre_refactor.py`. A seção A nunca muda. A B muda só no F2A-8 (`test_b_divida_pl_da_cvm_e_endividamento_contabil_total_rotulado_como_liquido`). A C muda só no F2A-4, com a retirada do xfail de `test_c_dy_percentual_acima_de_30_nao_pode_sair_confiavel`.
@@ -125,6 +126,7 @@ sai nesta fase). O C-E perdeu a janela se não foi mergeado na Fase 1.
 - **[CORREÇÕES]**: tabela de correções de fonte, aprovada em 5/10/2026.
 - As leituras da última seção foram confirmadas ou corrigidas pelo Marcos em 5/10/2026; cada item afetado já traz a decisão.
 - **[golden]**: o item regenera o golden pela regra acima.
+- **[ADR-0003]**: item criado pelo ADR-0003 (aceito em 13/10/2026). Vale para toda a fila: proveniência (D16), contas por código e descrição (D20, pela tabela do F2A-33), números por ação pela D19, e aceite das correções em PASS (D27). Onde um aceite antigo diz "XPASS", lê-se "marca retirada → PASS".
 
 **Privacidade:** o repositório é público. Nenhum dado da carteira do Marcos (posições, pesos, lista de ativos) entra em arquivo versionado: nem em fixture, nem no golden, nem no diário, nem nos documentos de levantamento.
 - Fixtures usam tickers genéricos (`TST3`, `TST11`) ou os dos mapas públicos do código.
@@ -408,6 +410,118 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - os testes atuais de `validacao_cruzada` não mudam;
   - gate da fase.
 
+- [ ] **F2A-32** · feat · `feat: record temporal provenance for collected data` · **[ADR-0003]**
+  ADR-0003, D16 e D18. Cada dado coletado passa a dizer de quando é, de onde veio e quando foi coletado. O que não for guardado agora pode não ser recuperável na Fase 3.
+  - **Registro.** Um tipo imutável em `sentinela/data/proveniencia.py`, com:
+    - período de referência (`DT_REFER` ou mês de competência);
+    - data de entrega ou divulgação, quando a fonte informa. Sem ela, o campo fica `None` com o motivo, nunca a data da coleta no lugar;
+    - data da coleta;
+    - documento (DFP, ITR, FCA, Informe Mensal, COTAHIST) e versão;
+    - fonte (URL ou nome do arquivo);
+    - hash SHA-256 do conteúdo usado.
+  - **Onde.** O cache da CVM (DFP, ITR e FCA), o COTAHIST, o Informe Mensal de FII e o índice do F2A-1 gravam o registro junto do que baixam. A cascata expõe `dados['proveniencia']`, por campo de origem, fora do prompt (rito dos dados).
+  - **Contratos de provedor (D18).** Um teste de contrato por provedor existente: colunas, tipos, unidades e escala. A fixture é um recorte do arquivo real, com a fonte, a data e o hash anotados no próprio arquivo da fixture. Só dado público; nada da carteira.
+  - **Empresa com reapresentação.** Pelo índice da DFP, o item acha no universo do F2A-1 uma companhia com mais de uma `VERSAO` para o mesmo `DT_REFER` e registra no diário: CNPJ, ticker, documento e versões. Ela entra no universo inicial (F2A-35).
+  - Nenhuma saída dos motores muda; nada é decidido sobre o histórico estrito, que é da Fase 3.
+
+  **Aceite:**
+  - `tests/test_proveniencia.py::test_registro_tem_todos_os_campos`, `::test_hash_muda_com_o_conteudo`, `::test_entrega_ausente_fica_none_com_motivo`, `::test_coleta_nao_substitui_entrega` e `::test_bloco_fica_fora_do_prompt`;
+  - `tests/test_contratos_provedores.py`, um teste por provedor (CVM DFP/ITR/FCA, COTAHIST, Informe Mensal de FII), sem rede;
+  - golden inalterado; nenhum teste existente muda;
+  - mutation ≥ 80% no módulo novo;
+  - diário: quais fontes informam a data de entrega e quais não; a empresa com reapresentação escolhida;
+  - gate da fase.
+
+- [ ] **F2A-33** · feat · `feat: map CVM accounts by code and description` · **[ADR-0003]**
+  ADR-0003, D20, parte de infraestrutura. **Nenhum consumidor existente muda neste item:** `cvm_provider.py`, `market_engine.py` e os motores ficam como estão; quem passa a usar a tabela é o F2A-38.
+  - **Tabela versionada** em `sentinela/data/referencia/`: código, descrição normalizada (sem acento, caixa e espaços extras), modelo de demonstração (empresa não financeira, banco, seguradora) e o campo que a linha representa (PL dos controladores, PL total, lucro dos controladores etc.). Cada linha cita a evidência: arquivo da CVM, ano e uma empresa em que o par aparece, tirados dos arquivos que o F2A-16 levantou.
+  - **Modelo da demonstração.** Identificado pelo setor do F2A-2. O critério vai no diário e tem teste.
+  - **Leitura.** Uma função pura recebe as linhas do documento, o campo e o modelo, e devolve o valor com a linha usada, ou abstenção com motivo:
+    - par (código, descrição) sem correspondência na tabela: abstenção, nunca o valor de outra conta;
+    - linha ausente e valor inválido (não numérico, NaN, infinito) são motivos diferentes, porque a D20 só autoriza reserva no primeiro caso.
+
+  **Aceite:**
+  - `tests/test_contas_cvm.py::test_par_reconhecido_devolve_valor_e_linha`, `::test_mesmo_codigo_com_descricao_de_outra_conta_abstem` (um banco cuja 2.03 não é patrimônio líquido), `::test_descricao_normalizada_ignora_acento_e_caixa`, `::test_linha_ausente_e_valor_invalido_tem_motivos_distintos` e `::test_modelo_vem_do_setor`;
+  - `git diff --cached --name-status` só mostra arquivos novos (`A`) e o diário e a fila;
+  - golden inalterado; nenhum teste existente muda;
+  - mutation ≥ 80% no módulo novo;
+  - gate da fase.
+
+- [ ] **F2A-38** · fix · `fix: read existing CVM accounts through the code and description table` · **[ADR-0003]**
+  ADR-0003, D20, parte que muda comportamento. Hoje `_conta` (`cvm_provider.py`) lê só pelo código: o `patrimonio_liquido` genérico de `calcular_indicadores` vem da 2.03 mesmo quando ela não é o PL, como nos bancos, e alimenta `divida_pl`, que chega ao motor como `div_liq_patrimonio` (`market_engine.py:53`).
+  - As leituras de conta de `calcular_indicadores` passam pela função do F2A-33. Sem correspondência, o campo se abstém e `riscos_dados` registra o motivo.
+  - O caminho dos controladores do F2A-3 já se protege; ele também passa pela tabela, sem mudar de resultado.
+  - O cálculo da medida de alavancagem continua no F2A-8, e os dados de banco, no F2A-9.
+
+  **Testes que mudam:** os de `tests/test_cvm_provider.py` que montam DFP com descrições que não estão na tabela passam a usar descrições reais; nenhuma asserção muda (lista e justificativa no diário).
+
+  **Aceite:**
+  - `tests/test_contas_cvm_consumidores.py::test_banco_sem_pl_na_2_03_nao_gera_patrimonio_nem_alavancagem` passa por xfail estrito → marca retirada → PASS;
+  - `::test_empresa_nao_financeira_segue_igual` e `::test_conta_sem_correspondencia_aparece_em_riscos_dados`;
+  - golden inalterado: a mudança é da cascata. Se o golden mudar, o item fica `[!]`;
+  - diário: nas 45 ações e nos 12 bancos, quantos campos passam a se abster e por quê;
+  - gate da fase.
+
+- [ ] **F2A-34** · docs · `docs: add methodology sheet for per-share figures` · **[ADR-0003]**
+  ADR-0003, D19, D20 e D21. Escreve `docs/metodologia/por-acao.md` no modelo de `docs/metodologia/README.md`, com status **rascunho**. O loop nunca marca a ficha como aprovada.
+  - **Conteúdo:** LPA divulgado (3.99.01.x) e o papel dele; LPA recalculado como conferência e reserva; VPA; ações para valor de mercado; classes preferenciais com direitos distintos; units; escala das ações.
+  - **Faixa [0,1; 10] da escala.** Justificativa com a distribuição medida no diário do F2A-3 (razões entre LPA recalculado e divulgado) e a lista dos casos dentro da faixa mas longe de 1. O valor final é **[DECISÃO]** do Marcos; a ficha só apresenta os dados.
+  - **Reservas da D20.** A justificativa da política aprovada e os casos do universo em que ela seria usada, medidos por um levantamento só de leitura nos arquivos da DFP (presença ou não das linhas de não controladores). O script e a saída ficam em `outputs/`, fora do git; a ficha traz só a contagem e os tickers públicos.
+  - **Exemplo independente.** Uma companhia real com ON e PN e uma unit do universo: conta passo a passo, feita no texto a partir dos valores publicados (arquivo, CNPJ, `DT_REFER` e `VERSAO` citados), sem rodar nem importar o código do projeto. Esse exemplo vira teste no F2A-36.
+  - **Referência.** IAS 33 / CPC 41, com a seção citada.
+
+  **Aceite:** as sete seções do modelo preenchidas; todo número com fonte; status "rascunho"; nenhum parâmetro decidido pelo texto (os pontos de decisão marcados **[DECISÃO]**); diff só na ficha, no diário e na fila.
+
+- [ ] **F2A-35** · docs · `docs: define the initial universe` · **[ADR-0003]**
+  ADR-0003, D32. Escreve `docs/decisoes/universo-inicial.md`:
+  - as 45 ações do mapa regenerado no F1-15 e os 30 FIIs de `cvm_fii_map.py`. Os cinco FIIs que `docs/decisoes/fontes-fase2a.md` registra fora da listagem entram como **casos históricos**, fora do denominador atual;
+  - os casos difíceis que não estiverem lá: os 12 bancos ativos do F2A-16, as units do índice (KLBN11, SANB11, TAEE11, ENGI11, BRBI11, IGTI11), CSAN3, a empresa com reapresentação do F2A-32, e FIIs de papel e de tijolo;
+  - para cada ativo: ticker, CNPJ, classe pelo índice do F2A-1, motivo da inclusão e se é atual ou histórico;
+  - exclusões, cada uma com motivo;
+  - o denominador da cobertura (D32) e o critério de ampliação, citados do ADR.
+
+  Só ativos de mapas públicos e do índice oficial; nada vem da carteira.
+
+  **Aceite:** todo ticker atual presente no índice do F2A-1, e todo histórico marcado; contagem final depois da deduplicação no diário (a base nominal é 45 + 30 = 75); nenhum ativo sem motivo; diff só nesse arquivo, no diário e na fila.
+
+- [DECISÃO] **Ficha por ação e universo inicial.** O loop para aqui. O Marcos:
+  1. roda a auditoria externa em modo FICHA sobre `docs/metodologia/por-acao.md` (D30), que refaz o exemplo por conta própria, e guarda o relatório em `docs/loop/historico/fase-2a/auditoria-ficha-por-acao.md`;
+  2. decide a faixa da escala e marca a ficha como aprovada (data e nome), ou pede correções;
+  3. aprova a lista de `docs/decisoes/universo-inicial.md`;
+  4. troca este marcador por `[x]` e retoma o loop. Sem a ficha aprovada, o F2A-36 fica `[!]`.
+
+- [ ] **F2A-36** · fix · `fix: use reported EPS by share class in valuation inputs` · **[ADR-0003]** **[P1]**
+  ADR-0003, D19, regras 1 a 4. Pré-condição: `docs/metodologia/por-acao.md` com status aprovada; sem isso, `[!]`.
+  - **LPA dos métodos.** O LPA básico divulgado na DRE (3.99.01.x) da espécie do ticker, quando presente e coerente (escala determinada e mesmo sinal do lucro). O recalculado do F2A-3 vira conferência (F2A-5) e reserva.
+  - **Sem divulgado.** O recalculado entra com a marca "ações do fim do período, não média ponderada" na proveniência (D16).
+  - **Classes preferenciais.** O provedor deixa de agrupar as linhas "PN…" numa chave só: cada classe (PNA, PNB etc., pela `Sigla_Classe_Acao_Preferencial` do FCA) fica separada. Com mais de uma classe com direitos distintos, o recalculado comum se abstém para as preferenciais; vale só o divulgado da classe, e sem ele o LPA da classe se abstém.
+  - **Units.** Soma dos LPAs das espécies componentes, ponderada pela composição oficial do FCA. Componente sem divulgado usa a regra 2, exceto quando a regra 3 a proíbe: aí a unit inteira se abstém.
+  - **Escala.** Segue a faixa aprovada na ficha.
+
+  **Testes que mudam:** `tests/test_market_engine_acoes_cvm.py::test_lpa_usa_on_mais_pn_menos_tesouraria` e `::test_unit_multiplica_pelas_acoes_por_unit` (F2A-3) passam a afirmar o papel de conferência e reserva do recalculado; os testes do F2A-5 que comparam com o divulgado seguem iguais. Justificativa no diário.
+
+  **Aceite:**
+  - `tests/test_market_engine_acoes_cvm.py::test_lpa_dos_metodos_e_o_divulgado_da_especie` passa por xfail estrito → marca retirada → PASS;
+  - `::test_sem_divulgado_usa_recalculado_com_marca`, `::test_pna_e_pnb_nao_usam_lpa_comum`, `::test_unit_soma_lpas_ponderados_pela_composicao`, `::test_unit_com_componente_sem_reserva_abstem` e `::test_exemplo_da_ficha_por_acao` (valor esperado tirado da ficha, D21 e D28);
+  - golden inalterado: a mudança é da cascata. Se o golden mudar, o item fica `[!]`;
+  - mutation ≥ 80% no módulo puro;
+  - diário: LPA antes → depois nas 45 ações e nas units, e quais se abstêm, com o motivo;
+  - gate da fase.
+
+- [ ] **F2A-37** · fix · `fix: restrict controlling-interest fallbacks to evidence of no minorities` · **[ADR-0003]**
+  ADR-0003, D20, política aprovada em 13/10/2026. Hoje o lucro total entra quando a linha dos controladores falta, mesmo com minoritários, e o PL total entra quando a separação não é reconhecida (`cvm_provider.py`).
+  - **Lucro dos controladores ausente:** vale o lucro total só se a linha dos não controladores também estiver ausente ou zerada. Com ela presente e diferente de zero, abstém-se.
+  - **PL dos controladores:** vale o PL total só se a conta de não controladores do balanço **e** o lucro dos não controladores estiverem ausentes ou zerados. Qualquer evidência de minoritários sem a separação no balanço: abstém-se.
+  - **Valor inválido** (linha presente com valor não numérico, NaN ou infinito) nunca autoriza reserva: o campo se abstém.
+  - Toda reserva usada fica registrada na proveniência do campo.
+
+  **Aceite:**
+  - `tests/test_cvm_controladores.py::test_lucro_total_nao_substitui_controladores_com_minoritarios` passa por xfail estrito → marca retirada → PASS;
+  - `::test_pl_total_nao_substitui_com_lucro_de_minoritarios`, `::test_valor_invalido_nao_autoriza_reserva` e `::test_sem_minoritarios_usa_total_e_registra_reserva`;
+  - golden inalterado: a mudança é da cascata. Se o golden mudar, o item fica `[!]`;
+  - diário: empresas do universo que usam a reserva e as que passam a se abster, conferidas contra a lista da ficha;
+  - gate da fase.
+
 - [ ] **F2A-7** · feat · `feat: add five-year CVM series and trailing twelve months`
   F-24, F-8 e as janelas decididas no checkpoint (seção 4, item 4):
   - Bazin: dividendos médios de 5 anos;
@@ -416,7 +530,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - Gordon: dividendo dos últimos 12 meses.
 
   Este item só disponibiliza os dados; quem passa a usá-los é o F2C-1.
-  - **`dados['serie_cvm']`.** Até cinco exercícios da DFP, cada um com lucro, PL, receita, EBIT, ações e LPA e VPA do próprio documento (regras do F2A-3), e proventos declarados: dividendos e JCP da DVA, se o F2A-16 achou código estável. Sem código estável, a lacuna vai para o diário.
+  - **`dados['serie_cvm']`.** Até cinco exercícios da DFP, cada um com lucro, PL, receita, EBIT, ações e LPA e VPA do próprio documento (regras do F2A-3, revistas pela D19 do ADR-0003), e proventos declarados: dividendos e JCP da DVA, se o F2A-16 achou código estável. Sem código estável, a lacuna vai para o diário.
     - **Competência.** Os proventos da DVA são por competência (o exercício a que se referem), não por data-ex. O bloco declara isso no próprio campo, e o relatório do F1-12 também.
   - **`dados['ttm_cvm']`.** Lucro, receita e proventos dos últimos quatro trimestres pelo ITR (`baixar_itr`, hoje sem consumidor). O quarto trimestre é a DFP menos o acumulado de nove meses (PLANO). Traz data e versão de cada documento.
   - **Campos que alimentam os métodos.** Não mudam: continuam do exercício que a V1 usa hoje, e exercício mais antigo nunca vira corrente.
@@ -430,7 +544,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - gate da fase.
 
 - [ ] **F2A-8** · fix · `fix: measure leverage by net financial debt`
-  F-12, armadilha 17 e o bug do checkpoint (seção 7).
+  F-12, armadilha 17 e o bug do checkpoint (seção 7). Lê as contas pela tabela do F2A-33 e usa o PL que o F2A-38 entrega (ADR-0003, D20).
   - **Medida** (regime pós-IFRS 16, decisão de 5/10/2026). Dívida financeira líquida = empréstimos e financiamentos (com debêntures, circulantes e não circulantes) + passivo de arrendamento − caixa e aplicações financeiras, do último DFP, com as contas que o F2A-16 conferiu.
     - `divida_liq_ebitda` = dívida líquida ÷ (EBIT + depreciação e amortização da DVA);
     - `div_liq_patrimonio` = dívida líquida ÷ PL.
@@ -444,12 +558,12 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
     - O motor e o golden não mudam.
   - **`data_quality.py`.** O comentário que diz que a CVM só fornece `div_liq_patrimonio`, e o `_CVM_CAMPOS`, passam a refletir a medida nova.
 
-  **Seção B.** `test_b_divida_pl_da_cvm_e_endividamento_contabil_total_rotulado_como_liquido` passa a afirmar a correção. É reescrito primeiro como xfail estrito, depois XPASS, e a marca sai, com o comentário "resolvida no F2A-8". O teste do limite 3,0 em qualquer setor não muda.
+  **Seção B.** `test_b_divida_pl_da_cvm_e_endividamento_contabil_total_rotulado_como_liquido` passa a afirmar a correção. É reescrito primeiro como xfail estrito, depois a marca sai e ele fica em PASS, com o comentário "resolvida no F2A-8". O teste do limite 3,0 em qualquer setor não muda.
 
   **Testes que mudam:** os de `tests/test_market_engine.py` que fixam `divida_pl` como `div_liq_patrimonio`, se houver (lista no diário).
 
   **Aceite:**
-  - o teste da seção B, por xfail estrito → XPASS;
+  - o teste da seção B, por xfail estrito → marca retirada → PASS;
   - `tests/test_cvm_divida_liquida.py::test_divida_liquida_por_ebitda`, `::test_arrendamento_entra_na_divida_liquida`, `::test_caixa_maior_que_divida_da_negativo`, `::test_banco_nao_recebe_medida`, `::test_ebitda_nao_positivo_abstem`, `::test_pl_nao_positivo_abstem_div_liq_patrimonio` e `::test_brapi_nao_preenche_a_alavancagem`;
   - `tests/test_rastreabilidade.py::test_alavancagem_ausente_aparece_como_nao_avaliada` e `::test_regime_da_divida_e_declarado`;
   - mutation ≥ 80% no módulo puro;
@@ -478,7 +592,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - em `tests/test_valuation_engine.py`, os três que usam `erro_scraper`. Passam a usar a chave nova.
 
   **Aceite:**
-  - `tests/test_cascata_sem_fundamentus.py::test_cascata_nao_chama_o_fundamentus` e `::test_campos_completos_nao_rebaixam_a_classificacao` passam por xfail estrito → XPASS;
+  - `tests/test_cascata_sem_fundamentus.py::test_cascata_nao_chama_o_fundamentus` e `::test_campos_completos_nao_rebaixam_a_classificacao` passam por xfail estrito → marca retirada → PASS;
   - `::test_campo_obrigatorio_faltando_rebaixa_como_antes`;
   - golden pela regra, com o diff descrito acima;
   - `deptry .` sem achado novo, e o `cloudscraper` some dos achados;
@@ -486,7 +600,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
 - [ ] **F2A-9** · fix · `fix: read bank equity and earnings from the financial template` · **[P5]**
   Decidido no checkpoint (seção 4, item 5): os bancos terão lente própria, com P/VP justificado pelo ROE (F2B-3). Basileia e inadimplência são opcionais; quando faltam, a limitação é declarada. Nesta fase entram só os dados:
-  - **Banco.** É a companhia com setor de banco no F2A-2. PL, lucro e ROE vêm das contas do modelo de instituição financeira que o F2A-16 conferiu, não das contas genéricas (F-13). No dossiê, o ITUB4 ficou sem lucro e PL utilizáveis. LPA e VPA seguem o F2A-3.
+  - **Banco.** É a companhia com setor de banco no F2A-2. PL, lucro e ROE vêm das contas do modelo de instituição financeira que o F2A-16 conferiu, não das contas genéricas (F-13). No dossiê, o ITUB4 ficou sem lucro e PL utilizáveis. As contas são lidas pela tabela do F2A-33 com o modelo de banco (ADR-0003, D20). LPA e VPA seguem o F2A-3 e a D19 (F2A-36).
   - **Campos sem significado para banco.** Receita, margem e alavancagem não são preenchidas, com o motivo em `riscos_dados`.
   - **Basileia e inadimplência.**
     - Se o F2A-16 confirmou o IF.data com a chamada de controle: um provedor em `sentinela/data/providers/` grava `basileia` e `inadimplencia` em `dados`, com a fonte e a data-base.
@@ -494,7 +608,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - **Seguradoras.** Só a identificação pelo setor. A lente e a abstenção dos métodos são do F2B-3 e do F2B-4.
 
   **Aceite:**
-  - `tests/test_cvm_bancos.py::test_banco_usa_contas_do_modelo_financeiro` passa por xfail estrito → XPASS;
+  - `tests/test_cvm_bancos.py::test_banco_usa_contas_do_modelo_financeiro` passa por xfail estrito → marca retirada → PASS;
   - `::test_banco_nao_recebe_margem_nem_alavancagem` e `::test_sem_ifdata_a_limitacao_e_declarada`;
   - se houver provedor, `::test_ifdata_grava_basileia_e_inadimplencia`, com resposta sintética e sem rede;
   - mutation ≥ 80% nos módulos puros;
@@ -518,7 +632,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
     - o texto do DY no relatório do F1-12 é atualizado;
     - `scripts/dossie_fase2.py` passa a usar o normalizador de fronteira para o yfinance.
 
-  **Seção C.** `test_c_dy_percentual_acima_de_30_nao_pode_sair_confiavel` sai de xfail (XPASS estrito → marca retirada).
+  **Seção C.** `test_c_dy_percentual_acima_de_30_nao_pode_sair_confiavel` sai de xfail (marca retirada → PASS).
 
   **Testes que mudam:**
   - os que fixam a conversão de percentual no motor passam a testar a fronteira: `tests/test_valuation_engine.py::test_dy_normalization_percentual` e os equivalentes do FII;
@@ -527,8 +641,8 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   **Golden.** Só mudam os casos com DY de entrada acima de 1, negativo ou não finito.
 
   **Aceite:**
-  - o xfail da seção C → XPASS;
-  - `tests/test_dy_fronteira.py::test_motor_nao_converte_percentual` passa por xfail estrito → XPASS;
+  - o xfail da seção C → marca retirada → PASS;
+  - `tests/test_dy_fronteira.py::test_motor_nao_converte_percentual` passa por xfail estrito → marca retirada → PASS;
   - para cada provedor que a regra atual erra, um caso de `::test_mesmo_dy_mesma_razao_em_cada_fronteira` também passa (por exemplo, 0,5% vindo em percentual vira 0,005);
   - `git grep -n "dy_raw / 100\|assume_subunit_percent" -- '*.py'` vazio;
   - mutation ≥ 80% em `sentinela.data.normalizacao*`;
@@ -545,7 +659,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   **Golden.** Só inclusões: casos com `classe_ativo` ETF, BDR e `UNKNOWN`, e `STOCK` e `UNIT` como controle. Nenhum caso existente muda, porque nenhum tem a chave: `--onde "False"` sai com 0.
 
   **Aceite:**
-  - `tests/test_valuation_escopo.py::test_etf_bdr_e_unknown_se_abstem` passa por xfail estrito → XPASS;
+  - `tests/test_valuation_escopo.py::test_etf_bdr_e_unknown_se_abstem` passa por xfail estrito → marca retirada → PASS;
   - `::test_sem_classe_nada_muda`, `::test_stock_e_unit_seguem_os_metodos` e `::test_abstencao_nao_traz_numero`;
   - seções A, B e C intactas;
   - golden pela regra;
@@ -561,7 +675,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   **Testes que mudam:** os da brapi que fixam `_percent_to_decimal` ou o corte (lista no diário).
 
   **Aceite:**
-  - `tests/test_roe_fronteira.py::test_roe_em_percentual_do_yfinance_nao_chega_ao_motor` passa por xfail estrito → XPASS;
+  - `tests/test_roe_fronteira.py::test_roe_em_percentual_do_yfinance_nao_chega_ao_motor` passa por xfail estrito → marca retirada → PASS;
   - `::test_mesmo_roe_mesma_razao_em_cada_fronteira`, `::test_roe_acima_do_limite_vira_ausente_com_motivo`, `::test_roe_negativo_passa` e `::test_roe_da_cvm_passa_pela_guarda`;
   - `git grep -n "_percent_to_decimal" -- '*.py'` vazio;
   - mutation ≥ 80% em `sentinela.data.normalizacao*`;
@@ -576,7 +690,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   **Testes que mudam:** os do registro e do relatório que fixam a versão 1.0.0 do Bazin passam a ler a versão vigente; o de `tests/test_methods_bazin.py` que fixar a ordem antiga, se houver.
 
   **Aceite:**
-  - `tests/test_methods_bazin.py::test_dy_nao_confiavel_tem_prioridade_sobre_o_minimo` passa por xfail estrito → XPASS;
+  - `tests/test_methods_bazin.py::test_dy_nao_confiavel_tem_prioridade_sobre_o_minimo` passa por xfail estrito → marca retirada → PASS;
   - golden inalterado, porque o motor não expõe o motivo;
   - mutation de `sentinela.methods*` ≥ 80%, por módulo no diário;
   - gate da fase.
@@ -597,7 +711,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   **Golden.** Só mudam os casos de FII sem P/VP efetivo positivo: P/VP de entrada ausente, zero ou negativo, e sem `valor_cota` positivo do provedor falso. Nos ausentes e zero, a saída muda só no campo `pvp`; nos negativos, mudam `pvp`, `score_final` e o que deriva do score. O predicado do `--onde` inclui os negativos, e o diário traz a contagem de cada grupo.
 
   **Aceite:**
-  - `tests/test_market_engine_fii_cvm.py::test_fii_recebe_pvp_oficial_pela_cascata`, `tests/test_fii_engine_pvp.py::test_pvp_ausente_vira_abstencao` e `::test_pvp_negativo_nao_recebe_bonus` passam por xfail estrito → XPASS;
+  - `tests/test_market_engine_fii_cvm.py::test_fii_recebe_pvp_oficial_pela_cascata`, `tests/test_fii_engine_pvp.py::test_pvp_ausente_vira_abstencao` e `::test_pvp_negativo_nao_recebe_bonus` passam por xfail estrito → marca retirada → PASS;
   - `::test_falha_do_informe_mantem_as_outras_fontes`;
   - seções A, B e C intactas;
   - golden pela regra;
@@ -620,7 +734,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   **Golden.** Só mudam os casos de TST11 e TST13 (vacância manual no harness) sem vacância do provedor falso.
 
   **Aceite:**
-  - `tests/test_fii_sem_estimativa_manual.py::test_vacancia_manual_nao_altera_dy_nem_score` e `::test_fii_sem_fonte_nao_recebe_estimativa_manual` passam por xfail estrito → XPASS;
+  - `tests/test_fii_sem_estimativa_manual.py::test_vacancia_manual_nao_altera_dy_nem_score` e `::test_fii_sem_fonte_nao_recebe_estimativa_manual` passam por xfail estrito → marca retirada → PASS;
   - seção C intacta. `test_c_score_do_fii_fica_entre_0_e_100` usa a CVBI11, que tinha vacância manual;
   - golden pela regra;
   - gate da fase.
@@ -636,7 +750,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   **Golden.** Só inclusões: preço NaN e infinito nos dois motores; Selic zero e não finita no FII. Nenhum caso existente muda, porque o DY não finito já mudou no F2A-4.
 
   **Aceite:**
-  - `tests/test_saidas_finitas.py::test_acao_com_preco_nao_finito_devolve_none` e `::test_fii_com_selic_zero_nao_devolve_nan` passam por xfail estrito → XPASS;
+  - `tests/test_saidas_finitas.py::test_acao_com_preco_nao_finito_devolve_none` e `::test_fii_com_selic_zero_nao_devolve_nan` passam por xfail estrito → marca retirada → PASS;
   - `::test_golden_sem_nan_nem_infinito` percorre o golden inteiro;
   - golden pela regra;
   - gate da fase.
@@ -653,7 +767,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   **Golden.** Só mudam os casos de ações em que o Gordon calculava com P/L ausente, não positivo ou não finito: `--onde "'Gordon' in saida_antiga['metodos_usados'] and not ((entrada.get('pl') or 0) > 0)"`.
 
   **Aceite:**
-  - `tests/test_methods_gordon.py::test_lpa_nao_positivo_abstem` passa por xfail estrito → XPASS;
+  - `tests/test_methods_gordon.py::test_lpa_nao_positivo_abstem` passa por xfail estrito → marca retirada → PASS;
   - mutation de `sentinela.methods*` ≥ 80%, por módulo no diário;
   - seções A, B e C intactas: o caso do Gordon na seção B tem LPA 10;
   - golden pela regra;
@@ -669,7 +783,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
     - o relatório do F1-12, que troca a regex própria pela função.
 
   **Aceite:**
-  - `tests/test_ticker_allowlist.py::test_ticker_invalido_nao_chega_ao_yfinance`, `::test_ticker_invalido_nao_vira_url_da_brapi` e `::test_ticker_invalido_nao_entra_no_prompt` passam por xfail estrito → XPASS;
+  - `tests/test_ticker_allowlist.py::test_ticker_invalido_nao_chega_ao_yfinance`, `::test_ticker_invalido_nao_vira_url_da_brapi` e `::test_ticker_invalido_nao_entra_no_prompt` passam por xfail estrito → marca retirada → PASS;
   - `::test_formatos_validos`: PETR4, KLBN11, HGLG11, BOVA11, AAPL34, A1MD34 e `petr4.sa`;
   - `::test_formatos_invalidos`: vazio, espaço interno, `&`, `/`, `;`, quebra de linha e mais de 6 caracteres;
   - mutation ≥ 80% em `sentinela.domain.ticker*`;
@@ -709,7 +823,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - os testes de CVM de `tests/test_market_engine.py` que dependem do mapa manual passam a injetar um índice falso, sem mudar asserção (lista no diário).
 
   **Aceite:**
-  - `tests/test_market_engine_referencia.py::test_sem_indice_a_cvm_nao_e_consultada_e_o_motivo_aparece` passa por xfail estrito → XPASS;
+  - `tests/test_market_engine_referencia.py::test_sem_indice_a_cvm_nao_e_consultada_e_o_motivo_aparece` passa por xfail estrito → marca retirada → PASS;
   - `::test_fii_sem_indice_nao_consulta_o_informe`;
   - golden inalterado: a mudança é da cascata;
   - diário: a mudança de comportamento, e quem ainda importa os mapas (`git grep`);
@@ -812,14 +926,15 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   2. confere a cobertura do índice (F2A-1) e as exceções, inclusive a CSNA3;
   3. gera relatórios reais com o F1-12 para uma ação com ON e PN, uma unit, um banco e um FII. Confere ações, escala, documento, P/VP oficial, alavancagem e liquidez. Os relatórios saem em `outputs/`, fora do git;
   4. limpa o cache depois das mudanças da fase com `python scripts/invalidar_cache_cvm.py <tickers>`: primeiro sem `--aplicar`, para conferir, e depois com ele. Sem isso, os valores gravados antes da fase continuam servindo de reserva até o TTL de 7 dias. A lista de tickers fica só na linha de comando, nunca em arquivo versionado;
-  5. responde à [LIQUIDEZ] para o F2A-10, que foi para a 2B, com a distribuição do diário do F2A-26, e lê a proposta da 2B (F2A-28);
-  6. faz o push do branch `v2/fase-2a` e abre o PR da fase (um PR por fase, checkpoint da Fase 0, seção 6), com `docs/loop/historico/fase-2a/pr-fase-2a.md` como corpo. O Jules revisa (grupo A);
-  7. depois do merge, marca a tag `v2-fase-2a`, apaga o branch, atualiza a "Fase atual" do `AGENTS.md` e apaga à mão os caches listados no F2A-13.
+  5. roda a auditoria externa em modo FASE (ADR-0003, D30) e guarda o relatório em `docs/loop/historico/fase-2a/auditoria-externa.md`. Achado **bloqueia** impede o push até ser resolvido ou dispensado por escrito. Confere também os pontos do diário do F2A-3: a divergência de +402% das ações da SBSP3 contra o yfinance; o BTCI11 e o TRPL11, que o índice tira do motor de FII; e o ROE dos controladores de −1,83 da CSAN3;
+  6. responde à [LIQUIDEZ] para o F2A-10, que foi para a 2B, com a distribuição do diário do F2A-26, e lê a proposta da 2B (F2A-28);
+  7. faz o push do branch `v2/fase-2a` e abre o PR da fase (um PR por fase, checkpoint da Fase 0, seção 6), com `docs/loop/historico/fase-2a/pr-fase-2a.md` como corpo. O Jules revisa (grupo A);
+  8. depois do merge, marca a tag `v2-fase-2a`, apaga o branch, atualiza a "Fase atual" do `AGENTS.md` e apaga à mão os caches listados no F2A-13.
 
 ## Riscos e decisões do Marcos
 
 - **Perguntas do dossiê.** Foram respondidas no checkpoint da Fase 0 (seção 4). Os itens seguem as respostas. Abaixo, as leituras que a fila adota (o Marcos confirma ou corrige na aprovação) e o que muda se uma resposta for revista.
-  - **P1, quantidade de ações (F2A-3, F2A-5, F2A-7).**
+  - **P1, quantidade de ações (F2A-3, F2A-5, F2A-7).** **Revista em 13/10/2026 pelo ADR-0003, D19:** o LPA dos métodos passa a ser o divulgado por espécie (F2A-36); o recalculado abaixo vira conferência e reserva. "Abstenção só quando a CVM falha" vale só no sentido de que o yfinance não veta a CVM.
     - **Resposta:**
       - sempre a Composição do Capital;
       - divergência com o yfinance acima de 5% é alerta;

@@ -1,6 +1,6 @@
 # ADR-0003 — Validade de dados, de método e auditoria externa
 
-**Status:** proposto (13/10/2026). Decide o Marcos; até lá, nenhuma fila muda por causa deste texto.
+**Status:** aceito pelo Marcos em 13/10/2026, depois da terceira auditoria externa ("pode seguir para aprovação"). A aprovação inclui a política de reservas da D20.
 **Origem:** revisão independente do plano feita com o ChatGPT em 13/10/2026, mais as lições das Fases 0, 1 e do começo da 2A.
 **Relaciona-se com:** ADR-0001 (refactor V2.1), ADR-0002 (loop, tempo e dados; D1 a D15).
 
@@ -14,7 +14,7 @@ O projeto ganhou estrutura de rigor: tipos de unidade, contrato de método, gold
 - a V1 lendo o PL dos bancos numa conta que não é o PL (F2A-16, pergunta 4);
 - o mesmo código de conta da CVM com significados diferentes entre empresas.
 
-Este ADR chega com a 2A em andamento: F2A-3 e F2A-5 já foram entregues. Ele fixa critérios de validade para o que falta e define, na seção "Transição", como o que já foi entregue é revisto. Versão 4: incorpora duas auditorias externas de 13/10/2026 (Codex, modo DOCUMENTO). A primeira reprovou a versão 2 por quatro bloqueios; a segunda reprovou a versão 3 por um bloqueio (F2A-33 como `feat:` mudando saídas) e cinco ressalvas. Os relatórios estão em `docs/loop/historico/fase-2a/auditoria-adr0003.md`.
+Este ADR chega com a 2A em andamento: F2A-3 e F2A-5 já foram entregues. Ele fixa critérios de validade para o que falta e define, na seção "Transição", como o que já foi entregue é revisto. Versão 4: incorpora duas auditorias externas de 13/10/2026 (Codex, modo DOCUMENTO). A primeira reprovou a versão 2 por quatro bloqueios; a segunda reprovou a versão 3 por um bloqueio (F2A-33 como `feat:` mudando saídas) e cinco ressalvas. A terceira, sobre a versão 4, não encontrou bloqueio nem ressalva. Os relatórios estão em `docs/loop/historico/fase-2a/auditoria-adr0003.md`.
 
 ## Decisões
 
@@ -124,7 +124,7 @@ O resultado vai para `docs/loop/historico/fase-N/auditoria-externa.md`. Achado *
 
 Estado em 13/10/2026: F2A-15, 17, 18, 16, 1, 2, 19, 20, 3, 6 e 5 commitados (`b83dde1`).
 
-**F2A-3 e F2A-5 não são reabertos.** O que eles fizeram continua no branch. O que diverge deste ADR vira itens `fix:` novos, cada um com teste antes, e o golden muda só por eles.
+**F2A-3 e F2A-5 não são reabertos.** O que eles fizeram continua no branch. O que diverge deste ADR vira itens `fix:` novos, cada um com teste antes.
 
 O que o F2A-3 já cumpre, conferido no código pela auditoria externa:
 - lucro e PL dos controladores; o LPA divulgado escolhido pela descrição da linha; VPA e ROE que se abstêm quando a 2.03 não descreve patrimônio líquido;
@@ -143,13 +143,14 @@ O que diverge, e o item que corrige:
 Itens novos, antes do F2A-7, nesta ordem:
 - **F2A-32** · `feat: record temporal provenance for collected data` — proveniência do D16 (período, entrega, coleta, documento, versão, fonte, hash) no cache da CVM, no COTAHIST e no índice; testes de contrato dos provedores existentes (D18); escolhe a empresa com reapresentação do universo inicial.
 - **F2A-33** · `feat: map CVM accounts by code and description` — só infraestrutura: tabela versionada (código, descrição, modelo de demonstração) e função de leitura que se abstém sem correspondência (D20), com testes próprios. **Nenhum consumidor existente muda neste item**; o golden não pode mudar. O cálculo da lente de bancos continua no F2A-9.
-- **F2A-38** · `fix: read existing CVM accounts through the code and description table` **[golden]** — rito `fix`: teste xfail estrito com um banco cuja 2.03 não é PL, mostrando que hoje `patrimonio_liquido` e a alavancagem saem de conta errada; depois as leituras existentes passam pela tabela do F2A-33, com abstenção. Escopo do golden declarado no item: só os campos derivados de `patrimonio_liquido` e das contas trocadas; qualquer outra mudança no golden reprova o item.
+- **F2A-38** · `fix: read existing CVM accounts through the code and description table` — rito `fix`: teste xfail estrito com um banco cuja 2.03 não é PL, mostrando que hoje `patrimonio_liquido` e a alavancagem saem de conta errada; depois as leituras existentes passam pela tabela do F2A-33, com abstenção.
 - **F2A-34** · `docs: add methodology sheet for per-share figures` — ficha do D21 para LPA, VPA, classes, units e escala, com exemplo independente e a justificativa da faixa [0,1; 10]. **Aprovação do Marcos e auditoria externa (modo FICHA) antes do F2A-36.**
 - **F2A-35** · `docs: define the initial universe` — `docs/decisoes/universo-inicial.md` (D32).
-- **F2A-36** · `fix: use reported EPS by share class in valuation inputs` **[golden]** — regras 1 a 4 do D19.
-- **F2A-37** · `fix: restrict controlling-interest fallbacks to evidence of no minorities` **[golden]** — reservas do D20.
+- **F2A-36** · `fix: use reported EPS by share class in valuation inputs` — regras 1 a 4 do D19.
+- **F2A-37** · `fix: restrict controlling-interest fallbacks to evidence of no minorities` — reservas do D20.
 
 Outros ajustes:
+- **Golden dos três `fix:`** (ajuste feito no aceite): F2A-38, F2A-36 e F2A-37 mudam a cascata (`dados`), não os motores, como o F2A-3 e o F2A-31. O golden fica inalterado; se mudar, o item para em `[!]` e o Marcos decide. A versão 4 marcava os três como **[golden]**.
 - Ordem: F2A-32, 33, 38, 34, 35, 36, 37 (o número segue a ordem de criação, como já acontece na 2A).
 - F2A-7, F2A-8 e F2A-9 leem contas pelo F2A-33 e seguem D19 e D20.
 - Todos os aceites "XPASS" leem como D27.

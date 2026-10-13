@@ -1,6 +1,6 @@
 # Plano V2 — Sentinela B3
 
-> Roteiro único do projeto. Decisões de arquitetura em `docs/adr/`: 0001 (refactor V1 → V2.1) e 0002 (execução por loop, tempo como entrada, dados oficiais primeiro, limpeza e núcleo financeiro). Execução em `docs/loop/`.
+> Roteiro único do projeto. Decisões de arquitetura em `docs/adr/`: 0001 (refactor V1 → V2.1) e 0002 (execução por loop, tempo como entrada, dados oficiais primeiro, limpeza e núcleo financeiro) e 0003 (validade de dados, de método e auditoria externa, aceito em 13/10/2026). Execução em `docs/loop/`.
 >
 > Itens marcados **[D5]**, **[D6]** etc. dependem das propostas do ADR-0002, aceitas ou recusadas no checkpoint da Fase 0.
 >
@@ -120,7 +120,7 @@ Um SQLite único, alterado só por migração numerada (`sentinela/data/store/mi
 | `carteira` | posições do usuário — dado local, nunca exportado para arquivo versionado | ticker |
 | `watchlist`, `digests`, `fatos_relevantes` | operação e notícias | — |
 
-**Regra de leitura ponto-no-tempo:** numa data D, vale a última versão entregue até D. Onde versões antigas não estiverem disponíveis, usa-se a versão atual e a limitação fica registrada na proveniência.
+**Regra de leitura ponto-no-tempo:** numa data D, vale a última versão entregue até D. Dois modos de histórico (ADR-0003, D17): o **estrito** usa só informação comprovadamente disponível até D e, sem ela, se abstém; a **reconstrução exploratória** pode usar aproximações documentadas (por exemplo, a versão atual de uma demonstração reapresentada), com resultados separados e rótulo próprio. A regra anterior, que permitia usar a versão atual com a limitação registrada, foi substituída pela D17. A proveniência de cada dado segue a D16 desde a Fase 2A.
 
 ## 6. Fases
 
@@ -198,7 +198,7 @@ Correções com teste xfail primeiro. Dados de referência antes de tudo.
 |---|---|
 | F2A-1 | Dados de referência: mapa ticker ↔ CNPJ automático para todas as companhias e FIIs listados; classe do ativo (ação, unit, FII, ETF, BDR) por dado oficial, nunca pelo sufixo do ticker; conserto da classe de atualização automática (`CVMTickerMap`, nunca instanciada fora dos testes e que não preenche `ticker`). Os mapas manuais viram fallback |
 | F2A-2 | Setor, segmento do FII e grupo de controle, lidos dos arquivos da CVM que o projeto já baixa |
-| F2A-3 | Ações da Composição do Capital (ON + PN − tesouraria, escala via `units.py`, mesmo documento do lucro) — E-1 [D7] |
+| F2A-3 | Ações da Composição do Capital (ON + PN − tesouraria, escala via `units.py`, mesmo documento do lucro) — E-1 [D7]. O papel do LPA foi revisto pelo ADR-0003 (D19): os métodos usam o LPA divulgado por espécie (F2A-36) |
 | F2A-4 | Um único normalizador de DY, na fronteira do provedor; os outros dois saem |
 | F2A-5 | Validação cruzada contra fonte independente — E-2 |
 | F2A-6 | Fim da mutação de `dados` antes das checagens de qualidade |
@@ -211,7 +211,9 @@ Correções com teste xfail primeiro. Dados de referência antes de tudo.
 | F2A-13 | Limpeza: tabelas de vacância manuais (`FII_MANUAL_FALLBACK`, `VACANCIA_CONHECIDA`), fallbacks que perderam função, heurística de classe pelo sufixo e — se o mapa automático cobrir o universo — os mapas manuais |
 | F2A-14 | Resumo e arquivamento |
 
-**Gate:** cada correção com XPASS; seção A inalterada; seção B só muda onde está marcada; mutation; cobertura CVM de 100% dos listados mapeáveis.
+O ADR-0003 acrescenta, antes do F2A-7: F2A-32 (proveniência temporal e contratos de provedor), F2A-33 (tabela de contas por código e descrição), F2A-38 (leituras existentes pela tabela), F2A-34 (ficha dos números por ação), F2A-35 (universo inicial), F2A-36 (LPA divulgado por espécie) e F2A-37 (reservas de controladores). Detalhes na fila.
+
+**Gate:** cada correção com xfail estrito → marca retirada → PASS (ADR-0003, D27); seção A inalterada; seção B só muda onde está marcada; mutation; cobertura CVM de 100% dos listados mapeáveis, com o denominador da D32 do ADR-0003 (pares CNPJ e código ativos no FCA mais recente e FIIs listados no Informe Mensal; toda exclusão com motivo); auditoria externa no checkpoint (D30).
 **Decisões:** limiares de divergência de ações e de liquidez; fonte dos dados bancários.
 **Jules:** os tickets dele em `cvm_provider.py` precisam estar integrados antes do F2A-1.
 
@@ -538,7 +540,9 @@ O núcleo financeiro custou cerca de um mês: a linha de corte passou de feverei
 | Benchmark do FII (Selic líquida, NTN-B ou os dois) | antes da Fase 2B | dossiê F0-6 |
 | Janela de cada método (último ano, TTM ou cinco anos) | antes da Fase 2C | dossiê F0-6 |
 | Histerese, lentes e valuation reverso | antes da Fase 2C | dossiê F0-6 |
-| Universo, profundidade histórica e reapresentações | antes da Fase 3 | teste de volume |
+| Faixa da inferência de escala das ações [0,1; 10] | antes do F2A-36 | ficha do F2A-34 |
+| Lista fechada do universo inicial | depois do F2A-35 | ADR-0003, D32 |
+| Universo, profundidade histórica, reapresentações e intervalo de datas do histórico estrito | antes da Fase 3 | teste de volume; ADR-0003, D17 e D32 |
 | Limites de concentração da camada de risco | Fase 4 | — |
 | Canal do digest | Fase 4 | — |
 | Janelas e referência do estudo de evento | antes da Fase 5 | — |

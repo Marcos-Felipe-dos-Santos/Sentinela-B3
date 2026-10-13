@@ -111,3 +111,45 @@ A reserva por linha ausente da D20 está aprovada como política? Os FIIs fora d
 - D20: reservas declaradas como política proposta; linha ausente diferente de valor inválido; justificativa na ficha do F2A-34.
 - D32: os cinco FIIs fora da listagem entram como casos históricos, fora do denominador atual; "qualquer data" fica para a Fase 3.
 - Relatórios agora versionados neste arquivo.
+
+## Auditoria 3 — versão 4 do ADR (HEAD `354b6b4`)
+
+**Modo DOCUMENTO.** Escopo: ADR-0003 v4, branch `v2/fase-2a`, HEAD `354b6b4`, comparado à v3 (`c7a73e0`), aos relatórios anteriores, ao PLANO, ADRs anteriores, protocolo, fila e decisões. Auditoria somente de leitura.
+
+**O bloqueio do F2A-33 e as cinco ressalvas da auditoria 2 estão fechados no desenho documental. Não encontrei contradição nova que impeça a aprovação da v4.** Isso não confirma a implementação dos itens propostos.
+
+**F2A-33 e transição**
+
+Fechado: [ADR:145] limita o `feat:` à infraestrutura, proíbe alterar consumidores existentes e mantém o golden intacto. [ADR:146] atribui a mudança de comportamento ao F2A-38, com rito `fix:`, regressão em xfail estrito e delimitação das alterações do golden.
+
+A justificativa permanece verificável: o PL genérico é selecionado somente por código em [cvm_provider.py:381], alimenta `divida_pl` na linha 445 e chega à cascata como `div_liq_patrimonio` em [market_engine.py:53].
+
+**D19 — duas ressalvas**
+
+- Fechada a ambiguidade de “abstenção só quando a CVM falha”: [ADR:37] restringe a preservação ao yfinance não vetar a CVM e declara a precedência das novas abstenções.
+- Fechada a precedência nas units: [ADR:52] determina abstenção da unit inteira quando um componente não admite o recalculado pela regra 3.
+
+**D20 — reserva por ausência**
+
+Fechada: [ADR:59] identifica a reserva como política proposta, exige justificativa e casos na ficha do F2A-34 e explicita que aprovar o ADR aprova essa política. A linha 61 distingue ausência de valor inválido; este exige abstenção. O texto deixou de apresentar ausência como prova de inexistência de minoritários.
+
+**D32 — duas ressalvas**
+
+- Fechado o tratamento dos cinco FIIs: [ADR:119] os mantém como casos históricos, fora do denominador atual, e atribui a lista fechada ao F2A-35. Confere documentalmente com [fontes-fase2a.md:140].
+- Fechado o intervalo temporal: [ADR:117] atribui sua definição à Fase 3, incluindo primeira data com proveniência completa e tratamento das anteriores.
+
+**Coerência e achados novos**
+
+Nenhum achado novo classificado como **bloqueia** ou **ressalva**. A ordem `32 → 33 → 38 → 34 → 35 → 36 → 37` mantém infraestrutura antes da aplicação e ficha antes da mudança de LPA. As diferenças perante o PLANO são propostas identificadas, sujeitas à decisão do Marcos; não as tratei como decisões já aceitas. A sincronização dos documentos deverá acompanhar essa aceitação.
+
+**Recalculado por mim:** contei sete itens novos, coerentes com as consequências; a auditoria 2 contém um bloqueio e cinco ressalvas. A base nominal continua sendo `45 + 30 = 75` entradas, antes de inclusões e deduplicação; os cinco casos históricos não integram a cobertura atual.
+
+**Não verificado:** execução dos itens F2A-32 a F2A-38, conformidade normativa IAS 33/CPC 41, coletas reais, +402% da SBSP3, ROE −1,83 da CSAN3, pytest e mutmut. Não executei comandos que escrevem no repositório.
+
+**Perguntas para o Marcos:** nenhuma escolha nova ficou implicitamente decidida. Permanece a decisão explícita de aprovar ou recusar a política de reservas da D20 junto com o ADR.
+
+**Veredito: pode seguir para aprovação do Marcos.**
+
+## Aceite
+
+Aceito pelo Marcos em 13/10/2026, com a política de reservas da D20. No mesmo commit: status do ADR, fila da 2A (F2A-32 a F2A-38 e um [DECISÃO] para a ficha e o universo) e PLANO (seção 5 pela D17, gate da 2A pela D27, D30 e D32, decisões pendentes). Ajuste feito no aceite: F2A-36, F2A-37 e F2A-38 deixam de ser **[golden]**, porque mudam a cascata e não os motores, como o F2A-3; se o golden mudar, o item para em `[!]`.
