@@ -410,7 +410,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - os testes atuais de `validacao_cruzada` não mudam;
   - gate da fase.
 
-- [ ] **F2A-32** · feat · `feat: record temporal provenance for collected data` · **[ADR-0003]**
+- [x] **F2A-32** · feat · `feat: record temporal provenance for collected data` · **[ADR-0003]**
   ADR-0003, D16 e D18. Cada dado coletado passa a dizer de quando é, de onde veio e quando foi coletado. O que não for guardado agora pode não ser recuperável na Fase 3.
   - **Registro.** Um tipo imutável em `sentinela/data/proveniencia.py`, com:
     - período de referência (`DT_REFER` ou mês de competência);

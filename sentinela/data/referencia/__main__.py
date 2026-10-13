@@ -27,7 +27,13 @@ def main(argv: list[str] | None = None) -> int:
     agora = datetime.now(UTC)
     f = fontes.carregar_fontes(agora, pasta)
     indice = montar_indice(
-        f.fcas, f.cadastro, f.informe, f.cotacoes, f.meta, f.data, f.correcoes
+        f.fcas,
+        f.cadastro,
+        f.informe,
+        f.cotacoes,
+        f.meta_com_proveniencia(),
+        f.data,
+        f.correcoes,
     )
     salvar_indice(indice, pasta / "referencia")
     print(f"índice: {len(indice.registros)} registros, {len(indice.excecoes)} exceções")

@@ -222,6 +222,9 @@ def _lpa_divulgado_comparado(ind: Dict[str, Any], especie: Optional[str]) -> Opt
     return None
 
 
+_CAMPOS_COM_PRECO = frozenset({'pl', 'pvp'})
+
+
 def _guardar_por_fonte(dados: Dict[str, Any], fonte: str, valores: Dict[str, Any]) -> None:
     """Guarda o que a fonte entregou, antes do merge (F2A-5), para a validação cruzada."""
     entregues = {
@@ -621,6 +624,16 @@ class MarketEngine:
             self._record_field_sources(dados, preenchidos, 'CVM')
 
             campos_fund = [c for c in preenchidos if c in FUNDAMENTAL_KEYS and c != 'quote_type']
+            if ind.get('proveniencia') and campos_fund:
+                # F2A-32: de quando é, de onde veio e quando foi coletado cada campo da CVM.
+                # P/L e P/VP ficam de fora: dependem também do preço, que não tem registro.
+                dados.setdefault('proveniencia', {}).update(
+                    {
+                        campo: ind['proveniencia']
+                        for campo in campos_fund
+                        if campo not in _CAMPOS_COM_PRECO
+                    }
+                )
             if campos_fund:
                 _definir_fonte_fundamentos(dados, 'CVM')
                 dados['cvm_disponivel'] = True

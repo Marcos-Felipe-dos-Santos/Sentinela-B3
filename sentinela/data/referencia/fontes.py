@@ -10,13 +10,14 @@ import io
 import logging
 import os
 import zipfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
 import requests
 
+from sentinela.data import proveniencia
 from sentinela.data.providers import b3_cotahist
 from sentinela.data.referencia.correcoes import Correcao, ler_correcoes
 from sentinela.data.referencia.indice import carregar_indice, salvar_indice
@@ -126,6 +127,28 @@ class Fontes:
     meta: dict
     data: str
     correcoes: list[Correcao]
+    proveniencia: list[dict] = field(default_factory=list)
+
+    def meta_com_proveniencia(self) -> dict:
+        """O `meta` com a proveniência de cada arquivo baixado, que vai para o índice salvo."""
+        return {**self.meta, "proveniencia": self.proveniencia}
+
+
+def _registrar(
+    registros: list[dict],
+    caminho: Path,
+    url: str,
+    documento: str,
+    periodo: str | None,
+    entrega: str | None = None,
+    motivo: str = proveniencia.MOTIVO_ARQUIVO_AGREGADO,
+) -> None:
+    """Grava a proveniência ao lado do arquivo baixado e a guarda para o índice (F2A-32)."""
+    registro = proveniencia.registrar_sem_falhar(
+        caminho, url, documento, periodo, entrega, motivo
+    )
+    if registro is not None:
+        registros.append({"arquivo": caminho.name, **registro.para_dict()})
 
 
 def carregar_fontes(agora: datetime, pasta_dados: Path) -> Fontes:
@@ -133,8 +156,13 @@ def carregar_fontes(agora: datetime, pasta_dados: Path) -> Fontes:
     correcoes = ler_correcoes()
     cache = pasta_dados / "fontes"
     data = agora.date().isoformat()
+    registros: list[dict] = []
     cadastro_csv = baixar_csv(URL_CADASTRO, cache / "cad_cia_aberta.csv", agora)
     cadastro = _ler_csv(cadastro_csv)
+    _registrar(
+        registros, cadastro_csv, URL_CADASTRO, "Cadastro", None,
+        motivo=proveniencia.MOTIVO_SEM_ENTREGA_NA_FONTE,
+    )  # fmt: skip
     fcas, fonte_fca = [], {}
     for ano in (agora.year - 1, agora.year):
         lido = _zip_do_ano(
@@ -143,6 +171,7 @@ def carregar_fontes(agora: datetime, pasta_dados: Path) -> Fontes:
         if lido is None:
             continue
         caminho, df = lido
+        _registrar(registros, caminho, URL_FCA.format(ano=ano), "FCA", str(ano))
         fcas.append((ano, df))
         fonte_fca[str(ano)] = {
             "arquivo": caminho.name,
@@ -157,6 +186,9 @@ def carregar_fontes(agora: datetime, pasta_dados: Path) -> Fontes:
         )
         if lido is None:
             continue
+        _registrar(
+            registros, lido[0], URL_INFORME.format(ano=ano), "Informe Mensal", str(ano)
+        )
         informes.append(lido[1])
         arquivos_informe.append(lido[0].name)
         datas_informe.append(_data_do_arquivo(lido[0]))
@@ -173,6 +205,11 @@ def carregar_fontes(agora: datetime, pasta_dados: Path) -> Fontes:
             logger.warning("COTAHIST %02d/%d ainda não publicado", mes, ano)
             continue
         cotacoes += b3_cotahist.ler_zip(caminho)
+        _registrar(
+            registros, caminho, b3_cotahist.URL_MENSAL.format(ano=ano, mes=mes),
+            "COTAHIST", f"{ano}-{mes:02d}", b3_cotahist.data_de_geracao(caminho),
+            proveniencia.MOTIVO_ENTREGA_ILEGIVEL,
+        )  # fmt: skip
         arquivos_cotahist.append(caminho.name)
         datas_cotahist.append(_data_do_arquivo(caminho))
     if not cotacoes:
@@ -192,14 +229,20 @@ def carregar_fontes(agora: datetime, pasta_dados: Path) -> Fontes:
             "data": max(datas_cotahist),
         },
     }
-    return Fontes(fcas, cadastro, informe, cotacoes, fontes, data, correcoes)
+    return Fontes(fcas, cadastro, informe, cotacoes, fontes, data, correcoes, registros)
 
 
 def construir_indice(agora: datetime, pasta_dados: Path) -> Indice:
     """Baixa as fontes e monta o índice (não grava)."""
     f = carregar_fontes(agora, pasta_dados)
     return montar_indice(
-        f.fcas, f.cadastro, f.informe, f.cotacoes, f.meta, f.data, f.correcoes
+        f.fcas,
+        f.cadastro,
+        f.informe,
+        f.cotacoes,
+        f.meta_com_proveniencia(),
+        f.data,
+        f.correcoes,
     )
 
 

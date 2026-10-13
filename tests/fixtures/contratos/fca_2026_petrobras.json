@@ -1,0 +1,18 @@
+{
+ "fonte": "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/FCA/DADOS/fca_cia_aberta_2026.zip",
+ "arquivo_original": "fca_cia_aberta_2026.zip",
+ "copia_local": "outputs/ref_teste/fontes/fca_cia_aberta_2026.zip",
+ "data_coleta": "2026-10-08T12:51:46+00:00",
+ "sha256_original": "21d4bb18fb6923cf2253c2a1d76496ef71366287fbde5ca725d76f303a2069b8",
+ "recorte": "Linhas da Petrobras (CNPJ 33.000.167/0001-01): índice de entregas, geral e valores mobiliários. Linhas copiadas sem alteração.",
+ "sha256_membros": {
+  "fca_cia_aberta_2026.csv": "f3e630fce9f7861e39577f7018d14a3b37ad3bdfa04ec024cadb1e7411311337",
+  "fca_cia_aberta_geral_2026.csv": "7e0fc2b90cc355a12859299cb8192168fae7be73d0d1fb5f1861a7df506d26c2",
+  "fca_cia_aberta_valor_mobiliario_2026.csv": "d24e337531df57d7463f547f30b227291bb11a7937acca5b2c9729eb49dd4c70"
+ },
+ "membros": {
+  "fca_cia_aberta_2026.csv": "CNPJ_CIA;DT_REFER;VERSAO;DENOM_CIA;CD_CVM;CATEG_DOC;ID_DOC;DT_RECEB;LINK_DOC\n33.000.167/0001-01;2026-01-01;1;PETROLEO BRASILEIRO S.A. PETROBRAS;009512;FCA;156276;2026-04-17;http://www.rad.cvm.gov.br/ENETCONSULTA/frmDownloadDocumento.aspx?CodigoInstituicao=1&NumeroSequencialDocumento=156276\n",
+  "fca_cia_aberta_geral_2026.csv": "CNPJ_Companhia;Data_Referencia;Versao;ID_Documento;Nome_Empresarial;Data_Nome_Empresarial;Nome_Empresarial_Anterior;Data_Constituicao;Codigo_CVM;Data_Registro_CVM;Categoria_Registro_CVM;Data_Categoria_Registro_CVM;Situacao_Registro_CVM;Data_Situacao_Registro_CVM;Pais_Origem;Pais_Custodia_Valores_Mobiliarios;Setor_Atividade;Descricao_Atividade;Situacao_Emissor;Data_Situacao_Emissor;Especie_Controle_Acionario;Data_Especie_Controle_Acionario;Dia_Encerramento_Exercicio_Social;Mes_Encerramento_Exercicio_Social;Data_Alteracao_Exercicio_Social;Pagina_Web\n33.000.167/0001-01;2026-01-01;1;156276;PETROLEO BRASILEIRO S.A. PETROBRAS;;;1953-10-03;009512;1977-07-20;Categoria A;2010-01-01;Ativo;1977-07-20;Brasil;Brasil;Petróleo e Gás;Pesquisa, lavra, refinação, processamento, comércio e transporte de petróleo, de seus derivados, de gás natural e de outros hidrocarbonetos fluidos, além das atividades vinculadas à energia.;Fase Operacional;1977-07-20;Estatal Holding;;31;12;;http://www.petrobras.com.br\n",
+  "fca_cia_aberta_valor_mobiliario_2026.csv": "CNPJ_Companhia;Data_Referencia;Versao;ID_Documento;Nome_Empresarial;Valor_Mobiliario;Sigla_Classe_Acao_Preferencial;Classe_Acao_Preferencial;Codigo_Negociacao;Composicao_BDR_Unit;Mercado;Sigla_Entidade_Administradora;Entidade_Administradora;Data_Inicio_Negociacao;Data_Fim_Negociacao;Segmento;Data_Inicio_Listagem;Data_Fim_Listagem\n33.000.167/0001-01;2026-01-01;1;156276;PETROLEO BRASILEIRO S.A. PETROBRAS;Ações Ordinárias;;;PETR3;;Bolsa;B3;B3 S.A. - Brasil, Bolsa, Balcão.;2018-05-14;;Nível 2 de Governança Corporativa;1977-07-20;\n33.000.167/0001-01;2026-01-01;1;156276;PETROLEO BRASILEIRO S.A. PETROBRAS;Debêntures;;;;;Balcão Não-Organizado;B3;B3 S.A. - Brasil, Bolsa, Balcão.;2019-02-12;;Básico;2019-02-12;\n33.000.167/0001-01;2026-01-01;1;156276;PETROLEO BRASILEIRO S.A. PETROBRAS;Nota Comercial;;;;;Balcão Organizado;B3;B3 S.A. - Brasil, Bolsa, Balcão.;2022-12-14;;Básico;2022-09-12;\n33.000.167/0001-01;2026-01-01;1;156276;PETROLEO BRASILEIRO S.A. PETROBRAS;Ações Preferenciais;;;PETR4;;Bolsa;B3;B3 S.A. - Brasil, Bolsa, Balcão.;2018-05-14;;Nível 2 de Governança Corporativa;1977-07-20;\n"
+ }
+}

@@ -99,6 +99,24 @@ def ler_zip(
             return list(parsear_linhas(texto, mercados))
 
 
+def data_de_geracao(zip_path: Path) -> str | None:
+    """Data de geração do arquivo, no header (registro 00, posições 24-31), em AAAA-MM-DD.
+
+    É a data de entrega que o COTAHIST informa. Arquivo ilegível ou header fora do layout
+    devolve `None`.
+    """
+    try:
+        with zipfile.ZipFile(zip_path) as zf, zf.open(zf.namelist()[0]) as f:
+            header = f.readline().decode("latin-1")
+        if header[:2] != "00":
+            return None
+        return date(
+            int(header[23:27]), int(header[27:29]), int(header[29:31])
+        ).isoformat()
+    except (OSError, zipfile.BadZipFile, IndexError, ValueError):
+        return None
+
+
 def _completo(destino: Path, ano: int, mes: int) -> bool:
     """O ZIP foi baixado depois do fim do mês (mais a folga): não muda mais."""
     proximo = date(ano + (mes == 12), mes % 12 + 1, 1)

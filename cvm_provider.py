@@ -1,5 +1,6 @@
 import io
 import logging
+import re
 import threading
 import zipfile
 from collections import OrderedDict
@@ -9,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 
 from cvm_download import baixar_arquivo
+from sentinela.data import proveniencia
 from sentinela.data.acoes_cvm import (
     MOTIVO_DOCUMENTO_DIFERENTE,
     MOTIVO_SEM_COMPOSICAO,
@@ -46,6 +48,9 @@ _travas_chave: dict[tuple, threading.Lock] = {}
 # do Capital, por arquivo. A chave inclui mtime e tamanho, como a do parse.
 _cache_por_acao: dict[tuple, tuple[pd.DataFrame, pd.DataFrame]] = {}
 _CACHE_POR_ACAO_MAX = 8
+# F2A-32: índice de entregas do ZIP (`<doc>_cia_aberta_<ano>.csv`, com `DT_RECEB`), por arquivo.
+_cache_entregas: dict[tuple, list[dict]] = {}
+_CACHE_ENTREGAS_MAX = 8
 _COLUNAS_COMPOSICAO = {
     "on": "QT_ACAO_ORDIN_CAP_INTEGR",
     "pn": "QT_ACAO_PREF_CAP_INTEGR",
@@ -191,12 +196,61 @@ class CVMProvider:
         return self.cache_dir / nome
 
     def baixar_dfp(self, ano: int) -> Path:
-        """Baixa o ZIP de DFP do ano e retorna o Path local (com cache 7d)."""
-        return baixar_arquivo(_DFP_URL.format(ano=ano), self._cache_path(f"dfp_{ano}.zip"))
+        """Baixa o ZIP de DFP do ano e retorna o Path local (com cache 7d), com a proveniência ao lado."""
+        caminho = baixar_arquivo(_DFP_URL.format(ano=ano), self._cache_path(f"dfp_{ano}.zip"))
+        proveniencia.registrar_sem_falhar(caminho, _DFP_URL.format(ano=ano), "DFP", str(ano))
+        return caminho
 
     def baixar_itr(self, ano: int) -> Path:
-        """Baixa o ZIP de ITR do ano e retorna o Path local (com cache 7d)."""
-        return baixar_arquivo(_ITR_URL.format(ano=ano), self._cache_path(f"itr_{ano}.zip"))
+        """Baixa o ZIP de ITR do ano e retorna o Path local (com cache 7d), com a proveniência ao lado."""
+        caminho = baixar_arquivo(_ITR_URL.format(ano=ano), self._cache_path(f"itr_{ano}.zip"))
+        proveniencia.registrar_sem_falhar(caminho, _ITR_URL.format(ano=ano), "ITR", str(ano))
+        return caminho
+
+    def _entregas(self, zip_path: Path) -> list[dict]:
+        """Linhas do índice de entregas do ZIP (`dfp_cia_aberta_<ano>.csv` ou o do ITR)."""
+        stat = Path(zip_path).stat()
+        chave = (str(Path(zip_path).resolve()), stat.st_mtime_ns, stat.st_size)
+        with _cache_trava:
+            if chave in _cache_entregas:
+                return _cache_entregas[chave]
+        with zipfile.ZipFile(zip_path) as zf:
+            nome = next(
+                n for n in zf.namelist() if re.fullmatch(r"(dfp|itr)_cia_aberta_\d{4}\.csv", n)
+            )
+            with zf.open(nome) as f:
+                linhas = pd.read_csv(
+                    io.TextIOWrapper(f, encoding="latin-1"), sep=";", dtype=str
+                ).to_dict("records")
+        with _cache_trava:
+            _cache_entregas[chave] = linhas
+            while len(_cache_entregas) > _CACHE_ENTREGAS_MAX:
+                _cache_entregas.pop(next(iter(_cache_entregas)))
+        return linhas
+
+    def proveniencia_do_documento(
+        self, zip_path: Path, ano: int, cnpj: str | None, dt_refer: str | None, versao: str | None
+    ) -> dict | None:
+        """Proveniência da DFP usada (F2A-32): período, entrega (`DT_RECEB`), versão, fonte e hash.
+
+        `None` se o arquivo local não existe ou não é legível.
+        """
+        try:
+            arquivo = proveniencia.registrar_arquivo(
+                zip_path, _DFP_URL.format(ano=ano), "DFP", str(ano)
+            )
+        except OSError:
+            return None
+        try:
+            entrega = proveniencia.entrega_no_indice(
+                self._entregas(zip_path),
+                {"CNPJ_CIA": cnpj, "DT_REFER": dt_refer, "VERSAO": versao},
+            )
+        except (OSError, StopIteration, ValueError, KeyError, zipfile.BadZipFile):
+            entrega = None
+        return arquivo.do_documento(
+            dt_refer, versao, entrega, proveniencia.MOTIVO_DOCUMENTO_FORA_DO_INDICE
+        ).para_dict()
 
     # ------------------------------------------------------------------
     # Leitura e parse de CSVs dentro do ZIP
@@ -437,6 +491,10 @@ class CVMProvider:
                     "lpa_divulgado_por_especie": lpa_divulgado_por_especie(linhas_399),
                     "composicao_capital": composicao,
                     "composicao_motivo":  motivo_composicao,
+                    "proveniencia":       self.proveniencia_do_documento(
+                        zip_path, ano, cnpj,
+                        metadata.get("cvm_dt_refer"), metadata.get("cvm_versao"),
+                    ),
                 }
                 ind["roe"] = roe_ctrl
 
