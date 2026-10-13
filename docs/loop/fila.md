@@ -651,7 +651,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden pela regra;
   - gate da fase.
 
-- [ ] **F2A-29** · fix · `fix: abstain stock methods for ETFs, BDRs and unknown assets` · **[P7]** **[golden]**
+- [x] **F2A-29** · fix · `fix: abstain stock methods for ETFs, BDRs and unknown assets` · **[P7]** **[golden]**
   P7: ETFs e BDRs ficam fora dos métodos, com abstenção e motivo. Desde o F2A-20, o `app.py:216`, travado, manda ao motor de ações tudo que não é FII, inclusive ETF, BDR e `UNKNOWN`. Este item antecipa a abstenção no `valuation_engine` (decisão de 5/10/2026); o `applies_to` dos métodos continua do F2B-4.
   - **Classe.** O motor lê `dados['classe_ativo']`, que a cascata preenche desde o F2A-19. ETF, BDR ou `UNKNOWN` → resultado de abstenção, antes de qualquer método. Sem a chave (testes e chamadas antigas), nada muda.
   - **Resultado.** O formato da guarda de distressed (`valuation_engine.py:122-133`), para o `app.py` e a gravação não quebrarem: `metodos_usados` vazio, `confianca` 0, `pl_confiavel` e `dy_confiavel` falsos, `perfil` com a classe e o motivo em `riscos` ("Classe <classe> fora do escopo dos métodos de ação"). Não traz `fair_value`, `upside` nem `score_final`: nenhum número no lugar da abstenção. O rótulo é "FORA DO ESCOPO DOS MÉTODOS", sem "compra" nem "venda".

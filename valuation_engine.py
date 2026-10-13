@@ -25,6 +25,11 @@ def _finito(valor):
     return valor if math.isfinite(valor) else None
 
 
+# F2A-29 (P7): classes sem os métodos de ação; o `applies_to` dos métodos é do F2B-4.
+CLASSES_FORA_DO_ESCOPO = frozenset({"ETF", "BDR", "UNKNOWN"})
+ROTULO_FORA_DO_ESCOPO = "FORA DO ESCOPO DOS MÉTODOS"
+
+
 class ValuationEngine:
     def _montar_inputs(
         self,
@@ -110,6 +115,24 @@ class ValuationEngine:
 
         ticker = str(dados.get('ticker', '')).upper()
         p   = float(dados['preco_atual'])
+
+        # ── GUARD: CLASSE FORA DO ESCOPO (F2A-29, P7) ─────────────────────────
+        # ETF, BDR e classe desconhecida não recebem os métodos de ação: abstenção
+        # antes de qualquer método, sem número no lugar. Sem a chave, nada muda.
+        classe = dados.get('classe_ativo')
+        if classe is not None:
+            classe = str(getattr(classe, 'value', classe)).upper()
+            if classe in CLASSES_FORA_DO_ESCOPO:
+                logger.info(f"[{ticker}] Classe {classe} fora do escopo dos métodos de ação")
+                return {
+                    'recomendacao':   ROTULO_FORA_DO_ESCOPO,
+                    'metodos_usados': '',
+                    'perfil':         classe,
+                    'pl_confiavel':   False,
+                    'dy_confiavel':   False,
+                    'confianca':      0,
+                    'riscos':         [f"Classe {classe} fora do escopo dos métodos de ação"],
+                }
 
         # ── GUARD: DISTRESSED TICKERS ────────────────────────────────────────
         # Empresas em recuperação judicial ou situação especial não devem

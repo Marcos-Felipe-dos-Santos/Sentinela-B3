@@ -311,7 +311,13 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         raise ValueError("dados insuficientes para a análise")
 
     por_instancia = {id(r[0]): r for r in registros}
-    if analise.get("perfil") == "DISTRESSED":
+    fora_do_escopo = (
+        analise.get("recomendacao") == modulo_valuation.ROTULO_FORA_DO_ESCOPO
+    )
+    if fora_do_escopo:
+        # F2A-29: classe fora do escopo dos métodos de ação; nenhum número no lugar.
+        motivo_ausente = analise["riscos"][0]
+    elif analise.get("perfil") == "DISTRESSED":
         motivo_ausente = (
             "guarda de situação especial (distressed): nenhum método foi chamado"
         )
@@ -461,6 +467,8 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
             ("Riscos sinalizados pelo motor", "; ".join(map(str, analise["riscos"])))
         )
     sintese.append(("Métodos usados", str(analise.get("metodos_usados") or "nenhum")))
+    if fora_do_escopo:
+        sintese = [("Abstenção do motor", motivo_ausente)]
 
     return {
         "ticker": dados.get("ticker", ""),

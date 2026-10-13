@@ -409,6 +409,15 @@ def _acoes_aleatorias(n=300):
     return casos
 
 
+def _acoes_classe_ativo():
+    """F2A-29: ETF, BDR e UNKNOWN se abstêm; STOCK e UNIT são o controle."""
+    return [
+        _acao(f"classe-{classe}-{nome}", {**base, "classe_ativo": classe})
+        for classe in ("ETF", "BDR", "UNKNOWN", "STOCK", "UNIT")
+        for nome, base in (("renda", _RENDA), ("cresc", _CRESC))
+    ]
+
+
 # ── grade: FII ────────────────────────────────────────────────────────────────
 
 _FII = {
@@ -566,6 +575,7 @@ def montar_casos():
         + _acoes_chaves_e_extremos()
         + _acoes_varredura_classificacao()
         + _acoes_aleatorias()
+        + _acoes_classe_ativo()
         + _fii_fronteiras()
         + _fii_selic_e_vacancia()
         + _fii_aleatorios()
