@@ -46,11 +46,11 @@ Cada número tem uma definição e um papel:
 | **Ações para valor de mercado** | ações em circulação na data, por espécie | capitalização |
 
 Regras de uso:
-1. **LPA divulgado disponível e coerente** (escala determinada e mesmo sinal do lucro): é o LPA dos métodos.
+1. **LPA divulgado disponível e coerente** (mesmo sinal do lucro dos controladores e uma única linha por espécie; revista em 13/10/2026, ver "Revisões"): é o LPA dos métodos. Divulgado incoerente: o LPA da espécie se abstém, com alerta, sem recalculado no lugar.
 2. **Divulgado ausente:** o recalculado entra como **aproximação declarada**, com marca na proveniência ("ações do fim do período, não média ponderada"). Os métodos podem usá-lo.
 3. **Mais de uma classe preferencial com direitos distintos** (PNA, PNB etc., identificadas pela `Sigla_Classe_Acao_Preferencial` do FCA): o LPA recalculado comum **se abstém** para as preferenciais; vale só o divulgado da classe, se houver. Sem divulgado da classe, o LPA da classe se abstém.
 4. **Units:** o LPA da unit é a soma dos LPAs das espécies que a compõem, ponderada pela composição oficial do FCA. Se faltar o LPA divulgado de alguma espécie componente, aplica-se a regra 2 com a marca, **exceto** quando a regra 3 proíbe o recalculado para essa espécie: aí a unit inteira se abstém. A regra 3 tem precedência sobre a 2. Composição não reconhecida: abstém-se (já é o comportamento do F2A-1).
-5. **Escala das ações:** a inferência pelo LPA divulgado (o F2A-3 escolhe unidade ou mil pela razão mais perto de 1, com faixa [0,1; 10]) fica **provisória** até a ficha do F2A-34, que justifica a faixa com a distribuição medida no F2A-16 e lista os casos na faixa mas longe de 1. Esses casos já geram alerta (F2A-5). Quando não há LPA divulgado para inferir a escala, ela é indeterminada e o recalculado se abstém.
+5. **Escala das ações:** a inferência pelo LPA divulgado (o F2A-3 escolhe unidade ou mil pela razão mais perto de 1, com faixa [0,1; 10]) fica **provisória** até a ficha do F2A-34, que justifica a faixa com a distribuição medida no F2A-16 e lista os casos na faixa mas longe de 1. Esses casos já geram alerta (F2A-5). Quando não há LPA divulgado coerente de nenhuma espécie do **mesmo documento** para inferir a escala, ela é indeterminada e se abstêm o recalculado, o VPA e a capitalização; o LPA divulgado não (revisão de 13/10/2026). A escala nunca vem de outro documento.
 
 Consolidado contra individual é sempre declarado.
 
@@ -119,6 +119,16 @@ O resultado vai para `docs/loop/historico/fase-N/auditoria-externa.md`. Achado *
 - **Universo inicial:** as 45 ações do mapa regenerado no F1-15 e os 30 FIIs de `cvm_fii_map.py` (os cinco que `docs/decisoes/fontes-fase2a.md` registra fora da listagem no período entram como **casos históricos**: servem para testar abstenção e histórico estrito, mas não contam no denominador da cobertura atual), mais estes casos difíceis, se não estiverem lá: os 12 bancos ativos do F2A-16; as units do índice (KLBN11, SANB11, TAEE11, ENGI11, BRBI11, IGTI11); uma holding com minoritários relevantes (CSAN3); uma empresa com reapresentação de DFP (escolhida no F2A-32); FIIs de papel e de tijolo. A lista fechada vai para `docs/decisoes/universo-inicial.md` no F2A-35.
 - **Denominador da cobertura do índice:** pares (CNPJ, código) ativos no FCA mais recente e FIIs listados em bolsa no Informe Mensal, como o F2A-1 já mede; toda exclusão tem motivo listado.
 - **Critério de ampliação:** um grupo novo entra no universo quando todos os seus casos difíceis passam pela verificação do item (números conferidos contra a fonte e abstenções com motivo), sem divergência sem explicação. O gate de cobertura do PLANO passa a citar este denominador.
+
+## Revisões
+
+**13/10/2026 — aprovação da ficha por ação (F2A-34).** Decididas pelo Marcos depois da auditoria externa da ficha (modo FICHA, relatório em `docs/loop/historico/fase-2a/auditoria-ficha-por-acao.md`):
+- **D19, regra 1.** "Coerente" deixa de exigir escala determinada: o LPA divulgado já está em R$ por ação. Escala indeterminada derruba só o que depende da quantidade de ações.
+- **D19, divulgado incoerente** (sinal oposto ao lucro dos controladores, ou linhas da mesma espécie com valores diferentes): abstenção do LPA da espécie, com alerta. Não é tratado como ausente.
+- **D19, regras 2 e 5.** A escala vem só de outra espécie do mesmo documento.
+- **D19, regra 5.** A faixa [0,1; 10] fica mantida (ficha, seção 7.1).
+- **D20, linha zerada.** Lucro dos controladores e dos não controladores zerados, com lucro consolidado diferente de zero: vale o lucro total só se a participação dos não controladores no balanço (2.03.09) estiver ausente ou zerada; senão, o lucro dos controladores se abstém.
+- **D32.** Critério operacional de "atual" do universo inicial (no mínimo 100 negócios à vista em três meses do COTAHIST) aprovado, sem mudar o denominador. O BTG Pactual fica em exclusão provisória até o F2A-39 corrigir o índice.
 
 ## Transição: o que já foi entregue
 

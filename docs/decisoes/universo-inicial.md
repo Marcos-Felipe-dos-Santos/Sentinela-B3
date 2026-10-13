@@ -1,6 +1,6 @@
 # Universo inicial
 
-**Status:** proposta para aprovação do Marcos (passo 3 do `[DECISÃO]` do F2A-35)
+**Status:** aprovado pelo Marcos em 13/10/2026, com as decisões da seção final (sucessores, classes do Banrisul, critério de "atual" e BTG). Auditoria externa de 13/10/2026: `docs/loop/historico/fase-2a/auditoria-ficha-por-acao.md`, seção 4.
 **Origem:** ADR-0003, D32 · item F2A-35 de `docs/loop/fila.md`
 
 Só ativos de mapas públicos do código (`cvm_ticker_map.py`, `cvm_fii_map.py`) e do índice oficial do F2A-1; nada vem da carteira.
@@ -9,8 +9,8 @@ Só ativos de mapas públicos do código (`cvm_ticker_map.py`, `cvm_fii_map.py`)
 
 - **Classe:** índice oficial do F2A-1 (`indice.json`, gerado em 8/10/2026 a partir do FCA 2025 e 2026, do cadastro de companhias, do Informe Mensal de FII 2025 e 2026 e do COTAHIST de jul–set/2026).
 - **CNPJ:** do índice; para as ações fora dele, do cadastro de companhias da CVM (`cad_cia_aberta.csv`, cópia de 8/10/2026) pelo código CVM do mapa; para os FIIs fora dele (BCFF11, IRDM11, RBRF11), de `cvm_fii_map.py`.
-- **Tipo de FII:** composição da carteira no `inf_mensal_fii_ativo_passivo` de agosto de 2026, como fração da soma de recebíveis (CRI/CRA, LCI/LCA, letras hipotecárias e LIG: "papel"), de imóveis, terrenos, direitos reais e participações em sociedades imobiliárias ("tijolo") e de cotas de outros FIIs ("fundo de fundos"); o tipo é o que passa de 50%. A base não inclui caixa nem renda fixa: num fundo com muito caixa, as frações descrevem só a parte investida em ativos imobiliários. O `Mandato` do Informe vem vazio nos 30 fundos.
-- **Situação:** "atual" = ticker presente no índice, fora da lista de casos históricos da D32 e com pelo menos 100 negócios no mercado à vista no COTAHIST de jul–set/2026 (as ações entram no índice pelo FCA, sem exigir negociação; os FIIs, pelo Informe e pelo COTAHIST); "histórico" = fora do índice, sem negócio no período, ou um dos cinco FIIs que `docs/decisoes/fontes-fase2a.md` (seção 7) registra fora da listagem em bolsa no período (BCFF11, CVBI11, IRDM11, MALL11 e RBRF11). Os históricos servem para testar abstenção e histórico estrito e não contam no denominador atual.
+- **Tipo de FII:** composição da carteira no `inf_mensal_fii_ativo_passivo` de agosto de 2026, como fração da soma de recebíveis (CRI/CRA, LCI/LCA, letras hipotecárias e LIG: "papel"), de imóveis, terrenos, direitos reais e participações em sociedades imobiliárias ("tijolo") e de cotas de outros FIIs ("fundo de fundos"); o tipo é o que passa de 50%. A base não inclui caixa nem renda fixa: num fundo com muito caixa, as frações descrevem só a parte investida em ativos imobiliários. O `Mandato` do Informe vem vazio nos 27 fundos com Informe Mensal de agosto de 2026 (BCFF11, IRDM11 e RBRF11 não têm Informe de 2026).
+- **Situação** (critério operacional do universo inicial, aprovado pelo Marcos em 13/10/2026; **não** é o denominador da cobertura da D32, que segue abaixo). Vale para ações, units e FIIs; a auditoria externa conferiu os 73 atuais da versão anterior. "atual" = ticker presente no índice, fora da lista de casos históricos da D32 e com pelo menos 100 negócios no mercado à vista no COTAHIST de jul–set/2026 (as ações entram no índice pelo FCA, sem exigir negociação; os FIIs, pelo Informe e pelo COTAHIST); "histórico" = fora do índice, sem negócio no período, ou um dos cinco FIIs que `docs/decisoes/fontes-fase2a.md` (seção 7) registra fora da listagem em bolsa no período (BCFF11, CVBI11, IRDM11, MALL11 e RBRF11). Os históricos servem para testar abstenção e histórico estrito e não contam no denominador atual.
 
 ### Ações do mapa (45)
 
@@ -107,6 +107,20 @@ Só ativos de mapas públicos do código (`cvm_ticker_map.py`, `cvm_fii_map.py`)
 | PINE4 | 62.144.175/0001-20 | STOCK | banco ativo com DFP (F2A-16) | atual |
 | BMGB4 | 61.186.680/0001-74 | STOCK | banco ativo com DFP (F2A-16) | atual |
 | SANB11 | 90.400.888/0001-42 | UNIT | banco ativo com DFP (F2A-16) e unit do índice; composição 1 ON + 1 PN | atual |
+| BRSR3 | 92.702.067/0001-96 | STOCK | Banrisul ON; incluída em 13/10/2026 para a regra 3 da D19 | atual, a conferir |
+| BRSR5 | 92.702.067/0001-96 | STOCK | Banrisul PNA; incluída em 13/10/2026 para a regra 3 da D19 | atual, a conferir |
+
+"A conferir": o F2A-36 confere no índice a classe (`Sigla_Classe_Acao_Preferencial`) e no COTAHIST o critério de negócios; se não passar, o ticker vira histórico com o motivo no diário.
+
+### Sucessores (decisão de 13/10/2026)
+
+| Ticker | CNPJ | Classe (índice) | Motivo | Situação |
+|---|---|---|---|---|
+| AZUL3 | 09.305.994/0001-29 | STOCK | sucessora de AZUL4 no índice; mesmo CNPJ; 34.747 negócios à vista em jul–set/2026 | atual |
+| AXIA3 | 00.001.180/0001-26 | STOCK | sucessora de ELET3 (AXIA Energia, antiga Eletrobras); mesmo CNPJ; 1.968.451 negócios | atual |
+| NATU3 | 71.673.990/0001-77 | STOCK | sucessora de NTCO3 no índice, mas com **outro CNPJ**: entra como emissor novo, sem continuidade histórica com a NTCO3; 739.313 negócios | atual |
+
+AZUL4, ELET3 e NTCO3 continuam como históricos. Contagens de negócios da auditoria externa de 13/10/2026.
 | TAEE11 | 07.859.971/0001-30 | UNIT | unit do índice; composição 1 ON + 2 PN | atual |
 | ENGI11 | 00.864.214/0001-06 | UNIT | unit do índice; composição 1 ON + 4 PN | atual |
 | BRBI11 | 10.739.356/0001-03 | UNIT | unit do índice; composição 1 ON + 2 PN | atual |
@@ -122,7 +136,7 @@ Só ativos de mapas públicos do código (`cvm_ticker_map.py`, `cvm_fii_map.py`)
 | Empresa com reapresentação de DFP (F2A-32) | MRVE3 (mapa): DFP 2021 e 2022 reapresentadas em 6/7/2023 |
 | FIIs de papel e de tijolo | no mapa: papel HCTR11, KNCR11, MXRF11, RECR11, VRTA11, XPCI11 (e CVBI11, histórico); tijolo, 18 (MALL11 entre eles, histórico); fundo de fundos, CPTS11 e HFOF11 |
 
-Nos bancos e units com mais de um ticker no índice (BEES3/BEES4, BRSR3/BRSR5/BRSR6, BMEB3/BMEB4, PINE3/PINE4, SANB3/SANB4/SANB11), a lista leva um ticker por companhia; os outros entram junto se o Marcos preferir.
+Nos bancos e units com mais de um ticker no índice (BEES3/BEES4, BRSR3/BRSR5/BRSR6, BMEB3/BMEB4, PINE3/PINE4, SANB3/SANB4/SANB11), a lista leva um ticker por companhia (aprovado em 13/10/2026), **exceto o Banrisul**, que entra com as três classes (BRSR3, BRSR5 e BRSR6): é o caso real de preferenciais com direitos distintos (PNA e PNB) que a regra 3 da D19 precisa testar. Ficam fora da verificação inicial: BEES4, BMEB3, PINE3, SANB3 e SANB4.
 
 ## Exclusões
 
@@ -130,15 +144,17 @@ Nos bancos e units com mais de um ticker no índice (BEES3/BEES4, BRSR3/BRSR5/BR
 |---|---|---|
 | Banco Daycoval S.A. | 62.232.889/0001-90 | banco ativo com DFP (F2A-16), emissor de Categoria B no cadastro (sem ação em bolsa) |
 | Banco RCI Brasil S.A. | 62.307.848/0001-15 | banco ativo com DFP (F2A-16), emissor de Categoria B no cadastro (sem ação em bolsa) |
-| Banco BTG Pactual S/A | 30.306.294/0001-45 | banco ativo com DFP (F2A-16), Categoria A, listado em bolsa (BPAC11 negociou no período), mas **fora do índice por lacuna do F2A-1**: o FCA traz o código "000000" e o índice o descartou como código fora do formato de ticker. Exclusão provisória, até o índice o cobrir |
+| Banco BTG Pactual S/A | 30.306.294/0001-45 | banco ativo com DFP (F2A-16), Categoria A, listado em bolsa (BPAC11: 1.695.828 negócios em jul–set/2026), mas **fora do índice por lacuna do F2A-1**: o FCA traz o código "000000" (unit "1 ON E 2 PNA") e o índice o descartou como código fora do formato de ticker. Exclusão provisória, aprovada em 13/10/2026, até o F2A-39 corrigir o índice |
 
 ## Contagem (depois da deduplicação)
 
 - Base nominal: 45 ações + 30 FIIs = 75.
 - Ações: 38 atuais + 7 históricas (AZUL4, BRML3, ELET3, GOLL4, JBSS3, NTCO3, PETZ3).
 - FIIs: 25 atuais + 5 históricos (BCFF11, CVBI11, IRDM11, MALL11, RBRF11).
-- Casos difíceis fora dos mapas: 10 atuais (6 bancos, dos quais o SANB11 é também unit, e 4 units). Nenhum repete ticker ou companhia dos mapas.
-- **Total: 73 atuais + 12 históricos = 85 ativos**; 3 exclusões.
+- Casos difíceis fora dos mapas: 12 atuais (8 tickers de bancos, sendo 3 do Banrisul e o SANB11 também unit, e 4 units). Nenhum repete ticker ou companhia dos mapas.
+- Sucessores: 3 atuais (AZUL3, AXIA3, NATU3).
+- **Total: 78 atuais + 12 históricos = 90 ativos**; 3 exclusões. BRSR3 e BRSR5 estão nos atuais, a conferir.
+- O universo é a amostra verificada, não o total de listados: a cardinalidade do denominador da D32 é medida pelo índice do F2A-1, no mesmo snapshot, quando houver afirmação numérica de cobertura.
 
 ## Denominador da cobertura e critério de ampliação (D32, citados do ADR-0003)
 
@@ -146,7 +162,14 @@ Nos bancos e units com mais de um ticker no índice (BEES3/BEES4, BRSR3/BRSR5/BR
 - **Critério de ampliação:** "um grupo novo entra no universo quando todos os seus casos difíceis passam pela verificação do item (números conferidos contra a fonte e abstenções com motivo), sem divergência sem explicação. O gate de cobertura do PLANO passa a citar este denominador."
 - Até a Fase 3 (D17), nenhum texto promete histórico para qualquer data.
 
-## Pontos para o Marcos
+## Decisões do Marcos (13/10/2026)
+
+- Critério de "atual" aprovado como critério operacional do universo inicial.
+- Sucessores AZUL3, AXIA3 e NATU3 incluídos como atuais; NATU3 como emissor novo.
+- Um ticker por companhia, exceto o Banrisul (três classes).
+- BTG: exclusão provisória até o F2A-39 (correção pela tabela de correções do F2A-19).
+
+## Pontos levantados no F2A-35 (registro)
 
 - Sete das 45 ações ficam históricas: cinco fora do índice com o ticker do mapa (AZUL4 → AZUL3; ELET3 → AXIA3; GOLL4 com registro cancelado e GOLL54 no índice; PETZ3 com registro cancelado; JBSS3 sem ação no índice) e duas no índice, mas sem negócio no período (BRML3, Categoria B; NTCO3, incorporada, com a NATU3 como sucessora no índice). Entrar com os sucessores (AZUL3, AXIA3, NATU3) como atuais é decisão de escopo, não feita aqui.
 - O BTG Pactual (banco e unit, BPAC11) fica fora por lacuna do índice do F2A-1 (código "000000" no FCA). Corrigir o índice não é escopo deste item; o caso vai para a decisão do Marcos (item novo na fila ou correção na tabela de correções do F2A-19).

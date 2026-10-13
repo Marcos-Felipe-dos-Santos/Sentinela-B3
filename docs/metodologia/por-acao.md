@@ -1,11 +1,11 @@
-# Números por ação (LPA, VPA, ações, classes, units e escala) — versão 0.1
+# Números por ação (LPA, VPA, ações, classes, units e escala) — versão 0.2
 
-**Status:** rascunho
+**Status:** rascunho, com as decisões do Marcos de 13/10/2026 (seção 7) incorporadas; aguarda a segunda auditoria em modo FICHA. A versão 0.1 foi auditada em 13/10/2026 (dois bloqueios e seis ressalvas, relatório em `docs/loop/historico/fase-2a/auditoria-ficha-por-acao.md`).
 **Itens que dependem:** F2A-36 (LPA divulgado por espécie, classes e units), F2A-37 (reservas dos controladores)
 **Origem no código:** F2A-3 (derivação por ação) e F2A-5 (alertas), já entregues
 **Decisões de origem:** ADR-0003, D19, D20 e D21; checkpoint da Fase 0, seção 4, item 1 (revisado pela D19)
 
-Esta ficha só apresenta definições, dados e casos. Os pontos marcados **[DECISÃO]** ficam para o Marcos; nenhum parâmetro é decidido aqui.
+Esta ficha apresenta definições, dados e casos. As escolhas de parâmetro e de tratamento são do Marcos e estão registradas na seção 7, com data; nenhuma foi tomada pelo texto.
 
 ## 1. Fórmula e referência
 
@@ -48,34 +48,34 @@ Consequência: o LPA divulgado já é o número da norma (controladora, média p
 Abstenções (D19 e D20; textos que o código usa ou passará a usar):
 
 1. **Composição do Capital ausente ou de outro documento:** sem ações, não há VPA nem LPA recalculado ("sem Composição do Capital no documento do lucro"; total de ações ≤ 0: "total de ações da Composição do Capital ≤ 0").
-2. **Escala indeterminada:** sem LPA divulgado para inferir a escala das ações, ou com a razão fora da faixa, o recalculado se abstém ("escala das ações indeterminada"; D19, regra 5).
+2. **Escala indeterminada:** sem LPA divulgado coerente de nenhuma espécie do mesmo documento para inferir a escala das ações, ou com a razão fora da faixa, a escala é indeterminada ("escala das ações indeterminada"; D19, regra 5). Abstêm-se só os números que dependem da quantidade de ações: LPA recalculado, VPA e capitalização. O **LPA divulgado não se abstém** por isso, porque já vem em R$ por ação (decisão 7.1).
 3. **Mais de uma classe preferencial com direitos distintos** (PNA, PNB…; `Sigla_Classe_Acao_Preferencial` do FCA): o recalculado comum se abstém para as preferenciais; vale só o divulgado da classe e, sem ele, o LPA da classe se abstém (D19, regra 3).
 
-   **Regras 2 e 5 juntas (leitura proposta, a confirmar na aprovação — [DECISÃO], seção 7.4).** A regra 2 (divulgado ausente → recalculado como aproximação declarada) só se aplicaria quando outra espécie do mesmo documento traz LPA divulgado que determina a escala; sem nenhum divulgado no documento, a regra 5 deixaria a escala indeterminada e o recalculado se absteria. A outra leitura possível é tirar a escala de outra fonte (outro documento da mesma companhia). A abstenção 4 depende da escolha.
-
-2a. **Divulgado com sinal oposto ao do lucro dos controladores:** pela regra 1 da D19, o divulgado só é a entrada dos métodos se for "coerente" (escala determinada e mesmo sinal do lucro). Com sinal oposto, não é coerente: vale o tratamento de divulgado ausente (regra 2). Caso real: a QUAL3 traz duas linhas "ON" com sinais opostos (−0,009 e 0,047; diário do F2A-3); hoje o F2A-3 não deriva LPA para ela (abstenção registrada no diário).
+   **Regras 2 e 5 juntas (decisão 7.4).** A regra 2 (divulgado ausente → recalculado como aproximação declarada) só se aplica quando outra espécie do **mesmo documento** traz LPA divulgado coerente que determina a escala. Sem nenhum divulgado coerente no documento, a escala é indeterminada (abstenção 2) e o recalculado se abstém. A escala nunca vem de outro documento.
 4. **Unit com espécie componente sem LPA divulgado:** aplica-se a regra 2 com a marca; se a regra 3 proíbe o recalculado da espécie, a unit inteira se abstém (D19, regra 4). Composição não reconhecida: abstém-se ("unit sem composição oficial (ações por unit)").
 5. **PL ou lucro dos controladores não identificados, ou PL ≤ 0:** sem ROE dos controladores ("PL dos controladores não identificado no documento", "lucro dos controladores não identificado no documento", "PL dos controladores ≤ 0").
 6. **Bancos:** a 2.03 não é patrimônio líquido (F2A-16: 2.07 ou 2.08); até o F2A-9 o PL e o VPA do banco se abstêm.
 7. **Par (código, descrição) sem correspondência na tabela de contas:** o campo se abstém (D20, F2A-33 e F2A-38).
+8. **LPA divulgado incoerente (decisão 7.5):** o LPA da espécie se abstém, com alerta no relatório de qualidade, e o recalculado **não** entra no lugar. Incoerente é: (a) sinal oposto ao do lucro dos controladores; ou (b) mais de uma linha de LPA básico para a mesma espécie com valores diferentes. Linhas repetidas com o mesmo valor contam como uma. Caso real: a QUAL3 traz na DRE consolidada duas linhas básicas "ON", −0,00895 e +0,04662, com lucro dos controladores positivo (R$ 10.665.000): é conflito de linhas (b), e uma delas também tem sinal oposto (a). Textos: "LPA divulgado com sinal oposto ao lucro dos controladores" e "LPA divulgado com linhas conflitantes para a espécie".
 
-Reservas permitidas (D20, política aprovada com o ADR):
+Reservas permitidas (D20, política aprovada com o ADR, e decisão 7.2):
 - **Lucro dos controladores ausente:** vale o lucro total só se a linha dos não controladores estiver ausente ou zerada.
+- **Lucro dos controladores zerado com o dos não controladores zerado ou ausente, e lucro consolidado diferente de zero:** o documento não separou o lucro. Vale o lucro total só se o balanço também não mostrar minoritários (2.03.09 ausente ou zerada). Com 2.03.09 diferente de zero, o lucro dos controladores se abstém ("lucro dos controladores não separado no documento, com não controladores no balanço").
 - **PL dos controladores:** vale o PL total só se a participação dos não controladores no balanço estiver ausente ou zerada **e** o lucro dos não controladores também.
 - **Valor inválido** (não numérico, NaN, infinito) nunca autoriza reserva: o campo se abstém.
 
-**Por que a reserva é aceitável.** Sem a linha dos não controladores, a companhia não informa minoritários; tratar o consolidado como da controladora é a leitura do próprio documento. A ausência é falta de evidência, não prova de que não há minoritários (D20); por isso a reserva fica registrada na proveniência do campo.
+**Por que a reserva é aceitável.** Sem a linha dos não controladores, a companhia não informa minoritários; tratar o consolidado como da controladora é a leitura do próprio documento. A ausência é falta de evidência, não prova de que não há minoritários (D20); por isso a reserva fica registrada na proveniência do campo. As linhas 3.11.01 e 3.11.02 zeradas com lucro consolidado diferente de zero não somam o consolidado: o zero ali é falta de separação, não um valor informado, e por isso recebe o mesmo tratamento da ausência, com a conferência do balanço.
 
 **Onde a reserva seria usada** (levantamento só de leitura na DFP 2025 consolidada, última versão de cada companhia; script e saída em `outputs/f2a34_reservas.py` e `outputs/f2a34_reservas.json`, fora do git):
 - 439 companhias com DRE e BPP consolidados (a mesma contagem para DRE ou BPP). As listas "nas 45" casam a companhia pelo código CVM do mapa, e não pelo ticker do índice: AZUL4, GOLL4 e PETZ3 estão nas 45 com código, mas fora do índice com esse ticker.
 - **Lucro dos controladores ausente:** 0 (todas trazem a linha "Atribuído a Sócios da Empresa Controladora").
-- **Lucro dos controladores zerado com o dos não controladores zerado ou ausente:** 105. Não é o caso "ausente" da D20; hoje o F2A-3 usa o lucro total aí (ver **[DECISÃO]** na seção 7). Nas 45 ações do mapa: KLBN11, LWSA3, PETZ3, SBSP3 e TIMS3 (o diário do F2A-3 citou KLBN11, SBSP3, PETZ3 e LWSA3; a TIMS3 também está no caso, mas não teve LPA derivado). Na KLBN11 a participação dos não controladores no balanço é de R$ 6,5 bilhões (2.03.09), ou seja, há minoritários e o lucro total os inclui.
+- **Lucro dos controladores zerado com o dos não controladores zerado ou ausente:** 105. Hoje o F2A-3 usa o lucro total em todos; pela decisão 7.2, o F2A-37 o mantém só onde o balanço não mostra minoritários. Nas 45 ações do mapa: KLBN11, LWSA3, PETZ3, SBSP3 e TIMS3 (o diário do F2A-3 citou KLBN11, SBSP3, PETZ3 e LWSA3; a TIMS3 também está no caso, mas não teve LPA derivado). Na KLBN11 a participação dos não controladores no balanço é de R$ 6,5 bilhões (2.03.09): há minoritários, e o lucro total pode incluir a parte deles, que o documento não informa. Pela decisão 7.2, o lucro dos controladores da KLBN11 se abstém (e com ele o ROE e o LPA recalculado); o LPA divulgado dela (0,2286) segue como entrada dos métodos. O F2A-37 conta no diário quantas das 105 caem em cada lado.
 - **PL total como PL dos controladores** (2.03.09 ausente ou zerada e lucro dos não controladores ausente ou zerado): 171 companhias fora do setor "Bancos", mais 2 bancos (BEES3 e um sem ticker no índice), em que a reserva não seria usada porque o PL do banco se abstém até o F2A-9. Nas 45 ações: AZUL4, GOLL4, LREN3, LWSA3, MGLU3, PETZ3, RECV3, SBSP3 e TIMS3.
 - **PL com reserva bloqueada** (2.03.09 ausente ou zerada, mas lucro dos não controladores diferente de zero): 8; com ticker no índice: SEQL3, SBFG3, INEP3, POSI3 e MWET3/MWET4. Pela D20, o PL dos controladores se abstém nesses casos.
 
 ## 5. Exemplo calculado de forma independente
 
-Valores lidos à mão nos CSVs publicados pela CVM (DFP 2025, `dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2025.zip`, cópia de 8/10/2026) e no FCA 2026 (`fca_cia_aberta_2026.zip`). Nenhum código do projeto foi rodado ou importado para as contas.
+Valores lidos à mão nos CSVs publicados pela CVM (DFP 2025, `dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2025.zip`, arquivo com SHA-256 `336a92cc2d0829b5b96adcf2550f9acd469503cbf8b8cb6a05873ddd668bc4d2`, coletado em 1/10/2026 segundo a proveniência do F2A-32; a versão 0.1 citava 8/10/2026, data da consulta, não da coleta) e no FCA 2026 (`fca_cia_aberta_2026.zip`). Nenhum código do projeto foi rodado ou importado para as contas.
 
 ### 5.1 Companhia com ON e PN — Petrobras (PETR3, PETR4)
 
@@ -97,7 +97,7 @@ Conta:
 4. LPA divulgado (entrada dos métodos, D19): **8,54** para PETR3 e para PETR4. Diferença do recalculado: +0,05%.
 5. PL dos controladores = (417.587.000 − 1.801.000) × 1.000 = R$ 415.786.000.000.
 6. VPA = 415.786.000.000 ÷ 12.888.732.761 = **32,26**.
-7. Para comparação: com o lucro consolidado (110.605.000 mil), o LPA recalculado seria 8,5816 (+0,43% sobre o dos controladores; +0,49% sobre o divulgado); com o PL consolidado, o VPA seria 32,40 (+0,43%).
+7. Para comparação: com o lucro consolidado (110.605.000 mil), o LPA recalculado seria 8,5815 (+0,43% sobre o dos controladores; +0,49% sobre o divulgado); com o PL consolidado, o VPA seria 32,40 (+0,43%).
 
 ### 5.2 Unit — Taesa (TAEE11)
 
@@ -134,14 +134,14 @@ Esses dois casos viram teste no F2A-36.
 
 ## 7. Parâmetros e justificativa
 
-### 7.1 Faixa da razão para inferir a escala: [0,1; 10] — **[DECISÃO]**
+### 7.1 Faixa da razão para inferir a escala: [0,1; 10] — **decidido pelo Marcos em 13/10/2026: manter**
 
-O F2A-3 escolhe unidade ou milhar pela razão (LPA recalculado ÷ LPA divulgado) mais perto de 1, e só aceita a escolha se a razão cair em [0,1; 10]. As duas hipóteses diferem por 1.000, então a escolha só fica ambígua perto de 1/31,6 ou de 31,6 (a raiz de 1.000); a faixa fica dentro desse intervalo com folga.
+O F2A-3 escolhe unidade ou milhar pela razão (LPA recalculado ÷ LPA divulgado) mais perto de 1, no sentido de menor `|log(razão)|` (`sentinela/data/acoes_cvm.py`), e só aceita a escolha se a razão cair em [0,1; 10]. As duas hipóteses diferem por 1.000, então a escolha só fica ambígua perto de 1/31,6 ou de 31,6 (a raiz de 1.000); a faixa fica dentro desse intervalo com folga.
 
 Distribuição medida:
-- **Universo da DFP 2025** (F2A-16, 255 companhias com escala determinável): razão na escala escolhida entre ≈ 0 e 19,9; p10 0,837, mediana 1,000, p90 1,051; 209 de 255 dentro de 10%; fora de [0,8; 1,25]: 28; fora de [0,5; 2]: 17; **fora de [0,1; 10]: 5** (CD_CVM 016675 ≈ 0; 004537 0,001; 018414 0,001; 024120 0,08; 023000 19,9).
-- **45 ações do mapa** (F2A-3, 38 com razão): mínimo 0,142, mediana 1,000, máximo 1,199; escala MIL em 9 (ABEV3, CMIG4, CYRE3, ELET3, ENEV3, ITUB4, LREN3, MRVE3, VALE3). Sem razão: ASAI3 e NTCO3 (sem DFP consolidada 2025 nem Composição do Capital), COGN3, RECV3, TIMS3 e VIVT3 (linhas 3.99 todas zeradas) e QUAL3 (duas linhas "ON" com sinais opostos).
-- **As duas distribuições não são diretamente comparáveis:** a do F2A-16 só usa lucro dos controladores e LPA positivos; a do F2A-3 aceita prejuízo com LPA do mesmo sinal (por isso o mínimo nas 45 é 0,142, da GOLL4, aqui, e 0,258, da AZUL4, no F2A-16).
+- **Universo da DFP 2025** (F2A-16, 255 companhias com escala determinável; o lucro é o dos controladores ou, em **49** delas, o lucro total, porque o levantamento usa `controladores or total` também quando a linha dos controladores vem zerada — `scripts/levantamento_fase2a.py`; contagens reproduzidas pela auditoria externa): razão na escala escolhida entre ≈ 0 e 19,9; p10 0,837, mediana 1,000, p90 1,051; 209 de 255 dentro de 10%; fora de [0,8; 1,25]: 28; fora de [0,5; 2]: 17; **fora de [0,1; 10]: 5** (CD_CVM 016675 ≈ 0; 004537 0,001; 018414 0,001; 024120 0,08; 023000 19,9).
+- **45 ações do mapa** (F2A-3, 38 com razão): mínimo 0,142, mediana 1,000, máximo 1,199; escala MIL em 9 (ABEV3, CMIG4, CYRE3, ELET3, ENEV3, ITUB4, LREN3, MRVE3, VALE3). Sem razão: ASAI3 e NTCO3 (sem DFP consolidada 2025 nem Composição do Capital), COGN3, RECV3, TIMS3 e VIVT3 (linhas 3.99 todas zeradas) e QUAL3 (duas linhas "ON" conflitantes, −0,00895 e +0,04662; abstenção 8).
+- **As duas distribuições não são diretamente comparáveis:** a do F2A-16 usa só LPA positivos e o lucro dos controladores com a reserva acima (49 casos com lucro total); a do F2A-3 aceita prejuízo com LPA do mesmo sinal (por isso o mínimo nas 45 é 0,142, da GOLL4, aqui, e 0,258, da AZUL4, no F2A-16).
 
 **Casos dentro da faixa e longe de 1** (|razão − 1| > 10%), todos com alerta do F2A-5:
 
@@ -156,17 +156,30 @@ Distribuição medida:
 
 As "leituras prováveis" são hipóteses a conferir; nenhuma foi verificada no formulário da companhia.
 
-Opções para o Marcos: manter [0,1; 10]; estreitar para [0,5; 2] (abstém GOLL4 e AZUL4 nas 45, e 17 de 255 no universo); ou abster sempre que a razão sair de [0,8; 1,25] (28 de 255). A faixa decide a escala das ações, e portanto o VPA e o recalculado; pela regra 1 da D19, decide também se o divulgado é "coerente" (escala determinada) e entra nos métodos. Estreitar a faixa tira, então, o divulgado da entrada dos métodos nas companhias que saem dela (GOLL4 e AZUL4 com [0,5; 2]), e não só o VPA. Se a escala indeterminada deve ou não derrubar o divulgado, que é por ação e não depende da escala das ações, é ponto aberto: entra na mesma decisão.
+Opções apresentadas: manter [0,1; 10]; estreitar para [0,5; 2] (17 de 255 fora); ou [0,8; 1,25] (28 de 255).
 
-### 7.2 Controladora zerada com não controladores zerados — **[DECISÃO]**
+**Decisão (13/10/2026):**
+- **Manter [0,1; 10].** A faixa só distingue unidade de milhar (fator 1.000); a qualidade do número é papel do alerta de 10% do F2A-5, não da faixa. Estreitá-la misturaria as duas funções.
+- **Escala indeterminada não derruba o LPA divulgado.** Ela derruba só o que depende da quantidade de ações (recalculado, VPA, capitalização). Isso revisa a regra 1 da D19: "coerente" passa a ser "mesmo sinal do lucro dos controladores e uma única linha por espécie", sem a condição de escala (ADR-0003, revisão de 13/10/2026).
+- O F2A-36 refaz a contagem fora da faixa com a política da decisão 7.2 e registra no diário; a faixa não muda por isso.
 
-O F2A-3 usa o lucro total quando 3.11.01 e 3.11.02 vêm zeradas (105 companhias na DFP 2025; KLBN11, LWSA3, PETZ3, SBSP3 e TIMS3 nas 45). A D20 só fala da linha **ausente**. Na KLBN11 o balanço mostra R$ 6,5 bilhões de não controladores, então o lucro total não é só da controladora; o ROE dos controladores do F2A-3 (0,213, contra 0,117 na V1) divide esse lucro total pelo PL já sem os não controladores, misturando escopos. Opções: tratar "zerada" como "ausente" e manter a reserva; aplicar a reserva só sem participação de não controladores no balanço; ou abster. O F2A-37 implementa o que for decidido.
+### 7.2 Controladora zerada com não controladores zerados — **decidido pelo Marcos em 13/10/2026**
+
+O F2A-3 usa o lucro total quando 3.11.01 e 3.11.02 vêm zeradas (105 companhias na DFP 2025; KLBN11, LWSA3, PETZ3, SBSP3 e TIMS3 nas 45). A D20 só fala da linha **ausente**. Na KLBN11 o balanço mostra R$ 6,5 bilhões de não controladores: há minoritários, mas o documento não diz quanto do lucro do exercício é deles, então o lucro total pode misturar escopos. O ROE dos controladores do F2A-3 (0,213, contra 0,117 na V1) divide esse lucro total pelo PL já sem os não controladores. Opções apresentadas: tratar "zerada" como "ausente"; aplicar a reserva só sem participação de não controladores no balanço; ou abster sempre.
+
+**Decisão:** reserva só sem participação de não controladores no balanço (2.03.09 ausente ou zerada); com ela diferente de zero, o lucro dos controladores se abstém. É a mesma conferência que a D20 já faz para o PL. A distinção entre linha ausente, linha zerada e valor inválido continua: valor inválido nunca autoriza reserva. O F2A-37 implementa.
 
 ### 7.3 Limiares de alerta (já entregues no F2A-5, sem mudança aqui)
 
 - Ações da CVM × `sharesOutstanding` do yfinance: alerta acima de 5% (checkpoint da Fase 0, seção 4, item 1).
 - LPA da cascata × LPA divulgado da mesma espécie: alerta acima de 10% (limiar que a V1 já usava). Com o F2A-36, o LPA dos métodos passa a ser o divulgado; o alerta passa a comparar o recalculado com ele.
 
-### 7.4 Regras 2 e 5 da D19 juntas — **[DECISÃO]**
+### 7.4 Regras 2 e 5 da D19 juntas — **decidido pelo Marcos em 13/10/2026**
 
-A seção 4 (abstenção 3) traz a leitura proposta: sem LPA divulgado de nenhuma espécie no documento, a escala fica indeterminada e o recalculado se abstém; com divulgado de outra espécie, o recalculado entra como aproximação declarada. A alternativa é buscar a escala em outro documento da mesma companhia. O Marcos confirma uma das duas na aprovação da ficha.
+A seção 4 (abstenção 3) traz a leitura proposta: sem LPA divulgado de nenhuma espécie no documento, a escala fica indeterminada e o recalculado se abstém; com divulgado de outra espécie, o recalculado entra como aproximação declarada. A alternativa era buscar a escala em outro documento da mesma companhia.
+
+**Decisão:** a escala vem só de outra espécie do **mesmo documento**. Outro documento nunca: quebraria a regra de que todos os números de um cálculo vêm do mesmo documento, e a escala da Composição do Capital pode mudar entre documentos. A regra 3 continua com precedência: o divulgado de outra espécie determina a escala, mas não autoriza o recalculado comum para preferenciais com direitos distintos.
+
+### 7.5 LPA divulgado incoerente — **decidido pelo Marcos em 13/10/2026**
+
+A versão 0.1 tratava divulgado incoerente como ausente (regra 2), o que a D19 não previa (bloqueio da auditoria de 13/10/2026). **Decisão:** divulgado incoerente faz o LPA da espécie se abster, com alerta, sem recalculado no lugar (seção 4, abstenção 8). Sinal trocado ou linhas conflitantes indicam dado com problema, e a reserva o esconderia.

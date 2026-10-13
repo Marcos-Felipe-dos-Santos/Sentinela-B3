@@ -492,20 +492,21 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
 - [ ] **F2A-36** · fix · `fix: use reported EPS by share class in valuation inputs` · **[ADR-0003]** **[P1]**
   ADR-0003, D19, regras 1 a 4. Pré-condição: `docs/metodologia/por-acao.md` com status aprovada; sem isso, `[!]`.
-  - **LPA dos métodos.** O LPA básico divulgado na DRE (3.99.01.x) da espécie do ticker, quando presente e coerente (escala determinada e mesmo sinal do lucro). O recalculado do F2A-3 vira conferência (F2A-5) e reserva.
+  - **LPA dos métodos.** O LPA básico divulgado na DRE (3.99.01.x) da espécie do ticker, quando presente e coerente: mesmo sinal do lucro dos controladores e uma só linha por espécie (ficha, 7.1 e 7.5). Divulgado incoerente (sinal oposto, ou linhas da mesma espécie com valores diferentes, como na QUAL3): o LPA da espécie se abstém, com alerta, e o recalculado não entra no lugar. O recalculado do F2A-3 vira conferência (F2A-5) e reserva.
   - **Sem divulgado.** O recalculado entra com a marca "ações do fim do período, não média ponderada" na proveniência (D16).
   - **Classes preferenciais.** O provedor deixa de agrupar as linhas "PN…" numa chave só: cada classe (PNA, PNB etc., pela `Sigla_Classe_Acao_Preferencial` do FCA) fica separada. Com mais de uma classe com direitos distintos, o recalculado comum se abstém para as preferenciais; vale só o divulgado da classe, e sem ele o LPA da classe se abstém.
   - **Units.** Soma dos LPAs das espécies componentes, ponderada pela composição oficial do FCA. Componente sem divulgado usa a regra 2, exceto quando a regra 3 a proíbe: aí a unit inteira se abstém.
-  - **Escala.** Segue a faixa aprovada na ficha.
+  - **Escala.** Faixa [0,1; 10] (ficha, 7.1), inferida só por espécie do mesmo documento, nunca de outro documento (7.4). Escala indeterminada derruba o recalculado, o VPA e a capitalização, não o LPA divulgado.
+  - **Banrisul.** Confere no índice as classes de BRSR3, BRSR5 e BRSR6 (`Sigla_Classe_Acao_Preferencial`) e o critério de negócios do universo inicial; o que não passar vira histórico, com o motivo no diário e em `docs/decisoes/universo-inicial.md`.
 
   **Testes que mudam:** `tests/test_market_engine_acoes_cvm.py::test_lpa_usa_on_mais_pn_menos_tesouraria` e `::test_unit_multiplica_pelas_acoes_por_unit` (F2A-3) passam a afirmar o papel de conferência e reserva do recalculado; os testes do F2A-5 que comparam com o divulgado seguem iguais. Justificativa no diário.
 
   **Aceite:**
   - `tests/test_market_engine_acoes_cvm.py::test_lpa_dos_metodos_e_o_divulgado_da_especie` passa por xfail estrito → marca retirada → PASS;
-  - `::test_sem_divulgado_usa_recalculado_com_marca`, `::test_pna_e_pnb_nao_usam_lpa_comum`, `::test_unit_soma_lpas_ponderados_pela_composicao`, `::test_unit_com_componente_sem_reserva_abstem` e `::test_exemplo_da_ficha_por_acao` (valor esperado tirado da ficha, D21 e D28);
+  - `::test_sem_divulgado_usa_recalculado_com_marca`, `::test_divulgado_incoerente_abstem_sem_recalculado`, `::test_linhas_conflitantes_da_especie_abstem`, `::test_escala_indeterminada_mantem_o_divulgado`, `::test_escala_vem_de_outra_especie_do_mesmo_documento`, `::test_pna_e_pnb_nao_usam_lpa_comum`, `::test_unit_soma_lpas_ponderados_pela_composicao`, `::test_unit_com_componente_sem_reserva_abstem` e `::test_exemplo_da_ficha_por_acao` (valor esperado tirado da ficha, D21 e D28);
   - golden inalterado: a mudança é da cascata. Se o golden mudar, o item fica `[!]`;
   - mutation ≥ 80% no módulo puro;
-  - diário: LPA antes → depois nas 45 ações e nas units, e quais se abstêm, com o motivo;
+  - diário: LPA antes → depois nas 45 ações, nas units, nos sucessores (AZUL3, AXIA3, NATU3) e no Banrisul, e quais se abstêm, com o motivo; a contagem fora da faixa [0,1; 10] refeita com a política da ficha 7.2;
   - gate da fase.
 
 - [ ] **F2A-37** · fix · `fix: restrict controlling-interest fallbacks to evidence of no minorities` · **[ADR-0003]**
@@ -513,13 +514,27 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - **Lucro dos controladores ausente:** vale o lucro total só se a linha dos não controladores também estiver ausente ou zerada. Com ela presente e diferente de zero, abstém-se.
   - **PL dos controladores:** vale o PL total só se a conta de não controladores do balanço **e** o lucro dos não controladores estiverem ausentes ou zerados. Qualquer evidência de minoritários sem a separação no balanço: abstém-se.
   - **Valor inválido** (linha presente com valor não numérico, NaN ou infinito) nunca autoriza reserva: o campo se abstém.
+  - **Linhas zeradas** (decisão de 13/10/2026, ficha 7.2): lucro dos controladores e dos não controladores zerados com lucro consolidado diferente de zero valem como "não separado". O lucro total entra só se a participação dos não controladores no balanço (2.03.09) estiver ausente ou zerada; senão, o lucro dos controladores se abstém. Caso real: KLBN11 (R$ 6,5 bilhões de não controladores) se abstém; o LPA divulgado dela segue nos métodos.
   - Toda reserva usada fica registrada na proveniência do campo.
 
   **Aceite:**
   - `tests/test_cvm_controladores.py::test_lucro_total_nao_substitui_controladores_com_minoritarios` passa por xfail estrito → marca retirada → PASS;
-  - `::test_pl_total_nao_substitui_com_lucro_de_minoritarios`, `::test_valor_invalido_nao_autoriza_reserva` e `::test_sem_minoritarios_usa_total_e_registra_reserva`;
+  - `::test_pl_total_nao_substitui_com_lucro_de_minoritarios`, `::test_valor_invalido_nao_autoriza_reserva`, `::test_sem_minoritarios_usa_total_e_registra_reserva`, `::test_controladora_zerada_com_minoritarios_no_balanco_abstem` e `::test_controladora_zerada_sem_minoritarios_usa_total`;
   - golden inalterado: a mudança é da cascata. Se o golden mudar, o item fica `[!]`;
-  - diário: empresas do universo que usam a reserva e as que passam a se abster, conferidas contra a lista da ficha;
+  - diário: empresas do universo que usam a reserva e as que passam a se abster, conferidas contra a lista da ficha; das 105 companhias com as linhas zeradas na DFP 2025, quantas caem em cada lado;
+  - gate da fase.
+
+- [ ] **F2A-39** · fix · `fix: map BTG Pactual unit through the source corrections table` · **[ADR-0003]** **[CORREÇÕES]**
+  Decisão de 13/10/2026 (universo inicial, D32). O FCA traz o código "000000" para a unit do Banco BTG Pactual S/A (CNPJ 30.306.294/0001-45, composição "1 ON E 2 PNA"), e o índice do F2A-1 a descarta como código fora do formato de ticker. O BPAC11 negocia no COTAHIST (1.695.828 negócios à vista em jul–set/2026).
+  - **Correção.** Uma linha em `correcoes.csv` (F2A-19, aprovada em 5/10/2026), com a evidência oficial: o ISIN do BPAC11 no COTAHIST ligado ao CNPJ pelo cadastro ou pelo FCA. Nenhum código é inventado; sem evidência que ligue os dois, o item fica `[!]`.
+  - **Índice.** Depois de `python -m sentinela.data.referencia`, o BPAC11 aparece como UNIT do BTG, com a composição oficial.
+  - **Universo.** O BTG sai das exclusões e entra nos casos difíceis de `docs/decisoes/universo-inicial.md` como atual, se passar no critério de negócios.
+
+  **Aceite:**
+  - `tests/test_referencia_correcoes.py::test_unit_com_codigo_zerado_no_fca_e_corrigida_pela_tabela` passa por xfail estrito → marca retirada → PASS, com FCA e COTAHIST sintéticos;
+  - os testes atuais das correções seguem verdes, sem asserção alterada;
+  - golden inalterado: a mudança é do índice;
+  - diário: a evidência usada (arquivo, data, ISIN) e a contagem do índice antes → depois;
   - gate da fase.
 
 - [ ] **F2A-7** · feat · `feat: add five-year CVM series and trailing twelve months`
