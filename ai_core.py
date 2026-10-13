@@ -69,6 +69,7 @@ class SentinelaAI:
                 'acoes_por_unit', 'referencia_oficial', 'acoes_cvm',
                 'divergencia_acoes', 'valores_coletados', 'valores_por_fonte',
                 'proveniencia', 'lpa_cvm', 'classe_preferencial', 'classes_preferenciais',
+                'serie_cvm', 'ttm_cvm',
             }
             return "\n".join(
                 [f"- {k}: {v}" for k, v in dados.items()

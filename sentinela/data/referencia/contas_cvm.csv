@@ -39,3 +39,11 @@ seguradora;lucro_controladores;3.13.01;atribuido a socios da empresa controlador
 seguradora;lucro_nao_controladores;3.13.02;atribuido a socios nao controladores;dfp_cia_aberta_DRE_con_2025.csv;2025;BBSE3 17.344.597/0001-94 BB SEGURIDADE PARTICIPAÇÕES S.A.
 empresa;lucro_controladores;3.09.01;atribuido a socios da empresa controladora;dfp_cia_aberta_DRE_con_2024.csv;2024;17.157.777/0001-67 BANCO NACIONAL S.A.
 empresa;lucro_nao_controladores;3.09.02;atribuido a socios nao controladores;dfp_cia_aberta_DRE_con_2024.csv;2024;17.157.777/0001-67 BANCO NACIONAL S.A.
+empresa;jcp;7.08.04.01;juros sobre o capital proprio;dfp_cia_aberta_DVA_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A
+empresa;dividendos;7.08.04.02;dividendos;dfp_cia_aberta_DVA_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A
+banco;jcp;7.09.04.01;juros sobre o capital proprio;dfp_cia_aberta_DVA_con_2025.csv;2025;BBAS3 00.000.000/0001-91 BCO BRASIL S.A.
+banco;dividendos;7.09.04.02;dividendos;dfp_cia_aberta_DVA_con_2025.csv;2025;BBAS3 00.000.000/0001-91 BCO BRASIL S.A.
+seguradora;jcp;7.08.04.01;juros sobre o capital proprio;dfp_cia_aberta_DVA_con_2025.csv;2025;QUAL3 11.992.680/0001-93 QUALICORP CONSULTORIA E CORRETORA DE SEGUROS S.A.
+seguradora;dividendos;7.08.04.02;dividendos;dfp_cia_aberta_DVA_con_2025.csv;2025;QUAL3 11.992.680/0001-93 QUALICORP CONSULTORIA E CORRETORA DE SEGUROS S.A.
+seguradora;jcp;7.11.04.01;juros sobre o capital proprio;dfp_cia_aberta_DVA_con_2025.csv;2025;BBSE3 17.344.597/0001-94 BB SEGURIDADE PARTICIPAÇÕES S.A.
+seguradora;dividendos;7.11.04.02;dividendos;dfp_cia_aberta_DVA_con_2025.csv;2025;BBSE3 17.344.597/0001-94 BB SEGURIDADE PARTICIPAÇÕES S.A.

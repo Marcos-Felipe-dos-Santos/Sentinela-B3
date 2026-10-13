@@ -524,7 +524,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: empresas do universo que usam a reserva e as que passam a se abster, conferidas contra a lista da ficha; das 105 companhias com as linhas zeradas na DFP 2025, quantas caem em cada lado;
   - gate da fase.
 
-- [ ] **F2A-7** · feat · `feat: add five-year CVM series and trailing twelve months`
+- [x] **F2A-7** · feat · `feat: add five-year CVM series and trailing twelve months`
   F-24, F-8 e as janelas decididas no checkpoint (seção 4, item 4):
   - Bazin: dividendos médios de 5 anos;
   - Graham: LPA médio de 5 anos;

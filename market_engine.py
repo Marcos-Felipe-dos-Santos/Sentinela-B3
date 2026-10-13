@@ -1,6 +1,6 @@
 import logging
 import math
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any, Dict, Optional
 
 import yfinance as yf
@@ -12,7 +12,7 @@ from cvm_provider import CVMProvider
 from cvm_ticker_map import get_cd_cvm
 from database import DatabaseManager
 from fundamentus_scraper import FundamentusScraper
-from sentinela.data import acoes_cvm, contas_cvm
+from sentinela.data import acoes_cvm, contas_cvm, series_cvm
 from sentinela.data.referencia.carga import ReferenciaOficial
 from sentinela.domain.provenance import FieldProvenance, FieldValue
 from sentinela.domain.enums import AssetType
@@ -633,6 +633,7 @@ class MarketEngine:
             # para manter a interface dos provedores anteriores ao F2A-33.
             modelo = contas_cvm.modelo_do_setor(dados.get('setor'))
             extra = {} if modelo == 'empresa' else {'modelo': modelo}
+            self._serie_cvm(ticker, dados, cvm, cd_cvm, modelo)
             historico = cvm.calcular_indicadores(cd_cvm, anos=1, **extra)
             if not historico:
                 dados['cvm_disponivel'] = False
@@ -705,6 +706,42 @@ class MarketEngine:
 
         dados['cvm_disponivel'] = False
         return False
+
+    def _serie_cvm(
+        self, ticker: str, dados: Dict[str, Any], cvm: Any, cd_cvm: int, modelo: str
+    ) -> None:
+        """Série de cinco exercícios e TTM da CVM (F2A-7), em `dados['serie_cvm']` e `dados['ttm_cvm']`.
+
+        Só disponibiliza os dados: nenhum campo dos métodos sai daqui (F2C-1), e o exercício
+        corrente continua sendo o da chamada de um ano. Provedor sem a interface (anterior ao
+        item) não passa pela etapa.
+        """
+        indicadores_da_serie = getattr(cvm, 'indicadores_da_serie', None)
+        acumulados_ttm = getattr(cvm, 'acumulados_ttm', None)
+        if indicadores_da_serie is None or acumulados_ttm is None:
+            return
+        hoje = date.today()
+        try:
+            classifier = getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER)
+            exercicios = series_cvm.serie_anual(
+                indicadores_da_serie(cd_cvm, hoje.year - 1, modelo),
+                hoje.year - 1,
+                especie=dados.get('especie'),
+                classe=dados.get('classe_preferencial') or dados.get('especie'),
+                classes_preferenciais=dados.get('classes_preferenciais'),
+                eh_unit=classifier.classify(ticker, dados) == AssetType.UNIT,
+                acoes_por_unit=dados.get('acoes_por_unit'),
+            )
+            dados['serie_cvm'] = {
+                'exercicios': exercicios,
+                'proventos_base': series_cvm.COMPETENCIA,
+            }
+            ttm = series_cvm.ttm(acumulados_ttm(cd_cvm, hoje, modelo), hoje)
+            dados['ttm_cvm'] = (
+                {'abstencao': ttm.motivo} if isinstance(ttm, series_cvm.Abstencao) else ttm
+            )
+        except Exception as exc:
+            logger.warning(f"[{ticker}] CVM série/TTM error: {exc}")
 
     def _por_acao_cvm(
         self, ticker: str, dados: Dict[str, Any], ind: Dict[str, Any]

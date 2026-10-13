@@ -396,6 +396,28 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
     referencia = dados.get("referencia_oficial")
     if referencia:
         fontes.append(("Referência oficial", _texto_referencia(referencia)))
+    serie = dados.get("serie_cvm")
+    if serie:
+        anos = (
+            ", ".join(str(e["exercicio"]) for e in serie.get("exercicios") or [])
+            or "nenhum"
+        )
+        fontes.append(
+            (
+                "Série da CVM (F2A-7, ainda sem uso nos métodos)",
+                f"exercícios: {anos}; proventos por {serie.get('proventos_base')}",
+            )
+        )
+    ttm = dados.get("ttm_cvm")
+    if ttm:
+        fontes.append(
+            (
+                "Últimos doze meses da CVM",
+                f"não calculado: {ttm['abstencao']}"
+                if "abstencao" in ttm
+                else f"{ttm['inicio']} a {ttm['fim']}; proventos por {ttm.get('proventos_base')}",
+            )
+        )
 
     sintese = [
         (

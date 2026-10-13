@@ -11,7 +11,7 @@ from pathlib import Path
 import pandas as pd
 
 from cvm_download import baixar_arquivo
-from sentinela.data import contas_cvm, controladores, proveniencia
+from sentinela.data import contas_cvm, controladores, proveniencia, series_cvm
 from sentinela.data.acoes_cvm import (
     MOTIVO_DOCUMENTO_DIFERENTE,
     MOTIVO_SEM_COMPOSICAO,
@@ -298,13 +298,21 @@ class CVMProvider:
                 low_memory=False,
             )
 
-    def parsear_demonstrativo(self, zip_path: Path, tipo: str, include_cd_cvm: bool = False, include_versao: bool = False) -> pd.DataFrame:
+    def parsear_demonstrativo(
+        self,
+        zip_path: Path,
+        tipo: str,
+        include_cd_cvm: bool = False,
+        include_versao: bool = False,
+        include_periodo: bool = False,
+    ) -> pd.DataFrame:
         """
         Lê o CSV do tipo dentro do ZIP e retorna DataFrame limpo.
         Por padrão, retorna 5 colunas:
         CNPJ_CIA, DT_REFER, CD_CONTA, DS_CONTA, VL_CONTA.
 
-        Se include_cd_cvm for True, inclui a coluna CD_CVM.
+        Se include_cd_cvm for True, inclui a coluna CD_CVM. Se include_periodo for True,
+        inclui DT_INI_EXERC e DT_FIM_EXERC (F2A-7: acumulado e trimestre do ITR).
 
         Aplica a escala monetária (MIL -> BRL) em VL_CONTA.
 
@@ -320,6 +328,7 @@ class CVMProvider:
             tipo,
             include_cd_cvm,
             include_versao,
+            include_periodo,
         )
         with _cache_trava:
             trava = _travas_chave.setdefault(chave[:1] + chave[3:], threading.Lock())
@@ -328,14 +337,23 @@ class CVMProvider:
                 if chave in _cache_parse:
                     _cache_parse.move_to_end(chave)
                     return _cache_parse[chave].copy()
-            df = self._parsear_sem_cache(zip_path, tipo, include_cd_cvm, include_versao)
+            df = self._parsear_sem_cache(
+                zip_path, tipo, include_cd_cvm, include_versao, include_periodo
+            )
             with _cache_trava:
                 _cache_parse[chave] = df
                 while len(_cache_parse) > _CACHE_MAX_ENTRADAS:
                     _cache_parse.popitem(last=False)
         return df.copy()
 
-    def _parsear_sem_cache(self, zip_path: Path, tipo: str, include_cd_cvm: bool, include_versao: bool) -> pd.DataFrame:
+    def _parsear_sem_cache(
+        self,
+        zip_path: Path,
+        tipo: str,
+        include_cd_cvm: bool,
+        include_versao: bool,
+        include_periodo: bool = False,
+    ) -> pd.DataFrame:
         df = self._read_raw(zip_path, tipo)
 
         if "ORDEM_EXERC" in df.columns:
@@ -357,6 +375,8 @@ class CVMProvider:
             cols.append("CD_CVM")
         if include_versao and "VERSAO" in df.columns:
             cols.append("VERSAO")
+        if include_periodo:
+            cols += [c for c in ("DT_INI_EXERC", "DT_FIM_EXERC") if c in df.columns]
 
         return df[cols].reset_index(drop=True)
 
@@ -395,9 +415,12 @@ class CVMProvider:
     # Cálculo de indicadores históricos
     # ------------------------------------------------------------------
 
-    def calcular_indicadores(self, cd_cvm: int, anos: int = 5, modelo: str = "empresa") -> dict:
+    def calcular_indicadores(
+        self, cd_cvm: int, anos: int = 5, modelo: str = "empresa", ano_final: int | None = None
+    ) -> dict:
         """
-        Retorna dict {ano: {indicador: valor}} para os últimos N anos.
+        Retorna dict {ano: {indicador: valor}} para os últimos N anos, até `ano_final`
+        (padrão: o ano anterior ao corrente).
 
         Indicadores: ativo_total, ativo_circulante, passivo_total,
         passivo_circulante, patrimonio_liquido, receita_liquida, ebit,
@@ -410,11 +433,12 @@ class CVMProvider:
         procura os pares de todos os modelos, como o F2A-3 fazia pela descrição.
         """
         leitura_generica = "empresa" if modelo == "banco" else modelo
-        ano_atual = date.today().year
+        if ano_final is None:
+            ano_final = date.today().year - 1
         resultado: dict[int, dict] = {}
 
-        for delta in range(1, anos + 1):
-            ano = ano_atual - delta
+        for delta in range(anos):
+            ano = ano_final - delta
             try:
                 zip_path = self.baixar_dfp(ano)
                 bpa = self.parsear_demonstrativo(zip_path, "BPA_con", include_cd_cvm=True, include_versao=True)
@@ -564,3 +588,127 @@ class CVMProvider:
                 logger.warning("Erro ao calcular indicadores cd_cvm=%d ano=%d: %s", cd_cvm, ano, exc)
 
         return resultado
+
+    # ------------------------------------------------------------------
+    # Série de cinco anos e TTM (F2A-7)
+    # ------------------------------------------------------------------
+
+    def proventos_do_documento(
+        self,
+        zip_path: Path,
+        cd_cvm: int,
+        dt_refer: str | None,
+        versao: str | None,
+        modelo: str = "empresa",
+    ) -> dict:
+        """Dividendos e JCP declarados na DVA consolidada do documento, pela tabela de contas.
+
+        Por competência (`series_cvm.COMPETENCIA`). Sem a linha ou a DVA, o campo fica `None`
+        e o motivo vai para `proventos_motivos`.
+        """
+        try:
+            dva = self.parsear_demonstrativo(
+                zip_path, "DVA_con", include_cd_cvm=True, include_versao=True
+            )
+            dva = dva[
+                (dva["CD_CVM"] == cd_cvm)
+                & (dva["DT_REFER"].astype(str) == str(dt_refer))
+                & (dva["VERSAO"].astype(str) == str(versao))
+            ]
+        except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
+            motivo = f"DVA indisponível ({exc})"
+            return {"dividendos": None, "jcp": None,
+                    "proventos_motivos": {"dividendos": motivo, "jcp": motivo}}
+        saida: dict = {"proventos_motivos": {}}
+        for campo in ("dividendos", "jcp"):
+            leitura = _ler(dva, campo, modelo)
+            if isinstance(leitura, contas_cvm.Leitura):
+                saida[campo] = leitura.valor
+            else:
+                saida[campo] = None
+                saida["proventos_motivos"][campo] = f"{leitura.motivo} {leitura.detalhe}".strip()
+        return saida
+
+    def indicadores_da_serie(
+        self, cd_cvm: int, ano_final: int, modelo: str = "empresa"
+    ) -> dict[int, dict]:
+        """`calcular_indicadores` dos cinco exercícios até `ano_final`, com os proventos da DVA."""
+        indicadores = self.calcular_indicadores(
+            cd_cvm, anos=series_cvm.MAX_EXERCICIOS, modelo=modelo, ano_final=ano_final
+        )
+        for ano, ind in indicadores.items():
+            ind.update(
+                self.proventos_do_documento(
+                    self.baixar_dfp(ano), cd_cvm,
+                    ind.get("cvm_dt_refer"), ind.get("cvm_versao"), modelo,
+                )
+            )
+        return indicadores
+
+    def _acumulados_do_arquivo(
+        self, zip_path: Path, documento: str, cd_cvm: int, modelo: str
+    ) -> list[series_cvm.Acumulado]:
+        """Acumulados do exercício (DRE e DVA consolidadas) de cada documento do arquivo.
+
+        No ITR, o acumulado é a linha de `DT_INI_EXERC` mais antigo do documento; a outra é o
+        trimestre isolado.
+        """
+        leitura_generica = "empresa" if modelo == "banco" else modelo
+        partes = []
+        for tipo in ("DRE_con", "DVA_con"):
+            df = self.parsear_demonstrativo(
+                zip_path, tipo, include_cd_cvm=True, include_versao=True, include_periodo=True
+            )
+            partes.append(df[df["CD_CVM"] == cd_cvm])
+        linhas = pd.concat(partes, ignore_index=True)
+        if linhas.empty:
+            return []
+        acumulados = []
+        for (dt_refer, versao), doc in linhas.groupby(["DT_REFER", "VERSAO"]):
+            inicio = doc["DT_INI_EXERC"].min()
+            doc = doc[doc["DT_INI_EXERC"] == inicio]
+            fim = doc["DT_FIM_EXERC"].max()
+            valores = {}
+            for campo in series_cvm.CAMPOS_TTM:
+                leitura = _ler(
+                    doc, campo, modelo if campo in ("dividendos", "jcp") else leitura_generica
+                )
+                valores[campo] = leitura.valor if isinstance(leitura, contas_cvm.Leitura) else None
+            acumulados.append(
+                series_cvm.Acumulado(
+                    documento=documento,
+                    dt_refer=str(dt_refer),
+                    versao=int(versao),
+                    inicio=date.fromisoformat(str(inicio)),
+                    fim=date.fromisoformat(str(fim)),
+                    valores=valores,
+                )
+            )
+        return acumulados
+
+    def acumulados_ttm(
+        self, cd_cvm: int, data_referencia: date, modelo: str = "empresa"
+    ) -> list[series_cvm.Acumulado]:
+        """Acumulados dos ITR do ano da data e dos dois anteriores, e das DFPs dos dois anteriores.
+
+        Antes de sair a DFP do ano anterior, o 4º trimestre mais recente é a DFP de dois anos
+        antes menos o ITR de nove meses do mesmo ano. Arquivo que não baixa ou não abre fica de
+        fora, com aviso no log.
+        """
+        fontes = [
+            ("ITR", self.baixar_itr, data_referencia.year),
+            ("ITR", self.baixar_itr, data_referencia.year - 1),
+            ("ITR", self.baixar_itr, data_referencia.year - 2),
+            ("DFP", self.baixar_dfp, data_referencia.year - 1),
+            ("DFP", self.baixar_dfp, data_referencia.year - 2),
+        ]
+        acumulados: list[series_cvm.Acumulado] = []
+        for documento, baixar, ano in fontes:
+            try:
+                acumulados += self._acumulados_do_arquivo(baixar(ano), documento, cd_cvm, modelo)
+            except Exception as exc:
+                logger.warning(
+                    "Sem %s %d para o TTM de cd_cvm=%d: %s", documento, ano, cd_cvm, exc
+                )
+        return acumulados
+
