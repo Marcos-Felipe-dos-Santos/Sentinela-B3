@@ -369,3 +369,40 @@
   - Quando o LPA da CVM se abstém, `merge_if_valid` mantém o que outra fonte já pôs (o `trailingPE` do yfinance, o `lpa` do brapi). O recalculado não entra no lugar, mas outra fonte entra; o comportamento já valia nas abstenções do F2A-3.
   - `_linhas_de_lpa` (compatibilidade com o provedor anterior ao item e com o `FakeCVM` dos testes) tem mutação 12/25.
   - No caso da KLBN11 o lucro dos controladores ainda é o total (reserva do F2A-3, revista no F2A-37); o sinal hoje é conferido contra ele, não contra o consolidado.
+
+### F2A-37 — fix: restrict controlling-interest fallbacks to evidence of no minorities
+- **Status:** sucesso
+- **O que foi feito:**
+  - `sentinela/data/controladores.py` (novo, funções puras sobre as leituras da tabela de contas): `lucro_dos_controladores` e `pl_dos_controladores` devolvem valor, reserva usada e motivo da abstenção. "Ausente" é linha não encontrada ou o código com outra descrição; "inválida" é valor não numérico, NaN, infinito ou o mesmo par com valores diferentes, e nunca autoriza reserva.
+    - Lucro: controladora com valor ≠ 0 vale direto. Linha ausente: o consolidado só com os não controladores ausentes ou zerados; com eles ≠ 0, abstém-se. Controladora e não controladores zerados com consolidado ≠ 0 (decisão 7.2): o consolidado só com a 2.03.09 ausente ou zerada; senão, abstém-se ("lucro dos controladores não separado no documento, com não controladores no balanço"). Controladora zerada com não controladores ≠ 0 segue como zero informado.
+    - PL: com a 2.03.09 ≠ 0, PL total − 2.03.09; sem ela (ausente ou zerada), o PL total só com o lucro dos não controladores ausente ou zerado; senão, abstém-se.
+  - `cvm_provider.py`: `lucro_controladores` e `pl_controladores` viraram `lucro_controladores_com_reserva` e `pl_controladores_com_reserva`, que só leem as contas e chamam o módulo puro; `lucro_total_da_dre` saiu (ficou sem uso). `calcular_indicadores` traz `reservas_controladores` (campo → texto da reserva) e, quando o ROE se abstém, o motivo do lucro ou do PL no lugar do genérico.
+  - `market_engine.py`: a reserva vai para a proveniência dos campos que dependem dela (`dados['proveniencia'][campo]['reservas']`): a do lucro em `roe` e `lpa`, a do PL em `roe` e `vpa`.
+- **Testes que mudaram (fora da lista do item; justificativa):** dois testes de `tests/test_contas_cvm_consumidores.py` fixavam o comportamento do F2A-3 que o próprio item revoga, e já se declaravam provisórios ("como no F2A-3"; "A revisão das reservas (D20) é do F2A-37"). O aceite do item os contradiz diretamente, então não havia como cumprir os dois.
+  - `test_seguradora_le_o_lucro_na_3_13`: tinha lucro de não controladores (3.13.02 = 1) sem 2.03.09, e esperava o PL total; pela D20 o PL se abstém. O teste ganhou a 2.03.09 (10) e o ROE esperado passou a 89/890; o propósito (ler a 3.13 da seguradora) segue.
+  - `test_controladora_zerada_e_minoritarios_nao_lidos_valem_o_total_como_no_f2a_3`: o caso com NaN na 3.11.02 esperava o lucro total; pela D20, valor inválido nunca autoriza reserva. O caso saiu da parametrização (fica o de "Outra Conta", que continua valendo o total) e o oposto está em `tests/test_cvm_controladores.py::test_valor_invalido_nao_autoriza_reserva`. Isso merece o olho do Marcos.
+- **Dificuldades:** o recorte que substituiu as duas funções no provedor apagou junto o `lpa_divulgado` (39 falhas na primeira rodada); e o caso "não controladores com valor inválido" bloqueava também uma controladora válida, sem reserva em jogo.
+- **Como resolvi:** a função voltou do HEAD sem mudança; a checagem dos não controladores inválidos passou a valer só quando a reserva seria usada.
+- **Medição (DFP 2025 local, só leitura, `outputs/f2a37_reservas.py` e `.json`, fora do git):**
+  - Lucro, nas 439 companhias: linha da controladora usada em 337; reserva por linhas zeradas sem minoritários no balanço em 93; abstém-se por não controladores no balanço em 9; linha da controladora ausente em 0 (como na ficha).
+  - Das 105 com as linhas zeradas: 93 usam a reserva, 9 se abstêm e 3 têm também o consolidado zerado (lucro 0, sem reserva; a TIMS3 é uma delas).
+  - PL: separado em 247; reserva do PL total em 170 fora dos bancos e 1 banco (bancos pelo setor "Bancos" do cadastro); bloqueada por lucro de não controladores em 8 (a ficha também conta 8); sem PL em 12 bancos e 1 empresa. A ficha (F2A-34) contou 171 + 2 com outro script; a diferença de dois casos não foi isolada.
+  - Nas 45, conferido contra a ficha: lucro com reserva em LWSA3, PETZ3 e SBSP3; KLBN11 passa a se abster (no F2A-3, lucro total); TIMS3 com tudo zerado. PL com reserva em AZUL4, GOLL4, LREN3, LWSA3, MGLU3, PETZ3, RECV3, SBSP3 e TIMS3 (os nove da ficha).
+  - KLBN11 depois do item: LPA dos métodos 1,1430 (unit, divulgado com sinal conferido pelo consolidado, como na ficha); ROE e recalculado se abstêm; o VPA também, porque sem lucro dos controladores a escala das ações não é inferida.
+- **Testes:** 1.167 passed, 1 skipped, 2 xfailed → 1.182 passed, 1 skipped, 2 xfailed. `test_lucro_total_nao_substitui_controladores_com_minoritarios` passou por xfail estrito (XFAIL) → implementação → marca retirada → PASS; os outros cinco do aceite (um parametrizado em quatro casos) e sete testes puros em `tests/test_controladores.py`. Golden inalterado; `tests/test_financeiro_pre_refactor.py` sem diff contra `v2-fase-1`.
+- **Mutação:** `sentinela.data.controladores` 75/75 (100%). V1, sem meta: `cvm_provider.lucro_controladores_com_reserva` e `pl_controladores_com_reserva` 62/66.
+- **Resíduos:** `outputs/f2a37_reservas.py` e `.json` (fora do git). `outputs/f2a36_lpa.json` foi regerado depois desta mudança e não mostra mais o estado do F2A-36 (KLBN11 lá aparece já com o VPA abstido).
+- **Decisões que ficaram para o Marcos:**
+  - Escala da KLBN11 (e das outras 8): sem lucro dos controladores, a escala das ações fica indeterminada e o VPA se abstém, embora o PL dos controladores exista. Inferir a escala pelo lucro consolidado (só distingue unidade de milhar) é decisão.
+  - Linha no código da conta com outra descrição conta como ausente para as reservas (os testes do F2A-3 sobre "Outra Conta" seguem verdes); a ficha (abstenção 7) diz que o campo se abstém, e aqui o "campo" é o dos não controladores, não o dos controladores.
+- **Para o Marcos revisar:**
+  - A reserva do PL com a 2.03.09 zerada (não só ausente) também fica registrada, como na contagem da ficha.
+  - Pendências da revisão do F2A-36 (rodada 3, `31f3dec`), registradas aqui porque a seção dele já estava commitada:
+    - regra 3 desigual entre unit e ação avulsa: numa companhia com PNA e PNB, a linha "PN" da DRE entra no componente PN da unit, mas não na ação avulsa (USIM5 se abstém); nenhuma unit do índice tem o caso;
+    - `lpa_basico_por_classe` sem teste direto (PNA e PNB separadas, "ON" repetida, zeros e descrições rejeitadas); mutação 32/37;
+    - `classe_preferencial` não passa por `.upper()` e `classes_preferenciais` passa: sigla em minúsculas no FCA não casaria com a DRE;
+    - "direitos distintos" foi lido como "mais de uma sigla começando com PN" no FCA;
+    - nenhum teste cobre a exclusão de `lpa_cvm`, `classe_preferencial` e `classes_preferenciais` do prompt;
+    - o P/L do LPA dos métodos é `preço ÷ lpa` sem guarda de zero (hoje o zero não chega ali);
+    - com o divulgado abstido por sinal oposto, `lpa_recalculado` segue em `acoes_cvm` e o alerta de 10% do F2A-5 compara com um divulgado de sinal oposto;
+    - o diário do F2A-36 não registrou que `cvm_provider.py`, `market_engine.py` e `ai_core.py` não passaram pelo `ruff format` (precedente do F1-5), o que vale também aqui para `cvm_provider.py`, `market_engine.py` e `tests/test_contas_cvm_consumidores.py`.

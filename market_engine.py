@@ -246,6 +246,11 @@ def _linhas_de_lpa(ind: Dict[str, Any]) -> Dict[str, list]:
 
 
 _CAMPOS_COM_PRECO = frozenset({'pl', 'pvp'})
+# F2A-37: campos que dependem do lucro e do PL dos controladores.
+_CAMPOS_DA_RESERVA = {
+    'lucro_controladores': ('roe', 'lpa'),
+    'pl_controladores': ('roe', 'vpa'),
+}
 
 
 def _guardar_por_fonte(dados: Dict[str, Any], fonte: str, valores: Dict[str, Any]) -> None:
@@ -672,6 +677,17 @@ class MarketEngine:
                         if campo not in _CAMPOS_COM_PRECO
                     }
                 )
+                # F2A-37 (D20): a reserva do lucro ou do PL dos controladores vai para os campos
+                # que dependem dela.
+                reservas = ind.get('reservas_controladores') or {}
+                for origem, campos_dependentes in _CAMPOS_DA_RESERVA.items():
+                    for campo in campos_dependentes:
+                        if origem in reservas and campo in dados['proveniencia']:
+                            registro = dados['proveniencia'][campo]
+                            dados['proveniencia'][campo] = {
+                                **registro,
+                                'reservas': [*registro.get('reservas', []), reservas[origem]],
+                            }
                 if 'lpa' in dados['proveniencia'] and dados.get('lpa_cvm'):
                     # F2A-36 (D16): origem do LPA, com a marca do recalculado ou do sinal.
                     dados['proveniencia']['lpa'] = {

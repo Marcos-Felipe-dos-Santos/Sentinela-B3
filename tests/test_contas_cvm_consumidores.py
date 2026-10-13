@@ -143,12 +143,14 @@ def test_seguradora_le_o_lucro_na_3_13(tmp_path, monkeypatch):
         ("3.13.01", "Atribuído a Sócios da Empresa Controladora", 89.0),
         ("3.13.02", "Atribuído a Sócios Não Controladores", 1.0),
     ]
-    bpp = [("2.03", "Patrimônio Líquido Consolidado", 900.0)]
+    # F2A-37: com lucro de não controladores, o PL precisa da 2.03.09 separada (D20).
+    bpp = [("2.03", "Patrimônio Líquido Consolidado", 900.0),
+           ("2.03.09", "Participação dos Acionistas Não Controladores", 10.0)]  # fmt: skip
     ind = _calcular_com_modelo(tmp_path, monkeypatch, "seguradora", dre=dre, bpp=bpp)
     assert ind["ebit"] == pytest.approx(98.0)
     assert ind["lucro_liquido"] == pytest.approx(90.0)
     assert ind["lucro_controladores"] == pytest.approx(89.0)
-    assert ind["roe"] == pytest.approx(89.0 / 900.0)
+    assert ind["roe"] == pytest.approx(89.0 / 890.0)
 
 
 def test_controladora_sem_correspondencia_vale_o_lucro_total_como_no_f2a_3(
@@ -176,8 +178,9 @@ def test_lucro_dos_controladores_invalido_abstem(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize(
     "minoritarios",
-    [("3.11.02", "Outra Conta", 1_000.0),
-     ("3.11.02", "Atribuído a Sócios Não Controladores", float("nan"))],
+    # O valor NaN na linha dos não controladores saiu daqui no F2A-37: valor inválido nunca
+    # autoriza reserva (`tests/test_cvm_controladores.py::test_valor_invalido_nao_autoriza_reserva`).
+    [("3.11.02", "Outra Conta", 1_000.0)],
 )  # fmt: skip
 def test_controladora_zerada_e_minoritarios_nao_lidos_valem_o_total_como_no_f2a_3(
     tmp_path, monkeypatch, minoritarios

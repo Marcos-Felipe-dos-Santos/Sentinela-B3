@@ -509,7 +509,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: LPA antes → depois nas 45 ações, nas units, nos sucessores (AZUL3, AXIA3, NATU3) e no Banrisul, e quais se abstêm, com o motivo; a contagem fora da faixa [0,1; 10] refeita com a política da ficha 7.2;
   - gate da fase.
 
-- [ ] **F2A-37** · fix · `fix: restrict controlling-interest fallbacks to evidence of no minorities` · **[ADR-0003]**
+- [x] **F2A-37** · fix · `fix: restrict controlling-interest fallbacks to evidence of no minorities` · **[ADR-0003]**
   ADR-0003, D20, política aprovada em 13/10/2026. Hoje o lucro total entra quando a linha dos controladores falta, mesmo com minoritários, e o PL total entra quando a separação não é reconhecida (`cvm_provider.py`).
   - **Lucro dos controladores ausente:** vale o lucro total só se a linha dos não controladores também estiver ausente ou zerada. Com ela presente e diferente de zero, abstém-se.
   - **PL dos controladores:** vale o PL total só se a conta de não controladores do balanço **e** o lucro dos não controladores estiverem ausentes ou zerados. Qualquer evidência de minoritários sem a separação no balanço: abstém-se.

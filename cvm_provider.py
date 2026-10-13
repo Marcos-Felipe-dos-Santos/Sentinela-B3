@@ -11,7 +11,7 @@ from pathlib import Path
 import pandas as pd
 
 from cvm_download import baixar_arquivo
-from sentinela.data import contas_cvm, proveniencia
+from sentinela.data import contas_cvm, controladores, proveniencia
 from sentinela.data.acoes_cvm import (
     MOTIVO_DOCUMENTO_DIFERENTE,
     MOTIVO_SEM_COMPOSICAO,
@@ -92,44 +92,34 @@ def _ler_em_qualquer_modelo(df: pd.DataFrame, campo: str):
     )
 
 
-def lucro_total_da_dre(dre_emp: pd.DataFrame) -> float | None:
-    """Lucro consolidado do período pela tabela, em qualquer modelo (insumo da reserva)."""
-    leitura = _ler_em_qualquer_modelo(dre_emp, "lucro_liquido")
-    return leitura.valor if isinstance(leitura, contas_cvm.Leitura) else None
-
-
-def lucro_controladores(dre_emp: pd.DataFrame, lucro_total: float | None) -> float | None:
+def lucro_controladores_com_reserva(
+    dre_emp: pd.DataFrame, bpp_emp: pd.DataFrame, modelo: str = "empresa"
+) -> controladores.Resultado:
     """Lucro atribuído aos sócios da controladora (3.11.01, 3.09.01 ou 3.13.01), pela tabela.
 
-    Reservas do F2A-3, que o F2A-37 revisa pela D20: sem a linha reconhecida, vale o lucro
-    total; com ela zerada e os não controladores zerados ou sem linha reconhecida, também
-    (KLBN11 e SBSP3 na DFP 2025). Valor inválido na linha da controladora: `None`.
+    As reservas seguem a D20 e a decisão 7.2 da ficha (`sentinela.data.controladores`).
     """
-    leitura = _ler_em_qualquer_modelo(dre_emp, "lucro_controladores")
-    if isinstance(leitura, contas_cvm.Abstencao):
-        if leitura.motivo == contas_cvm.MOTIVO_VALOR_INVALIDO:
-            return None
-        return lucro_total
-    if leitura.valor == 0 and lucro_total:
-        minoritarios = _ler_em_qualquer_modelo(dre_emp, "lucro_nao_controladores")
-        if not (isinstance(minoritarios, contas_cvm.Leitura) and minoritarios.valor != 0):
-            return lucro_total
-    return leitura.valor
+    return controladores.lucro_dos_controladores(
+        _ler_em_qualquer_modelo(dre_emp, "lucro_controladores"),
+        _ler_em_qualquer_modelo(dre_emp, "lucro_nao_controladores"),
+        _ler_em_qualquer_modelo(dre_emp, "lucro_liquido"),
+        _ler(bpp_emp, "pl_nao_controladores", modelo),
+    )
 
 
-def pl_controladores(bpp_emp: pd.DataFrame, modelo: str = "empresa") -> float | None:
+def pl_controladores_com_reserva(
+    bpp_emp: pd.DataFrame, dre_emp: pd.DataFrame, modelo: str = "empresa"
+) -> controladores.Resultado:
     """PL dos controladores: PL total menos não controladores, pela tabela de contas.
 
-    Sem o par do PL no modelo (a 2.03 do banco é "Provisões", F2A-16), devolve `None`: o PL
+    Sem o par do PL no modelo (a 2.03 do banco é "Provisões", F2A-16), o valor é `None`: o PL
     certo dos bancos é do F2A-9.
     """
-    total = _ler(bpp_emp, "pl_total", modelo)
-    if isinstance(total, contas_cvm.Abstencao):
-        return None
-    minoritarios = _ler(bpp_emp, "pl_nao_controladores", modelo)
-    if isinstance(minoritarios, contas_cvm.Leitura):
-        return total.valor - minoritarios.valor
-    return total.valor
+    return controladores.pl_dos_controladores(
+        _ler(bpp_emp, "pl_total", modelo),
+        _ler(bpp_emp, "pl_nao_controladores", modelo),
+        _ler_em_qualquer_modelo(dre_emp, "lucro_nao_controladores"),
+    )
 
 
 def lpa_divulgado(linhas_399: pd.DataFrame) -> dict | None:
@@ -499,8 +489,9 @@ class CVMProvider:
                      if not df.empty and "CNPJ_CIA" in df.columns),
                     None,
                 )
-                lucro_ctrl = lucro_controladores(dre_emp, lucro_total_da_dre(dre_emp))
-                pl_ctrl = pl_controladores(bpp_emp, leitura_generica)
+                lucro_res = lucro_controladores_com_reserva(dre_emp, bpp_emp, leitura_generica)
+                pl_res = pl_controladores_com_reserva(bpp_emp, dre_emp, leitura_generica)
+                lucro_ctrl, pl_ctrl = lucro_res.valor, pl_res.valor
                 linhas_399, cc = self._dados_por_acao(zip_path)
                 if not linhas_399.empty and cnpj:
                     linhas_399 = linhas_399[
@@ -514,6 +505,13 @@ class CVMProvider:
                     cc, cnpj, metadata.get("cvm_dt_refer"), metadata.get("cvm_versao")
                 )
                 roe_ctrl, motivo_roe = roe_dos_controladores(lucro_ctrl, pl_ctrl)
+                if roe_ctrl is None:
+                    # F2A-37: o motivo da abstenção do lucro ou do PL é mais preciso que o genérico.
+                    motivo_roe = (
+                        (lucro_res.motivo if lucro_ctrl is None else None)
+                        or (pl_res.motivo if pl_ctrl is None else None)
+                        or motivo_roe
+                    )
 
                 ind: dict = {
                     "ativo_total":        ativo_total,
@@ -532,6 +530,13 @@ class CVMProvider:
                     "cnpj":               cnpj,
                     "lucro_controladores": lucro_ctrl,
                     "pl_controladores":   pl_ctrl,
+                    "reservas_controladores": {
+                        campo: r.reserva
+                        for campo, r in (
+                            ("lucro_controladores", lucro_res), ("pl_controladores", pl_res),
+                        )
+                        if r.reserva
+                    },
                     "roe_motivo":         motivo_roe,
                     "lpa_divulgado":      lpa_divulgado(linhas_399),
                     "lpa_divulgado_por_especie": lpa_divulgado_por_especie(linhas_399),
