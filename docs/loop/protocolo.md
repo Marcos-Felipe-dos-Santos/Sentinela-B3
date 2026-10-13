@@ -25,7 +25,7 @@ O cabeçalho da fila define o branch da fase e os arquivos intocáveis.
 1. **Já feito?** Confira no código e no `git log`. Se o item já foi entregue, marque `[x]`, anote "já estava feito" no diário e siga.
 2. **Escopo.** Só o que o item descreve. Nenhuma correção extra "de passagem".
 3. **Rito pelo tipo do item:**
-   - `fix`: teste xfail provando o problema → implementação → XPASS.
+   - `fix`: teste xfail provando o problema → implementação → marca retirada → PASS.
    - `refactor`: comportamento idêntico; nenhum teste existente muda.
    - `feat`: teste novo primeiro, falhando pelo motivo certo, depois a implementação.
    - `docs`: valide cada afirmação contra o código; divergindo, corrija o documento, nunca o código.
