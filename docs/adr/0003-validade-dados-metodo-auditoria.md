@@ -14,7 +14,7 @@ O projeto ganhou estrutura de rigor: tipos de unidade, contrato de método, gold
 - a V1 lendo o PL dos bancos numa conta que não é o PL (F2A-16, pergunta 4);
 - o mesmo código de conta da CVM com significados diferentes entre empresas.
 
-Este ADR chega com a 2A em andamento: F2A-3 e F2A-5 já foram entregues. Ele fixa critérios de validade para o que falta e define, na seção "Transição", como o que já foi entregue é revisto. Versão 3: incorpora a auditoria externa de 13/10/2026 (Codex, modo DOCUMENTO), que reprovou a versão 2 por quatro bloqueios.
+Este ADR chega com a 2A em andamento: F2A-3 e F2A-5 já foram entregues. Ele fixa critérios de validade para o que falta e define, na seção "Transição", como o que já foi entregue é revisto. Versão 4: incorpora duas auditorias externas de 13/10/2026 (Codex, modo DOCUMENTO). A primeira reprovou a versão 2 por quatro bloqueios; a segunda reprovou a versão 3 por um bloqueio (F2A-33 como `feat:` mudando saídas) e cinco ressalvas. Os relatórios estão em `docs/loop/historico/fase-2a/auditoria-adr0003.md`.
 
 ## Decisões
 
@@ -34,7 +34,7 @@ Numeração continua a do ADR-0002.
 
 ### Definições contábeis
 
-**D19 — Ações e indicadores por ação com semântica explícita.** Revisa o item 1 da seção 4 de `docs/decisoes/checkpoint-fase0.md` ("LPA = lucro ÷ (ON + PN − tesouraria)"). O que continua valendo daquela decisão: a Composição do Capital como fonte das ações, o lucro e o PL do mesmo documento, a divergência com o yfinance como alerta e a abstenção só quando a CVM falha. O que muda é o denominador do LPA e o tratamento de classes.
+**D19 — Ações e indicadores por ação com semântica explícita.** Revisa o item 1 da seção 4 de `docs/decisoes/checkpoint-fase0.md` ("LPA = lucro ÷ (ON + PN − tesouraria)"). O que continua valendo daquela decisão: a Composição do Capital como fonte das ações, o lucro e o PL do mesmo documento, e a divergência com o yfinance como **alerta, nunca motivo de abstenção**. A regra antiga "abstenção só quando a CVM falha" vale apenas nesse sentido: o yfinance não derruba um número da CVM. As abstenções por classe, composição ou escala das regras abaixo são novas e prevalecem. O que muda é o denominador do LPA e o tratamento de classes.
 
 Cada número tem uma definição e um papel:
 
@@ -49,19 +49,22 @@ Regras de uso:
 1. **LPA divulgado disponível e coerente** (escala determinada e mesmo sinal do lucro): é o LPA dos métodos.
 2. **Divulgado ausente:** o recalculado entra como **aproximação declarada**, com marca na proveniência ("ações do fim do período, não média ponderada"). Os métodos podem usá-lo.
 3. **Mais de uma classe preferencial com direitos distintos** (PNA, PNB etc., identificadas pela `Sigla_Classe_Acao_Preferencial` do FCA): o LPA recalculado comum **se abstém** para as preferenciais; vale só o divulgado da classe, se houver. Sem divulgado da classe, o LPA da classe se abstém.
-4. **Units:** o LPA da unit é a soma dos LPAs das espécies que a compõem, ponderada pela composição oficial do FCA. Se faltar o LPA de alguma espécie componente, aplica-se a regra 2 com a marca. Composição não reconhecida: abstém-se (já é o comportamento do F2A-1).
+4. **Units:** o LPA da unit é a soma dos LPAs das espécies que a compõem, ponderada pela composição oficial do FCA. Se faltar o LPA divulgado de alguma espécie componente, aplica-se a regra 2 com a marca, **exceto** quando a regra 3 proíbe o recalculado para essa espécie: aí a unit inteira se abstém. A regra 3 tem precedência sobre a 2. Composição não reconhecida: abstém-se (já é o comportamento do F2A-1).
 5. **Escala das ações:** a inferência pelo LPA divulgado (o F2A-3 escolhe unidade ou mil pela razão mais perto de 1, com faixa [0,1; 10]) fica **provisória** até a ficha do F2A-34, que justifica a faixa com a distribuição medida no F2A-16 e lista os casos na faixa mas longe de 1. Esses casos já geram alerta (F2A-5). Quando não há LPA divulgado para inferir a escala, ela é indeterminada e o recalculado se abstém.
 
 Consolidado contra individual é sempre declarado.
 
 **D20 — Contas da CVM por código e descrição.** Nenhuma conta é lida só pelo código. A leitura confere o par (código, descrição) contra uma tabela versionada por modelo de demonstração (empresas não financeiras, bancos, seguradoras). Par sem correspondência vira abstenção com motivo, nunca valor de outra conta.
 
-Reservas permitidas, e só estas:
+Reservas permitidas, e só estas. São **política proposta** por este ADR, não demonstração de que não há minoritários: a ausência da linha é tratada como falta de evidência, e a ficha do F2A-34 registra a justificativa e os casos do universo em que a reserva foi usada. Aprovar o ADR aprova esta política.
+
+Distinção obrigatória: **linha ausente** (a conta não existe no documento) pode autorizar a reserva; **valor inválido** (linha presente com valor não numérico, NaN ou infinito) nunca autoriza: o campo se abstém.
+
 - **Lucro dos controladores ausente:** vale o lucro total **somente** se a linha dos não controladores também estiver ausente ou zerada, isto é, não há evidência de minoritários. Com a linha dos não controladores presente e diferente de zero, o lucro dos controladores se abstém.
 - **PL dos controladores:** vale o PL total **somente** se a conta de não controladores do balanço estiver ausente ou zerada **e** o lucro dos não controladores também. Com qualquer evidência de minoritários sem a separação no balanço, o PL dos controladores se abstém.
 - Toda reserva usada fica registrada na proveniência do campo.
 
-O campo genérico `patrimonio_liquido` de `calcular_indicadores`, ainda lido só pelo código (`cvm_provider.py`, `_conta`), passa pela tabela do F2A-33. O caminho dos controladores já está protegido desde o F2A-3: VPA e ROE se abstêm quando a 2.03 não descreve patrimônio líquido.
+O campo genérico `patrimonio_liquido` de `calcular_indicadores`, ainda lido só pelo código (`cvm_provider.py`, `_conta`), passa pela tabela no F2A-38 (correção, não o F2A-33). O caminho dos controladores já está protegido desde o F2A-3: VPA e ROE se abstêm quando a 2.03 não descreve patrimônio líquido.
 
 ### Método
 
@@ -111,9 +114,9 @@ O resultado vai para `docs/loop/historico/fase-N/auditoria-externa.md`. Achado *
 
 **D31 — Jules reduzido.** O Jules fica restrito a tickets triviais com especificação externa completa e arquivo único. Tickets com valores de referência numéricos passam ao loop, com o valor tirado da ficha.
 
-**D32 — Escopo verificável.** "Todos os listados" e "qualquer data" viram metas com denominador explícito e lista de exclusões.
+**D32 — Escopo verificável.** "Todos os listados" vira meta com denominador explícito e lista de exclusões. "Qualquer data" ganha intervalo temporal definido na Fase 3, junto com o D17 (primeira data com proveniência completa e tratamento das datas anteriores); até lá, nenhum texto promete histórico para qualquer data.
 
-- **Universo inicial:** as 45 ações do mapa regenerado no F1-15 e os 30 FIIs de `cvm_fii_map.py`, mais estes casos difíceis, se não estiverem lá: os 12 bancos ativos do F2A-16; as units do índice (KLBN11, SANB11, TAEE11, ENGI11, BRBI11, IGTI11); uma holding com minoritários relevantes (CSAN3); uma empresa com reapresentação de DFP (escolhida no F2A-32); FIIs de papel e de tijolo. A lista fechada vai para `docs/decisoes/universo-inicial.md` no F2A-35.
+- **Universo inicial:** as 45 ações do mapa regenerado no F1-15 e os 30 FIIs de `cvm_fii_map.py` (os cinco que `docs/decisoes/fontes-fase2a.md` registra fora da listagem no período entram como **casos históricos**: servem para testar abstenção e histórico estrito, mas não contam no denominador da cobertura atual), mais estes casos difíceis, se não estiverem lá: os 12 bancos ativos do F2A-16; as units do índice (KLBN11, SANB11, TAEE11, ENGI11, BRBI11, IGTI11); uma holding com minoritários relevantes (CSAN3); uma empresa com reapresentação de DFP (escolhida no F2A-32); FIIs de papel e de tijolo. A lista fechada vai para `docs/decisoes/universo-inicial.md` no F2A-35.
 - **Denominador da cobertura do índice:** pares (CNPJ, código) ativos no FCA mais recente e FIIs listados em bolsa no Informe Mensal, como o F2A-1 já mede; toda exclusão tem motivo listado.
 - **Critério de ampliação:** um grupo novo entra no universo quando todos os seus casos difíceis passam pela verificação do item (números conferidos contra a fonte e abstenções com motivo), sem divergência sem explicação. O gate de cobertura do PLANO passa a citar este denominador.
 
@@ -133,19 +136,21 @@ O que diverge, e o item que corrige:
 - **Classes preferenciais:** hoje PNA e PNB são agrupadas como "PN", e o provedor fica com a primeira linha "PN…"; pelo D19, regra 3 (F2A-36).
 - **Units:** hoje o LPA da unit é o recalculado vezes as ações por unit; pelo D19, regra 4 (F2A-36).
 - **Reservas de controladores:** hoje o lucro total entra quando a linha dos controladores falta, mesmo com minoritários; pelo D20, só sem evidência de minoritários (F2A-37).
-- **`patrimonio_liquido` genérico** lido só pelo código (F2A-33).
+- **`patrimonio_liquido` genérico** lido só pelo código, que alimenta a alavancagem (`cvm_provider.py`) e chega ao motor (`market_engine.py`): F2A-38.
 
 ## O que muda na Fase 2A
 
 Itens novos, antes do F2A-7, nesta ordem:
 - **F2A-32** · `feat: record temporal provenance for collected data` — proveniência do D16 (período, entrega, coleta, documento, versão, fonte, hash) no cache da CVM, no COTAHIST e no índice; testes de contrato dos provedores existentes (D18); escolhe a empresa com reapresentação do universo inicial.
-- **F2A-33** · `feat: map CVM accounts by code and description` — tabela versionada (código, descrição, modelo de demonstração) usada por todas as leituras de conta, inclusive `patrimonio_liquido` e a identificação das contas de PL e lucro dos bancos; abstém-se sem correspondência (D20). O cálculo da lente de bancos continua no F2A-9.
+- **F2A-33** · `feat: map CVM accounts by code and description` — só infraestrutura: tabela versionada (código, descrição, modelo de demonstração) e função de leitura que se abstém sem correspondência (D20), com testes próprios. **Nenhum consumidor existente muda neste item**; o golden não pode mudar. O cálculo da lente de bancos continua no F2A-9.
+- **F2A-38** · `fix: read existing CVM accounts through the code and description table` **[golden]** — rito `fix`: teste xfail estrito com um banco cuja 2.03 não é PL, mostrando que hoje `patrimonio_liquido` e a alavancagem saem de conta errada; depois as leituras existentes passam pela tabela do F2A-33, com abstenção. Escopo do golden declarado no item: só os campos derivados de `patrimonio_liquido` e das contas trocadas; qualquer outra mudança no golden reprova o item.
 - **F2A-34** · `docs: add methodology sheet for per-share figures` — ficha do D21 para LPA, VPA, classes, units e escala, com exemplo independente e a justificativa da faixa [0,1; 10]. **Aprovação do Marcos e auditoria externa (modo FICHA) antes do F2A-36.**
 - **F2A-35** · `docs: define the initial universe` — `docs/decisoes/universo-inicial.md` (D32).
 - **F2A-36** · `fix: use reported EPS by share class in valuation inputs` **[golden]** — regras 1 a 4 do D19.
 - **F2A-37** · `fix: restrict controlling-interest fallbacks to evidence of no minorities` **[golden]** — reservas do D20.
 
 Outros ajustes:
+- Ordem: F2A-32, 33, 38, 34, 35, 36, 37 (o número segue a ordem de criação, como já acontece na 2A).
 - F2A-7, F2A-8 e F2A-9 leem contas pelo F2A-33 e seguem D19 e D20.
 - Todos os aceites "XPASS" leem como D27.
 - O checkpoint da 2A inclui a auditoria externa (D30).
@@ -164,6 +169,6 @@ Pontos do diário do F2A-3 para o checkpoint: a divergência de +402% das açõe
 
 ## Consequências
 
-- A 2A fica mais longa (seis itens a mais, uma ficha e uma auditoria de ficha). Em troca, os números por ação passam a ter definição escrita e conferida.
+- A 2A fica mais longa (sete itens a mais, uma ficha e uma auditoria de ficha). Em troca, os números por ação passam a ter definição escrita e conferida.
 - O prazo da Fase 2 deixa de ter estimativa até o fim da 2A.
 - O processo passa a depender de um segundo modelo no checkpoint. Sem ele, o checkpoint espera ou o Marcos dispensa por escrito (D30).
