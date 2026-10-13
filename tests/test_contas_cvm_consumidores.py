@@ -115,23 +115,24 @@ def _calcular_com_modelo(tmp_path, monkeypatch, modelo, *, dre, bpp):
     return base._calcular(tmp_path, monkeypatch, dre=dre, bpp=bpp)
 
 
-def test_banco_tem_o_lucro_dos_controladores_e_abstem_os_genericos(
-    tmp_path, monkeypatch
-):
+def test_banco_le_pl_e_lucro_pelo_modelo_financeiro(tmp_path, monkeypatch):
     ind = _calcular_com_modelo(
         tmp_path, monkeypatch, "banco", dre=BANCO_DRE, bpp=BANCO_BPP
     )
     # Como no F2A-3: o lucro dos controladores do banco sai da 3.11.01 ("aos sócios").
     assert ind["lucro_controladores"] == pytest.approx(16.0)
-    # Os genéricos e o PL do banco ainda são lidos como os de empresa (F2A-9).
-    assert ind["patrimonio_liquido"] is None
-    assert ind["lucro_liquido"] is None
+    # F2A-9: o PL (2.07) e o lucro (3.11) do banco vêm do modelo financeiro.
+    assert ind["patrimonio_liquido"] == pytest.approx(190.0)
+    assert ind["lucro_liquido"] == pytest.approx(17.0)
+    # Lucro de não controladores sem a separação no balanço: o PL dos controladores se
+    # abstém (D20, F2A-37).
     assert ind["pl_controladores"] is None
     assert ind["passivo_total"] == pytest.approx(2_000.0)
-    assert set(ind["contas_abstidas"]) == {"patrimonio_liquido", "lucro_liquido"}
-    assert ind["contas_abstidas"]["lucro_liquido"].startswith(
-        contas_cvm.MOTIVO_SEM_CORRESPONDENCIA
-    )
+    assert set(ind["contas_abstidas"]) == {
+        "ativo_circulante", "passivo_circulante", "ebit", "receita_liquida", "margem_liquida",
+    }  # fmt: skip
+    assert ind["contas_abstidas"]["receita_liquida"] == cvm_provider.MOTIVO_SEM_SIGNIFICADO_BANCO
+    assert ind["contas_abstidas"]["ebit"].startswith(contas_cvm.MOTIVO_CAMPO_FORA_DO_MODELO)
 
 
 def test_seguradora_le_o_lucro_na_3_13(tmp_path, monkeypatch):
@@ -205,7 +206,7 @@ def test_banco_sem_linha_da_controladora_usa_o_lucro_do_banco(tmp_path, monkeypa
     ind = _calcular_com_modelo(
         tmp_path, monkeypatch, "banco", dre=BANCO_DRE[:1], bpp=BANCO_BPP
     )
-    assert ind["lucro_liquido"] is None  # o genérico do banco é do F2A-9
+    assert ind["lucro_liquido"] == pytest.approx(17.0)  # F2A-9: modelo de banco
     assert ind["lucro_controladores"] == pytest.approx(17.0)
 
 

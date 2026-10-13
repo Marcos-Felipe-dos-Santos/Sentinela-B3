@@ -600,7 +600,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - `deptry .` sem achado novo, e o `cloudscraper` some dos achados;
   - gate da fase.
 
-- [ ] **F2A-9** · fix · `fix: read bank equity and earnings from the financial template` · **[P5]**
+- [x] **F2A-9** · fix · `fix: read bank equity and earnings from the financial template` · **[P5]**
   Decidido no checkpoint (seção 4, item 5): os bancos terão lente própria, com P/VP justificado pelo ROE (F2B-3). Basileia e inadimplência são opcionais; quando faltam, a limitação é declarada. Nesta fase entram só os dados:
   - **Banco.** É a companhia com setor de banco no F2A-2. PL, lucro e ROE vêm das contas do modelo de instituição financeira que o F2A-16 conferiu, não das contas genéricas (F-13). No dossiê, o ITUB4 ficou sem lucro e PL utilizáveis. As contas são lidas pela tabela do F2A-33 com o modelo de banco (ADR-0003, D20). LPA e VPA seguem o F2A-3 e a D19 (F2A-36).
   - **Campos sem significado para banco.** Receita, margem e alavancagem não são preenchidas, com o motivo em `riscos_dados`.

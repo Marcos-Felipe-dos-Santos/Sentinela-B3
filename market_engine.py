@@ -12,6 +12,7 @@ from cvm_provider import CVMProvider
 from cvm_ticker_map import get_cd_cvm
 from database import DatabaseManager
 from sentinela.data import acoes_cvm, contas_cvm, series_cvm
+from sentinela.data.providers.ifdata import IFDataProvider
 from sentinela.data.referencia.carga import ReferenciaOficial
 from sentinela.domain.provenance import FieldProvenance, FieldValue
 from sentinela.domain.enums import AssetType
@@ -86,6 +87,7 @@ RISCO_SEM_LPA_CVM = 'CVM sem LPA'
 RISCO_ROE_CVM = 'CVM sem ROE'
 RISCO_CONTA_CVM = 'CVM sem'
 RISCO_ALAVANCAGEM_CVM = 'alavancagem não avaliada'
+RISCO_LIMITACAO_BANCO = 'limitação do banco'
 # F2A-8: só a CVM entrega a alavancagem; a definição da brapi não é conhecida.
 _CAMPOS_SO_DA_CVM = frozenset({'divida_liq_ebitda'})
 
@@ -292,6 +294,7 @@ class MarketEngine:
     def __init__(self, asset_classifier: Optional[AssetClassifier] = None) -> None:
         self.brapi = BrapiProvider()
         self.cvm = CVMProvider()
+        self.ifdata = IFDataProvider()
         self.database = DatabaseManager()
         self.asset_classifier = asset_classifier or AssetClassifier()
         self.referencia = REFERENCIA_OFICIAL
@@ -443,6 +446,8 @@ class MarketEngine:
 
         if not dados.get('fonte_preco'):
             return None
+
+        self._buscar_ifdata(dados)
 
         if list_missing_required_fields(dados, classifier):
             self._aplicar_cache_fundamentos(ticker, dados)
@@ -711,6 +716,33 @@ class MarketEngine:
 
         dados['cvm_disponivel'] = False
         return False
+
+    def _buscar_ifdata(self, dados: Dict[str, Any]) -> None:
+        """Basileia e inadimplência do IF.data para banco (F2A-9), com a fonte e a data-base.
+
+        Só para o setor de banco (F2A-2). O que falta vira limitação declarada em `riscos_dados`.
+        """
+        if contas_cvm.modelo_do_setor(dados.get('setor')) != 'banco':
+            return
+        riscos = dados.setdefault('riscos_dados', [])
+        ifdata = getattr(self, 'ifdata', None)
+        if ifdata is None:
+            riscos.append(f"{RISCO_LIMITACAO_BANCO}: Basileia e inadimplência sem fonte (IF.data não consultado)")
+            return
+        try:
+            capital = ifdata.capital(dados.get('cnpj'), date.today())
+        except Exception as exc:
+            riscos.append(f"{RISCO_LIMITACAO_BANCO}: Basileia e inadimplência sem fonte (IF.data indisponível: {exc})")
+            return
+        dados['basileia'] = capital.basileia
+        dados['inadimplencia'] = capital.inadimplencia
+        dados['ifdata'] = {
+            'fonte': capital.fonte,
+            'data_base': capital.data_base,
+            'codinst': capital.codinst,
+        }
+        for campo, motivo in capital.motivos.items():
+            riscos.append(f"{RISCO_LIMITACAO_BANCO} ({campo}): {motivo}")
 
     def _serie_cvm(
         self, ticker: str, dados: Dict[str, Any], cvm: Any, cd_cvm: int, modelo: str

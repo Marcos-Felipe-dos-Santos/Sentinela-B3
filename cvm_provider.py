@@ -37,6 +37,10 @@ _CONTAS: dict[str, tuple[str, str]] = {
     "lucro_liquido":      ("lucro_liquido", "dre"),
 }
 
+# F2A-9: campos sem significado para banco; abstêm-se com o motivo, nunca com outra conta.
+_SEM_SIGNIFICADO_PARA_BANCO = frozenset({"receita_liquida"})
+MOTIVO_SEM_SIGNIFICADO_BANCO = "sem significado para banco (modelo de instituição financeira)"
+
 # F2A-8: demonstrativo de cada conta da dívida financeira líquida.
 _DEMONSTRATIVO_DA_DIVIDA = {
     "emprestimos_circulante": "bpp",
@@ -454,11 +458,11 @@ class CVMProvider:
 
         `modelo` é o modelo de demonstração (`contas_cvm.modelo_do_setor`). Cada conta é lida
         pelo par (código, descrição); sem correspondência, o campo fica `None` e o motivo vai
-        para `contas_abstidas`. Os campos genéricos e o PL dos bancos ainda são lidos como os de
-        empresa (abstêm-se): a leitura do modelo de banco é do F2A-9. O lucro dos controladores
-        procura os pares de todos os modelos, como o F2A-3 fazia pela descrição.
+        para `contas_abstidas`. Banco lê o PL, o lucro e os não controladores pelas contas do
+        modelo de instituição financeira (F2A-9); receita e margem não têm significado para
+        banco e se abstêm com esse motivo. O lucro dos controladores procura os pares de todos
+        os modelos, como o F2A-3 fazia pela descrição.
         """
-        leitura_generica = "empresa" if modelo == "banco" else modelo
         if ano_final is None:
             ano_final = date.today().year - 1
         resultado: dict[int, dict] = {}
@@ -519,7 +523,14 @@ class CVMProvider:
                 leituras: dict[str, contas_cvm.Leitura | contas_cvm.Abstencao] = {}
                 contas_abstidas: dict[str, str] = {}
                 for chave, (campo, demonstrativo) in _CONTAS.items():
-                    leitura = _ler(demonstrativos[demonstrativo], campo, leitura_generica)
+                    if modelo == "banco" and chave in _SEM_SIGNIFICADO_PARA_BANCO:
+                        valores[chave] = None
+                        leituras[chave] = contas_cvm.Abstencao(MOTIVO_SEM_SIGNIFICADO_BANCO)
+                        contas_abstidas[chave] = MOTIVO_SEM_SIGNIFICADO_BANCO
+                        if chave == "receita_liquida":
+                            contas_abstidas["margem_liquida"] = MOTIVO_SEM_SIGNIFICADO_BANCO
+                        continue
+                    leitura = _ler(demonstrativos[demonstrativo], campo, modelo)
                     leituras[chave] = leitura
                     if isinstance(leitura, contas_cvm.Leitura):
                         valores[chave] = leitura.valor
@@ -541,8 +552,8 @@ class CVMProvider:
                      if not df.empty and "CNPJ_CIA" in df.columns),
                     None,
                 )
-                lucro_res = lucro_controladores_com_reserva(dre_emp, bpp_emp, leitura_generica)
-                pl_res = pl_controladores_com_reserva(bpp_emp, dre_emp, leitura_generica)
+                lucro_res = lucro_controladores_com_reserva(dre_emp, bpp_emp, modelo)
+                pl_res = pl_controladores_com_reserva(bpp_emp, dre_emp, modelo)
                 lucro_ctrl, pl_ctrl = lucro_res.valor, pl_res.valor
                 linhas_399, cc = self._dados_por_acao(zip_path)
                 if not linhas_399.empty and cnpj:
@@ -703,7 +714,6 @@ class CVMProvider:
         No ITR, o acumulado é a linha de `DT_INI_EXERC` mais antigo do documento; a outra é o
         trimestre isolado.
         """
-        leitura_generica = "empresa" if modelo == "banco" else modelo
         partes = []
         for tipo in ("DRE_con", "DVA_con"):
             df = self.parsear_demonstrativo(
@@ -720,9 +730,7 @@ class CVMProvider:
             fim = doc["DT_FIM_EXERC"].max()
             valores = {}
             for campo in series_cvm.CAMPOS_TTM:
-                leitura = _ler(
-                    doc, campo, modelo if campo in ("dividendos", "jcp") else leitura_generica
-                )
+                leitura = _ler(doc, campo, modelo)
                 valores[campo] = leitura.valor if isinstance(leitura, contas_cvm.Leitura) else None
             acumulados.append(
                 series_cvm.Acumulado(
