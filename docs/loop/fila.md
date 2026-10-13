@@ -524,19 +524,6 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: empresas do universo que usam a reserva e as que passam a se abster, conferidas contra a lista da ficha; das 105 companhias com as linhas zeradas na DFP 2025, quantas caem em cada lado;
   - gate da fase.
 
-- [ ] **F2A-39** · fix · `fix: map BTG Pactual unit through the source corrections table` · **[ADR-0003]** **[CORREÇÕES]**
-  Decisão de 13/10/2026 (universo inicial, D32). O FCA traz o código "000000" para a unit do Banco BTG Pactual S/A (CNPJ 30.306.294/0001-45, composição "1 ON E 2 PNA"), e o índice do F2A-1 a descarta como código fora do formato de ticker. O BPAC11 negocia no COTAHIST (1.695.828 negócios à vista em jul–set/2026).
-  - **Correção.** Uma linha em `correcoes.csv` (F2A-19, aprovada em 5/10/2026), com a evidência oficial: o ISIN do BPAC11 no COTAHIST ligado ao CNPJ pelo cadastro ou pelo FCA. Nenhum código é inventado; sem evidência que ligue os dois, o item fica `[!]`.
-  - **Índice.** Depois de `python -m sentinela.data.referencia`, o BPAC11 aparece como UNIT do BTG, com a composição oficial.
-  - **Universo.** O BTG sai das exclusões e entra nos casos difíceis de `docs/decisoes/universo-inicial.md` como atual, se passar no critério de negócios.
-
-  **Aceite:**
-  - `tests/test_referencia_correcoes.py::test_unit_com_codigo_zerado_no_fca_e_corrigida_pela_tabela` passa por xfail estrito → marca retirada → PASS, com FCA e COTAHIST sintéticos;
-  - os testes atuais das correções seguem verdes, sem asserção alterada;
-  - golden inalterado: a mudança é do índice;
-  - diário: a evidência usada (arquivo, data, ISIN) e a contagem do índice antes → depois;
-  - gate da fase.
-
 - [ ] **F2A-7** · feat · `feat: add five-year CVM series and trailing twelve months`
   F-24, F-8 e as janelas decididas no checkpoint (seção 4, item 4):
   - Bazin: dividendos médios de 5 anos;
@@ -942,9 +929,10 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   3. gera relatórios reais com o F1-12 para uma ação com ON e PN, uma unit, um banco e um FII. Confere ações, escala, documento, P/VP oficial, alavancagem e liquidez. Os relatórios saem em `outputs/`, fora do git;
   4. limpa o cache depois das mudanças da fase com `python scripts/invalidar_cache_cvm.py <tickers>`: primeiro sem `--aplicar`, para conferir, e depois com ele. Sem isso, os valores gravados antes da fase continuam servindo de reserva até o TTL de 7 dias. A lista de tickers fica só na linha de comando, nunca em arquivo versionado;
   5. roda a auditoria externa em modo FASE (ADR-0003, D30) e guarda o relatório em `docs/loop/historico/fase-2a/auditoria-externa.md`. Achado **bloqueia** impede o push até ser resolvido ou dispensado por escrito. Confere também os pontos do diário do F2A-3: a divergência de +402% das ações da SBSP3 contra o yfinance; o BTCI11 e o TRPL11, que o índice tira do motor de FII; e o ROE dos controladores de −1,83 da CSAN3;
-  6. responde à [LIQUIDEZ] para o F2A-10, que foi para a 2B, com a distribuição do diário do F2A-26, e lê a proposta da 2B (F2A-28);
-  7. faz o push do branch `v2/fase-2a` e abre o PR da fase (um PR por fase, checkpoint da Fase 0, seção 6), com `docs/loop/historico/fase-2a/pr-fase-2a.md` como corpo. O Jules revisa (grupo A);
-  8. depois do merge, marca a tag `v2-fase-2a`, apaga o branch, atualiza a "Fase atual" do `AGENTS.md` e apaga à mão os caches listados no F2A-13.
+  6. decide, numa revisão 1.1 da ficha por ação com uma auditoria em modo FICHA (D21), os pontos que o F2A-36 e o F2A-37 deixaram em abstenção (seções "Para o Marcos revisar" do diário): (a) escala das ações inferida pelo lucro consolidado quando o dos controladores se abstém (KLBN11 sem VPA); (b) linha agregada de LPA valendo como LPA da espécie só em companhia de espécie única (BBAS3), com abstenção nas de mais de uma espécie (Banco Pine); (c) USIM5, com PNA e PNB no FCA e uma linha "PN" na DRE, segue em abstenção pela regra 3; (d) MGLU3 como "Ações Preferenciais" no FCA, candidata à tabela de correções com a Composição do Capital como evidência. Cada mudança de comportamento vira item `fix:` próprio na 2B;
+  7. responde à [LIQUIDEZ] para o F2A-10, que foi para a 2B, com a distribuição do diário do F2A-26, e lê a proposta da 2B (F2A-28);
+  8. faz o push do branch `v2/fase-2a` e abre o PR da fase (um PR por fase, checkpoint da Fase 0, seção 6), com `docs/loop/historico/fase-2a/pr-fase-2a.md` como corpo. O Jules revisa (grupo A);
+  9. depois do merge, marca a tag `v2-fase-2a`, apaga o branch, atualiza a "Fase atual" do `AGENTS.md` e apaga à mão os caches listados no F2A-13.
 
 ## Riscos e decisões do Marcos
 
@@ -1000,6 +988,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - **Mapas manuais (F2A-31, F2A-13).** Decidido em 5/10/2026: a cascata deixa de lê-los num item `fix:` próprio (F2A-31), com xfail, e o F2A-13 só remove o que ficou sem uso. A pré-condição do PLANO (cobertura do universo) segue valendo.
   - **Ruff bloqueante em `sentinela/methods/` e `sentinela/data/`.** Aprovado e aplicado em 5/10/2026 ao passo 4 do protocolo e ao passo 3 da skill `/safe-commit`; o gate da fase traz a checagem.
 - **Fora da fase, pendente** (destinos decididos em 5/10/2026 e registrados na seção 10 do PLANO):
+  - BTG Pactual no índice (F2A-39, bloqueado em 13/10/2026): o COTAHIST liga o BPAC11 ao ISIN BRBPACUNT006, mas nenhuma fonte oficial já usada liga esse ISIN ao CNPJ 30.306.294/0001-45, e o FCA traz a unit com o código "000000". O Marcos recusou a ligação indireta (prefixo do ISIN e composição). Vai para a 2B, com levantamento de uma fonte oficial da B3 que traga ISIN e CNPJ juntos; até lá, o BTG fica em exclusão provisória (detalhes no diário do F2A-39);
   - ROE e P/L ausentes no score. Ausente vira 0 e penaliza; NaN escapa (F2C-3);
   - JCP no DY (F-7, F2C-1);
   - Selic sem proveniência e rede no import (E-6, F3-1);

@@ -144,7 +144,7 @@ Nos bancos e units com mais de um ticker no índice (BEES3/BEES4, BRSR3/BRSR5/BR
 |---|---|---|
 | Banco Daycoval S.A. | 62.232.889/0001-90 | banco ativo com DFP (F2A-16), emissor de Categoria B no cadastro (sem ação em bolsa) |
 | Banco RCI Brasil S.A. | 62.307.848/0001-15 | banco ativo com DFP (F2A-16), emissor de Categoria B no cadastro (sem ação em bolsa) |
-| Banco BTG Pactual S/A | 30.306.294/0001-45 | banco ativo com DFP (F2A-16), Categoria A, listado em bolsa (BPAC11: 1.695.828 negócios em jul–set/2026), mas **fora do índice por lacuna do F2A-1**: o FCA traz o código "000000" (unit "1 ON E 2 PNA") e o índice o descartou como código fora do formato de ticker. Exclusão provisória, aprovada em 13/10/2026, até o F2A-39 corrigir o índice |
+| Banco BTG Pactual S/A | 30.306.294/0001-45 | banco ativo com DFP (F2A-16), Categoria A, listado em bolsa (BPAC11: 1.695.828 negócios em jul–set/2026), mas **fora do índice por lacuna do F2A-1**: o FCA traz o código "000000" (unit "1 ON E 2 PNA") e o índice o descartou como código fora do formato de ticker. Exclusão provisória, aprovada em 13/10/2026. O F2A-39 ficou bloqueado sem fonte oficial que ligue ISIN e CNPJ; a correção foi para a 2B |
 
 ## Contagem (depois da deduplicação)
 
@@ -167,7 +167,7 @@ Nos bancos e units com mais de um ticker no índice (BEES3/BEES4, BRSR3/BRSR5/BR
 - Critério de "atual" aprovado como critério operacional do universo inicial.
 - Sucessores AZUL3, AXIA3 e NATU3 incluídos como atuais; NATU3 como emissor novo.
 - Um ticker por companhia, exceto o Banrisul (três classes).
-- BTG: exclusão provisória até o F2A-39 (correção pela tabela de correções do F2A-19).
+- BTG: exclusão provisória; a correção do índice foi para a 2B (F2A-39 bloqueado em 13/10/2026 sem fonte oficial que ligue ISIN e CNPJ).
 
 ## Pontos levantados no F2A-35 (registro)
 

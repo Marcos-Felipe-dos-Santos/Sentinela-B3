@@ -406,3 +406,28 @@
     - o P/L do LPA dos métodos é `preço ÷ lpa` sem guarda de zero (hoje o zero não chega ali);
     - com o divulgado abstido por sinal oposto, `lpa_recalculado` segue em `acoes_cvm` e o alerta de 10% do F2A-5 compara com um divulgado de sinal oposto;
     - o diário do F2A-36 não registrou que `cvm_provider.py`, `market_engine.py` e `ai_core.py` não passaram pelo `ruff format` (precedente do F1-5), o que vale também aqui para `cvm_provider.py`, `market_engine.py` e `tests/test_contas_cvm_consumidores.py`.
+
+### F2A-39 — fix: map BTG Pactual unit through the source corrections table
+- **Status:** bloqueado
+- **O que foi feito:** só a busca da evidência pedida pelo item, nos arquivos locais (só leitura, sem rede). Nenhum código, teste ou tabela mudou.
+- **Motivo do bloqueio:** o item exige "o ISIN do BPAC11 no COTAHIST ligado ao CNPJ pelo cadastro ou pelo FCA" e manda `[!]` se nenhuma evidência ligar os dois. Ela não existe nessas fontes:
+  - COTAHIST de setembro de 2026 (`outputs/levantamento_cache/COTAHIST_M092026.ZIP`): BPAC11 `BRBPACUNT006` (UNT N2), BPAC3 `BRBPACACNOR7` (ON N2) e BPAC5 `BRBPACACNPA0` (PNA N2), todos no CODBDI 02. O registro não traz CNPJ.
+  - FCA 2026 (documento 158545, versão 1) e FCA 2025 (documento 148494), `valor_mobiliario`: o Banco BTG Pactual S/A (30.306.294/0001-45) só tem a linha "Units", código "000000", composição "1 ON E 2 PNA". Não há linhas BPAC3 nem BPAC5, e o arquivo não tem coluna de ISIN. Nenhum dos outros nove CSVs do FCA 2026 tem ISIN.
+  - Cadastro de companhias abertas (`cad_cia_aberta.csv`): CD_CVM 22616, Categoria A, setor "Bancos", sem coluna de ISIN nem de código de negociação.
+  - O que liga BPAC11 ao BTG é indireto: o prefixo de emissor "BPAC" do ISIN e a composição ON + PNA da unit do FCA batendo com as espécies do COTAHIST. É inferência, não um registro oficial que una o ISIN ao CNPJ, e o item proíbe inventar código.
+- **Testes:** 1.182 passed, 1 skipped, 2 xfailed (sem mudança).
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:**
+  - aceitar como evidência a ligação indireta (prefixo de emissor do ISIN e composição da unit), ou indicar uma fonte oficial que traga ISIN e CNPJ juntos (por exemplo, o cadastro de instrumentos ou a página de empresas listadas da B3, que exigem rede e não estão nas fontes do item);
+  - com a evidência decidida, o item segue como está; a composição "2 PNA" da unit também passa pela nota do F2A-36 sobre componentes de classe única.
+- **Para o Marcos revisar:** pendências da revisão do F2A-37 (`f760897`), registradas aqui porque a seção dele já estava commitada:
+  - **Linha da controladora ausente não consulta a 2.03.09:** com os não controladores ausentes ou zerados, o consolidado entra mesmo com minoritários no balanço, enquanto o caso das linhas zeradas consulta a 2.03.09. Segue a letra do item; a DFP 2025 não tem caso (0 companhias sem a linha). A simetria é decisão.
+  - **Reserva do lucro na proveniência:** vai para o `lpa` também quando o LPA é o divulgado (o lucro só conferiu o sinal), e não vai para o `vpa`, que depende do lucro pela escala inferida. Só o `roe` tem teste da propagação.
+  - **Textos de motivo:** lucro de não controladores inválido faz o PL se abster com "PL dos controladores com valor inválido no documento" (o valor inválido está na DRE); 2.03.09 inválida no caso das linhas zeradas cai em "não separado", não em valor inválido. O comportamento está certo; o texto em `riscos_dados` engana.
+  - O caso NaN que saiu da parametrização de `tests/test_contas_cvm_consumidores.py` (justificativa na seção do F2A-37) pede o aval do Marcos.
+
+### Decisão do Marcos sobre o F2A-39 e os pontos do F2A-36/37 (13/10/2026)
+
+- **F2A-39:** a ligação indireta do BPAC11 ao BTG (prefixo do ISIN e composição) não foi aceita. O item sai da fila ativa e vai para a 2B, com levantamento de fonte oficial da B3 que traga ISIN e CNPJ juntos; o BTG segue em exclusão provisória.
+- **Testes alterados fora da lista no F2A-37** (`tests/test_contas_cvm_consumidores.py`): aceitos. O caso NaN que saiu da parametrização continua coberto em `tests/test_cvm_controladores.py::test_valor_invalido_nao_autoriza_reserva` (controladora zerada e não controladores com NaN); o ROE da seguradora passa a dividir pelo PL dos controladores (89 ÷ 890).
+- **KLBN11 sem VPA, BBAS3 e Banco Pine com LPA agregado, USIM5 e MGLU3:** comportamento atual (abstenção) mantido; a decisão fica para o checkpoint do fim da 2A, numa revisão 1.1 da ficha (passo 6 do [DECISÃO]).
