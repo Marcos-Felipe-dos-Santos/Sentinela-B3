@@ -447,7 +447,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - mutation ≥ 80% no módulo novo;
   - gate da fase.
 
-- [ ] **F2A-38** · fix · `fix: read existing CVM accounts through the code and description table` · **[ADR-0003]**
+- [x] **F2A-38** · fix · `fix: read existing CVM accounts through the code and description table` · **[ADR-0003]**
   ADR-0003, D20, parte que muda comportamento. Hoje `_conta` (`cvm_provider.py`) lê só pelo código: o `patrimonio_liquido` genérico de `calcular_indicadores` vem da 2.03 mesmo quando ela não é o PL, como nos bancos, e alimenta `divida_pl`, que chega ao motor como `div_liq_patrimonio` (`market_engine.py:53`).
   - As leituras de conta de `calcular_indicadores` passam pela função do F2A-33. Sem correspondência, o campo se abstém e `riscos_dados` registra o motivo.
   - O caminho dos controladores do F2A-3 já se protege; ele também passa pela tabela, sem mudar de resultado.

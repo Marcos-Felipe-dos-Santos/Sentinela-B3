@@ -37,3 +37,5 @@ seguradora;ebit;3.07;resultado antes do resultado financeiro e dos tributos;dfp_
 seguradora;lucro_liquido;3.13;lucro/prejuizo consolidado do periodo;dfp_cia_aberta_DRE_con_2025.csv;2025;BBSE3 17.344.597/0001-94 BB SEGURIDADE PARTICIPAÇÕES S.A.
 seguradora;lucro_controladores;3.13.01;atribuido a socios da empresa controladora;dfp_cia_aberta_DRE_con_2025.csv;2025;BBSE3 17.344.597/0001-94 BB SEGURIDADE PARTICIPAÇÕES S.A.
 seguradora;lucro_nao_controladores;3.13.02;atribuido a socios nao controladores;dfp_cia_aberta_DRE_con_2025.csv;2025;BBSE3 17.344.597/0001-94 BB SEGURIDADE PARTICIPAÇÕES S.A.
+empresa;lucro_controladores;3.09.01;atribuido a socios da empresa controladora;dfp_cia_aberta_DRE_con_2024.csv;2024;17.157.777/0001-67 BANCO NACIONAL S.A.
+empresa;lucro_nao_controladores;3.09.02;atribuido a socios nao controladores;dfp_cia_aberta_DRE_con_2024.csv;2024;17.157.777/0001-67 BANCO NACIONAL S.A.

@@ -14,6 +14,7 @@ Funções puras: sem rede, sem relógio, sem `config`.
 from __future__ import annotations
 
 import csv
+import functools
 import math
 import re
 import unicodedata
@@ -27,6 +28,7 @@ MOTIVO_LINHA_AUSENTE = "linha ausente no documento"
 MOTIVO_SEM_CORRESPONDENCIA = "par (código, descrição) sem correspondência na tabela"
 MOTIVO_VALOR_INVALIDO = "valor inválido na linha (não numérico, NaN ou infinito)"
 MOTIVO_CAMPO_FORA_DO_MODELO = "campo sem conta na tabela para o modelo"
+MOTIVO_LINHAS_DIVERGENTES = "o mesmo par aparece com valores diferentes no documento"
 
 
 def normalizar_descricao(texto: object) -> str:
@@ -103,6 +105,12 @@ def ler_tabela(caminho: Path = TABELA) -> tuple[Conta, ...]:
     return tuple(contas)
 
 
+@functools.cache
+def tabela() -> tuple[Conta, ...]:
+    """A tabela versionada do repositório, lida uma vez por processo."""
+    return ler_tabela()
+
+
 def _numero(valor: object) -> float | None:
     try:
         numero = float(str(valor).strip()) if isinstance(valor, str) else float(valor)
@@ -117,12 +125,13 @@ def ler_conta(
     modelo: str,
     tabela: tuple[Conta, ...],
 ) -> Leitura | Abstencao:
-    """Valor do campo nas linhas do documento (`CD_CONTA`, `DS_CONTA`, `VL_CONTA`).
+    """Valor do campo nas linhas de um só documento e exercício (`CD_CONTA`, `DS_CONTA`, `VL_CONTA`).
 
     Os códigos do campo no modelo são tentados na ordem da tabela. Código presente com a
     descrição da tabela: o valor, se for número finito, senão abstenção por valor inválido.
     Código presente só com outra descrição: abstenção sem correspondência. Nenhum código
-    presente: abstenção por linha ausente.
+    presente: abstenção por linha ausente. O mesmo par repetido com valores diferentes
+    (documento ou exercício misturados) também se abstém.
     """
     if modelo not in MODELOS:
         raise ValueError(f"modelo desconhecido: {modelo!r}")
@@ -131,18 +140,25 @@ def ler_conta(
         return Abstencao(MOTIVO_CAMPO_FORA_DO_MODELO, f"{campo} em {modelo}")
     por_codigo: dict[str, list[dict]] = {}
     for linha in linhas:
-        por_codigo.setdefault(str(linha.get("CD_CONTA")), []).append(linha)
+        por_codigo.setdefault(str(linha.get("CD_CONTA")).strip(), []).append(linha)
     divergentes = []
     for conta in candidatas:
+        casadas = []
         for linha in por_codigo.get(conta.codigo, []):
             descricao = normalizar_descricao(linha.get("DS_CONTA"))
             if descricao != conta.descricao:
                 divergentes.append(f"{conta.codigo} {descricao!r}")
-                continue
-            valor = _numero(linha.get("VL_CONTA"))
-            if valor is None:
-                return Abstencao(MOTIVO_VALOR_INVALIDO, f"{conta.codigo} {descricao!r}")
-            return Leitura(valor, conta.codigo, descricao)
+            else:
+                casadas.append(linha)
+        if not casadas:
+            continue
+        rotulo = f"{conta.codigo} {conta.descricao!r}"
+        valores = [_numero(linha.get("VL_CONTA")) for linha in casadas]
+        if None in valores:
+            return Abstencao(MOTIVO_VALOR_INVALIDO, rotulo)
+        if len(set(valores)) > 1:
+            return Abstencao(MOTIVO_LINHAS_DIVERGENTES, rotulo)
+        return Leitura(valores[0], conta.codigo, conta.descricao)
     if divergentes:
         return Abstencao(MOTIVO_SEM_CORRESPONDENCIA, "; ".join(divergentes))
     codigos = ", ".join(c.codigo for c in candidatas)

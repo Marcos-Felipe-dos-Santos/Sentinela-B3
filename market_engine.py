@@ -12,7 +12,7 @@ from cvm_provider import CVMProvider
 from cvm_ticker_map import get_cd_cvm
 from database import DatabaseManager
 from fundamentus_scraper import FundamentusScraper
-from sentinela.data import acoes_cvm
+from sentinela.data import acoes_cvm, contas_cvm
 from sentinela.data.referencia.carga import ReferenciaOficial
 from sentinela.domain.provenance import FieldProvenance, FieldValue
 from sentinela.domain.enums import AssetType
@@ -80,6 +80,7 @@ AVISO_CODIGO_DA_TABELA = 'cvm_code_from_correction_table'
 AVISO_ACOES_FIM_DO_PERIODO = 'shares_end_of_period'
 RISCO_SEM_POR_ACAO_CVM = 'CVM não derivou LPA, VPA, P/L e P/VP'
 RISCO_ROE_CVM = 'CVM sem ROE'
+RISCO_CONTA_CVM = 'CVM sem'
 
 
 def is_missing(value: Any) -> bool:
@@ -594,7 +595,11 @@ class MarketEngine:
             return False
 
         try:
-            historico = cvm.calcular_indicadores(cd_cvm, anos=1)
+            # F2A-38: o modelo de demonstração vem do setor; o padrão (empresa) não é passado,
+            # para manter a interface dos provedores anteriores ao F2A-33.
+            modelo = contas_cvm.modelo_do_setor(dados.get('setor'))
+            extra = {} if modelo == 'empresa' else {'modelo': modelo}
+            historico = cvm.calcular_indicadores(cd_cvm, anos=1, **extra)
             if not historico:
                 dados['cvm_disponivel'] = False
                 return False
@@ -608,6 +613,10 @@ class MarketEngine:
                 if v is not None:
                     cvm_campos[market_key] = v
 
+            for campo, motivo in (ind.get('contas_abstidas') or {}).items():
+                dados.setdefault('riscos_dados', []).append(
+                    f"{RISCO_CONTA_CVM} {campo}: {motivo}"
+                )
             if ind.get('roe_motivo'):
                 dados.setdefault('riscos_dados', []).append(
                     f"{RISCO_ROE_CVM}: {ind['roe_motivo']}"

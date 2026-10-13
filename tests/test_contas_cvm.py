@@ -266,3 +266,25 @@ def test_recorte_real_da_petrobras_le_pelos_pares():
         "pl_nao_controladores": 1_801_000.0,
         "lucro_controladores": 110_129_000.0,
     }
+
+
+def test_mesmo_par_com_valores_diferentes_abstem():
+    linhas = _linhas(("1", "Ativo Total", 1.0), ("1", "Ativo Total", 2.0))
+    assert cc.ler_conta(linhas, "ativo_total", "empresa", TABELA) == cc.Abstencao(
+        cc.MOTIVO_LINHAS_DIVERGENTES, "1 'ativo total'"
+    )
+
+
+def test_mesmo_par_repetido_com_o_mesmo_valor_vale():
+    linhas = _linhas(("1", "Ativo Total", 1.0), ("1", "Ativo Total", "1.0"))
+    assert cc.ler_conta(linhas, "ativo_total", "empresa", TABELA).valor == 1.0
+
+
+def test_codigo_com_espacos_e_reconhecido():
+    linhas = _linhas((" 1 ", "Ativo Total", 1.0))
+    assert cc.ler_conta(linhas, "ativo_total", "empresa", TABELA).valor == 1.0
+
+
+def test_tabela_do_repositorio_e_lida_uma_vez():
+    assert cc.tabela() is cc.tabela()
+    assert cc.tabela() == TABELA

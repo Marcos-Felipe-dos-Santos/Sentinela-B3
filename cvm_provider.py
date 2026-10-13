@@ -4,13 +4,14 @@ import re
 import threading
 import zipfile
 from collections import OrderedDict
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
 import pandas as pd
 
 from cvm_download import baixar_arquivo
-from sentinela.data import proveniencia
+from sentinela.data import contas_cvm, proveniencia
 from sentinela.data.acoes_cvm import (
     MOTIVO_DOCUMENTO_DIFERENTE,
     MOTIVO_SEM_COMPOSICAO,
@@ -23,16 +24,17 @@ logger = logging.getLogger(__name__)
 _DFP_URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_{ano}.zip"
 _ITR_URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/itr_cia_aberta_{ano}.zip"
 
-# Plano de contas CVM → chave semântica
-_CONTAS: dict[str, str] = {
-    "ativo_total":        "1",
-    "ativo_circulante":   "1.01",
-    "passivo_total":      "2",
-    "passivo_circulante": "2.01",
-    "patrimonio_liquido": "2.03",
-    "receita_liquida":    "3.01",
-    "ebit":               "3.05",
-    "lucro_liquido":      "3.11",
+# Chave semântica → (campo da tabela de contas, demonstrativo). A leitura confere o par
+# (código, descrição) pela tabela do F2A-33 (ADR-0003, D20); nunca só o código.
+_CONTAS: dict[str, tuple[str, str]] = {
+    "ativo_total":        ("ativo_total", "bpa"),
+    "ativo_circulante":   ("ativo_circulante", "bpa"),
+    "passivo_total":      ("passivo_total", "bpp"),
+    "passivo_circulante": ("passivo_circulante", "bpp"),
+    "patrimonio_liquido": ("pl_total", "bpp"),
+    "receita_liquida":    ("receita_liquida", "dre"),
+    "ebit":               ("ebit", "dre"),
+    "lucro_liquido":      ("lucro_liquido", "dre"),
 }
 
 _OUTPUT_COLS = ["CNPJ_CIA", "DT_REFER", "CD_CONTA", "DS_CONTA", "VL_CONTA"]
@@ -65,49 +67,69 @@ def _numero(valor) -> float:
     return 0.0 if pd.isna(numero) else float(numero)
 
 
-def lucro_controladores(dre_emp: pd.DataFrame, lucro_total: float | None) -> float | None:
-    """Lucro atribuído aos sócios da controladora (3.11.01 ou 3.09.01, pela descrição).
+def _ler(df: pd.DataFrame, campo: str, modelo: str):
+    return contas_cvm.ler_conta(df.to_dict("records"), campo, modelo, contas_cvm.tabela())
 
-    Sem a linha, ou com ela e a dos não controladores (x.xx.02) zeradas, a companhia não
-    separa não controladores e o lucro é todo deles (3.11; KLBN11 e SBSP3 na DFP 2025).
+
+def _pares_de_todos_os_modelos(campo: str) -> tuple[contas_cvm.Conta, ...]:
+    """Os pares do campo em qualquer modelo, sem repetir, na ordem da tabela.
+
+    O caminho dos controladores do F2A-3 achava a linha pela descrição em qualquer modelo; a
+    união preserva isso (o banco sem setor no índice segue achando "aos sócios").
     """
-    contas = dre_emp[dre_emp["CD_CONTA"].str.match(r"^3\.(09|11)\.0[12]$", na=False)]
-    descricao = contas["DS_CONTA"].fillna("").str.lower()
-    minoritarios = contas[descricao.str.contains("não contr")]
-    # A 3.11.01 (lucro do período, com operações descontinuadas) vem antes da 3.09.01.
-    linhas = contas[
-        descricao.str.contains("controladora") & ~descricao.str.contains("não contr")
-    ].sort_values("CD_CONTA", ascending=False)
-    if linhas.empty:
+    vistos: dict[tuple[str, str], contas_cvm.Conta] = {}
+    for conta in contas_cvm.tabela():
+        if conta.campo == campo:
+            vistos.setdefault(
+                (conta.codigo, conta.descricao), replace(conta, modelo="empresa")
+            )
+    return tuple(vistos.values())
+
+
+def _ler_em_qualquer_modelo(df: pd.DataFrame, campo: str):
+    return contas_cvm.ler_conta(
+        df.to_dict("records"), campo, "empresa", _pares_de_todos_os_modelos(campo)
+    )
+
+
+def lucro_total_da_dre(dre_emp: pd.DataFrame) -> float | None:
+    """Lucro consolidado do período pela tabela, em qualquer modelo (insumo da reserva)."""
+    leitura = _ler_em_qualquer_modelo(dre_emp, "lucro_liquido")
+    return leitura.valor if isinstance(leitura, contas_cvm.Leitura) else None
+
+
+def lucro_controladores(dre_emp: pd.DataFrame, lucro_total: float | None) -> float | None:
+    """Lucro atribuído aos sócios da controladora (3.11.01, 3.09.01 ou 3.13.01), pela tabela.
+
+    Reservas do F2A-3, que o F2A-37 revisa pela D20: sem a linha reconhecida, vale o lucro
+    total; com ela zerada e os não controladores zerados ou sem linha reconhecida, também
+    (KLBN11 e SBSP3 na DFP 2025). Valor inválido na linha da controladora: `None`.
+    """
+    leitura = _ler_em_qualquer_modelo(dre_emp, "lucro_controladores")
+    if isinstance(leitura, contas_cvm.Abstencao):
+        if leitura.motivo == contas_cvm.MOTIVO_VALOR_INVALIDO:
+            return None
         return lucro_total
-    valor = linhas.iloc[0]["VL_CONTA"]
-    if pd.isna(valor):
-        return None
-    if float(valor) == 0 and lucro_total and all(
-        _numero(v) == 0 for v in minoritarios["VL_CONTA"]
-    ):
-        return lucro_total
-    return float(valor)
+    if leitura.valor == 0 and lucro_total:
+        minoritarios = _ler_em_qualquer_modelo(dre_emp, "lucro_nao_controladores")
+        if not (isinstance(minoritarios, contas_cvm.Leitura) and minoritarios.valor != 0):
+            return lucro_total
+    return leitura.valor
 
 
-def pl_controladores(bpp_emp: pd.DataFrame) -> float | None:
-    """PL dos controladores: 2.03 − 2.03.09 (não controladores).
+def pl_controladores(bpp_emp: pd.DataFrame, modelo: str = "empresa") -> float | None:
+    """PL dos controladores: PL total menos não controladores, pela tabela de contas.
 
-    Se a 2.03 não é o patrimônio líquido (modelo de banco, F2A-16), devolve `None`: o PL
+    Sem o par do PL no modelo (a 2.03 do banco é "Provisões", F2A-16), devolve `None`: o PL
     certo dos bancos é do F2A-9.
     """
-    pl = bpp_emp[bpp_emp["CD_CONTA"] == "2.03"]
-    if pl.empty or "patrimônio líquido" not in str(pl.iloc[0]["DS_CONTA"]).lower():
+    total = _ler(bpp_emp, "pl_total", modelo)
+    if isinstance(total, contas_cvm.Abstencao):
         return None
-    total = pl.iloc[0]["VL_CONTA"]
-    if pd.isna(total):
-        return None
-    minoritarios = bpp_emp[bpp_emp["CD_CONTA"] == "2.03.09"]
-    if not minoritarios.empty and "não controladores" in str(
-        minoritarios.iloc[0]["DS_CONTA"]
-    ).lower():
-        return float(total) - _numero(minoritarios.iloc[0]["VL_CONTA"])
-    return float(total)
+    minoritarios = _ler(bpp_emp, "pl_nao_controladores", modelo)
+    if isinstance(minoritarios, contas_cvm.Leitura):
+        return total.valor - minoritarios.valor
+    return total.valor
 
 
 def lpa_divulgado(linhas_399: pd.DataFrame) -> dict | None:
@@ -370,14 +392,21 @@ class CVMProvider:
     # Cálculo de indicadores históricos
     # ------------------------------------------------------------------
 
-    def calcular_indicadores(self, cd_cvm: int, anos: int = 5) -> dict:
+    def calcular_indicadores(self, cd_cvm: int, anos: int = 5, modelo: str = "empresa") -> dict:
         """
         Retorna dict {ano: {indicador: valor}} para os últimos N anos.
 
         Indicadores: ativo_total, ativo_circulante, passivo_total,
         passivo_circulante, patrimonio_liquido, receita_liquida, ebit,
         lucro_liquido, roe, margem_liquida, divida_pl.
+
+        `modelo` é o modelo de demonstração (`contas_cvm.modelo_do_setor`). Cada conta é lida
+        pelo par (código, descrição); sem correspondência, o campo fica `None` e o motivo vai
+        para `contas_abstidas`. Os campos genéricos e o PL dos bancos ainda são lidos como os de
+        empresa (abstêm-se): a leitura do modelo de banco é do F2A-9. O lucro dos controladores
+        procura os pares de todos os modelos, como o F2A-3 fazia pela descrição.
         """
+        leitura_generica = "empresa" if modelo == "banco" else modelo
         ano_atual = date.today().year
         resultado: dict[int, dict] = {}
 
@@ -432,29 +461,33 @@ class CVMProvider:
                     bpp_emp = _filtrar_versao(bpp_emp)
                     dre_emp = _filtrar_versao(dre_emp)
 
-                def _conta(df: pd.DataFrame, codigo: str) -> float | None:
-                    rows = df[df["CD_CONTA"] == codigo]
-                    if rows.empty:
-                        return None
-                    val = rows.iloc[0]["VL_CONTA"]
-                    return float(val) if pd.notna(val) else None
-
-                ativo_total        = _conta(bpa_emp, _CONTAS["ativo_total"])
-                ativo_circulante   = _conta(bpa_emp, _CONTAS["ativo_circulante"])
-                passivo_total      = _conta(bpp_emp, _CONTAS["passivo_total"])
-                passivo_circulante = _conta(bpp_emp, _CONTAS["passivo_circulante"])
-                pl                 = _conta(bpp_emp, _CONTAS["patrimonio_liquido"])
-                receita            = _conta(dre_emp, _CONTAS["receita_liquida"])
-                ebit               = _conta(dre_emp, _CONTAS["ebit"])
-                lucro              = _conta(dre_emp, _CONTAS["lucro_liquido"])
+                demonstrativos = {"bpa": bpa_emp, "bpp": bpp_emp, "dre": dre_emp}
+                valores: dict[str, float | None] = {}
+                contas_abstidas: dict[str, str] = {}
+                for chave, (campo, demonstrativo) in _CONTAS.items():
+                    leitura = _ler(demonstrativos[demonstrativo], campo, leitura_generica)
+                    if isinstance(leitura, contas_cvm.Leitura):
+                        valores[chave] = leitura.valor
+                        continue
+                    valores[chave] = None
+                    if leitura.motivo != contas_cvm.MOTIVO_LINHA_AUSENTE:
+                        contas_abstidas[chave] = f"{leitura.motivo} ({leitura.detalhe})"
+                ativo_total        = valores["ativo_total"]
+                ativo_circulante   = valores["ativo_circulante"]
+                passivo_total      = valores["passivo_total"]
+                passivo_circulante = valores["passivo_circulante"]
+                pl                 = valores["patrimonio_liquido"]
+                receita            = valores["receita_liquida"]
+                ebit               = valores["ebit"]
+                lucro              = valores["lucro_liquido"]
 
                 cnpj = next(
                     (str(df["CNPJ_CIA"].iloc[0]) for df in (dre_emp, bpp_emp, bpa_emp)
                      if not df.empty and "CNPJ_CIA" in df.columns),
                     None,
                 )
-                lucro_ctrl = lucro_controladores(dre_emp, lucro)
-                pl_ctrl = pl_controladores(bpp_emp)
+                lucro_ctrl = lucro_controladores(dre_emp, lucro_total_da_dre(dre_emp))
+                pl_ctrl = pl_controladores(bpp_emp, leitura_generica)
                 linhas_399, cc = self._dados_por_acao(zip_path)
                 if not linhas_399.empty and cnpj:
                     linhas_399 = linhas_399[
@@ -491,6 +524,7 @@ class CVMProvider:
                     "lpa_divulgado_por_especie": lpa_divulgado_por_especie(linhas_399),
                     "composicao_capital": composicao,
                     "composicao_motivo":  motivo_composicao,
+                    "contas_abstidas":    contas_abstidas,
                     "proveniencia":       self.proveniencia_do_documento(
                         zip_path, ano, cnpj,
                         metadata.get("cvm_dt_refer"), metadata.get("cvm_versao"),
