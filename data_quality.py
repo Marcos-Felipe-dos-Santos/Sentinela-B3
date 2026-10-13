@@ -265,7 +265,7 @@ class DataQualityReport:
         return do_mesmo is not None and abs(do_mesmo - valor) <= _FOLGA * max(1.0, abs(valor))
 
     def _alertas_fontes_independentes(self, lpa: Optional[float]) -> list[str]:
-        """Ações da CVM × yfinance e LPA da cascata × LPA básico divulgado (F2A-5, E-2)."""
+        """Ações da CVM × yfinance e LPA recalculado × LPA básico divulgado (F2A-5, E-2)."""
         alertas: list[str] = []
         d = self.dados
         divergencia = d.get("divergencia_acoes") or {}
@@ -279,6 +279,9 @@ class DataQualityReport:
         comparado = acoes_cvm.get("lpa_divulgado_comparado") or {}
         divulgado = _safe_float(comparado.get("valor"))
         papel = _safe_float(acoes_cvm.get("acoes_por_papel")) or 1.0
+        if "lpa_recalculado" in acoes_cvm:
+            # F2A-36 (ficha, 7.3): o LPA dos métodos já é o divulgado; confere-se o recalculado.
+            lpa = _safe_float(acoes_cvm["lpa_recalculado"])
         if lpa is not None and divulgado:
             por_acao = lpa / papel
             divergencia_lpa = abs(por_acao - divulgado) / abs(divulgado)

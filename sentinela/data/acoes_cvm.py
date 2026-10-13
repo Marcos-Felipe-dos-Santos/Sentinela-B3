@@ -10,7 +10,10 @@ Funções puras: sem rede, sem banco, sem relógio.
   fica indeterminada (o F2A-16 mediu 250 de 255 empresas dentro dessa faixa; as duas hipóteses
   só se confundem perto de 31,6, a raiz de 1.000).
 - **Lucro e PL:** os atribuídos aos controladores (CPC 41).
-- **Unit:** LPA e VPA multiplicados pelas ações por unit do índice oficial.
+- **Unit:** LPA recalculado e VPA multiplicados pelas ações por unit do índice oficial.
+- **LPA dos métodos** (F2A-36, ADR-0003, D19; ficha `docs/metodologia/por-acao.md`): o LPA
+  básico divulgado da classe do ticker, quando coerente; sem ele, o recalculado, com a marca
+  do fim do período. Unit: soma dos LPAs das espécies, ponderada pela composição oficial.
 
 Sem insumo, abstém-se com o motivo; nunca devolve número conservador.
 """
@@ -34,6 +37,28 @@ MOTIVO_UNIT = "unit sem composição oficial (ações por unit)"
 MOTIVO_ROE_PL = "PL dos controladores ≤ 0"
 MOTIVO_ROE_SEM_PL = "PL dos controladores não identificado no documento"
 MOTIVO_ROE_SEM_LUCRO = "lucro dos controladores não identificado no documento"
+MOTIVO_SINAL_CONTROLADORES = "LPA divulgado com sinal oposto ao lucro dos controladores"
+MOTIVO_SINAL_CONSOLIDADO = "LPA divulgado com sinal oposto ao lucro consolidado"
+MOTIVO_LINHAS_CONFLITANTES = "LPA divulgado com linhas conflitantes para a espécie"
+MOTIVO_LUCRO_ZERO = "LPA divulgado diferente de zero com lucro zero no documento"
+MOTIVO_SINAL_NAO_CONFERIVEL = (
+    "sinal do LPA divulgado não conferível: lucro não identificado no documento"
+)
+MOTIVO_CLASSES_PREFERENCIAIS = "mais de uma classe preferencial com direitos distintos, sem LPA divulgado da classe"
+MOTIVO_SEM_RECALCULADO = "sem LPA divulgado da espécie nem LPA recalculado"
+MOTIVOS_DO_DIVULGADO = (
+    MOTIVO_SINAL_CONTROLADORES,
+    MOTIVO_SINAL_CONSOLIDADO,
+    MOTIVO_LINHAS_CONFLITANTES,
+    MOTIVO_LUCRO_ZERO,
+    MOTIVO_SINAL_NAO_CONFERIVEL,
+    MOTIVO_CLASSES_PREFERENCIAIS,
+)
+NOTA_SINAL_CONSOLIDADO = (
+    "sinal conferido pelo lucro consolidado: lucro dos controladores indisponível"
+)
+NOTA_RECALCULADO = "ações do fim do período, não média ponderada"
+ORDEM_DA_ESCALA = ("ON", "PN")
 NOTA_FIM_DO_PERIODO = (
     "ações do fim do período (Composição do Capital); o LPA divulgado usa a média "
     "ponderada do exercício"
@@ -101,6 +126,134 @@ def inferir_escala(
     if not FAIXA_DA_ESCALA[0] <= razao <= FAIXA_DA_ESCALA[1]:
         return None
     return melhor, razao
+
+
+@dataclass(frozen=True)
+class LpaDivulgado:
+    """LPA básico divulgado de uma classe, coerente com o sinal do lucro (ficha, 7.1 e 7.6)."""
+
+    valor: float
+    nota: str | None = None
+
+
+def divulgados_coerentes(
+    linhas: dict[str, list[float]],
+    lucro_controladores: float | None,
+    lucro_consolidado: float | None,
+) -> dict[str, LpaDivulgado | Abstencao]:
+    """Classe → LPA divulgado coerente, ou a abstenção da classe (ficha, abstenções 8 e 9).
+
+    `linhas`: os valores das linhas 3.99.01.xx por classe da descrição (ON, PN, PNA…), sem
+    zeros. Linhas repetidas com o mesmo valor contam como uma; valores diferentes na mesma
+    classe são conflito. O sinal é conferido contra o lucro dos controladores ou, quando ele se
+    abstém, contra o lucro consolidado.
+    """
+    if lucro_controladores is not None:
+        referencia, motivo_sinal, nota = (
+            lucro_controladores,
+            MOTIVO_SINAL_CONTROLADORES,
+            None,
+        )
+    else:
+        referencia, motivo_sinal, nota = (
+            lucro_consolidado,
+            MOTIVO_SINAL_CONSOLIDADO,
+            NOTA_SINAL_CONSOLIDADO,
+        )
+    resultado: dict[str, LpaDivulgado | Abstencao] = {}
+    for classe, valores in linhas.items():
+        distintos = set(valores)
+        if len(distintos) != 1:
+            resultado[classe] = Abstencao(MOTIVO_LINHAS_CONFLITANTES)
+            continue
+        (valor,) = distintos
+        if referencia is None or not math.isfinite(referencia):
+            resultado[classe] = Abstencao(MOTIVO_SINAL_NAO_CONFERIVEL)
+        elif referencia == 0:
+            resultado[classe] = Abstencao(MOTIVO_LUCRO_ZERO)
+        elif (referencia > 0) != (valor > 0):
+            resultado[classe] = Abstencao(motivo_sinal)
+        else:
+            resultado[classe] = LpaDivulgado(valor, nota)
+    return resultado
+
+
+def divulgado_da_escala(
+    divulgados: dict[str, LpaDivulgado | Abstencao],
+) -> float | None:
+    """O LPA divulgado coerente que fixa a escala: ON, depois PN, depois as classes em ordem.
+
+    Só do mesmo documento (ficha, 7.4): nunca de outro documento.
+    """
+    ordem = [*ORDEM_DA_ESCALA, *sorted(set(divulgados) - set(ORDEM_DA_ESCALA))]
+    for classe in ordem:
+        achado = divulgados.get(classe)
+        if isinstance(achado, LpaDivulgado):
+            return achado.valor
+    return None
+
+
+def _lpa_da_classe(
+    classe: str | None,
+    especie: str | None,
+    divulgados: dict[str, LpaDivulgado | Abstencao],
+    recalculado: float | None,
+    varias_preferenciais: bool,
+) -> tuple[float, dict] | Abstencao:
+    """LPA de uma classe (D19, regras 1 a 3) e o detalhe da origem."""
+    chaves = [classe] if varias_preferenciais else [classe, especie]
+    for chave in chaves:
+        if chave in divulgados:
+            achado = divulgados[chave]
+            if isinstance(achado, Abstencao):
+                return achado
+            nota = [achado.nota] if achado.nota else []
+            return achado.valor, {"origem": "divulgado", "classe": chave, "notas": nota}
+    preferencial = especie != "ON"
+    if varias_preferenciais and preferencial:
+        return Abstencao(MOTIVO_CLASSES_PREFERENCIAIS)
+    if recalculado is None:
+        return Abstencao(MOTIVO_SEM_RECALCULADO)
+    return recalculado, {
+        "origem": "recalculado",
+        "classe": classe or especie,
+        "notas": [NOTA_RECALCULADO],
+    }
+
+
+def lpa_dos_metodos(
+    *,
+    especie: str | None,
+    classe: str | None,
+    classes_preferenciais: list[str] | None,
+    eh_unit: bool,
+    acoes_por_unit: dict | None,
+    divulgados: dict[str, LpaDivulgado | Abstencao],
+    recalculado: float | None,
+) -> tuple[float, dict] | Abstencao:
+    """LPA que entra nos métodos (D19, regras 1 a 4) e o detalhe da origem, para a proveniência.
+
+    `recalculado` é o LPA comum por ação (lucro dos controladores ÷ ações do fim do período),
+    `None` quando a escala é indeterminada. `classes_preferenciais`: as siglas do FCA da
+    companhia (PNA, PNB…); com mais de uma, o recalculado comum não vale para preferenciais.
+    """
+    varias = len({c for c in classes_preferenciais or () if c.startswith("PN")}) > 1
+    if not eh_unit:
+        return _lpa_da_classe(
+            classe or especie, especie, divulgados, recalculado, varias
+        )
+    if not acoes_por_unit:
+        return Abstencao(MOTIVO_UNIT)
+    total, componentes, notas = 0.0, {}, []
+    for componente, quantidade in acoes_por_unit.items():
+        achado = _lpa_da_classe(componente, componente, divulgados, recalculado, varias)
+        if isinstance(achado, Abstencao):
+            return Abstencao(f"{achado.motivo} ({componente} da unit)")
+        valor, detalhe = achado
+        total += quantidade * valor
+        componentes[componente] = {"quantidade": quantidade, "lpa": valor, **detalhe}
+        notas += [n for n in detalhe["notas"] if n not in notas]
+    return total, {"origem": "unit", "componentes": componentes, "notas": notas}
 
 
 def _dividir(numerador: float | None, denominador: float | None) -> float | None:

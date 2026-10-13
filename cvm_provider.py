@@ -160,19 +160,32 @@ def lpa_divulgado(linhas_399: pd.DataFrame) -> dict | None:
     return None
 
 
-def lpa_divulgado_por_especie(linhas_399: pd.DataFrame) -> dict[str, float]:
-    """LPA básico divulgado por espécie (ON e PN, pela descrição da linha 3.99.01.xx), sem zeros."""
+_CLASSE_NA_DESCRICAO = re.compile(r"^(ON|PN[A-Z]?)$")
+
+
+def lpa_basico_por_classe(linhas_399: pd.DataFrame) -> dict[str, list[float]]:
+    """Valores das linhas de LPA básico (3.99.01.xx) por classe da descrição, sem zeros.
+
+    Cada classe fica na sua chave (ON, PN, PNA, PNB…; F2A-36, D19, regra 3); linhas repetidas
+    ficam todas, para a conferência de conflito (`acoes_cvm.divulgados_coerentes`).
+    """
     if linhas_399.empty:
         return {}
     basico = linhas_399[linhas_399["CD_CONTA"].str.startswith("3.99.01.")]
     descricao = basico["DS_CONTA"].fillna("").str.strip().str.upper()
     valores = pd.to_numeric(basico["VL_CONTA"], errors="coerce")
-    resultado: dict[str, float] = {}
-    for especie, filtro in (("ON", descricao == "ON"), ("PN", descricao.str.startswith("PN"))):
-        achados = valores[filtro & valores.notna() & (valores != 0)]
-        if not achados.empty:
-            resultado[especie] = float(achados.iloc[0])
+    resultado: dict[str, list[float]] = {}
+    for classe, valor in zip(descricao, valores):
+        if _CLASSE_NA_DESCRICAO.match(classe) and pd.notna(valor) and valor != 0:
+            resultado.setdefault(classe, []).append(float(valor))
     return resultado
+
+
+def lpa_divulgado_por_especie(linhas_399: pd.DataFrame) -> dict[str, float]:
+    """Primeiro LPA básico divulgado de cada classe (ON, PN, PNA…), sem zeros (F2A-5)."""
+    return {
+        classe: valores[0] for classe, valores in lpa_basico_por_classe(linhas_399).items()
+    }
 
 
 def composicao_do_documento(
@@ -522,6 +535,7 @@ class CVMProvider:
                     "roe_motivo":         motivo_roe,
                     "lpa_divulgado":      lpa_divulgado(linhas_399),
                     "lpa_divulgado_por_especie": lpa_divulgado_por_especie(linhas_399),
+                    "lpa_basico_por_classe": lpa_basico_por_classe(linhas_399),
                     "composicao_capital": composicao,
                     "composicao_motivo":  motivo_composicao,
                     "contas_abstidas":    contas_abstidas,

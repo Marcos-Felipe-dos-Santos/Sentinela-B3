@@ -21,6 +21,8 @@ class Registro:
     controle_acionario: str | None = None
     segmento: str | None = None
     correcao: dict | None = None
+    classe_preferencial: str | None = None
+    classes_preferenciais: list[str] | None = None
 
     def para_dict(self) -> dict:
         return asdict(self)

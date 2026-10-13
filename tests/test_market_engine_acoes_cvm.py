@@ -13,11 +13,18 @@ import pytest
 
 from cvm_provider import CVMProvider
 from sentinela.data.acoes_cvm import (
+    MOTIVO_CLASSES_PREFERENCIAIS,
     MOTIVO_DOCUMENTO_DIFERENTE,
     MOTIVO_ESCALA,
+    MOTIVO_LINHAS_CONFLITANTES,
     MOTIVO_ROE_PL,
     MOTIVO_SEM_COMPOSICAO,
+    MOTIVO_SINAL_CONSOLIDADO,
+    MOTIVO_SINAL_CONTROLADORES,
+    MOTIVO_SINAL_NAO_CONFERIVEL,
     MOTIVO_UNIT,
+    NOTA_RECALCULADO,
+    NOTA_SINAL_CONSOLIDADO,
     Composicao,
 )
 from tests.test_market_engine import FakeCVM, _engine, _historico
@@ -66,8 +73,13 @@ def _motor(monkeypatch, ind, *, shares=400.0, referencia=None, info_extra=None):
 
 def test_lpa_usa_on_mais_pn_menos_tesouraria(monkeypatch):
     # ON 700 + PN 400 − tesouraria 100 = 1.000 ações; o yfinance informa só a PN (400).
+    # F2A-36: o recalculado é conferência (`lpa_recalculado`) e reserva: sem divulgado da
+    # espécie do ticker (aqui, sem espécie no índice), ele entra nos métodos, com a marca.
     dados = _motor(monkeypatch, _ind(), shares=400.0).buscar_dados_ticker("PETR4")
+    assert dados["acoes_cvm"]["lpa_recalculado"] == pytest.approx(2.0)
     assert dados["lpa"] == pytest.approx(2.0)
+    assert dados["lpa_cvm"]["origem"] == "recalculado"
+    assert NOTA_RECALCULADO in dados["lpa_cvm"]["notas"]
     assert dados["vpa"] == pytest.approx(10.0)
     assert dados["pl"] == pytest.approx(PRECO / 2.0)
     assert dados["pvp"] == pytest.approx(PRECO / 10.0)
@@ -108,14 +120,17 @@ def test_documento_diferente_do_lucro_abstem(monkeypatch):
 
 
 def test_unit_multiplica_pelas_acoes_por_unit(monkeypatch):
+    # F2A-36: o recalculado da unit (1 ON + 2 PN) fica como conferência; nos métodos entra
+    # 1 × LPA divulgado ON (2,1) + 2 × recalculado PN (2,0, sem divulgado da PN).
     unit = _registro(
         "TSTA11", classe="UNIT", especie=None, acoes_por_unit={"ON": 1, "PN": 2}
     )
     engine = _motor(monkeypatch, _ind(), referencia=FakeReferencia(_indice(unit)))
     dados = engine.buscar_dados_ticker("TSTA11")
-    assert dados["lpa"] == pytest.approx(6.0)
+    assert dados["acoes_cvm"]["lpa_recalculado"] == pytest.approx(6.0)
+    assert dados["lpa"] == pytest.approx(2.1 + 2 * 2.0)
     assert dados["vpa"] == pytest.approx(30.0)
-    assert dados["pl"] == pytest.approx(PRECO / 6.0)
+    assert dados["pl"] == pytest.approx(PRECO / 6.1)
     assert dados["divergencia_acoes"]["especie"] == "UNIT"
     assert dados["divergencia_acoes"]["acoes_cvm"] == pytest.approx(1_000.0 / 3)
 
@@ -527,3 +542,278 @@ def test_cache_por_acao_tem_teto(tmp_path, monkeypatch):
     for i in range(cvm_provider._CACHE_POR_ACAO_MAX + 3):
         provider._dados_por_acao(_zip_dfp(tmp_path / f"dfp{i}.zip"))
     assert len(cvm_provider._cache_por_acao) == cvm_provider._CACHE_POR_ACAO_MAX
+
+
+# ── F2A-36: LPA divulgado por espécie nos métodos (ADR-0003, D19) ─────────────
+
+
+def test_lpa_dos_metodos_e_o_divulgado_da_especie(monkeypatch):
+    pn = _registro("TSTA4", especie="PN")
+    ind = _ind(lpa_divulgado_por_especie={"ON": 2.1, "PN": 2.3})
+    dados = _motor(
+        monkeypatch, ind, referencia=FakeReferencia(_indice(pn))
+    ).buscar_dados_ticker("TSTA4")
+    assert dados["lpa"] == pytest.approx(2.3)
+    assert dados["pl"] == pytest.approx(PRECO / 2.3)
+    assert dados["vpa"] == pytest.approx(10.0)
+
+
+def _por_classe(monkeypatch, ticker, linhas, *, registro=None, **ind):
+    registro = registro or _registro(ticker, especie="PN")
+    return _motor(
+        monkeypatch,
+        _ind(lpa_basico_por_classe=linhas, **ind),
+        referencia=FakeReferencia(_indice(registro)),
+    ).buscar_dados_ticker(ticker)
+
+
+def test_sem_divulgado_usa_recalculado_com_marca(monkeypatch):
+    # Só a ON tem LPA divulgado: ela fixa a escala, e a PN usa o recalculado (D19, regra 2).
+    dados = _por_classe(monkeypatch, "TSTA4", {"ON": [2.1]})
+    assert dados["lpa"] == pytest.approx(2.0)
+    assert dados["lpa_cvm"] == {
+        "origem": "recalculado",
+        "classe": "PN",
+        "notas": [NOTA_RECALCULADO],
+    }
+
+
+def test_divulgado_incoerente_abstem_sem_recalculado(monkeypatch):
+    # Lucro dos controladores positivo, LPA da PN negativo: a PN se abstém, sem reserva.
+    dados = _por_classe(monkeypatch, "TSTA4", {"ON": [2.1], "PN": [-2.0]})
+    assert "lpa" not in dados and "pl" not in dados
+    assert f"CVM sem LPA: {MOTIVO_SINAL_CONTROLADORES}" in dados["riscos_dados"]
+    assert dados["vpa"] == pytest.approx(10.0)  # o VPA não depende do divulgado da PN
+
+
+def test_linhas_conflitantes_da_especie_abstem(monkeypatch):
+    # QUAL3 na DFP 2025: duas linhas básicas "ON" com valores diferentes.
+    on = _registro("TSTA3", especie="ON")
+    dados = _por_classe(monkeypatch, "TSTA3", {"ON": [-0.00895, 0.04662]}, registro=on)
+    assert "lpa" not in dados
+    assert f"CVM sem LPA: {MOTIVO_LINHAS_CONFLITANTES}" in dados["riscos_dados"]
+    assert (
+        f"CVM não derivou LPA, VPA, P/L e P/VP: {MOTIVO_ESCALA}"
+        in dados["riscos_dados"]
+    )
+
+
+def test_escala_indeterminada_mantem_o_divulgado(monkeypatch):
+    # Razão 2,0 ÷ 0,05 = 40, fora de [0,1; 10]: sem VPA, mas o divulgado segue (ficha, 7.1).
+    dados = _por_classe(monkeypatch, "TSTA4", {"ON": [0.05], "PN": [0.05]})
+    assert dados["lpa"] == pytest.approx(0.05)
+    assert dados["pl"] == pytest.approx(PRECO / 0.05)
+    assert "vpa" not in dados and "pvp" not in dados and "acoes_cvm" not in dados
+    assert f"CVM não derivou VPA e P/VP: {MOTIVO_ESCALA}" in dados["riscos_dados"]
+    assert not any(r.startswith("CVM não derivou LPA") for r in dados["riscos_dados"])
+
+
+def test_escala_vem_de_outra_especie_do_mesmo_documento(monkeypatch):
+    # Ações em milhares: a ON (1,9) fixa a escala MIL; a PN sem divulgado usa o recalculado.
+    dados = _por_classe(
+        monkeypatch,
+        "TSTA4",
+        {"ON": [1.9]},
+        lucro_controladores=2_000_000.0,
+        pl_controladores=10_000_000.0,
+    )
+    assert dados["acoes_cvm"]["escala"] == "MIL"
+    assert dados["lpa"] == pytest.approx(2.0)
+    assert dados["vpa"] == pytest.approx(10.0)
+
+
+def test_sinal_conferido_pelo_consolidado_quando_controladores_se_abstem(monkeypatch):
+    # KLBN11 pela decisão 7.2: lucro dos controladores abstido; o consolidado confere o sinal.
+    dados = _por_classe(
+        monkeypatch, "TSTA4", {"ON": [0.2286], "PN": [0.2286]},
+        lucro_controladores=None, proveniencia={"dt_refer": "2025-12-31"},
+    )  # fmt: skip
+    assert dados["lpa"] == pytest.approx(0.2286)
+    assert dados["lpa_cvm"]["notas"] == [NOTA_SINAL_CONSOLIDADO]
+    assert dados["proveniencia"]["lpa"] == {
+        "dt_refer": "2025-12-31",
+        "lpa": dados["lpa_cvm"],
+    }
+    contra = _por_classe(monkeypatch, "TSTA4", {"PN": [-0.2]}, lucro_controladores=None)
+    assert f"CVM sem LPA: {MOTIVO_SINAL_CONSOLIDADO}" in contra["riscos_dados"]
+
+
+def test_sem_lucro_valido_o_divulgado_se_abstem(monkeypatch):
+    dados = _por_classe(
+        monkeypatch,
+        "TSTA4",
+        {"PN": [0.5]},
+        lucro_controladores=None,
+        lucro_liquido=None,
+    )
+    assert "lpa" not in dados
+    assert f"CVM sem LPA: {MOTIVO_SINAL_NAO_CONFERIVEL}" in dados["riscos_dados"]
+
+
+def test_classe_preferencial_vem_do_fca():
+    # Banrisul no FCA 2026 (documento 156166): BRSR3 ON, BRSR5 PNA, BRSR6 PNB.
+    from tests.test_referencia import _fca
+    from tests.test_referencia import _indice as _indice_oficial
+
+    fca = _fca(
+        {"Codigo_Negociacao": "TSTB3"},
+        {"Codigo_Negociacao": "TSTB5", "Valor_Mobiliario": "Ações Preferenciais",
+         "Sigla_Classe_Acao_Preferencial": "PNA"},
+        {"Codigo_Negociacao": "TSTB6", "Valor_Mobiliario": "Ações Preferenciais",
+         "Sigla_Classe_Acao_Preferencial": "PNB"},
+    )  # fmt: skip
+    fca["Sigla_Classe_Acao_Preferencial"] = [None, "PNA", "PNB"]
+    registros = _indice_oficial(fca=fca).registros
+    assert (registros["TSTB5"].especie, registros["TSTB5"].classe_preferencial) == (
+        "PN",
+        "PNA",
+    )
+    assert registros["TSTB6"].classe_preferencial == "PNB"
+    assert registros["TSTB3"].classe_preferencial is None
+    assert registros["TSTB3"].classes_preferenciais == ["PNA", "PNB"]
+
+
+def _banrisul(ticker, especie, classe):
+    return _registro(
+        ticker, especie=especie, classe_preferencial=classe,
+        classes_preferenciais=["PNA", "PNB"],
+    )  # fmt: skip
+
+
+def test_pna_e_pnb_nao_usam_lpa_comum(monkeypatch):
+    linhas = {"ON": [2.1], "PNA": [2.3]}
+    pna = _por_classe(
+        monkeypatch, "TSTB5", linhas, registro=_banrisul("TSTB5", "PN", "PNA")
+    )
+    assert pna["lpa"] == pytest.approx(2.3)
+    assert pna["lpa_cvm"]["classe"] == "PNA"
+    pnb = _por_classe(
+        monkeypatch, "TSTB6", linhas, registro=_banrisul("TSTB6", "PN", "PNB")
+    )
+    assert "lpa" not in pnb
+    assert f"CVM sem LPA: {MOTIVO_CLASSES_PREFERENCIAIS}" in pnb["riscos_dados"]
+    on = _por_classe(
+        monkeypatch, "TSTB3", {"PNA": [2.3]}, registro=_banrisul("TSTB3", "ON", None)
+    )
+    assert on["lpa"] == pytest.approx(2.0)  # a ON sem divulgado ainda tem a reserva
+    assert on["lpa_cvm"]["origem"] == "recalculado"
+
+
+def _unit(**campos):
+    return _registro(
+        "TSTA11",
+        classe="UNIT",
+        especie=None,
+        acoes_por_unit={"ON": 1, "PN": 4},
+        **campos,
+    )
+
+
+def test_unit_soma_lpas_ponderados_pela_composicao(monkeypatch):
+    dados = _por_classe(
+        monkeypatch, "TSTA11", {"ON": [2.1], "PN": [2.3]}, registro=_unit()
+    )
+    assert dados["lpa"] == pytest.approx(1 * 2.1 + 4 * 2.3)
+    assert dados["lpa_cvm"]["origem"] == "unit"
+    assert dados["lpa_cvm"]["componentes"]["PN"] == {
+        "quantidade": 4, "lpa": 2.3, "origem": "divulgado", "classe": "PN", "notas": [],
+    }  # fmt: skip
+
+
+def test_unit_com_componente_sem_reserva_abstem(monkeypatch):
+    # A PN da unit, numa companhia com PNA e PNB, não tem divulgado nem reserva (regra 3).
+    dados = _por_classe(
+        monkeypatch,
+        "TSTA11",
+        {"ON": [2.1]},
+        registro=_unit(classes_preferenciais=["PNA", "PNB"]),
+    )
+    assert "lpa" not in dados
+    assert (
+        f"CVM sem LPA: {MOTIVO_CLASSES_PREFERENCIAIS} (PN da unit)"
+        in dados["riscos_dados"]
+    )
+    assert dados["vpa"] == pytest.approx(50.0)  # 5 ações por unit × 10
+
+
+def _documento_da_ficha(tmp_path, monkeypatch, *, dre, bpp, lpa, acoes):
+    on, pn = acoes
+    linhas_399 = [
+        ("3.99.01.01", "ON", lpa, "2025-12-31", "1", "ÚLTIMO"),
+        ("3.99.01.02", "PN", lpa, "2025-12-31", "1", "ÚLTIMO"),
+    ]
+    composicao = [[CNPJ, "2025-12-31", "1", "TESTE", on, pn, on + pn, 0, 0, 0]]
+    return _calcular(
+        tmp_path, monkeypatch, dre=dre, bpp=bpp, linhas_399=linhas_399,
+        composicao=composicao,
+    )  # fmt: skip
+
+
+def test_exemplo_da_ficha_por_acao(tmp_path, monkeypatch):
+    # docs/metodologia/por-acao.md, seção 5 (valores da DFP 2025 lidos à mão, em reais).
+    petrobras = _documento_da_ficha(
+        tmp_path / "petr", monkeypatch,
+        dre=[("3.11", "Lucro/Prejuízo Consolidado do Período", 110_605_000_000.0),
+             ("3.11.01", "Atribuído a Sócios da Empresa Controladora", 110_129_000_000.0)],
+        bpp=[("2.03", "Patrimônio Líquido Consolidado", 417_587_000_000.0),
+             ("2.03.09", "Participação dos Acionistas Não Controladores", 1_801_000_000.0)],
+        lpa="8.54", acoes=(7_442_231_382, 5_446_501_379),
+    )  # fmt: skip
+    for ticker, especie in (("TSTP3", "ON"), ("TSTP4", "PN")):
+        dados = _motor(
+            monkeypatch, {2025: petrobras},
+            referencia=FakeReferencia(_indice(_registro(ticker, especie=especie))),
+        ).buscar_dados_ticker(ticker)  # fmt: skip
+        assert dados["lpa"] == pytest.approx(8.54)
+        assert dados["acoes_cvm"]["escala"] == "UNIDADE"
+        assert dados["acoes_cvm"]["lpa_recalculado"] == pytest.approx(8.5446, abs=5e-5)
+        assert dados["vpa"] == pytest.approx(32.26, abs=5e-3)
+
+    taesa = _documento_da_ficha(
+        tmp_path / "taee", monkeypatch,
+        dre=[("3.11", "Lucro/Prejuízo Consolidado do Período", 1_579_863_000.0),
+             ("3.11.01", "Atribuído a Sócios da Empresa Controladora", 1_579_863_000.0),
+             ("3.11.02", "Atribuído a Sócios Não Controladores", 0.0)],
+        bpp=[("2.03", "Patrimônio Líquido Consolidado", 7_608_982_000.0),
+             ("2.03.09", "Participação dos Acionistas Não Controladores", 0.0)],
+        lpa="1.52866", acoes=(590_714, 442_783),
+    )  # fmt: skip
+    unit = _registro(
+        "TSTT11", classe="UNIT", especie=None, acoes_por_unit={"ON": 1, "PN": 2}
+    )
+    dados = _motor(
+        monkeypatch, {2025: taesa}, referencia=FakeReferencia(_indice(unit))
+    ).buscar_dados_ticker("TSTT11")
+    assert dados["acoes_cvm"]["escala"] == "MIL"
+    assert dados["lpa"] == pytest.approx(4.58598)
+    assert dados["vpa"] == pytest.approx(22.087, abs=5e-4)
+
+
+def test_conferencia_usa_a_linha_da_especie_quando_a_dre_nao_traz_a_classe(monkeypatch):
+    # FCA com a sigla PNA e uma só classe preferencial; a DRE rotula a linha só como "PN".
+    pna = _registro("TSTA5", especie="PN", classe_preferencial="PNA",
+                    classes_preferenciais=["PNA"])  # fmt: skip
+    dados = _por_classe(
+        monkeypatch, "TSTA5", {"ON": [2.1], "PN": [2.5]}, registro=pna,
+        lpa_divulgado_por_especie={"ON": 2.1, "PN": 2.5},
+    )  # fmt: skip
+    assert dados["lpa"] == pytest.approx(2.5)
+    assert dados["acoes_cvm"]["lpa_divulgado_comparado"] == {
+        "especie": "PN",
+        "valor": 2.5,
+    }
+
+
+def test_pl_do_divulgado_nao_declara_as_acoes_do_fim_do_periodo(monkeypatch):
+    # O divulgado usa a média ponderada: o aviso fica só no P/VP (e no P/L do recalculado).
+    dados = _por_classe(monkeypatch, "TSTA4", {"ON": [2.1], "PN": [2.3]})
+    avisos = {
+        c: dados["field_provenance"][c]["provenance"]["warnings"] for c in ("pl", "pvp")
+    }
+    assert "shares_end_of_period" not in avisos["pl"]
+    assert "shares_end_of_period" in avisos["pvp"]
+    unit = _por_classe(monkeypatch, "TSTA11", {"ON": [2.1]}, registro=_unit())
+    assert (
+        "shares_end_of_period"
+        in unit["field_provenance"]["pl"]["provenance"]["warnings"]
+    )

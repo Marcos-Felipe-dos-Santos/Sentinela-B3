@@ -4,20 +4,33 @@ import pytest
 
 from sentinela.data.acoes_cvm import (
     FAIXA_DA_ESCALA,
+    MOTIVO_CLASSES_PREFERENCIAIS,
     MOTIVO_ESCALA,
+    MOTIVO_LINHAS_CONFLITANTES,
+    MOTIVO_LUCRO_ZERO,
     MOTIVO_ROE_PL,
     MOTIVO_ROE_SEM_LUCRO,
     MOTIVO_ROE_SEM_PL,
     MOTIVO_SEM_COMPOSICAO,
+    MOTIVO_SEM_RECALCULADO,
+    MOTIVO_SINAL_CONSOLIDADO,
+    MOTIVO_SINAL_CONTROLADORES,
+    MOTIVO_SINAL_NAO_CONFERIVEL,
     MOTIVO_TOTAL,
     MOTIVO_UNIT,
     NOTA_FIM_DO_PERIODO,
+    NOTA_RECALCULADO,
+    NOTA_SINAL_CONSOLIDADO,
     Abstencao,
     Composicao,
+    LpaDivulgado,
     PorAcao,
     derivar_por_acao,
     divergencia_acoes,
+    divulgado_da_escala,
+    divulgados_coerentes,
     inferir_escala,
+    lpa_dos_metodos,
     roe_dos_controladores,
 )
 from sentinela.domain.units import Escala
@@ -281,3 +294,96 @@ def test_roe_dos_controladores():
 )
 def test_roe_abstem(lucro, pl, motivo):
     assert roe_dos_controladores(lucro, pl) == (None, motivo)
+
+
+# ── LPA dos métodos (F2A-36, D19) ────────────────────────────────────────────
+
+
+def test_divulgados_conferem_cada_classe_pelo_sinal_do_lucro():
+    linhas = {"ON": [1.0, 2.0], "PN": [-0.5, -0.5], "PNA": [0.5]}
+    assert divulgados_coerentes(linhas, -100.0, None) == {
+        "ON": Abstencao(MOTIVO_LINHAS_CONFLITANTES),
+        "PN": LpaDivulgado(-0.5),
+        "PNA": Abstencao(MOTIVO_SINAL_CONTROLADORES),
+    }
+    assert divulgados_coerentes({"PN": [0.5]}, 0.0, 10.0) == {
+        "PN": Abstencao(MOTIVO_LUCRO_ZERO)
+    }
+    assert divulgados_coerentes({"PN": [0.5]}, 0.5, None) == {"PN": LpaDivulgado(0.5)}
+
+
+def test_sem_controladores_o_consolidado_confere_e_marca():
+    assert divulgados_coerentes({"ON": [0.2], "PN": [-0.2]}, None, 0.5) == {
+        "ON": LpaDivulgado(0.2, NOTA_SINAL_CONSOLIDADO),
+        "PN": Abstencao(MOTIVO_SINAL_CONSOLIDADO),
+    }
+    assert divulgados_coerentes({"ON": [0.2]}, None, None) == {
+        "ON": Abstencao(MOTIVO_SINAL_NAO_CONFERIVEL)
+    }
+    assert divulgados_coerentes({"ON": [0.2]}, None, float("nan")) == {
+        "ON": Abstencao(MOTIVO_SINAL_NAO_CONFERIVEL)
+    }
+
+
+def test_escala_usa_on_depois_pn_depois_as_classes():
+    conflito = Abstencao("x")
+    assert (
+        divulgado_da_escala({"PNB": LpaDivulgado(3.0), "PNA": LpaDivulgado(2.0)}) == 2.0
+    )
+    assert (
+        divulgado_da_escala({"PN": LpaDivulgado(2.0), "ON": LpaDivulgado(1.0)}) == 1.0
+    )
+    assert divulgado_da_escala({"ON": conflito, "PN": LpaDivulgado(2.0)}) == 2.0
+    assert divulgado_da_escala({"ON": conflito}) is None
+
+
+def _metodos(**campos):
+    base = {
+        "especie": "PN", "classe": "PN", "classes_preferenciais": None, "eh_unit": False,
+        "acoes_por_unit": None, "divulgados": {}, "recalculado": 2.0,
+    }  # fmt: skip
+    return lpa_dos_metodos(**{**base, **campos})
+
+
+def test_classe_sem_linha_propria_usa_a_da_especie_com_uma_so_classe():
+    valor, detalhe = _metodos(
+        classe="PNA",
+        classes_preferenciais=["PNA"],
+        divulgados={"PN": LpaDivulgado(2.5)},
+    )
+    assert (valor, detalhe["classe"], detalhe["origem"]) == (2.5, "PN", "divulgado")
+
+
+def test_sem_divulgado_nem_recalculado_abstem():
+    assert _metodos(recalculado=None) == Abstencao(MOTIVO_SEM_RECALCULADO)
+    assert _metodos(classe=None, especie=None) == (
+        2.0,
+        {"origem": "recalculado", "classe": None, "notas": [NOTA_RECALCULADO]},
+    )
+    assert _metodos(classe=None)[1]["classe"] == "PN"
+
+
+def test_uma_classe_preferencial_nao_bloqueia_o_recalculado():
+    assert _metodos(classes_preferenciais=["PNA", "ONA"])[0] == 2.0
+    assert _metodos(classes_preferenciais=["PNA", "PNB"]) == Abstencao(
+        MOTIVO_CLASSES_PREFERENCIAIS
+    )
+    assert (
+        _metodos(especie="ON", classe="ON", classes_preferenciais=["PNA", "PNB"])[0]
+        == 2.0
+    )
+
+
+def test_unit_soma_componentes_e_junta_as_notas():
+    divulgados = {"ON": LpaDivulgado(1.0, NOTA_SINAL_CONSOLIDADO)}
+    valor, detalhe = _metodos(
+        eh_unit=True, acoes_por_unit={"ON": 1, "PN": 2}, divulgados=divulgados
+    )
+    assert valor == pytest.approx(1.0 + 2 * 2.0)
+    assert detalhe["notas"] == [NOTA_SINAL_CONSOLIDADO, NOTA_RECALCULADO]
+    assert detalhe["componentes"]["PN"]["origem"] == "recalculado"
+    dois_recalculados = _metodos(eh_unit=True, acoes_por_unit={"ON": 1, "PN": 2})
+    assert dois_recalculados[1]["notas"] == [NOTA_RECALCULADO]
+    assert _metodos(eh_unit=True, acoes_por_unit=None) == Abstencao(MOTIVO_UNIT)
+    sem_recalculado = _metodos(eh_unit=True, acoes_por_unit={"ON": 1}, recalculado=None)
+    assert sem_recalculado.motivo.endswith("(ON da unit)")

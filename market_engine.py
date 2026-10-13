@@ -73,12 +73,16 @@ _CAMPOS_DA_REFERENCIA = {
     'segmento_fii': 'segmento',
     'controle_acionario': 'controle_acionario',
     'acoes_por_unit': 'acoes_por_unit',
+    'classe_preferencial': 'classe_preferencial',
+    'classes_preferenciais': 'classes_preferenciais',
 }
 RISCO_FORA_DA_REFERENCIA = 'ticker fora da referência oficial'
 RISCO_FORA_DA_CVM = 'ticker fora da cobertura da CVM'
 AVISO_CODIGO_DA_TABELA = 'cvm_code_from_correction_table'
 AVISO_ACOES_FIM_DO_PERIODO = 'shares_end_of_period'
 RISCO_SEM_POR_ACAO_CVM = 'CVM não derivou LPA, VPA, P/L e P/VP'
+RISCO_SEM_VPA_CVM = 'CVM não derivou VPA e P/VP'
+RISCO_SEM_LPA_CVM = 'CVM sem LPA'
 RISCO_ROE_CVM = 'CVM sem ROE'
 RISCO_CONTA_CVM = 'CVM sem'
 
@@ -212,15 +216,33 @@ def _retrato(dados: Dict[str, Any]) -> Dict[str, Any]:
     return retrato
 
 
-def _lpa_divulgado_comparado(ind: Dict[str, Any], especie: Optional[str]) -> Optional[Dict[str, Any]]:
-    """LPA divulgado da espécie do ticker (F2A-5); sem espécie (unit ou sem índice), o da escala."""
+def _lpa_divulgado_comparado(
+    ind: Dict[str, Any], especie: Optional[str], especie_base: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
+    """LPA divulgado da classe do ticker (F2A-5), ou o da espécie quando a DRE não traz a classe.
+
+    Sem classe (unit ou sem índice), o da escala.
+    """
     por_especie = ind.get('lpa_divulgado_por_especie') or {}
-    if especie in por_especie:
-        return {'especie': especie, 'valor': por_especie[especie]}
+    for chave in (especie, especie_base):
+        if chave in por_especie:
+            return {'especie': chave, 'valor': por_especie[chave]}
     referencia = ind.get('lpa_divulgado')
     if especie is None and referencia:
         return {'especie': referencia.get('especie'), 'valor': referencia.get('valor')}
     return None
+
+
+def _linhas_de_lpa(ind: Dict[str, Any]) -> Dict[str, list]:
+    """Linhas de LPA básico por classe; provedor anterior ao F2A-36 entrega só a primeira."""
+    if 'lpa_basico_por_classe' in ind:
+        return ind['lpa_basico_por_classe'] or {}
+    if 'lpa_divulgado_por_especie' in ind:
+        return {k: [v] for k, v in (ind['lpa_divulgado_por_especie'] or {}).items()}
+    referencia = ind.get('lpa_divulgado') or {}
+    if referencia.get('especie') in acoes_cvm.ORDEM_DA_ESCALA:
+        return {referencia['especie']: [referencia['valor']]}
+    return {}
 
 
 _CAMPOS_COM_PRECO = frozenset({'pl', 'pvp'})
@@ -350,7 +372,14 @@ class MarketEngine:
             warnings.append('manual_fallback')
         if source == 'CVM' and (dados.get('referencia_oficial') or {}).get('correcao'):
             warnings.append(AVISO_CODIGO_DA_TABELA)
-        if source == 'CVM' and field in {'pl', 'pvp'} and dados.get('acoes_cvm'):
+        if source == 'CVM' and dados.get('acoes_cvm') and (
+            field == 'pvp'
+            or (
+                field == 'pl'
+                # F2A-36: com o LPA divulgado (média ponderada), o P/L não usa as ações do fim.
+                and acoes_cvm.NOTA_RECALCULADO in (dados.get('lpa_cvm') or {}).get('notas', [])
+            )
+        ):
             warnings.append(AVISO_ACOES_FIM_DO_PERIODO)
 
         return warnings
@@ -643,6 +672,12 @@ class MarketEngine:
                         if campo not in _CAMPOS_COM_PRECO
                     }
                 )
+                if 'lpa' in dados['proveniencia'] and dados.get('lpa_cvm'):
+                    # F2A-36 (D16): origem do LPA, com a marca do recalculado ou do sinal.
+                    dados['proveniencia']['lpa'] = {
+                        **dados['proveniencia']['lpa'],
+                        'lpa': dados['lpa_cvm'],
+                    }
             if campos_fund:
                 _definir_fonte_fundamentos(dados, 'CVM')
                 dados['cvm_disponivel'] = True
@@ -658,7 +693,12 @@ class MarketEngine:
     def _por_acao_cvm(
         self, ticker: str, dados: Dict[str, Any], ind: Dict[str, Any]
     ) -> Dict[str, float]:
-        """LPA, VPA, P/L e P/VP da Composição do Capital; sem eles, o motivo vai para `riscos_dados`.
+        """LPA, VPA, P/L e P/VP da CVM; sem eles, o motivo vai para `riscos_dados`.
+
+        O LPA dos métodos é o divulgado da classe do ticker, quando coerente; sem ele, o
+        recalculado pela Composição do Capital (F2A-36, D19), que também serve de conferência
+        (`acoes_cvm['lpa_recalculado']`, F2A-5). A origem fica em `dados['lpa_cvm']`. A escala
+        indeterminada derruba o recalculado, o VPA e o P/VP, não o divulgado.
 
         Provedor que não informa `composicao_capital` (interface anterior ao F2A-3) não passou
         pela etapa: nada é derivado e nada é registrado.
@@ -668,24 +708,45 @@ class MarketEngine:
         classifier = getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER)
         eh_unit = classifier.classify(ticker, dados) == AssetType.UNIT
         acoes_por_unit = dados.get('acoes_por_unit')
+        classe = dados.get('classe_preferencial') or dados.get('especie')
+        divulgados = acoes_cvm.divulgados_coerentes(
+            _linhas_de_lpa(ind),
+            ind.get('lucro_controladores'),
+            ind.get('lucro_liquido'),
+        )
         resultado = acoes_cvm.derivar_por_acao(
             lucro_controladores=ind.get('lucro_controladores'),
             pl_controladores=ind.get('pl_controladores'),
             composicao=ind.get('composicao_capital'),
             motivo_composicao=ind.get('composicao_motivo'),
-            lpa_divulgado=(ind.get('lpa_divulgado') or {}).get('valor'),
+            lpa_divulgado=acoes_cvm.divulgado_da_escala(divulgados),
             preco=_as_float(dados.get('preco_atual')),
             eh_unit=eh_unit,
             acoes_por_unit=acoes_por_unit,
         )
-        if isinstance(resultado, acoes_cvm.Abstencao):
-            dados.setdefault('riscos_dados', []).append(
-                f"{RISCO_SEM_POR_ACAO_CVM}: {resultado.motivo}"
-            )
-            return {}
-        fator = sum(acoes_por_unit.values()) if eh_unit else 1
+        fator = sum(acoes_por_unit.values()) if eh_unit and acoes_por_unit else 1
+        por_acao = resultado if isinstance(resultado, acoes_cvm.PorAcao) else None
+        recalculado = por_acao.lpa / fator if por_acao and por_acao.lpa is not None else None
+        lpa = acoes_cvm.lpa_dos_metodos(
+            especie=dados.get('especie'),
+            classe=classe,
+            classes_preferenciais=dados.get('classes_preferenciais'),
+            eh_unit=eh_unit,
+            acoes_por_unit=acoes_por_unit,
+            divulgados=divulgados,
+            recalculado=recalculado,
+        )
+        self._registrar_abstencoes_por_acao(dados, resultado, lpa)
+        campos: Dict[str, Any] = {}
+        if not isinstance(lpa, acoes_cvm.Abstencao):
+            campos['lpa'], dados['lpa_cvm'] = lpa
+            preco = _as_float(dados.get('preco_atual'))
+            if preco and preco > 0:
+                campos['pl'] = preco / campos['lpa']
+        if por_acao is None:
+            return campos
         dados['acoes_cvm'] = {
-            **resultado.detalhe(
+            **por_acao.detalhe(
                 {
                     'cnpj': ind.get('cnpj'),
                     'dt_refer': ind.get('cvm_dt_refer'),
@@ -694,25 +755,40 @@ class MarketEngine:
                 }
             ),
             'acoes_por_papel': fator,
+            'lpa_recalculado': por_acao.lpa,
             'lpa_divulgado_comparado': _lpa_divulgado_comparado(
-                ind, None if eh_unit else dados.get('especie')
+                ind,
+                None if eh_unit else classe,
+                None if eh_unit else dados.get('especie'),
             ),
         }
         dados['divergencia_acoes'] = acoes_cvm.divergencia_acoes(
             ind['composicao_capital'],
-            resultado.escala,
+            por_acao.escala,
             especie=dados.get('especie'),
             eh_unit=eh_unit,
             acoes_por_unit=acoes_por_unit,
             shares_outstanding=_as_float(dados.get('_shares_outstanding')),
         )
-        campos = {
-            'lpa': resultado.lpa,
-            'vpa': resultado.vpa,
-            'pl': resultado.pl,
-            'pvp': resultado.pvp,
-        }
+        campos.update({'vpa': por_acao.vpa, 'pvp': por_acao.pvp})
         return {k: v for k, v in campos.items() if v is not None}
+
+    @staticmethod
+    def _registrar_abstencoes_por_acao(
+        dados: Dict[str, Any],
+        resultado: Any,
+        lpa: Any,
+    ) -> None:
+        """Motivos das abstenções por ação em `riscos_dados` (F2A-3 e F2A-36)."""
+        riscos = dados.setdefault('riscos_dados', [])
+        sem_lpa = isinstance(lpa, acoes_cvm.Abstencao)
+        if isinstance(resultado, acoes_cvm.Abstencao):
+            rotulo = RISCO_SEM_POR_ACAO_CVM if sem_lpa else RISCO_SEM_VPA_CVM
+            riscos.append(f"{rotulo}: {resultado.motivo}")
+            if sem_lpa and lpa.motivo.startswith(acoes_cvm.MOTIVOS_DO_DIVULGADO):
+                riscos.append(f"{RISCO_SEM_LPA_CVM}: {lpa.motivo}")
+        elif sem_lpa:
+            riscos.append(f"{RISCO_SEM_LPA_CVM}: {lpa.motivo}")
 
     def _buscar_fundamentus(self, ticker: str, dados: Dict[str, Any]) -> bool:
         """Busca dados via Fundamentus como complemento."""

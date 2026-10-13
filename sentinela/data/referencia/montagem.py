@@ -148,6 +148,23 @@ def linhas_ativas_do_fca(fca: pd.DataFrame) -> pd.DataFrame:
     ]
 
 
+def classes_preferenciais_por_cnpj(ativas: pd.DataFrame) -> dict[str, list[str]]:
+    """CNPJ → siglas das classes do FCA (`Sigla_Classe_Acao_Preferencial`), em ordem alfabética.
+
+    Fonte das classes preferenciais (PNA, PNB…) da D19, regra 3 (F2A-36).
+    """
+    if "Sigla_Classe_Acao_Preferencial" not in ativas.columns:
+        return {}
+    resultado: dict[str, list[str]] = {}
+    for cnpj, sigla in zip(
+        ativas["CNPJ_Companhia"], ativas["Sigla_Classe_Acao_Preferencial"]
+    ):
+        texto = _texto(sigla)
+        if texto and texto.upper() not in resultado.setdefault(cnpj, []):
+            resultado[cnpj].append(texto.upper())
+    return {cnpj: sorted(siglas) for cnpj, siglas in resultado.items() if siglas}
+
+
 def montar_companhias(
     fca: pd.DataFrame,
     cadastro: pd.DataFrame,
@@ -159,7 +176,9 @@ def montar_companhias(
     atributos = atributos_por_cnpj(cadastro)
     registros: list[Registro] = []
     excecoes: list[Excecao] = []
-    for _, linha in linhas_ativas_do_fca(fca).iterrows():
+    ativas = linhas_ativas_do_fca(fca)
+    classes = classes_preferenciais_por_cnpj(ativas)
+    for _, linha in ativas.iterrows():
         codigo = normalizar_codigo(linha["Codigo_Negociacao"])
         cnpj = linha["CNPJ_Companhia"]
         nome = (
@@ -197,6 +216,10 @@ def montar_companhias(
                 setor=setor,
                 controle_acionario=controle,
                 correcao=correcao.para_dict() if correcao else None,
+                classe_preferencial=None
+                if eh_unit
+                else _texto(linha.get("Sigla_Classe_Acao_Preferencial")),
+                classes_preferenciais=classes.get(cnpj),
             )
         )
     return registros, excecoes

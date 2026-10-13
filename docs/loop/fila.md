@@ -490,7 +490,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   3. aprova a lista de `docs/decisoes/universo-inicial.md`;
   4. troca este marcador por `[x]` e retoma o loop. Sem a ficha aprovada, o F2A-36 fica `[!]`.
 
-- [ ] **F2A-36** · fix · `fix: use reported EPS by share class in valuation inputs` · **[ADR-0003]** **[P1]**
+- [x] **F2A-36** · fix · `fix: use reported EPS by share class in valuation inputs` · **[ADR-0003]** **[P1]**
   ADR-0003, D19, regras 1 a 4. Pré-condição: `docs/metodologia/por-acao.md` com status aprovada; sem isso, `[!]`.
   - **LPA dos métodos.** O LPA básico divulgado na DRE (3.99.01.x) da espécie do ticker, quando presente e coerente: mesmo sinal do lucro dos controladores, ou do lucro consolidado (3.11) quando aquele se abstém, e uma só linha por espécie (ficha, 7.1, 7.5 e 7.6). O sinal conferido pelo consolidado fica registrado na proveniência; sem lucro consolidado válido, o divulgado se abstém. Divulgado incoerente (sinal oposto, ou linhas da mesma espécie com valores diferentes, como na QUAL3): o LPA da espécie se abstém, com alerta, e o recalculado não entra no lugar. O recalculado do F2A-3 vira conferência (F2A-5) e reserva.
   - **Sem divulgado.** O recalculado entra com a marca "ações do fim do período, não média ponderada" na proveniência (D16).
