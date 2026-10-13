@@ -350,6 +350,16 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         }
         for campo, unidade in (CAMPOS_FII if eh_fii else CAMPOS_ACAO)
     ]
+    descartes_roe = (dados.get("proveniencia") or {}).get("roe_descartes") or []
+    for i in insumos:
+        if i["campo"] == "roe":
+            i["proveniencia"] += (
+                "; guarda de fronteira (F2A-30): ROE não finito ou acima de 2 é descartado"
+            )
+            for descarte in descartes_roe:
+                i["proveniencia"] += (
+                    f"; descartado de {descarte['fonte']}: {descarte['motivo']}"
+                )
     alavancagem = dados.get("alavancagem_cvm") or {}
     for i in insumos:
         if i["campo"] != "divida_liq_ebitda":

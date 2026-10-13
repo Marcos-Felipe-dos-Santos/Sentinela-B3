@@ -667,7 +667,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden pela regra;
   - gate da fase.
 
-- [ ] **F2A-30** · fix · `fix: guard ROE at each provider boundary`
+- [x] **F2A-30** · fix · `fix: guard ROE at each provider boundary`
   E-15 (cenário da auditoria): o ROE do yfinance (`market_engine.py:408`) entra sem guarda. Se vier em percentual, 21% vira 2100%, o perfil vira crescimento e o Lynch bate no teto. A brapi tem um corte próprio (`brapi_provider.py:172-173`). Mesmo rito do DY no F2A-4 (decisão de 5/10/2026):
   - **Normalizador.** `sentinela/data/normalizacao.py` ganha o ROE. Converte pela representação declarada de cada provedor (yfinance e brapi), via `Percent` e `Ratio` do `units.py`, com a evidência do F2A-16 citada no código. Sem evidência, vale para o provedor a regra da V1, declarada como inferência e marcada na proveniência do campo.
   - **Guarda.** Depois da conversão, ROE não finito ou acima de 2 (o limite da V1, `brapi_provider.py:172`, agora para todos os provedores) vira ausente, com o motivo em `riscos_dados` e na proveniência. ROE negativo continua válido. O ROE derivado da CVM passa pela mesma guarda.

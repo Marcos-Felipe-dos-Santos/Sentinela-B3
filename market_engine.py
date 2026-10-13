@@ -539,7 +539,12 @@ class MarketEngine:
                     'pl': pl_raw,
                     'pvp': _as_float(info.get('priceToBook')),
                     'dy': dy_raw,
-                    'roe': _as_float(info.get('returnOnEquity')),
+                    # F2A-30: o `returnOnEquity` do yfinance é razão (F2A-16, seção 8).
+                    'roe': self._roe_guardado(
+                        dados,
+                        'yfinance',
+                        normalizacao.roe_na_fronteira(info.get('returnOnEquity'), 'yfinance').valor,
+                    ),
                     'pl_confiavel': pl_confiavel,
                     'quote_type': info.get('quoteType', ''),
                 }
@@ -554,6 +559,8 @@ class MarketEngine:
                 self._record_field_sources(dados, preenchidos_yfinance, 'yfinance')
                 if 'dy' in preenchidos_yfinance:
                     dados.setdefault('proveniencia', {})['dy'] = normalizacao.proveniencia_dy('yfinance')
+                if 'roe' in preenchidos_yfinance:
+                    dados.setdefault('proveniencia', {})['roe'] = normalizacao.proveniencia_roe('yfinance')
 
                 if any(not _is_field_missing(k, dados.get(k), dados) for k in ('pl', 'pvp', 'dy', 'roe')):
                     _registrar_fonte_fundamentos(dados, 'yfinance_partial')
@@ -580,6 +587,8 @@ class MarketEngine:
                 for chave, valor in brapi_data.items()
                 if chave in FUNDAMENTAL_KEYS and chave not in _CAMPOS_SO_DA_CVM
             }
+            if 'roe' in fundamentos:
+                fundamentos['roe'] = self._roe_guardado(dados, 'brapi', fundamentos['roe'])
             _guardar_por_fonte(
                 dados, 'brapi', {**fundamentos, 'preco_atual': brapi_data.get('preco_atual')}
             )
@@ -593,6 +602,8 @@ class MarketEngine:
             if 'dy' in preenchidos:
                 # F2A-4: a representação usada na fronteira (inferida, na brapi).
                 dados.setdefault('proveniencia', {})['dy'] = normalizacao.proveniencia_dy('brapi')
+            if 'roe' in preenchidos:
+                dados.setdefault('proveniencia', {})['roe'] = normalizacao.proveniencia_roe('brapi')
 
             if _is_field_missing('preco_atual', dados.get('preco_atual'), dados):
                 preenchidos_preco = merge_if_valid(dados, brapi_data, allowed_keys={'preco_atual'})
@@ -611,6 +622,22 @@ class MarketEngine:
             logger.warning(f"[{ticker}] Brapi error: {e}")
 
         return False
+
+    @staticmethod
+    def _roe_guardado(dados: Dict[str, Any], fonte: str, valor: Any) -> Optional[float]:
+        """ROE depois da guarda de fronteira (F2A-30).
+
+        O valor descartado não entra na cascata; o de outra fonte, se houver, fica. O descarte
+        vai para `riscos_dados` e para `dados['proveniencia']['roe_descartes']`, sem tocar no
+        registro da fonte que preencheu o campo.
+        """
+        roe, motivo = normalizacao.guardar_roe(valor)
+        if motivo:
+            dados.setdefault('riscos_dados', []).append(f"ROE descartado ({fonte}): {motivo}")
+            dados.setdefault('proveniencia', {}).setdefault('roe_descartes', []).append(
+                {**normalizacao.proveniencia_roe(fonte), 'motivo': motivo}
+            )
+        return roe
 
     def _buscar_cvm(self, ticker: str, dados: Dict[str, Any]) -> bool:
         """Preenche fundamentos a partir das DFPs oficiais da CVM.
@@ -671,6 +698,11 @@ class MarketEngine:
                         f"{RISCO_ALAVANCAGEM_CVM} ({campo}): {motivo}"
                     )
             cvm_campos.update(self._por_acao_cvm(ticker, dados, ind))
+            if 'roe' in cvm_campos:
+                # F2A-30: o ROE derivado da CVM passa pela mesma guarda.
+                cvm_campos['roe'] = self._roe_guardado(dados, 'cvm', cvm_campos['roe'])
+                if cvm_campos['roe'] is None:
+                    del cvm_campos['roe']
             _guardar_por_fonte(dados, 'CVM', cvm_campos)
 
             preenchidos = merge_if_valid(
