@@ -484,7 +484,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** todo ticker atual presente no índice do F2A-1, e todo histórico marcado; contagem final depois da deduplicação no diário (a base nominal é 45 + 30 = 75); nenhum ativo sem motivo; diff só nesse arquivo, no diário e na fila.
 
-- [DECISÃO] **Ficha por ação e universo inicial.** O loop para aqui. O Marcos:
+- [x] **Ficha por ação e universo inicial.** Fechado em 13/10/2026: ficha aprovada (versão 1.0) depois de três auditorias externas, universo aprovado, relatórios em `docs/loop/historico/fase-2a/auditoria-ficha-por-acao.md`. O Marcos:
   1. roda a auditoria externa em modo FICHA sobre `docs/metodologia/por-acao.md` (D30), que refaz o exemplo por conta própria, e guarda o relatório em `docs/loop/historico/fase-2a/auditoria-ficha-por-acao.md`;
   2. decide a faixa da escala e marca a ficha como aprovada (data e nome), ou pede correções;
   3. aprova a lista de `docs/decisoes/universo-inicial.md`;

@@ -1,6 +1,6 @@
-# Números por ação (LPA, VPA, ações, classes, units e escala) — versão 0.3
+# Números por ação (LPA, VPA, ações, classes, units e escala) — versão 1.0
 
-**Status:** rascunho, com as decisões do Marcos de 13/10/2026 (seção 7) incorporadas; aguarda a terceira auditoria em modo FICHA. A versão 0.1 teve dois bloqueios e seis ressalvas; a 0.2, dois bloqueios novos (sinal do divulgado com lucro dos controladores abstido; LPA da unit KLBN11). Relatórios em `docs/loop/historico/fase-2a/auditoria-ficha-por-acao.md`.
+**Status:** aprovada pelo Marcos em 13/10/2026, depois da terceira auditoria externa em modo FICHA ("pode seguir para aprovação da ficha"). As versões 0.1 e 0.2 tiveram dois bloqueios cada, fechados com as decisões da seção 7. Relatórios em `docs/loop/historico/fase-2a/auditoria-ficha-por-acao.md`. Mudança posterior exige nova versão, aprovação e auditoria (D21).
 **Itens que dependem:** F2A-36 (LPA divulgado por espécie, classes e units), F2A-37 (reservas dos controladores)
 **Origem no código:** F2A-3 (derivação por ação) e F2A-5 (alertas), já entregues
 **Decisões de origem:** ADR-0003, D19, D20 e D21; checkpoint da Fase 0, seção 4, item 1 (revisado pela D19)

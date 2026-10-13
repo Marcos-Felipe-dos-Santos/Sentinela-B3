@@ -285,3 +285,48 @@ Quando o lucro dos controladores se abstém, qual regra permite aceitar o LPA di
 - **BRSR5:** 25 negócios, abaixo do critério; vira histórico, mantida como caso de teste. Total: 77 atuais + 13 históricos = 90.
 - **Classes PNA e PNB:** o F2A-36 consulta o FCA, porque o índice guarda só `especie: PN`.
 - **Tabela do universo:** units restauradas na tabela de casos difíceis.
+
+## Auditoria 3 — ficha versão 0.3 (HEAD `45b96d5`)
+
+**Modo FICHA.** Escopo: `por-acao.md` versão 0.3, no branch `v2/fase-2a`, HEAD `45b96d5`, comparado à auditoria 2 (`939822e`), ao ADR-0003, à fila e ao universo inicial. Trabalho somente de leitura.
+
+**Fechamento da auditoria 2**
+
+| Item | Resultado e evidência |
+|---|---|
+| Sinal com lucro dos controladores abstido | **Bloqueio fechado.** A ficha define conferência pelo consolidado, registro na proveniência e abstenção sem consolidado válido: [por-acao.md:192]. |
+| LPA da KLBN11 | **Bloqueio fechado.** O texto distingue **0,2286 por espécie** de **1,1430 por unit**: [por-acao.md:73]. Conferido nos CSVs oficiais locais. |
+| BRSR5 | **Ressalva fechada no documento.** Está histórica, preservada como caso de teste das classes: [universo-inicial.md:115]. |
+| Classes pelo FCA | **Ressalva fechada.** F2A-36 exige consulta ao FCA, no mesmo snapshot: [fila.md:500]. Conferi no documento 156166: BRSR5 = PNA; BRSR6 = PNB. |
+| Tabela do universo | **Sugestão atendida.** TAEE11, ENGI11, BRBI11 e IGTI11 voltaram à tabela de casos difíceis, identificadas como UNIT: [universo-inicial.md:110]. |
+
+**Coerência da decisão 7.6 e alterações novas**
+
+A decisão coincide com as [Revisões do ADR-0003:128] e com [F2A-36:495]. O aceite acrescenta testes para conferência pelo consolidado e abstenção sem lucro válido.
+
+[F2A-37:517] mantém a abstenção do lucro dos controladores da Klabin e atribui ao F2A-36 a validação do divulgado. Não transforma essa conferência de sinal em reserva de lucro para ROE ou LPA recalculado.
+
+**Não encontrei novo bloqueio ou ressalva no diff.** A limitação introduzida pela 7.6 — o consolidado poder ter sinal diferente do lucro dos controladores — está explicitamente declarada e vinculada à decisão registrada do Marcos.
+
+**Recalculado por mim**
+
+Usei biblioteca padrão e `Decimal`, sem importar módulos do projeto:
+
+- **Klabin:** DRE consolidada 2025, versão 1, exercício ÚLTIMO: `1.678.211 × 1.000 = R$ 1.678.211.000`, positivo; LPA básico ON = PN = **0,2286**. FCA 2026, documento 155729: **1 KLBN3 + 4 KLBN4**. Portanto, `1 × 0,2286 + 4 × 0,2286 = 1,1430`.
+- **Universo:** contagem direta das tabelas: **90 tickers distintos**, com **77 atuais e 13 históricos**.
+
+Os exemplos e números inalterados não foram refeitos.
+
+**Não verificado**
+
+- Implementação, testes e mutation score futuros de F2A-36/37/39.
+- Nova distribuição após aplicar a política 7.2, ainda exigida pela fila.
+- Recontagem dos negócios do Banrisul: os números não mudaram; nesta rodada conferi a classificação e sua aplicação no documento.
+
+**Perguntas para o Marcos:** nenhuma nova escolha metodológica sem decisão registrada. A ficha continua com status **rascunho**; F2A-36 exige sua aprovação formal antes da implementação.
+
+**Veredito: pode seguir para aprovação da ficha.**
+
+## Aprovação
+
+Ficha aprovada pelo Marcos em 13/10/2026 como versão 1.0, junto com o universo inicial (77 atuais + 13 históricos). O `[DECISÃO]` "Ficha por ação e universo inicial" foi fechado no mesmo commit, e o loop segue no F2A-36.
