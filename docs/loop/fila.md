@@ -462,7 +462,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: nas 45 ações e nos 12 bancos, quantos campos passam a se abster e por quê;
   - gate da fase.
 
-- [ ] **F2A-34** · docs · `docs: add methodology sheet for per-share figures` · **[ADR-0003]**
+- [x] **F2A-34** · docs · `docs: add methodology sheet for per-share figures` · **[ADR-0003]**
   ADR-0003, D19, D20 e D21. Escreve `docs/metodologia/por-acao.md` no modelo de `docs/metodologia/README.md`, com status **rascunho**. O loop nunca marca a ficha como aprovada.
   - **Conteúdo:** LPA divulgado (3.99.01.x) e o papel dele; LPA recalculado como conferência e reserva; VPA; ações para valor de mercado; classes preferenciais com direitos distintos; units; escala das ações.
   - **Faixa [0,1; 10] da escala.** Justificativa com a distribuição medida no diário do F2A-3 (razões entre LPA recalculado e divulgado) e a lista dos casos dentro da faixa mas longe de 1. O valor final é **[DECISÃO]** do Marcos; a ficha só apresenta os dados.
