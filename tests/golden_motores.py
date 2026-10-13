@@ -164,7 +164,7 @@ def _acoes_fronteiras():
             "",
         ],
         "pl_confiavel": [True, False],
-        "erro_scraper": [True, False],
+        "fundamentos_incompletos": [True, False],
     }
     casos = []
     for nome_base, base in (("renda", _RENDA), ("cresc", _CRESC)):
@@ -218,7 +218,7 @@ def _acoes_especiais():
         _acao("nan-dy", {**_RENDA, "dy": float("nan")}),
         _acao(
             "scraper-sem-fundamentos",
-            {"ticker": "TST3", "preco_atual": 20.0, "erro_scraper": True},
+            {"ticker": "TST3", "preco_atual": 20.0, "fundamentos_incompletos": True},
         ),
         _acao(
             "tudo-ruim",
@@ -228,7 +228,7 @@ def _acoes_especiais():
                 "pl": -5.0,
                 "pvp": 0.0,
                 "dy": 0.3,
-                "erro_scraper": True,
+                "fundamentos_incompletos": True,
                 "pl_confiavel": False,
                 "divida_liq_ebitda": 9,
             },
@@ -345,7 +345,7 @@ def _acoes_varredura_classificacao():
     casos = []
     extras = {
         "": {},
-        "scraper": {"erro_scraper": True},
+        "scraper": {"fundamentos_incompletos": True},
         "divida": {"divida_liq_ebitda": 4},
         "plsuspeito": {"pl_confiavel": False},
         "incompleto": {"pl": 0.0, "pvp": 0.0},
@@ -394,7 +394,7 @@ def _acoes_aleatorias(n=300):
             ),
         }
         if rng.random() < 0.2:
-            entrada["erro_scraper"] = True
+            entrada["fundamentos_incompletos"] = True
         if rng.random() < 0.2:
             entrada["pl_confiavel"] = False
         if rng.random() < 0.2:

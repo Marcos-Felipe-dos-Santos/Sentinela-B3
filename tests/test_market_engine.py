@@ -58,16 +58,6 @@ class FakeTicker:
         return self._historico
 
 
-class FakeScraper:
-    def __init__(self, resposta):
-        self.resposta = resposta
-        self.calls = 0
-
-    def buscar_dados(self, ticker):
-        self.calls += 1
-        return self.resposta
-
-
 class FakeBrapi:
     def __init__(self, resposta=None, disponivel=True):
         self.resposta = resposta
@@ -101,13 +91,12 @@ def _historico(preco=10.0):
     )
 
 
-def _engine(monkeypatch, *, info, historico=None, scraper=None, brapi=None, cache=None, cvm=None):
+def _engine(monkeypatch, *, info, historico=None, brapi=None, cache=None, cvm=None):
     monkeypatch.setattr(
         "market_engine.yf.Ticker",
         lambda ticker: FakeTicker(info=info, historico=historico),
     )
     engine = MarketEngine.__new__(MarketEngine)
-    engine.scraper = FakeScraper(scraper if scraper is not None else {"erro_scraper": True})
     engine.brapi = brapi if brapi is not None else FakeBrapi(disponivel=False)
     engine.database = cache
     # cvm=None → atributo não definido → getattr(engine, 'cvm', None) retorna None → pula CVM
@@ -130,7 +119,7 @@ def test_market_engine_suffix_11_without_official_data_is_not_fii():
     assert _is_fii_ticker("ABCD11", {"classe_ativo": "FII"}) is True
 
 
-def test_yfinance_data_is_preserved_when_fundamentus_fails(monkeypatch):
+def test_yfinance_data_is_preserved_without_fundamentus(monkeypatch):
     engine = _engine(
         monkeypatch,
         historico=_historico(22.0),
@@ -154,7 +143,7 @@ def test_yfinance_data_is_preserved_when_fundamentus_fails(monkeypatch):
     assert dados["dy"] == 0.04
     assert dados["fonte_preco"] == "yfinance"
     assert dados["fonte_fundamentos"] == "yfinance_partial"
-    assert dados["erro_scraper"] is True
+    assert dados["fundamentos_incompletos"] is False
     assert dados["campos_faltantes"] == []
     assert dados["dados_parciais"] is False
 
@@ -327,13 +316,13 @@ def test_brapi_does_not_overwrite_valid_fields_with_missing_values(monkeypatch):
     assert dados["dy"] == 0.03
 
 
-def test_fundamentus_fills_only_missing_fields(monkeypatch):
+def test_missing_fields_stay_missing_without_fundamentus(monkeypatch):
+    # F2A-22: sem o passo 4, o que nenhuma fonte entregou continua faltando.
     engine = _engine(
         monkeypatch,
         historico=_historico(18.0),
         info={"currentPrice": 18.0, "quoteType": "EQUITY"},
         brapi=FakeBrapi({"pl": 9.0, "dy": 0.04, "quote_type": "EQUITY"}),
-        scraper={"pl": 1.0, "pvp": 1.2, "roe": 0.18, "dy": 0.99},
         cache=FakeCache(),
     )
 
@@ -341,29 +330,28 @@ def test_fundamentus_fills_only_missing_fields(monkeypatch):
 
     assert dados["pl"] == 9.0
     assert dados["dy"] == 0.04
-    assert dados["pvp"] == 1.2
-    assert dados["roe"] == 0.18
-    assert dados["fonte_fundamentos"] == "brapi+fundamentus"
-    assert dados["dados_parciais"] is False
+    assert "pvp" not in dados
+    assert "roe" not in dados
+    assert dados["fonte_fundamentos"] == "brapi"
+    assert dados["fundamentos_incompletos"] is True
+    assert dados["dados_parciais"] is True
 
 
-def test_scraper_failure_does_not_make_data_partial_when_brapi_complete(monkeypatch):
+def test_brapi_complete_data_is_not_incomplete(monkeypatch):
     engine = _engine(
         monkeypatch,
         historico=_historico(25.0),
         info={"currentPrice": 25.0, "quoteType": "EQUITY"},
         brapi=FakeBrapi({"pl": 8.0, "pvp": 1.1, "roe": 0.16, "dy": 0.05}),
-        scraper={"erro_scraper": True},
         cache=FakeCache(),
     )
 
     dados = engine.buscar_dados_ticker("BBAS3")
 
     assert dados["fonte_fundamentos"] == "brapi"
-    assert dados["erro_scraper"] is False
+    assert dados["fundamentos_incompletos"] is False
     assert dados["campos_faltantes"] == []
     assert dados["dados_parciais"] is False
-    assert engine.scraper.calls == 0
 
 
 def test_missing_fields_and_partial_flag_are_set(monkeypatch):
@@ -399,7 +387,6 @@ def test_cache_is_used_when_providers_fail(monkeypatch):
         historico=_historico(12.0),
         info={"currentPrice": 12.0, "trailingPE": 99.0},
         brapi=FakeBrapi(disponivel=False),
-        scraper={"erro_scraper": True},
         cache=FakeCache({"pl": 6.0, "pvp": 0.9, "roe": 0.14, "dy": 0.07}),
     )
 
@@ -421,7 +408,6 @@ def test_cache_provenance_marks_cached_fields(monkeypatch):
         historico=_historico(12.0),
         info={"currentPrice": 12.0, "trailingPE": 99.0},
         brapi=FakeBrapi(disponivel=False),
-        scraper={"erro_scraper": True},
         cache=FakeCache({"pl": 6.0, "pvp": 0.9, "roe": 0.14, "dy": 0.07}),
     )
 
@@ -439,7 +425,6 @@ def test_fii_without_pl_roe_but_with_dy_pvp_is_not_partial(monkeypatch):
         historico=_historico(100.0),
         info={"currentPrice": 100.0, "priceToBook": 0.98, "dividendYield": 0.10},
         brapi=FakeBrapi(disponivel=False),
-        scraper={"erro_scraper": True},
     )
 
     dados = engine.buscar_dados_ticker("MXRF11")
@@ -456,7 +441,6 @@ def test_cache_fills_missing_required_stock_fields(monkeypatch):
         historico=_historico(12.0),
         info={"currentPrice": 12.0, "trailingPE": 8.0, "dividendYield": 0.04},
         brapi=FakeBrapi(disponivel=False),
-        scraper={"erro_scraper": True},
         cache=FakeCache({"pvp": 1.1, "roe": 0.18, "dy": 0.06}),
     )
 
@@ -477,7 +461,6 @@ def test_manual_fii_fallback_fills_missing_dy_pvp(monkeypatch):
         historico=_historico(100.0),
         info={"currentPrice": 100.0},
         brapi=FakeBrapi(disponivel=False),
-        scraper={"erro_scraper": True},
         cache=FakeCache(),
     )
 
@@ -498,7 +481,6 @@ def test_manual_fallback_provenance_marks_manual_fields(monkeypatch):
         historico=_historico(100.0),
         info={"currentPrice": 100.0},
         brapi=FakeBrapi(disponivel=False),
-        scraper={"erro_scraper": True},
         cache=FakeCache(),
     )
 
@@ -539,7 +521,6 @@ def test_manual_fii_fallback_never_overwrites_fresh_provider_values(monkeypatch)
         historico=_historico(100.0),
         info={"currentPrice": 100.0, "priceToBook": 1.05, "dividendYield": 0.09},
         brapi=FakeBrapi(disponivel=False),
-        scraper={"erro_scraper": True},
         cache=FakeCache(),
     )
 

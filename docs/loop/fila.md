@@ -572,7 +572,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden inalterado;
   - gate da fase.
 
-- [ ] **F2A-22** · fix · `fix: replace Fundamentus fallback with a missing-data check` · **[golden]**
+- [x] **F2A-22** · fix · `fix: replace Fundamentus fallback with a missing-data check` · **[golden]**
   Decidido no checkpoint (seção 2):
   - o scraper sai depois do F2A-1 e do F2A-8;
   - o `cloudscraper` não é declarado;

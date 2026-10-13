@@ -11,7 +11,6 @@ from config import FII_MANUAL_FALLBACK
 from cvm_provider import CVMProvider
 from cvm_ticker_map import get_cd_cvm
 from database import DatabaseManager
-from fundamentus_scraper import FundamentusScraper
 from sentinela.data import acoes_cvm, contas_cvm, series_cvm
 from sentinela.data.referencia.carga import ReferenciaOficial
 from sentinela.domain.provenance import FieldProvenance, FieldValue
@@ -87,7 +86,7 @@ RISCO_SEM_LPA_CVM = 'CVM sem LPA'
 RISCO_ROE_CVM = 'CVM sem ROE'
 RISCO_CONTA_CVM = 'CVM sem'
 RISCO_ALAVANCAGEM_CVM = 'alavancagem não avaliada'
-# F2A-8: só a CVM entrega a alavancagem; a definição das outras fontes não é conhecida.
+# F2A-8: só a CVM entrega a alavancagem; a definição da brapi não é conhecida.
 _CAMPOS_SO_DA_CVM = frozenset({'divida_liq_ebitda'})
 
 
@@ -291,7 +290,6 @@ def _fundamentos_validos_para_cache(
 
 class MarketEngine:
     def __init__(self, asset_classifier: Optional[AssetClassifier] = None) -> None:
-        self.scraper = FundamentusScraper()
         self.brapi = BrapiProvider()
         self.cvm = CVMProvider()
         self.database = DatabaseManager()
@@ -371,12 +369,6 @@ class MarketEngine:
             warnings.append('source_inferred_from_aggregate_flag')
         if dados.get('dados_parciais') and (missing or field in dados.get('campos_faltantes', [])):
             warnings.append('partial_data')
-        if (
-            dados.get('erro_scraper')
-            and field != 'preco_atual'
-            and (missing or source in {'unknown', 'fundamentus'})
-        ):
-            warnings.append('scraper_error')
         if source == 'manual_fallback':
             warnings.append('manual_fallback')
         if source == 'CVM' and (dados.get('referencia_oficial') or {}).get('correcao'):
@@ -425,7 +417,7 @@ class MarketEngine:
             'historico': pd.DataFrame(),
             'fonte_preco': None,
             'fonte_fundamentos': None,
-            'erro_scraper': False,
+            'fundamentos_incompletos': False,
             'dados_parciais': False,
             'campos_faltantes': [],
             'dados_cache': False,
@@ -441,17 +433,13 @@ class MarketEngine:
         self._buscar_yfinance(ticker, dados)
 
         # 2. Brapi: cotação recente + complemento de fundamentos.
-        brapi_ok = self._buscar_brapi(ticker, dados)
+        self._buscar_brapi(ticker, dados)
 
         # 3. CVM: fundamentos oficiais das demonstrações financeiras.
         #    Roda após brapi para ter a última palavra nos campos que provê.
         self._buscar_cvm(ticker, dados)
 
-        # 4. Fundamentus: fallback only when Brapi is unavailable/incomplete.
         classifier = getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER)
-        missing_after_providers = list_missing_required_fields(dados, classifier)
-        if not brapi_ok or missing_after_providers:
-            self._buscar_fundamentus(ticker, dados)
 
         if not dados.get('fonte_preco'):
             return None
@@ -462,10 +450,11 @@ class MarketEngine:
         if list_missing_required_fields(dados, classifier):
             self._aplicar_fallback_manual_fii(ticker, dados)
 
-        dados['campos_faltantes'] = (
-            list_missing_required_fields(dados, classifier)
-            + list_missing_market_fields(dados)
-        )
+        # F2A-22: o Fundamentus saiu da cascata; a falta de campo obrigatório depois de
+        # todas as fontes (inclusive cache e fallback manual) vira `fundamentos_incompletos`.
+        obrigatorios_faltando = list_missing_required_fields(dados, classifier)
+        dados['fundamentos_incompletos'] = bool(obrigatorios_faltando)
+        dados['campos_faltantes'] = obrigatorios_faltando + list_missing_market_fields(dados)
         dados['dados_parciais'] = bool(dados['campos_faltantes'])
         self._salvar_cache_se_valido(ticker, dados)
         dados.setdefault('ticker', ticker)
@@ -858,47 +847,6 @@ class MarketEngine:
                 riscos.append(f"{RISCO_SEM_LPA_CVM}: {lpa.motivo}")
         elif sem_lpa:
             riscos.append(f"{RISCO_SEM_LPA_CVM}: {lpa.motivo}")
-
-    def _buscar_fundamentus(self, ticker: str, dados: Dict[str, Any]) -> bool:
-        """Busca dados via Fundamentus como complemento."""
-        try:
-            scraper_dados = self.scraper.buscar_dados(ticker)
-        except Exception as e:
-            dados['erro_scraper'] = True
-            logger.warning(f"[{ticker}] Fundamentus error: {e}")
-            return False
-
-        if not scraper_dados or scraper_dados.get('erro_scraper'):
-            dados['erro_scraper'] = True
-            logger.info(
-                f"[{ticker}] Fundamentus indisponivel - preservando dados existentes "
-                f"(fonte_fundamentos={dados.get('fonte_fundamentos')})"
-            )
-            return False
-
-        campos = ('preco_atual',) + FUNDAMENTAL_KEYS
-        supplemental = {
-            chave: scraper_dados[chave]
-            for chave in campos
-            if chave in scraper_dados and chave not in _CAMPOS_SO_DA_CVM
-        }
-        _guardar_por_fonte(dados, 'fundamentus', supplemental)
-        preenchidos = merge_if_valid(dados, supplemental)
-        self._record_field_sources(dados, preenchidos, 'fundamentus')
-
-        if 'preco_atual' in preenchidos and not dados.get('fonte_preco'):
-            dados['fonte_preco'] = 'fundamentus'
-
-        campos_fundamentalistas = [c for c in preenchidos if c in FUNDAMENTAL_KEYS and c != 'quote_type']
-        if campos_fundamentalistas:
-            if dados.get('fonte_fundamentos') in (None, 'yfinance_partial'):
-                _definir_fonte_fundamentos(dados, 'fundamentus')
-            else:
-                _registrar_fonte_fundamentos(dados, 'fundamentus')
-
-        dados['erro_scraper'] = False
-        logger.info(f"[{ticker}] Fundamentus OK - complementou {len(campos_fundamentalistas)} campos")
-        return bool(campos_fundamentalistas)
 
     def _aplicar_cache_fundamentos(
         self,

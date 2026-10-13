@@ -393,7 +393,7 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
             }
         )
 
-    flags = ("dados_parciais", "dados_cache", "dados_manual", "erro_scraper")
+    flags = ("dados_parciais", "dados_cache", "dados_manual", "fundamentos_incompletos")
     fontes = [
         ("Fonte do preço", dados.get("fonte_preco") or "desconhecida"),
         ("Fonte dos fundamentos", dados.get("fonte_fundamentos") or "desconhecida"),

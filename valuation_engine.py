@@ -157,9 +157,9 @@ class ValuationEngine:
         confianca = 100
         riscos = []
 
-        if dados.get("erro_scraper"):
+        if dados.get("fundamentos_incompletos"):
             confianca -= 30
-            riscos.append("Dados fundamentais indisponíveis (scraper)")
+            riscos.append("Dados fundamentais obrigatórios ausentes")
 
         # pl_confiavel: False quando Yahoo retornou PL negativo (prejuízo) ou > 80 (TTM atípico)
         # Definido em market_engine.py; padrão True para dados do Fundamentus (mais confiáveis)
@@ -304,18 +304,18 @@ class ValuationEngine:
         if rec == "COMPRA FORTE" and riscos:
             rec = "COMPRA"
 
-        # ── GUARD: Scraper falhou → não recomendar compra ─────────────────────
+        # ── GUARD: campo obrigatório ausente (F2A-22) → sem classificação positiva ──
         # Dados fundamentais incompletos não significam que o ativo é ruim,
-        # apenas que não há confiança suficiente para sugerir compra.
+        # apenas que não há confiança suficiente para uma classificação positiva.
         # Preserva valores calculados para transparência.
         # Não sobrescreve VENDA nem ALTO RISCO — EVITAR.
-        if rec in ("COMPRA", "COMPRA FORTE") and dados.get('erro_scraper'):
+        if rec in ("COMPRA", "COMPRA FORTE") and dados.get('fundamentos_incompletos'):
             rec = "DADOS INSUFICIENTES — AGUARDAR"
             riscos.append("Dados fundamentais insuficientes para análise precisa")
             confianca = min(confianca, 50)
             logger.warning(
                 f"[{ticker}] Downgrade → DADOS INSUFICIENTES: "
-                f"erro_scraper=True, rec original seria COMPRA/FORTE"
+                f"fundamentos_incompletos=True, rec original seria COMPRA/FORTE"
             )
 
         detalhes = ", ".join([f"{k}: R${v:.2f}" for k, v in metodos.items()])
