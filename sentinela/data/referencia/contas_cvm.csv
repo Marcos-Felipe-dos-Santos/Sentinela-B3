@@ -1,0 +1,39 @@
+modelo;campo;codigo;descricao;arquivo;ano;empresa
+empresa;ativo_total;1;ativo total;dfp_cia_aberta_BPA_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A
+empresa;ativo_circulante;1.01;ativo circulante;dfp_cia_aberta_BPA_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A
+empresa;passivo_total;2;passivo total;dfp_cia_aberta_BPP_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A
+empresa;passivo_circulante;2.01;passivo circulante;dfp_cia_aberta_BPP_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A
+empresa;pl_total;2.03;patrimonio liquido consolidado;dfp_cia_aberta_BPP_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A
+empresa;pl_nao_controladores;2.03.09;participacao dos acionistas nao controladores;dfp_cia_aberta_BPP_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A
+empresa;receita_liquida;3.01;receita de venda de bens e/ou servicos;dfp_cia_aberta_DRE_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A
+empresa;ebit;3.05;resultado antes do resultado financeiro e dos tributos;dfp_cia_aberta_DRE_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A
+empresa;lucro_liquido;3.11;lucro/prejuizo consolidado do periodo;dfp_cia_aberta_DRE_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A
+empresa;lucro_controladores;3.11.01;atribuido a socios da empresa controladora;dfp_cia_aberta_DRE_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A
+empresa;lucro_nao_controladores;3.11.02;atribuido a socios nao controladores;dfp_cia_aberta_DRE_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A
+banco;ativo_total;1;ativo total;dfp_cia_aberta_BPA_con_2025.csv;2025;BBAS3 00.000.000/0001-91 BCO BRASIL S.A.
+banco;passivo_total;2;passivo total;dfp_cia_aberta_BPP_con_2025.csv;2025;BBAS3 00.000.000/0001-91 BCO BRASIL S.A.
+banco;pl_total;2.07;patrimonio liquido consolidado;dfp_cia_aberta_BPP_con_2025.csv;2025;BBAS3 00.000.000/0001-91 BCO BRASIL S.A.
+banco;pl_total;2.08;patrimonio liquido consolidado;dfp_cia_aberta_BPP_con_2025.csv;2025;ITUB4 60.872.504/0001-23 ITAU UNIBANCO HOLDING S.A.
+banco;pl_nao_controladores;2.07.02;patrimonio liquido atribuido aos nao controladores;dfp_cia_aberta_BPP_con_2025.csv;2025;BBAS3 00.000.000/0001-91 BCO BRASIL S.A.
+banco;pl_nao_controladores;2.08.09;participacao dos acionistas nao controladores;dfp_cia_aberta_BPP_con_2025.csv;2025;ITUB4 60.872.504/0001-23 ITAU UNIBANCO HOLDING S.A.
+banco;lucro_liquido;3.11;lucro ou prejuizo liquido consolidado do periodo;dfp_cia_aberta_DRE_con_2025.csv;2025;BBAS3 00.000.000/0001-91 BCO BRASIL S.A.
+banco;lucro_liquido;3.09;lucro/prejuizo consolidado do periodo;dfp_cia_aberta_DRE_con_2025.csv;2025;ITUB4 60.872.504/0001-23 ITAU UNIBANCO HOLDING S.A.
+banco;lucro_controladores;3.11.01;atribuido aos socios da empresa controladora;dfp_cia_aberta_DRE_con_2025.csv;2025;BBAS3 00.000.000/0001-91 BCO BRASIL S.A.
+banco;lucro_controladores;3.09.01;atribuido a socios da empresa controladora;dfp_cia_aberta_DRE_con_2025.csv;2025;ITUB4 60.872.504/0001-23 ITAU UNIBANCO HOLDING S.A.
+banco;lucro_nao_controladores;3.11.02;atribuido aos socios nao controladores;dfp_cia_aberta_DRE_con_2025.csv;2025;BBAS3 00.000.000/0001-91 BCO BRASIL S.A.
+banco;lucro_nao_controladores;3.09.02;atribuido a socios nao controladores;dfp_cia_aberta_DRE_con_2025.csv;2025;ITUB4 60.872.504/0001-23 ITAU UNIBANCO HOLDING S.A.
+seguradora;ativo_total;1;ativo total;dfp_cia_aberta_BPA_con_2025.csv;2025;QUAL3 11.992.680/0001-93 QUALICORP CONSULTORIA E CORRETORA DE SEGUROS S.A.
+seguradora;ativo_circulante;1.01;ativo circulante;dfp_cia_aberta_BPA_con_2025.csv;2025;QUAL3 11.992.680/0001-93 QUALICORP CONSULTORIA E CORRETORA DE SEGUROS S.A.
+seguradora;passivo_total;2;passivo total;dfp_cia_aberta_BPP_con_2025.csv;2025;QUAL3 11.992.680/0001-93 QUALICORP CONSULTORIA E CORRETORA DE SEGUROS S.A.
+seguradora;passivo_circulante;2.01;passivo circulante;dfp_cia_aberta_BPP_con_2025.csv;2025;QUAL3 11.992.680/0001-93 QUALICORP CONSULTORIA E CORRETORA DE SEGUROS S.A.
+seguradora;pl_total;2.03;patrimonio liquido consolidado;dfp_cia_aberta_BPP_con_2025.csv;2025;QUAL3 11.992.680/0001-93 QUALICORP CONSULTORIA E CORRETORA DE SEGUROS S.A.
+seguradora;pl_nao_controladores;2.03.09;participacao dos acionistas nao controladores;dfp_cia_aberta_BPP_con_2025.csv;2025;QUAL3 11.992.680/0001-93 QUALICORP CONSULTORIA E CORRETORA DE SEGUROS S.A.
+seguradora;receita_liquida;3.01;receita de venda de bens e/ou servicos;dfp_cia_aberta_DRE_con_2025.csv;2025;QUAL3 11.992.680/0001-93 QUALICORP CONSULTORIA E CORRETORA DE SEGUROS S.A.
+seguradora;ebit;3.05;resultado antes do resultado financeiro e dos tributos;dfp_cia_aberta_DRE_con_2025.csv;2025;QUAL3 11.992.680/0001-93 QUALICORP CONSULTORIA E CORRETORA DE SEGUROS S.A.
+seguradora;lucro_liquido;3.11;lucro/prejuizo consolidado do periodo;dfp_cia_aberta_DRE_con_2025.csv;2025;QUAL3 11.992.680/0001-93 QUALICORP CONSULTORIA E CORRETORA DE SEGUROS S.A.
+seguradora;lucro_controladores;3.11.01;atribuido a socios da empresa controladora;dfp_cia_aberta_DRE_con_2025.csv;2025;QUAL3 11.992.680/0001-93 QUALICORP CONSULTORIA E CORRETORA DE SEGUROS S.A.
+seguradora;lucro_nao_controladores;3.11.02;atribuido a socios nao controladores;dfp_cia_aberta_DRE_con_2025.csv;2025;QUAL3 11.992.680/0001-93 QUALICORP CONSULTORIA E CORRETORA DE SEGUROS S.A.
+seguradora;ebit;3.07;resultado antes do resultado financeiro e dos tributos;dfp_cia_aberta_DRE_con_2025.csv;2025;BBSE3 17.344.597/0001-94 BB SEGURIDADE PARTICIPAÇÕES S.A.
+seguradora;lucro_liquido;3.13;lucro/prejuizo consolidado do periodo;dfp_cia_aberta_DRE_con_2025.csv;2025;BBSE3 17.344.597/0001-94 BB SEGURIDADE PARTICIPAÇÕES S.A.
+seguradora;lucro_controladores;3.13.01;atribuido a socios da empresa controladora;dfp_cia_aberta_DRE_con_2025.csv;2025;BBSE3 17.344.597/0001-94 BB SEGURIDADE PARTICIPAÇÕES S.A.
+seguradora;lucro_nao_controladores;3.13.02;atribuido a socios nao controladores;dfp_cia_aberta_DRE_con_2025.csv;2025;BBSE3 17.344.597/0001-94 BB SEGURIDADE PARTICIPAÇÕES S.A.

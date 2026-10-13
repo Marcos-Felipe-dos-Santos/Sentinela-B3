@@ -432,7 +432,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: quais fontes informam a data de entrega e quais não; a empresa com reapresentação escolhida;
   - gate da fase.
 
-- [ ] **F2A-33** · feat · `feat: map CVM accounts by code and description` · **[ADR-0003]**
+- [x] **F2A-33** · feat · `feat: map CVM accounts by code and description` · **[ADR-0003]**
   ADR-0003, D20, parte de infraestrutura. **Nenhum consumidor existente muda neste item:** `cvm_provider.py`, `market_engine.py` e os motores ficam como estão; quem passa a usar a tabela é o F2A-38.
   - **Tabela versionada** em `sentinela/data/referencia/`: código, descrição normalizada (sem acento, caixa e espaços extras), modelo de demonstração (empresa não financeira, banco, seguradora) e o campo que a linha representa (PL dos controladores, PL total, lucro dos controladores etc.). Cada linha cita a evidência: arquivo da CVM, ano e uma empresa em que o par aparece, tirados dos arquivos que o F2A-16 levantou.
   - **Modelo da demonstração.** Identificado pelo setor do F2A-2. O critério vai no diário e tem teste.
