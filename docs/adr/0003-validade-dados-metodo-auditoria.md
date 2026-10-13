@@ -46,7 +46,7 @@ Cada número tem uma definição e um papel:
 | **Ações para valor de mercado** | ações em circulação na data, por espécie | capitalização |
 
 Regras de uso:
-1. **LPA divulgado disponível e coerente** (mesmo sinal do lucro dos controladores e uma única linha por espécie; revista em 13/10/2026, ver "Revisões"): é o LPA dos métodos. Divulgado incoerente: o LPA da espécie se abstém, com alerta, sem recalculado no lugar.
+1. **LPA divulgado disponível e coerente** (mesmo sinal do lucro dos controladores, ou do lucro consolidado quando aquele se abstém, e uma única linha por espécie; revista em 13/10/2026, ver "Revisões"): é o LPA dos métodos. Divulgado incoerente: o LPA da espécie se abstém, com alerta, sem recalculado no lugar.
 2. **Divulgado ausente:** o recalculado entra como **aproximação declarada**, com marca na proveniência ("ações do fim do período, não média ponderada"). Os métodos podem usá-lo.
 3. **Mais de uma classe preferencial com direitos distintos** (PNA, PNB etc., identificadas pela `Sigla_Classe_Acao_Preferencial` do FCA): o LPA recalculado comum **se abstém** para as preferenciais; vale só o divulgado da classe, se houver. Sem divulgado da classe, o LPA da classe se abstém.
 4. **Units:** o LPA da unit é a soma dos LPAs das espécies que a compõem, ponderada pela composição oficial do FCA. Se faltar o LPA divulgado de alguma espécie componente, aplica-se a regra 2 com a marca, **exceto** quando a regra 3 proíbe o recalculado para essa espécie: aí a unit inteira se abstém. A regra 3 tem precedência sobre a 2. Composição não reconhecida: abstém-se (já é o comportamento do F2A-1).
@@ -125,6 +125,7 @@ O resultado vai para `docs/loop/historico/fase-N/auditoria-externa.md`. Achado *
 **13/10/2026 — aprovação da ficha por ação (F2A-34).** Decididas pelo Marcos depois da auditoria externa da ficha (modo FICHA, relatório em `docs/loop/historico/fase-2a/auditoria-ficha-por-acao.md`):
 - **D19, regra 1.** "Coerente" deixa de exigir escala determinada: o LPA divulgado já está em R$ por ação. Escala indeterminada derruba só o que depende da quantidade de ações.
 - **D19, divulgado incoerente** (sinal oposto ao lucro dos controladores, ou linhas da mesma espécie com valores diferentes): abstenção do LPA da espécie, com alerta. Não é tratado como ausente.
+- **D19, sinal com lucro dos controladores abstido.** O sinal do divulgado é conferido contra o lucro consolidado (3.11), registrado na proveniência; sem consolidado válido, o divulgado se abstém (decidido depois da segunda auditoria da ficha).
 - **D19, regras 2 e 5.** A escala vem só de outra espécie do mesmo documento.
 - **D19, regra 5.** A faixa [0,1; 10] fica mantida (ficha, seção 7.1).
 - **D20, linha zerada.** Lucro dos controladores e dos não controladores zerados, com lucro consolidado diferente de zero: vale o lucro total só se a participação dos não controladores no balanço (2.03.09) estiver ausente ou zerada; senão, o lucro dos controladores se abstém.

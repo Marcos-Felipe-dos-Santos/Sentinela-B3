@@ -223,3 +223,65 @@ Opções de escopo: conservar a lista proposta; acrescentar os três sucessores 
 - **7.4:** escala só de outra espécie do mesmo documento.
 - **Ressalvas:** QUAL3 descrita como conflito de linhas; métrica `|log(razão)|` escrita; 8,5815; arquivo identificado por SHA-256 e data de coleta de 1/10/2026; afirmação sobre o lucro dos minoritários da KLBN11 ajustada.
 - **Universo:** critério de "atual" aprovado como operacional; AZUL3, AXIA3 e NATU3 incluídos (NATU3 como emissor novo); um ticker por companhia, exceto o Banrisul (BRSR3, BRSR5, BRSR6); BTG em exclusão provisória até o F2A-39. Total: 78 atuais + 12 históricos.
+
+## Auditoria 2 — ficha versão 0.2 (HEAD `939822e`)
+
+**Modo FICHA.** Escopo: ficha versão 0.2 e coerência com ADR-0003, universo inicial e F2A-36/37/39. Branch `v2/fase-2a`, HEAD `939822e`; diff contra `17603b6`. Auditoria somente de leitura.
+
+**Fechamento da auditoria anterior**
+
+Os **dois bloqueios anteriores foram fechados**:
+
+- A ficha identifica os **49 casos com reserva de lucro total**, sem apresentar a distribuição como exclusivamente dos controladores (`por-acao.md:142–144`).
+- Divulgado incoerente agora provoca **abstenção com alerta, sem recalculado substituto** (`por-acao.md:59`, seção 7.5).
+
+As **seis ressalvas da ficha foram fechadas no texto**: conflito de linhas da QUAL3; métrica `|log(razão)|`; arredondamento 8,5815; identificação do ZIP por hash e coleta; distinção entre existência de minoritários e participação efetiva no lucro.
+
+As decisões **7.1, 7.2, 7.4 e 7.5 concordam com as Revisões do ADR-0003**, linhas 125–130. F2A-36/37 incorporam essas decisões; F2A-39 segue a exclusão provisória aprovada, exigindo evidência oficial e proveniência para a correção do BTG.
+
+No universo, foram registradas as aprovações do critério operacional, sucessores, exceção do Banrisul e exclusão provisória do BTG. A ressalva sobre o denominador fica atendida **para este documento**, que não apresenta percentual de cobertura e exige materialização no snapshot quando houver essa afirmação.
+
+**Achados novos — ficha**
+
+| Severidade | Evidência | Achado e condição para fechar |
+|---|---|---|
+| **bloqueia** | [por-acao.md:72]; [fila.md:495] | A ficha mantém o divulgado da KLBN11 quando o lucro dos controladores se abstém, mas a definição de coerência ainda exige **mesmo sinal desse lucro**. Falta definir como validar o divulgado quando esse sinal não pode ser determinado. Fechar com decisão explícita do Marcos, refletida na ficha, ADR e aceite do F2A-36/37. |
+| **bloqueia** | [por-acao.md:72]; fórmula da unit na linha 18 | **0,2286 é o LPA divulgado de ON e PN**, não da KLBN11. A redação o apresenta como entrada dos métodos para a unit, contrariando a própria fórmula por fator 5. Fechar distinguindo o valor por componente do valor da unit: **1,1430**. |
+
+**Achados novos — universo e fila**
+
+| Severidade | Evidência | Achado e condição para fechar |
+|---|---|---|
+| **ressalva** | [universo-inicial.md:111], linhas 13 e 156; COTAHIST jul–set/2026 | BRSR5 soma **25 negócios à vista**, abaixo dos 100 exigidos. A contagem de 78 atuais inclui um caso que não passa no critério. Aplicando a regra aprovada: **77 atuais + 13 históricos = 90**. Fechar marcando BRSR5 como histórico, preservando-o como caso de teste das classes. |
+| **ressalva** | [fila.md:500]; `outputs/ref_teste/referencia/indice.json`; FCA 2026, documento 156166 | F2A-36 manda conferir PNA/PNB **no índice**, mas o snapshot preserva apenas `especie: PN` para BRSR5 e BRSR6. O FCA distingue **PNA e PNB**. Fechar explicitando a consulta ao FCA ou a preservação dessas classes no índice dentro do escopo autorizado. |
+| **sugestão** | [universo-inicial.md:123] | O parágrafo sobre os históricos interrompe a tabela antes de TAEE11, ENGI11, BRBI11 e IGTI11. Fechar restaurando uma tabela válida e a identificação desses quatro casos como units. |
+
+**Recalculado por mim**
+
+Usei apenas biblioteca padrão, arquivos oficiais locais e `Decimal`; não importei módulos do projeto.
+
+- **Petrobras, único número alterado do exemplo:** `110.605.000.000 ÷ 12.888.732.761 = 8,581526365…`, portanto **8,5815**.
+- **Klabin, afirmação nova:** DRE consolidada 2025, versão 1: ON = PN = **0,2286**. FCA 2026, documento 155729: unit = **1 KLBN3 + 4 KLBN4**. Resultado: `1 × 0,2286 + 4 × 0,2286 = 1,1430`.
+- **Banrisul:** soma do campo de negócios dos registros COTAHIST tipo 01, mercado 010, jul–set/2026: BRSR3 **1.687**, BRSR5 **25**, BRSR6 **222.902**.
+- A lista contém **90 tickers distintos**, sendo 76 marcados atuais, dois “atuais, a conferir” e 12 históricos.
+- Hash do ZIP DFP coincide com o registrado; proveniência confirma coleta em **1/10/2026**.
+
+Os demais exemplos já auditados não foram refeitos.
+
+**Não verificado**
+
+Implementação futura, testes e mutation score de F2A-36/37/39; ligação oficial necessária à correção do BTG; nova distribuição sob a política 7.2. Permanecem os limites anteriores sobre causas da sensibilidade e frações das carteiras dos FIIs.
+
+**Pergunta para o Marcos**
+
+Quando o lucro dos controladores se abstém, qual regra permite aceitar o LPA divulgado e como fica registrada a impossibilidade de conferir seu sinal?
+
+**Veredito: não pode seguir para implementação até fechar os dois novos bloqueios.**
+
+## Decisão do Marcos e resposta na versão 0.3
+
+- **Bloqueio 1** (sinal do divulgado com lucro dos controladores abstido): decidido conferir o sinal contra o lucro consolidado (3.11), com registro na proveniência; sem consolidado válido, o divulgado se abstém (ficha 7.6 e abstenção 9; ADR-0003, "Revisões").
+- **Bloqueio 2** (LPA da unit KLBN11): corrigido para 1 × 0,2286 + 4 × 0,2286 = 1,1430, distinguindo o valor por espécie do valor da unit.
+- **BRSR5:** 25 negócios, abaixo do critério; vira histórico, mantida como caso de teste. Total: 77 atuais + 13 históricos = 90.
+- **Classes PNA e PNB:** o F2A-36 consulta o FCA, porque o índice guarda só `especie: PN`.
+- **Tabela do universo:** units restauradas na tabela de casos difíceis.

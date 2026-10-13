@@ -1,6 +1,6 @@
-# Números por ação (LPA, VPA, ações, classes, units e escala) — versão 0.2
+# Números por ação (LPA, VPA, ações, classes, units e escala) — versão 0.3
 
-**Status:** rascunho, com as decisões do Marcos de 13/10/2026 (seção 7) incorporadas; aguarda a segunda auditoria em modo FICHA. A versão 0.1 foi auditada em 13/10/2026 (dois bloqueios e seis ressalvas, relatório em `docs/loop/historico/fase-2a/auditoria-ficha-por-acao.md`).
+**Status:** rascunho, com as decisões do Marcos de 13/10/2026 (seção 7) incorporadas; aguarda a terceira auditoria em modo FICHA. A versão 0.1 teve dois bloqueios e seis ressalvas; a 0.2, dois bloqueios novos (sinal do divulgado com lucro dos controladores abstido; LPA da unit KLBN11). Relatórios em `docs/loop/historico/fase-2a/auditoria-ficha-por-acao.md`.
 **Itens que dependem:** F2A-36 (LPA divulgado por espécie, classes e units), F2A-37 (reservas dos controladores)
 **Origem no código:** F2A-3 (derivação por ação) e F2A-5 (alertas), já entregues
 **Decisões de origem:** ADR-0003, D19, D20 e D21; checkpoint da Fase 0, seção 4, item 1 (revisado pela D19)
@@ -56,7 +56,8 @@ Abstenções (D19 e D20; textos que o código usa ou passará a usar):
 5. **PL ou lucro dos controladores não identificados, ou PL ≤ 0:** sem ROE dos controladores ("PL dos controladores não identificado no documento", "lucro dos controladores não identificado no documento", "PL dos controladores ≤ 0").
 6. **Bancos:** a 2.03 não é patrimônio líquido (F2A-16: 2.07 ou 2.08); até o F2A-9 o PL e o VPA do banco se abstêm.
 7. **Par (código, descrição) sem correspondência na tabela de contas:** o campo se abstém (D20, F2A-33 e F2A-38).
-8. **LPA divulgado incoerente (decisão 7.5):** o LPA da espécie se abstém, com alerta no relatório de qualidade, e o recalculado **não** entra no lugar. Incoerente é: (a) sinal oposto ao do lucro dos controladores; ou (b) mais de uma linha de LPA básico para a mesma espécie com valores diferentes. Linhas repetidas com o mesmo valor contam como uma. Caso real: a QUAL3 traz na DRE consolidada duas linhas básicas "ON", −0,00895 e +0,04662, com lucro dos controladores positivo (R$ 10.665.000): é conflito de linhas (b), e uma delas também tem sinal oposto (a). Textos: "LPA divulgado com sinal oposto ao lucro dos controladores" e "LPA divulgado com linhas conflitantes para a espécie".
+8. **LPA divulgado incoerente (decisão 7.5):** o LPA da espécie se abstém, com alerta no relatório de qualidade, e o recalculado **não** entra no lugar. Incoerente é: (a) sinal oposto ao do lucro dos controladores ou, quando este se abstém, ao do lucro consolidado (3.11; decisão 7.6); ou (b) mais de uma linha de LPA básico para a mesma espécie com valores diferentes. Linhas repetidas com o mesmo valor contam como uma. Caso real: a QUAL3 traz na DRE consolidada duas linhas básicas "ON", −0,00895 e +0,04662, com lucro dos controladores positivo (R$ 10.665.000): é conflito de linhas (b), e uma delas também tem sinal oposto (a). Textos: "LPA divulgado com sinal oposto ao lucro dos controladores" (ou "ao lucro consolidado") e "LPA divulgado com linhas conflitantes para a espécie".
+9. **Sinal não conferível (decisão 7.6):** sem lucro dos controladores e sem lucro consolidado válido no documento, o LPA divulgado se abstém ("sinal do LPA divulgado não conferível: lucro não identificado no documento").
 
 Reservas permitidas (D20, política aprovada com o ADR, e decisão 7.2):
 - **Lucro dos controladores ausente:** vale o lucro total só se a linha dos não controladores estiver ausente ou zerada.
@@ -69,7 +70,7 @@ Reservas permitidas (D20, política aprovada com o ADR, e decisão 7.2):
 **Onde a reserva seria usada** (levantamento só de leitura na DFP 2025 consolidada, última versão de cada companhia; script e saída em `outputs/f2a34_reservas.py` e `outputs/f2a34_reservas.json`, fora do git):
 - 439 companhias com DRE e BPP consolidados (a mesma contagem para DRE ou BPP). As listas "nas 45" casam a companhia pelo código CVM do mapa, e não pelo ticker do índice: AZUL4, GOLL4 e PETZ3 estão nas 45 com código, mas fora do índice com esse ticker.
 - **Lucro dos controladores ausente:** 0 (todas trazem a linha "Atribuído a Sócios da Empresa Controladora").
-- **Lucro dos controladores zerado com o dos não controladores zerado ou ausente:** 105. Hoje o F2A-3 usa o lucro total em todos; pela decisão 7.2, o F2A-37 o mantém só onde o balanço não mostra minoritários. Nas 45 ações do mapa: KLBN11, LWSA3, PETZ3, SBSP3 e TIMS3 (o diário do F2A-3 citou KLBN11, SBSP3, PETZ3 e LWSA3; a TIMS3 também está no caso, mas não teve LPA derivado). Na KLBN11 a participação dos não controladores no balanço é de R$ 6,5 bilhões (2.03.09): há minoritários, e o lucro total pode incluir a parte deles, que o documento não informa. Pela decisão 7.2, o lucro dos controladores da KLBN11 se abstém (e com ele o ROE e o LPA recalculado); o LPA divulgado dela (0,2286) segue como entrada dos métodos. O F2A-37 conta no diário quantas das 105 caem em cada lado.
+- **Lucro dos controladores zerado com o dos não controladores zerado ou ausente:** 105. Hoje o F2A-3 usa o lucro total em todos; pela decisão 7.2, o F2A-37 o mantém só onde o balanço não mostra minoritários. Nas 45 ações do mapa: KLBN11, LWSA3, PETZ3, SBSP3 e TIMS3 (o diário do F2A-3 citou KLBN11, SBSP3, PETZ3 e LWSA3; a TIMS3 também está no caso, mas não teve LPA derivado). Na KLBN11 a participação dos não controladores no balanço é de R$ 6,5 bilhões (2.03.09): há minoritários, e o lucro total pode incluir a parte deles, que o documento não informa. Pela decisão 7.2, o lucro dos controladores da KLBN11 se abstém (e com ele o ROE e o LPA recalculado). O LPA divulgado segue nos métodos, com o sinal conferido contra o lucro consolidado (R$ 1.678.211.000, positivo; decisão 7.6): 0,2286 para ON e para PN, e para a unit KLBN11 = 1 × 0,2286 + 4 × 0,2286 = **1,1430** (FCA 2026, documento 155729: 1 KLBN3 + 4 KLBN4). O F2A-37 conta no diário quantas das 105 caem em cada lado.
 - **PL total como PL dos controladores** (2.03.09 ausente ou zerada e lucro dos não controladores ausente ou zerado): 171 companhias fora do setor "Bancos", mais 2 bancos (BEES3 e um sem ticker no índice), em que a reserva não seria usada porque o PL do banco se abstém até o F2A-9. Nas 45 ações: AZUL4, GOLL4, LREN3, LWSA3, MGLU3, PETZ3, RECV3, SBSP3 e TIMS3.
 - **PL com reserva bloqueada** (2.03.09 ausente ou zerada, mas lucro dos não controladores diferente de zero): 8; com ticker no índice: SEQL3, SBFG3, INEP3, POSI3 e MWET3/MWET4. Pela D20, o PL dos controladores se abstém nesses casos.
 
@@ -160,7 +161,7 @@ Opções apresentadas: manter [0,1; 10]; estreitar para [0,5; 2] (17 de 255 fora
 
 **Decisão (13/10/2026):**
 - **Manter [0,1; 10].** A faixa só distingue unidade de milhar (fator 1.000); a qualidade do número é papel do alerta de 10% do F2A-5, não da faixa. Estreitá-la misturaria as duas funções.
-- **Escala indeterminada não derruba o LPA divulgado.** Ela derruba só o que depende da quantidade de ações (recalculado, VPA, capitalização). Isso revisa a regra 1 da D19: "coerente" passa a ser "mesmo sinal do lucro dos controladores e uma única linha por espécie", sem a condição de escala (ADR-0003, revisão de 13/10/2026).
+- **Escala indeterminada não derruba o LPA divulgado.** Ela derruba só o que depende da quantidade de ações (recalculado, VPA, capitalização). Isso revisa a regra 1 da D19: "coerente" passa a ser "mesmo sinal do lucro dos controladores (ou do consolidado, quando aquele se abstém; 7.6) e uma única linha por espécie", sem a condição de escala (ADR-0003, revisão de 13/10/2026).
 - O F2A-36 refaz a contagem fora da faixa com a política da decisão 7.2 e registra no diário; a faixa não muda por isso.
 
 ### 7.2 Controladora zerada com não controladores zerados — **decidido pelo Marcos em 13/10/2026**
@@ -183,3 +184,9 @@ A seção 4 (abstenção 3) traz a leitura proposta: sem LPA divulgado de nenhum
 ### 7.5 LPA divulgado incoerente — **decidido pelo Marcos em 13/10/2026**
 
 A versão 0.1 tratava divulgado incoerente como ausente (regra 2), o que a D19 não previa (bloqueio da auditoria de 13/10/2026). **Decisão:** divulgado incoerente faz o LPA da espécie se abster, com alerta, sem recalculado no lugar (seção 4, abstenção 8). Sinal trocado ou linhas conflitantes indicam dado com problema, e a reserva o esconderia.
+
+### 7.6 Sinal do LPA divulgado quando o lucro dos controladores se abstém — **decidido pelo Marcos em 13/10/2026**
+
+A decisão 7.2 faz o lucro dos controladores se abster em casos como a KLBN11, mas a coerência do divulgado (7.1 e 7.5) confere o sinal contra esse lucro (bloqueio da segunda auditoria). Opções apresentadas: conferir o sinal contra o lucro consolidado (3.11); ou abster também o divulgado.
+
+**Decisão:** conferir contra o lucro consolidado (3.11, par código e descrição pela tabela do F2A-33). A proveniência do campo registra "sinal conferido pelo lucro consolidado: lucro dos controladores indisponível". Sem lucro consolidado válido, o divulgado se abstém (seção 4, abstenção 9). O sinal do consolidado pode diferir do dos controladores quando os minoritários têm resultado de sinal oposto e maior; é limitação aceita e declarada.

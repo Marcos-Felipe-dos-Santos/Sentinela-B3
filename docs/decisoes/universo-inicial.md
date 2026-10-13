@@ -107,10 +107,14 @@ Só ativos de mapas públicos do código (`cvm_ticker_map.py`, `cvm_fii_map.py`)
 | PINE4 | 62.144.175/0001-20 | STOCK | banco ativo com DFP (F2A-16) | atual |
 | BMGB4 | 61.186.680/0001-74 | STOCK | banco ativo com DFP (F2A-16) | atual |
 | SANB11 | 90.400.888/0001-42 | UNIT | banco ativo com DFP (F2A-16) e unit do índice; composição 1 ON + 1 PN | atual |
-| BRSR3 | 92.702.067/0001-96 | STOCK | Banrisul ON; incluída em 13/10/2026 para a regra 3 da D19 | atual, a conferir |
-| BRSR5 | 92.702.067/0001-96 | STOCK | Banrisul PNA; incluída em 13/10/2026 para a regra 3 da D19 | atual, a conferir |
+| TAEE11 | 07.859.971/0001-30 | UNIT | unit do índice; composição 1 ON + 2 PN | atual |
+| ENGI11 | 00.864.214/0001-06 | UNIT | unit do índice; composição 1 ON + 4 PN | atual |
+| BRBI11 | 10.739.356/0001-03 | UNIT | unit do índice; composição 1 ON + 2 PN | atual |
+| IGTI11 | 60.543.816/0001-93 | UNIT | unit do índice; composição 1 ON + 2 PN | atual |
+| BRSR3 | 92.702.067/0001-96 | STOCK | Banrisul ON; incluída em 13/10/2026 para a regra 3 da D19; 1.687 negócios à vista em jul–set/2026 | atual |
+| BRSR5 | 92.702.067/0001-96 | STOCK | Banrisul PNA; incluída em 13/10/2026 para a regra 3 da D19; só 25 negócios à vista em jul–set/2026, abaixo do critério | histórico (caso de teste das classes) |
 
-"A conferir": o F2A-36 confere no índice a classe (`Sigla_Classe_Acao_Preferencial`) e no COTAHIST o critério de negócios; se não passar, o ticker vira histórico com o motivo no diário.
+Contagens do Banrisul (COTAHIST, registros tipo 01, mercado 010, jul–set/2026) da auditoria externa de 13/10/2026: BRSR3 1.687, BRSR5 25, BRSR6 222.902. A classe das preferenciais (PNA, PNB) vem do FCA (`Sigla_Classe_Acao_Preferencial`, documento 156166), porque o índice do F2A-1 guarda só `especie: PN`. A BRSR5 fica histórica pelo critério de negócios, mas continua no universo como caso de teste da regra 3 da D19.
 
 ### Sucessores (decisão de 13/10/2026)
 
@@ -121,10 +125,6 @@ Só ativos de mapas públicos do código (`cvm_ticker_map.py`, `cvm_fii_map.py`)
 | NATU3 | 71.673.990/0001-77 | STOCK | sucessora de NTCO3 no índice, mas com **outro CNPJ**: entra como emissor novo, sem continuidade histórica com a NTCO3; 739.313 negócios | atual |
 
 AZUL4, ELET3 e NTCO3 continuam como históricos. Contagens de negócios da auditoria externa de 13/10/2026.
-| TAEE11 | 07.859.971/0001-30 | UNIT | unit do índice; composição 1 ON + 2 PN | atual |
-| ENGI11 | 00.864.214/0001-06 | UNIT | unit do índice; composição 1 ON + 4 PN | atual |
-| BRBI11 | 10.739.356/0001-03 | UNIT | unit do índice; composição 1 ON + 2 PN | atual |
-| IGTI11 | 60.543.816/0001-93 | UNIT | unit do índice; composição 1 ON + 2 PN | atual |
 
 ## Casos difíceis pedidos pela D32 e onde estão
 
@@ -151,9 +151,9 @@ Nos bancos e units com mais de um ticker no índice (BEES3/BEES4, BRSR3/BRSR5/BR
 - Base nominal: 45 ações + 30 FIIs = 75.
 - Ações: 38 atuais + 7 históricas (AZUL4, BRML3, ELET3, GOLL4, JBSS3, NTCO3, PETZ3).
 - FIIs: 25 atuais + 5 históricos (BCFF11, CVBI11, IRDM11, MALL11, RBRF11).
-- Casos difíceis fora dos mapas: 12 atuais (8 tickers de bancos, sendo 3 do Banrisul e o SANB11 também unit, e 4 units). Nenhum repete ticker ou companhia dos mapas.
+- Casos difíceis fora dos mapas: 11 atuais (7 tickers de bancos, sendo 2 do Banrisul e o SANB11 também unit, e 4 units) e 1 histórico (BRSR5). Nenhum repete ticker ou companhia dos mapas.
 - Sucessores: 3 atuais (AZUL3, AXIA3, NATU3).
-- **Total: 78 atuais + 12 históricos = 90 ativos**; 3 exclusões. BRSR3 e BRSR5 estão nos atuais, a conferir.
+- **Total: 77 atuais + 13 históricos = 90 ativos**; 3 exclusões.
 - O universo é a amostra verificada, não o total de listados: a cardinalidade do denominador da D32 é medida pelo índice do F2A-1, no mesmo snapshot, quando houver afirmação numérica de cobertura.
 
 ## Denominador da cobertura e critério de ampliação (D32, citados do ADR-0003)
