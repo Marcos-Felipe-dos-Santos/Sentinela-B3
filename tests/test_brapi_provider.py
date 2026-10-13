@@ -91,4 +91,6 @@ def test_brapi_skips_invalid_negative_and_impossible_fields(monkeypatch):
     provider = BrapiProvider()
     dados = provider.get_fundamentals("RUIM3")
 
-    assert dados == {"quote_type": "EQUITY"}
+    # F2A-4: a fronteira converte (250 → 2,5, regra da V1) e não valida; o invariante é do
+    # motor, que rejeita DY acima de 25%.
+    assert dados == {"dy": 2.5, "quote_type": "EQUITY"}

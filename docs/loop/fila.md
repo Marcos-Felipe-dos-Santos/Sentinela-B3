@@ -618,7 +618,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden inalterado;
   - gate da fase.
 
-- [ ] **F2A-4** · fix · `fix: normalize DY once at the provider boundary` · **[golden]**
+- [x] **F2A-4** · fix · `fix: normalize DY once at the provider boundary` · **[golden]**
   E-4 e E-5 (armadilha 4). Hoje há três normalizadores em cascata:
   - `config._normalizar_dy` (`config.py:308-314`);
   - a divisão por 100 do yfinance (`market_engine.py:377-378`);

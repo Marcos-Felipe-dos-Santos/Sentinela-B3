@@ -220,9 +220,6 @@ def test_c_dy_normalizado_fica_entre_zero_e_trinta_por_cento(dy_bruto):
 
 
 @pytest.mark.invariante
-@pytest.mark.xfail(
-    reason="BUG (armadilha 4): percentual acima de 30 passa como DY confiável (45 → 0,45)"
-)
 def test_c_dy_percentual_acima_de_30_nao_pode_sair_confiavel():
     dy, confiavel = _normalizar_dy(45.0)
     assert not (confiavel and dy > 0.30)

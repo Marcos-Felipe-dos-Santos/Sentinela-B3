@@ -17,7 +17,7 @@ INFO_COMPLETO = {
     "trailingPE": 3.0,
     "priceToBook": 0.5,
     "returnOnEquity": 0.17,
-    "dividendYield": 0.22,
+    "dividendYield": 22.0,
     "quoteType": "EQUITY",
 }
 

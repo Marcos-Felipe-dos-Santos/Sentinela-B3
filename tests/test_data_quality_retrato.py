@@ -16,7 +16,7 @@ INFO = {
     "trailingPE": 10.0,
     "priceToBook": 1.2,
     "returnOnEquity": 0.15,
-    "dividendYield": 0.04,
+    "dividendYield": 4.0,
 }
 
 

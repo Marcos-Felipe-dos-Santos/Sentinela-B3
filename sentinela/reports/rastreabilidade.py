@@ -52,7 +52,10 @@ CAMPOS_FII = (
 PROVENIENCIA_DERIVADA = {
     "lpa": "derivado no motor: preço ÷ P/L",
     "vpa": "derivado no motor: preço ÷ P/VP",
-    "dy": "normalizado no motor (_normalizar_dy: acima de 1 é percentual, acima de 0,25 é inválido e zerado)",
+    "dy": (
+        "invariante no motor (_normalizar_dy: fora de 0 a 25% é inválido e zerado); a conversão "
+        "de percentual é da fronteira do provedor (F2A-4)"
+    ),
     "perfil": "derivado no motor: ROE e DY",
     "selic": "sem proveniência registrada (E-6): BCB SGS 432 ou valor de contingência",
 }

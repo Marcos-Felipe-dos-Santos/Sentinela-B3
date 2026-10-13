@@ -3,18 +3,19 @@ from unittest.mock import patch
 import pytest
 
 from fii_engine import FIIEngine
+from sentinela.data import normalizacao
 from valuation_engine import ValuationEngine
 
 
 def test_dy_normalization_percentual() -> None:
-    """DY percentual vindo do Yahoo deve ser convertido para decimal."""
+    """F2A-4: o DY percentual do Yahoo vira razão na fronteira; o motor recebe 0,1247."""
     dados = {
         'ticker': 'PETR4',
         'preco_atual': 100.0,
         'roe': 0.10,
         'pl': 30.0,
         'pvp': 4.0,
-        'dy': 12.47,
+        'dy': normalizacao.dy_na_fronteira(12.47, 'yfinance').valor,
     }
 
     with patch('valuation_engine.get_selic_atual', return_value=0.10):

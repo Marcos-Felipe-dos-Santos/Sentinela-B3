@@ -92,17 +92,14 @@ class FIIEngine:
 
         ticker = dados.get("ticker", "")
 
-        # ── NORMALIZAÇÃO DO DY ────────────────────────────────────────────────
+        # ── INVARIANTE DO DY ──────────────────────────────────────────────────
+        # O DY chega em razão; a conversão é da fronteira do provedor (F2A-4).
         dy_raw = float(dados.get("dy", 0) or 0)
         dy, dy_confiavel = _normalizar_dy(dy_raw)
-        if dy_raw > MACRO.DY_PERCENTUAL_THRESHOLD:
-            logger.info(
-                f"[FII {ticker}] DY normalizado: {dy_raw:.4f}% → {dy:.4f} decimal"
-            )
-        elif not dy_confiavel:
+        if not dy_confiavel:
             logger.warning(
-                f"[FII {ticker}] DY={dy_raw:.4f} ({dy_raw*100:.1f}%) improvável "
-                "— dado suspeito (Yahoo bug?). Desconsiderado."
+                f"[FII {ticker}] DY={dy_raw:.4f} fora de 0 a 25% "
+                "— dado suspeito. Desconsiderado."
             )
 
         # ── FALLBACK: sem DY confiável não podemos calcular valuation ─────────

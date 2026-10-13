@@ -199,10 +199,11 @@ def test_variacao_do_fii_esta_em_pontos_percentuais():
 
 
 def test_dy_normalizado_aparece_ao_lado_do_bruto():
-    html = _html(_acao(dy=8.0))  # percentual bruto: o motor normaliza para 0,08
-    assert "<td>8,0000</td>" in html
-    assert "dy (normalizado)" in html
+    # F2A-4: o DY chega em razão; o motor só aplica o invariante, e o texto diz isso.
+    html = _html(_acao(dy=0.08))
     assert "<td>0,0800</td>" in html
+    assert "dy (normalizado)" in html
+    assert "a conversão de percentual é da fronteira do provedor (F2A-4)" in html
 
 
 def test_dy_invalido_zerado_pelo_motor_fica_visivel():

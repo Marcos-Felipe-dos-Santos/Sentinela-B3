@@ -11,7 +11,7 @@ from config import FII_MANUAL_FALLBACK
 from cvm_provider import CVMProvider
 from cvm_ticker_map import get_cd_cvm
 from database import DatabaseManager
-from sentinela.data import acoes_cvm, contas_cvm, series_cvm
+from sentinela.data import acoes_cvm, contas_cvm, normalizacao, series_cvm
 from sentinela.data.providers.ifdata import IFDataProvider
 from sentinela.data.referencia.carga import ReferenciaOficial
 from sentinela.domain.provenance import FieldProvenance, FieldValue
@@ -508,9 +508,8 @@ class MarketEngine:
 
             info = tk.info
             if info:
-                dy_raw = _as_float(info.get('dividendYield'))
-                if dy_raw is not None and dy_raw > 1:
-                    dy_raw = dy_raw / 100
+                # F2A-4: o `dividendYield` do yfinance é percentual (F2A-16, seção 8).
+                dy_raw = normalizacao.dy_na_fronteira(info.get('dividendYield'), 'yfinance').valor
 
                 pl_raw = _as_float(info.get('trailingPE'))
                 pl_confiavel = True
@@ -553,6 +552,8 @@ class MarketEngine:
                         dados[chave] = valor
                         preenchidos_yfinance.append(chave)
                 self._record_field_sources(dados, preenchidos_yfinance, 'yfinance')
+                if 'dy' in preenchidos_yfinance:
+                    dados.setdefault('proveniencia', {})['dy'] = normalizacao.proveniencia_dy('yfinance')
 
                 if any(not _is_field_missing(k, dados.get(k), dados) for k in ('pl', 'pvp', 'dy', 'roe')):
                     _registrar_fonte_fundamentos(dados, 'yfinance_partial')
@@ -589,6 +590,9 @@ class MarketEngine:
                 allowed_keys=set(FUNDAMENTAL_KEYS),
             )
             self._record_field_sources(dados, preenchidos, 'brapi')
+            if 'dy' in preenchidos:
+                # F2A-4: a representação usada na fronteira (inferida, na brapi).
+                dados.setdefault('proveniencia', {})['dy'] = normalizacao.proveniencia_dy('brapi')
 
             if _is_field_missing('preco_atual', dados.get('preco_atual'), dados):
                 preenchidos_preco = merge_if_valid(dados, brapi_data, allowed_keys={'preco_atual'})

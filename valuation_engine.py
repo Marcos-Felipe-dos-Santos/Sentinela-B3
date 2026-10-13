@@ -135,19 +135,15 @@ class ValuationEngine:
         pl  = float(dados.get('pl',  0) or 0)
         pvp = float(dados.get('pvp', 0) or 0)
 
-        # ── NORMALIZAÇÃO DO DY ────────────────────────────────────────────────
-        # Yahoo Finance retorna dividendYield de formas inconsistentes entre tickers BR:
-        #   Ex: PETR4 → 12.47  (percentagem bruta)  → dividir por 100 → 0.1247
-        #   Ex: WEGE3 → 3.02   (percentagem bruta)  → dividir por 100 → 0.0302
-        #   Ex: ITUB4 → 0.45   (dado suspeito)       → 45% DY impossível → cap
+        # ── INVARIANTE DO DY ──────────────────────────────────────────────────
+        # O DY chega em razão: a conversão de percentual é da fronteira de cada
+        # provedor (F2A-4, `sentinela.data.normalizacao`). Aqui só o invariante.
         dy_raw = float(dados.get('dy', 0) or 0)
         dy, dy_confiavel = _normalizar_dy(dy_raw)
-        if dy_raw > MACRO.DY_PERCENTUAL_THRESHOLD:
-            logger.info(f"[{dados.get('ticker','?')}] DY normalizado: {dy_raw:.4f}% → {dy:.4f} decimal")
-        elif not dy_confiavel:
+        if not dy_confiavel:
             logger.warning(
-                f"[{dados.get('ticker','?')}] DY={dy_raw:.4f} ({dy_raw*100:.1f}%) improvável para B3 "
-                f"— dado suspeito (Yahoo bug?). Desconsiderado."
+                f"[{dados.get('ticker','?')}] DY={dy_raw:.4f} fora de 0 a 25% "
+                f"— dado suspeito. Desconsiderado."
             )
 
         lpa = (p / pl)  if pl  > 0 else 0

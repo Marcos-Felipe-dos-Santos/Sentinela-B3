@@ -258,25 +258,16 @@ def auditar_valuation(ticker: str, dados: dict):
     pvp = float(dados.get('pvp', 0) or 0)
     selic = get_selic_atual()
 
-    # Normalização DY — mesma lógica do valuation_engine (v14)
-    dy_raw = float(dados.get('dy', 0) or 0)
-    dy_confiavel = True
+    # Invariante do DY — o mesmo do valuation_engine (F2A-4): o DY já chega em razão da
+    # cascata, convertido na fronteira do provedor.
+    from config import _normalizar_dy
 
-    if dy_raw > 1:
-        dy = dy_raw / 100
-        print(f"  {warn(f'DY={dy_raw:.4f} em % → normalizado para {dy:.4f} decimal')}")
-    elif dy_raw > 0.25:
-        msg = (
-            f"DY={dy_raw:.4f} ({dy_raw*100:.1f}%) improvável "
-            "→ dado suspeito (Yahoo bug) → desconsiderado"
-        )
-        print(f"  {err(msg)}")
-        dy = 0.0
-        dy_confiavel = False
+    dy_raw = float(dados.get('dy', 0) or 0)
+    dy, dy_confiavel = _normalizar_dy(dy_raw)
+    if dy_confiavel:
+        print(f"  {ok(f'DY={dy_raw:.4f} em razão = {dy_raw*100:.2f}%')}")
     else:
-        dy = dy_raw
-        if dy_raw > 0 and dy_raw < 1:
-            print(f"  {ok(f'DY={dy_raw:.4f} já em decimal = {dy_raw*100:.2f}%')}")
+        print(f"  {err(f'DY={dy_raw:.4f} fora de 0 a 25% → dado suspeito → desconsiderado')}")
 
     print("\n  Inputs brutos (do scraper):")
     print(f"    DY bruto (scraper) : {dy_raw}  (confiável={dy_confiavel})")

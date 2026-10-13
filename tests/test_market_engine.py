@@ -128,7 +128,7 @@ def test_yfinance_data_is_preserved_without_fundamentus(monkeypatch):
             "trailingPE": 8.0,
             "priceToBook": 1.2,
             "returnOnEquity": 0.15,
-            "dividendYield": 0.04,
+            "dividendYield": 4.0,
             "quoteType": "EQUITY",
         },
     )
@@ -203,7 +203,7 @@ def test_field_provenance_preserves_raw_values(monkeypatch):
             "trailingPE": 8.0,
             "priceToBook": 1.2,
             "returnOnEquity": 0.15,
-            "dividendYield": 0.04,
+            "dividendYield": 4.0,
             "quoteType": "EQUITY",
         },
     )
@@ -302,7 +302,7 @@ def test_brapi_does_not_overwrite_valid_fields_with_missing_values(monkeypatch):
             "trailingPE": 7.0,
             "priceToBook": 1.4,
             "returnOnEquity": 0.12,
-            "dividendYield": 0.03,
+            "dividendYield": 3.0,
         },
         brapi=FakeBrapi({"pl": None, "pvp": 0, "roe": 0, "dy": None, "preco_atual": 0}),
     )
@@ -423,7 +423,7 @@ def test_fii_without_pl_roe_but_with_dy_pvp_is_not_partial(monkeypatch):
     engine = _engine(
         monkeypatch,
         historico=_historico(100.0),
-        info={"currentPrice": 100.0, "priceToBook": 0.98, "dividendYield": 0.10},
+        info={"currentPrice": 100.0, "priceToBook": 0.98, "dividendYield": 10.0},
         brapi=FakeBrapi(disponivel=False),
     )
 
@@ -439,7 +439,7 @@ def test_cache_fills_missing_required_stock_fields(monkeypatch):
     engine = _engine(
         monkeypatch,
         historico=_historico(12.0),
-        info={"currentPrice": 12.0, "trailingPE": 8.0, "dividendYield": 0.04},
+        info={"currentPrice": 12.0, "trailingPE": 8.0, "dividendYield": 4.0},
         brapi=FakeBrapi(disponivel=False),
         cache=FakeCache({"pvp": 1.1, "roe": 0.18, "dy": 0.06}),
     )
@@ -519,7 +519,7 @@ def test_manual_fii_fallback_never_overwrites_fresh_provider_values(monkeypatch)
     engine = _engine(
         monkeypatch,
         historico=_historico(100.0),
-        info={"currentPrice": 100.0, "priceToBook": 1.05, "dividendYield": 0.09},
+        info={"currentPrice": 100.0, "priceToBook": 1.05, "dividendYield": 9.0},
         brapi=FakeBrapi(disponivel=False),
         cache=FakeCache(),
     )
