@@ -394,7 +394,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - nenhum teste existente muda;
   - gate da fase.
 
-- [ ] **F2A-5** · fix · `fix: cross-check per-share data against independent sources`
+- [x] **F2A-5** · fix · `fix: cross-check per-share data against independent sources`
   E-2 (armadilha 2). Hoje a validação compara o P/L com preço ÷ LPA, mas no caminho da CVM o P/L é definido assim: a divergência é sempre zero. A validação passa a comparar fontes independentes:
   - **ações da CVM × yfinance:** a divergência do F2A-3 acima de 5% vira alerta (checkpoint, seção 4, item 1);
   - **LPA da cascata × LPA básico divulgado pela companhia** no mesmo documento (DRE 3.99): divergência acima de 10% vira alerta. É o limiar que a V1 já usa. A comparação é na mesma base (lucro atribuído aos controladores) e por espécie: o LPA do ticker contra o divulgado para a espécie dele (ON ou PN). O texto do alerta declara que o divulgado usa a média ponderada de ações e o calculado, as ações do fim do período;

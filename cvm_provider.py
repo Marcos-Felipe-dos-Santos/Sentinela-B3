@@ -133,6 +133,21 @@ def lpa_divulgado(linhas_399: pd.DataFrame) -> dict | None:
     return None
 
 
+def lpa_divulgado_por_especie(linhas_399: pd.DataFrame) -> dict[str, float]:
+    """LPA básico divulgado por espécie (ON e PN, pela descrição da linha 3.99.01.xx), sem zeros."""
+    if linhas_399.empty:
+        return {}
+    basico = linhas_399[linhas_399["CD_CONTA"].str.startswith("3.99.01.")]
+    descricao = basico["DS_CONTA"].fillna("").str.strip().str.upper()
+    valores = pd.to_numeric(basico["VL_CONTA"], errors="coerce")
+    resultado: dict[str, float] = {}
+    for especie, filtro in (("ON", descricao == "ON"), ("PN", descricao.str.startswith("PN"))):
+        achados = valores[filtro & valores.notna() & (valores != 0)]
+        if not achados.empty:
+            resultado[especie] = float(achados.iloc[0])
+    return resultado
+
+
 def composicao_do_documento(
     cc: pd.DataFrame, cnpj: str | None, dt_refer: str | None, versao: str | None
 ) -> tuple[Composicao | None, str | None]:
@@ -419,6 +434,7 @@ class CVMProvider:
                     "pl_controladores":   pl_ctrl,
                     "roe_motivo":         motivo_roe,
                     "lpa_divulgado":      lpa_divulgado(linhas_399),
+                    "lpa_divulgado_por_especie": lpa_divulgado_por_especie(linhas_399),
                     "composicao_capital": composicao,
                     "composicao_motivo":  motivo_composicao,
                 }

@@ -211,6 +211,28 @@ def _retrato(dados: Dict[str, Any]) -> Dict[str, Any]:
     return retrato
 
 
+def _lpa_divulgado_comparado(ind: Dict[str, Any], especie: Optional[str]) -> Optional[Dict[str, Any]]:
+    """LPA divulgado da espécie do ticker (F2A-5); sem espécie (unit ou sem índice), o da escala."""
+    por_especie = ind.get('lpa_divulgado_por_especie') or {}
+    if especie in por_especie:
+        return {'especie': especie, 'valor': por_especie[especie]}
+    referencia = ind.get('lpa_divulgado')
+    if especie is None and referencia:
+        return {'especie': referencia.get('especie'), 'valor': referencia.get('valor')}
+    return None
+
+
+def _guardar_por_fonte(dados: Dict[str, Any], fonte: str, valores: Dict[str, Any]) -> None:
+    """Guarda o que a fonte entregou, antes do merge (F2A-5), para a validação cruzada."""
+    entregues = {
+        chave: valor
+        for chave, valor in _retrato(valores).items()
+        if valor is not None and chave in valores
+    }
+    if entregues:
+        dados.setdefault('valores_por_fonte', {})[fonte] = entregues
+
+
 def _registrar_fonte_fundamentos(dados: Dict[str, Any], fonte: str) -> None:
     atual = dados.get('fonte_fundamentos')
     if not atual:
@@ -486,6 +508,9 @@ class MarketEngine:
                     'pl_confiavel': pl_confiavel,
                     'quote_type': info.get('quoteType', ''),
                 }
+                _guardar_por_fonte(
+                    dados, 'yfinance', {**payload, 'preco_atual': dados.get('preco_atual')}
+                )
                 preenchidos_yfinance: list[str] = []
                 for chave, valor in payload.items():
                     if not is_missing(valor):
@@ -518,6 +543,9 @@ class MarketEngine:
                 for chave, valor in brapi_data.items()
                 if chave in FUNDAMENTAL_KEYS
             }
+            _guardar_por_fonte(
+                dados, 'brapi', {**fundamentos, 'preco_atual': brapi_data.get('preco_atual')}
+            )
             preenchidos = merge_if_valid(
                 dados,
                 fundamentos,
@@ -582,6 +610,7 @@ class MarketEngine:
                     f"{RISCO_ROE_CVM}: {ind['roe_motivo']}"
                 )
             cvm_campos.update(self._por_acao_cvm(ticker, dados, ind))
+            _guardar_por_fonte(dados, 'CVM', cvm_campos)
 
             preenchidos = merge_if_valid(
                 dados,
@@ -632,14 +661,21 @@ class MarketEngine:
                 f"{RISCO_SEM_POR_ACAO_CVM}: {resultado.motivo}"
             )
             return {}
-        dados['acoes_cvm'] = resultado.detalhe(
-            {
-                'cnpj': ind.get('cnpj'),
-                'dt_refer': ind.get('cvm_dt_refer'),
-                'versao': ind.get('cvm_versao'),
-                'lpa_divulgado': ind.get('lpa_divulgado'),
-            }
-        )
+        fator = sum(acoes_por_unit.values()) if eh_unit else 1
+        dados['acoes_cvm'] = {
+            **resultado.detalhe(
+                {
+                    'cnpj': ind.get('cnpj'),
+                    'dt_refer': ind.get('cvm_dt_refer'),
+                    'versao': ind.get('cvm_versao'),
+                    'lpa_divulgado': ind.get('lpa_divulgado'),
+                }
+            ),
+            'acoes_por_papel': fator,
+            'lpa_divulgado_comparado': _lpa_divulgado_comparado(
+                ind, None if eh_unit else dados.get('especie')
+            ),
+        }
         dados['divergencia_acoes'] = acoes_cvm.divergencia_acoes(
             ind['composicao_capital'],
             resultado.escala,
@@ -679,6 +715,7 @@ class MarketEngine:
             for chave in campos
             if chave in scraper_dados
         }
+        _guardar_por_fonte(dados, 'fundamentus', supplemental)
         preenchidos = merge_if_valid(dados, supplemental)
         self._record_field_sources(dados, preenchidos, 'fundamentus')
 

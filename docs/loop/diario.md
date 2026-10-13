@@ -202,3 +202,18 @@
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** análises gravadas antes do item não têm o retrato; quem as relê cai no caminho antigo (valores de `dados`).
+
+### F2A-5 — fix: cross-check per-share data against independent sources
+- **Status:** sucesso
+- **O que foi feito:**
+  - **Cascata:** `dados['valores_por_fonte']` guarda, por fonte (`yfinance`, `brapi`, `CVM`, `fundamentus`), o que ela entregou antes do merge (só campos com valor, já em tipos simples). Fica fora do prompt. `dados['acoes_cvm']` ganhou `acoes_por_papel` (1, ou as ações por unit) e `lpa_divulgado_comparado`: o LPA divulgado da espécie do ticker (índice oficial); para unit, ou sem espécie, o LPA usado para inferir a escala.
+  - **Provedor:** `calcular_indicadores` devolve `lpa_divulgado_por_especie` ({ON, PN}, pela descrição das linhas 3.99.01.xx, sem zeros).
+  - **`DataQualityReport.validacao_cruzada`:** dois alertas novos, depois dos quatro de antes: ações da CVM × `sharesOutstanding` do yfinance, por espécie, acima de 5% (a divergência do F2A-3); e LPA da cascata (por ação, dividido pelas ações da unit) × LPA básico divulgado da mesma espécie, acima de 10%, com o texto declarando que o divulgado usa a média ponderada e o calculado, as ações do fim do período. Os checks 2 e 3 (P/L × preço ÷ LPA, P/VP × preço ÷ VPA) são pulados quando o múltiplo e o valor por ação vêm da mesma fonte: a do múltiplo pela `field_provenance` e a do valor por ação pela fonte, em `valores_por_fonte`, que entregou o valor que ficou. Sem esses registros (chamadas antigas e os testes atuais), rodam como antes.
+- **Escolha:** "fontes diferentes" vale para qualquer fonte, e não só para a CVM: brapi com P/L e LPA próprios também é a mesma fonte, e a comparação é pulada.
+- **Efeito estimado nas 45 ações do mapa** (verificação do F2A-3, LPA comparado com o divulgado da escala): alerta de ações em HYPE3 (+11,2%) e SBSP3 (+402%); alerta de LPA em AZUL4 (74%), GOLL4 (86%), ENEV3 (40%), CSAN3 (37%), CYRE3 (20%) e KLBN11 (20%, por ação). É o alerta que a revisão do F2A-3 pedia para as razões longe de 1.
+- **Dificuldades:** a divergência de exatamente 5% (378 ÷ 360) dá 0,0500…04 em ponto flutuante.
+- **Como resolvi:** os limiares comparam com folga de 1e-9.
+- **Testes:** 1.003 passed, 1 skipped, 2 xfailed → 1.016 passed, 1 skipped, 2 xfailed. 13 novos em `tests/test_data_quality_fontes.py`. `::test_acoes_da_cvm_divergentes_do_yfinance_geram_alerta` (caminho da CVM) passou por xfail estrito: XFAIL por asserção antes, XPASS(strict) depois; marcador retirado. `::test_lpa_divergente_do_divulgado_gera_alerta`, `::test_lpa_comparado_com_o_divulgado_da_mesma_especie`, `::test_identidade_da_cvm_nao_e_comparada` e `::test_fontes_diferentes_seguem_comparadas` passam, com limites, unit, sem espécie, registro por fonte e prompt. Os testes atuais de `validacao_cruzada` não mudaram (nenhum teste existente mudou). Golden sem diferença. Mutação (V1, sem meta): `data_quality*` 340 de 423 = 80,4% (`_mesma_fonte` 40/45, `_alertas_fontes_independentes` 63/68).
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma nova.
+- **Para o Marcos revisar:** os alertas só aparecem na tela (o `app.py` mostra a `validacao_cruzada`); nenhum altera classificação, score ou confiança.

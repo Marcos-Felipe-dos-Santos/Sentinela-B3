@@ -67,7 +67,7 @@ class SentinelaAI:
             excluir = {
                 'historico', 'analise_ia', 'tech', 'field_provenance',
                 'acoes_por_unit', 'referencia_oficial', 'acoes_cvm',
-                'divergencia_acoes', 'valores_coletados',
+                'divergencia_acoes', 'valores_coletados', 'valores_por_fonte',
             }
             return "\n".join(
                 [f"- {k}: {v}" for k, v in dados.items()
