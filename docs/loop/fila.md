@@ -472,7 +472,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** as sete seções do modelo preenchidas; todo número com fonte; status "rascunho"; nenhum parâmetro decidido pelo texto (os pontos de decisão marcados **[DECISÃO]**); diff só na ficha, no diário e na fila.
 
-- [ ] **F2A-35** · docs · `docs: define the initial universe` · **[ADR-0003]**
+- [x] **F2A-35** · docs · `docs: define the initial universe` · **[ADR-0003]**
   ADR-0003, D32. Escreve `docs/decisoes/universo-inicial.md`:
   - as 45 ações do mapa regenerado no F1-15 e os 30 FIIs de `cvm_fii_map.py`. Os cinco FIIs que `docs/decisoes/fontes-fase2a.md` registra fora da listagem entram como **casos históricos**, fora do denominador atual;
   - os casos difíceis que não estiverem lá: os 12 bancos ativos do F2A-16, as units do índice (KLBN11, SANB11, TAEE11, ENGI11, BRBI11, IGTI11), CSAN3, a empresa com reapresentação do F2A-32, e FIIs de papel e de tijolo;
