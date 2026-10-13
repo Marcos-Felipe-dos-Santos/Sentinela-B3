@@ -47,3 +47,8 @@ seguradora;jcp;7.08.04.01;juros sobre o capital proprio;dfp_cia_aberta_DVA_con_2
 seguradora;dividendos;7.08.04.02;dividendos;dfp_cia_aberta_DVA_con_2025.csv;2025;QUAL3 11.992.680/0001-93 QUALICORP CONSULTORIA E CORRETORA DE SEGUROS S.A.
 seguradora;jcp;7.11.04.01;juros sobre o capital proprio;dfp_cia_aberta_DVA_con_2025.csv;2025;BBSE3 17.344.597/0001-94 BB SEGURIDADE PARTICIPAÇÕES S.A.
 seguradora;dividendos;7.11.04.02;dividendos;dfp_cia_aberta_DVA_con_2025.csv;2025;BBSE3 17.344.597/0001-94 BB SEGURIDADE PARTICIPAÇÕES S.A.
+empresa;emprestimos_circulante;2.01.04;emprestimos e financiamentos;dfp_cia_aberta_BPP_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A
+empresa;emprestimos_nao_circulante;2.02.01;emprestimos e financiamentos;dfp_cia_aberta_BPP_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A
+empresa;caixa;1.01.01;caixa e equivalentes de caixa;dfp_cia_aberta_BPA_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A
+empresa;aplicacoes;1.01.02;aplicacoes financeiras;dfp_cia_aberta_BPA_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A
+empresa;depreciacao_amortizacao;7.04.01;depreciacao, amortizacao e exaustao;dfp_cia_aberta_DVA_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A

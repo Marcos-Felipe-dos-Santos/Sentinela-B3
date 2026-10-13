@@ -545,7 +545,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: tempo da primeira análise e das seguintes, com o cache do F2A-17;
   - gate da fase.
 
-- [ ] **F2A-8** · fix · `fix: measure leverage by net financial debt`
+- [x] **F2A-8** · fix · `fix: measure leverage by net financial debt`
   F-12, armadilha 17 e o bug do checkpoint (seção 7). Lê as contas pela tabela do F2A-33 e usa o PL que o F2A-38 entrega (ADR-0003, D20).
   - **Medida** (regime pós-IFRS 16, decisão de 5/10/2026). Dívida financeira líquida = empréstimos e financiamentos (com debêntures, circulantes e não circulantes) + passivo de arrendamento − caixa e aplicações financeiras, do último DFP, com as contas que o F2A-16 conferiu.
     - `divida_liq_ebitda` = dívida líquida ÷ (EBIT + depreciação e amortização da DVA);

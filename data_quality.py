@@ -27,7 +27,7 @@ _CAMPOS_ESPERADOS: list[str] = [
     "roe",
     "lpa",
     "vpa",
-    "divida_liq_ebitda",  # NÃO está em _CVM_CAMPOS: CVM só fornece div_liq_patrimonio (passivo/PL).
+    "divida_liq_ebitda",  # F2A-8: só a CVM, pela dívida financeira líquida ÷ EBITDA.
     "margem_liquida",
     "receita_liquida",
 ]
@@ -39,6 +39,7 @@ _CVM_CAMPOS: frozenset[str] = frozenset({
     "receita_liquida",
     "lpa",   # lucro_liquido / shares — requer sharesOutstanding do yfinance
     "vpa",   # patrimonio_liquido / shares — requer sharesOutstanding do yfinance
+    "divida_liq_ebitda",  # F2A-8: dívida financeira líquida ÷ EBITDA (pós-IFRS 16)
 })
 
 # Normaliza aliases usados em fonte_fundamentos (de market_engine.py SOURCE_ALIASES).
@@ -157,7 +158,7 @@ class DataQualityReport:
             elif presente and cvm_ok and campo in _CVM_CAMPOS:
                 fonte = "CVM"
             elif presente:
-                # Não creditar CVM a campos que ela não fornece (ex: divida_liq_ebitda)
+                # Não creditar CVM a campos que ela não fornece (fora de _CVM_CAMPOS, ex: pvp)
                 fb = fonte_base if fonte_base != "unknown" else "unknown"
                 fonte = fb if not (fb == "CVM" and campo not in _CVM_CAMPOS) else "unknown"
             else:

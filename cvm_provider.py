@@ -11,7 +11,7 @@ from pathlib import Path
 import pandas as pd
 
 from cvm_download import baixar_arquivo
-from sentinela.data import contas_cvm, controladores, proveniencia, series_cvm
+from sentinela.data import contas_cvm, controladores, divida_liquida, proveniencia, series_cvm
 from sentinela.data.acoes_cvm import (
     MOTIVO_DOCUMENTO_DIFERENTE,
     MOTIVO_SEM_COMPOSICAO,
@@ -35,6 +35,14 @@ _CONTAS: dict[str, tuple[str, str]] = {
     "receita_liquida":    ("receita_liquida", "dre"),
     "ebit":               ("ebit", "dre"),
     "lucro_liquido":      ("lucro_liquido", "dre"),
+}
+
+# F2A-8: demonstrativo de cada conta da dívida financeira líquida.
+_DEMONSTRATIVO_DA_DIVIDA = {
+    "emprestimos_circulante": "bpp",
+    "emprestimos_nao_circulante": "bpp",
+    "caixa": "bpa",
+    "aplicacoes": "bpa",
 }
 
 _OUTPUT_COLS = ["CNPJ_CIA", "DT_REFER", "CD_CONTA", "DS_CONTA", "VL_CONTA"]
@@ -411,6 +419,22 @@ class CVMProvider:
         return linhas_399, cc
 
 
+    def _dva_do_documento(
+        self, zip_path: Path, cd_cvm: int, dt_refer: str | None, versao: str | None
+    ) -> pd.DataFrame:
+        """Linhas da DVA consolidada do documento; frame vazio sem a DVA (a conta se abstém)."""
+        try:
+            dva = self.parsear_demonstrativo(
+                zip_path, "DVA_con", include_cd_cvm=True, include_versao=True
+            )
+            return dva[
+                (dva["CD_CVM"] == cd_cvm)
+                & (dva["DT_REFER"].astype(str) == str(dt_refer))
+                & (dva["VERSAO"].astype(str) == str(versao))
+            ]
+        except (OSError, KeyError, ValueError, zipfile.BadZipFile):
+            return pd.DataFrame(columns=_OUTPUT_COLS)
+
     # ------------------------------------------------------------------
     # Cálculo de indicadores históricos
     # ------------------------------------------------------------------
@@ -424,7 +448,9 @@ class CVMProvider:
 
         Indicadores: ativo_total, ativo_circulante, passivo_total,
         passivo_circulante, patrimonio_liquido, receita_liquida, ebit,
-        lucro_liquido, roe, margem_liquida, divida_pl.
+        lucro_liquido, roe, margem_liquida, divida_pl (passivo total − PL, sobre o PL; sem uso
+        na cascata) e, pelo F2A-8, divida_liquida, ebitda, divida_liq_ebitda,
+        div_liq_patrimonio, alavancagem_motivos e alavancagem_regime.
 
         `modelo` é o modelo de demonstração (`contas_cvm.modelo_do_setor`). Cada conta é lida
         pelo par (código, descrição); sem correspondência, o campo fica `None` e o motivo vai
@@ -490,9 +516,11 @@ class CVMProvider:
 
                 demonstrativos = {"bpa": bpa_emp, "bpp": bpp_emp, "dre": dre_emp}
                 valores: dict[str, float | None] = {}
+                leituras: dict[str, contas_cvm.Leitura | contas_cvm.Abstencao] = {}
                 contas_abstidas: dict[str, str] = {}
                 for chave, (campo, demonstrativo) in _CONTAS.items():
                     leitura = _ler(demonstrativos[demonstrativo], campo, leitura_generica)
+                    leituras[chave] = leitura
                     if isinstance(leitura, contas_cvm.Leitura):
                         valores[chave] = leitura.valor
                         continue
@@ -529,6 +557,22 @@ class CVMProvider:
                     cc, cnpj, metadata.get("cvm_dt_refer"), metadata.get("cvm_versao")
                 )
                 roe_ctrl, motivo_roe = roe_dos_controladores(lucro_ctrl, pl_ctrl)
+                alavancagem = divida_liquida.medir(
+                    modelo=modelo,
+                    contas={
+                        campo: _ler(demonstrativos[_DEMONSTRATIVO_DA_DIVIDA[campo]], campo, "empresa")
+                        for campo in divida_liquida.CAMPOS_DA_DIVIDA
+                    },
+                    ebit=leituras["ebit"],
+                    depreciacao=_ler(
+                        self._dva_do_documento(
+                            zip_path, cd_cvm, metadata.get("cvm_dt_refer"), metadata.get("cvm_versao")
+                        ),
+                        "depreciacao_amortizacao",
+                        "empresa",
+                    ),
+                    pl=pl,
+                )
                 if roe_ctrl is None:
                     # F2A-37: o motivo da abstenção do lucro ou do PL é mais preciso que o genérico.
                     motivo_roe = (
@@ -562,6 +606,12 @@ class CVMProvider:
                         if r.reserva
                     },
                     "roe_motivo":         motivo_roe,
+                    "divida_liquida":     alavancagem.divida_liquida,
+                    "ebitda":             alavancagem.ebitda,
+                    "divida_liq_ebitda":  alavancagem.divida_liq_ebitda,
+                    "div_liq_patrimonio": alavancagem.div_liq_patrimonio,
+                    "alavancagem_motivos": alavancagem.motivos,
+                    "alavancagem_regime": alavancagem.regime,
                     "lpa_divulgado":      lpa_divulgado(linhas_399),
                     "lpa_divulgado_por_especie": lpa_divulgado_por_especie(linhas_399),
                     "lpa_basico_por_classe": lpa_basico_por_classe(linhas_399),

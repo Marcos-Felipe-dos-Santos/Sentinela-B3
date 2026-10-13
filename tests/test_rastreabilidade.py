@@ -261,3 +261,40 @@ def test_sintese_do_fii_sem_dy_nao_chama_o_preco_de_preco_justo():
 def test_dy_bruto_nao_e_rotulado_como_razao():
     html = _html(_acao(dy=8.0))
     assert "<td>8,0000</td><td>como veio da fonte</td>" in html
+
+
+def _proveniencia_do_insumo(contexto, campo):
+    return next(i["proveniencia"] for i in contexto["insumos"] if i["campo"] == campo)
+
+
+def test_alavancagem_ausente_aparece_como_nao_avaliada():
+    # F2A-8: sem o dado, o motor não penaliza (o 0,0 interno); o relatório diz por quê.
+    dados = _acao(
+        divida_liq_ebitda=None,
+        alavancagem_cvm={
+            "regime": "pós-IFRS 16, arrendamento incluído na dívida",
+            "motivos": {"divida_liq_ebitda": "EBITDA ≤ 0"},
+        },
+    )
+    texto = _proveniencia_do_insumo(_contexto(dados), "divida_liq_ebitda")
+    assert "alavancagem não avaliada (EBITDA ≤ 0)" in texto
+    assert "não aplica a penalidade" in texto
+    # Fora da CVM (sem o bloco), o motivo é a ausência na cascata.
+    sem_cvm = _proveniencia_do_insumo(
+        _contexto(_acao(divida_liq_ebitda=None)), "divida_liq_ebitda"
+    )
+    assert "alavancagem não avaliada (sem dado na cascata)" in sem_cvm
+    # Com o dado, nada de "não avaliada".
+    com_dado = _proveniencia_do_insumo(_contexto(_acao()), "divida_liq_ebitda")
+    assert "não avaliada" not in com_dado
+
+
+def test_regime_da_divida_e_declarado():
+    dados = _acao(
+        alavancagem_cvm={
+            "regime": "pós-IFRS 16, arrendamento incluído na dívida",
+            "motivos": {},
+        }
+    )
+    texto = _proveniencia_do_insumo(_contexto(dados), "divida_liq_ebitda")
+    assert "regime da dívida: pós-IFRS 16, arrendamento incluído na dívida" in texto

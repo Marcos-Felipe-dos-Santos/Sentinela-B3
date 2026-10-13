@@ -45,12 +45,13 @@ SOURCE_ALIASES = {
 }
 
 # Campos do calcular_indicadores (CVM) → chaves de FUNDAMENTAL_KEYS.
-# divida_pl = (passivo_total - PL) / PL — proxy de alavancagem total,
-# não dívida líquida financeira; mapeado como melhor aproximação disponível.
+# F2A-8: a alavancagem é a dívida financeira líquida (`sentinela.data.divida_liquida`);
+# `divida_pl` (passivo total − PL, sobre o PL) não é dívida líquida e não é mapeado.
 _CVM_TO_MARKET: dict[str, str] = {
     'roe':                'roe',
     'margem_liquida':     'margem_liquida',
-    'divida_pl':          'div_liq_patrimonio',
+    'divida_liq_ebitda':  'divida_liq_ebitda',
+    'div_liq_patrimonio': 'div_liq_patrimonio',
     'patrimonio_liquido': 'patrimonio_liquido',
     'lucro_liquido':      'lucro_liquido',
     'receita_liquida':    'receita_liquida',
@@ -85,6 +86,9 @@ RISCO_SEM_VPA_CVM = 'CVM não derivou VPA e P/VP'
 RISCO_SEM_LPA_CVM = 'CVM sem LPA'
 RISCO_ROE_CVM = 'CVM sem ROE'
 RISCO_CONTA_CVM = 'CVM sem'
+RISCO_ALAVANCAGEM_CVM = 'alavancagem não avaliada'
+# F2A-8: só a CVM entrega a alavancagem; a definição das outras fontes não é conhecida.
+_CAMPOS_SO_DA_CVM = frozenset({'divida_liq_ebitda'})
 
 
 def is_missing(value: Any) -> bool:
@@ -579,7 +583,7 @@ class MarketEngine:
             fundamentos = {
                 chave: valor
                 for chave, valor in brapi_data.items()
-                if chave in FUNDAMENTAL_KEYS
+                if chave in FUNDAMENTAL_KEYS and chave not in _CAMPOS_SO_DA_CVM
             }
             _guardar_por_fonte(
                 dados, 'brapi', {**fundamentos, 'preco_atual': brapi_data.get('preco_atual')}
@@ -614,7 +618,7 @@ class MarketEngine:
         """Preenche fundamentos a partir das DFPs oficiais da CVM.
 
         Cobre: ROE (dos controladores), margens, PL, lucro, receita, ativo circulante/total,
-        alavancagem (proxy passivo/PL) e LPA, VPA, P/L e P/VP pela Composição do Capital do
+        alavancagem (dívida financeira líquida, F2A-8) e LPA, VPA, P/L e P/VP pela Composição do Capital do
         mesmo documento (F2A-3, `sentinela.data.acoes_cvm`). O `sharesOutstanding` do
         yfinance só entra na divergência (`dados['divergencia_acoes']`), nunca no cálculo.
         """
@@ -656,6 +660,18 @@ class MarketEngine:
                 dados.setdefault('riscos_dados', []).append(
                     f"{RISCO_ROE_CVM}: {ind['roe_motivo']}"
                 )
+            if 'alavancagem_regime' in ind:
+                # F2A-8: medida, regime e motivo de cada abstenção.
+                dados['alavancagem_cvm'] = {
+                    'regime': ind['alavancagem_regime'],
+                    'divida_liquida': ind.get('divida_liquida'),
+                    'ebitda': ind.get('ebitda'),
+                    'motivos': dict(ind.get('alavancagem_motivos') or {}),
+                }
+                for campo, motivo in dados['alavancagem_cvm']['motivos'].items():
+                    dados.setdefault('riscos_dados', []).append(
+                        f"{RISCO_ALAVANCAGEM_CVM} ({campo}): {motivo}"
+                    )
             cvm_campos.update(self._por_acao_cvm(ticker, dados, ind))
             _guardar_por_fonte(dados, 'CVM', cvm_campos)
 
@@ -864,7 +880,7 @@ class MarketEngine:
         supplemental = {
             chave: scraper_dados[chave]
             for chave in campos
-            if chave in scraper_dados
+            if chave in scraper_dados and chave not in _CAMPOS_SO_DA_CVM
         }
         _guardar_por_fonte(dados, 'fundamentus', supplemental)
         preenchidos = merge_if_valid(dados, supplemental)

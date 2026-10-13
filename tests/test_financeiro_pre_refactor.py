@@ -144,8 +144,10 @@ def test_b_fii_nao_considera_o_patrimonio_no_fair_value():
 @pytest.mark.quebra_esperada
 @pytest.mark.f12_alavancagem_total
 def test_b_divida_pl_da_cvm_e_endividamento_contabil_total_rotulado_como_liquido():
-    # QUEBRA ESPERADA: F-12 — (passivo_total − PL) / PL entra como `div_liq_patrimonio`.
-    assert market_engine._CVM_TO_MARKET["divida_pl"] == "div_liq_patrimonio"
+    # F-12, resolvida no F2A-8: (passivo_total − PL) / PL deixa de entrar como
+    # `div_liq_patrimonio`; a CVM entrega a dívida financeira líquida sobre o PL.
+    assert market_engine._CVM_TO_MARKET.get("divida_pl") != "div_liq_patrimonio"
+    assert market_engine._CVM_TO_MARKET["div_liq_patrimonio"] == "div_liq_patrimonio"
 
 
 @pytest.mark.quebra_esperada

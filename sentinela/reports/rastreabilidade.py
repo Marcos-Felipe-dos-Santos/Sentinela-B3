@@ -341,6 +341,20 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         }
         for campo, unidade in (CAMPOS_FII if eh_fii else CAMPOS_ACAO)
     ]
+    alavancagem = dados.get("alavancagem_cvm") or {}
+    for i in insumos:
+        if i["campo"] != "divida_liq_ebitda":
+            continue
+        if alavancagem.get("regime"):
+            i["proveniencia"] += f"; regime da dívida: {alavancagem['regime']}"
+        valor = dados.get("divida_liq_ebitda")
+        if not isinstance(valor, (int, float)) or not math.isfinite(valor):
+            motivo = (alavancagem.get("motivos") or {}).get(
+                "divida_liq_ebitda", "sem dado na cascata"
+            )
+            i["proveniencia"] += (
+                f"; alavancagem não avaliada ({motivo}): o motor não aplica a penalidade"
+            )
     if eh_fii and not dados.get("pvp"):
         for i in insumos:
             if i["campo"] == "pvp":
