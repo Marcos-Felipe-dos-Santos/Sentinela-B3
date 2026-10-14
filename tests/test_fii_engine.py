@@ -66,9 +66,11 @@ def test_fii_engine_vacancy_adjustment(engine):
     with patch('fii_engine.get_selic_atual', return_value=0.10):
         result = engine.analisar(dados)
         
+    # F2A-23: a vacância manual não é lida; o DY efetivo é o próprio DY.
     assert result['dy'] == pytest.approx(0.10)
-    assert result['dy_efetivo'] == pytest.approx(0.09) # 0.10 * (1 - 0.10)
-    assert result['fair_value'] == pytest.approx(105.88, abs=0.01) # (100 * 0.09) / (0.10 * 0.85) ≈ 105.88
+    assert result['dy_efetivo'] == pytest.approx(0.10)
+    assert result['fair_value'] == pytest.approx(117.65, abs=0.01) # (100 * 0.10) / (0.10 * 0.85) ≈ 117.65
+    assert 'vacancia_fonte' not in result
 
 
 # ── Teste de baseline para bug conhecido ─────────────────────────────────────
@@ -129,15 +131,16 @@ def test_fii_cvm_vacancia_disponivel_usa_cvm():
 
 
 def test_fii_vacancia_manual_tem_flag():
-    """VACANCIA_CONHECIDA como fallback deve marcar vacancia_fonte='manual'."""
+    """F2A-23: VACANCIA_CONHECIDA não é mais lida; sem fonte oficial, não há vacância."""
     engine = FIIEngine(cvm_provider=None)
     dados = {'ticker': 'HGLG11', 'preco_atual': 150.0, 'dy': 0.08, 'pvp': 0.9}
 
     with patch('fii_engine.get_selic_atual', return_value=0.10):
         result = engine.analisar(dados)
 
-    assert result['vacancia_fonte'] == 'manual'
-    assert result['dy_efetivo'] == pytest.approx(0.08 * (1 - VACANCIA_CONHECIDA['HGLG11']))
+    assert 'HGLG11' in VACANCIA_CONHECIDA
+    assert 'vacancia_fonte' not in result
+    assert result['dy_efetivo'] == pytest.approx(0.08)
 
 
 def test_fii_cvm_falha_graceful():

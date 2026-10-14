@@ -466,13 +466,14 @@ def test_manual_fii_fallback_fills_missing_dy_pvp(monkeypatch):
 
     dados = engine.buscar_dados_ticker("CVBI11")
 
-    assert dados["dy"] == 0.10
-    assert dados["pvp"] == 0.85
-    assert dados["vacancia"] == 0.25
-    assert dados["dados_manual"] is True
-    assert dados["fonte_fundamentos"] == "manual_fii"
-    assert "fundamentos FII preenchidos manualmente" in dados["riscos_dados"]
-    assert dados["dados_parciais"] is False
+    # F2A-23: a estimativa manual não entra; o que falta continua faltando.
+    assert "dy" not in dados
+    assert "pvp" not in dados
+    assert "vacancia" not in dados
+    assert dados["dados_manual"] is False
+    assert "manual_fii" not in (dados.get("fonte_fundamentos") or "")
+    assert "fundamentos FII preenchidos manualmente" not in dados["riscos_dados"]
+    assert dados["dados_parciais"] is True
 
 
 def test_manual_fallback_provenance_marks_manual_fields(monkeypatch):
@@ -486,11 +487,13 @@ def test_manual_fallback_provenance_marks_manual_fields(monkeypatch):
 
     dados = engine.buscar_dados_ticker("CVBI11")
 
+    # F2A-23: nenhum campo marcado como estimativa manual.
     for field in ("dy", "pvp"):
         provenance = dados["field_provenance"][field]["provenance"]
-        assert provenance["source"] == "manual_fallback"
-        assert provenance["manual"] is True
-        assert "manual_fallback" in provenance["warnings"]
+        assert provenance["source"] != "manual_fallback"
+        assert provenance["manual"] is False
+        assert "manual_fallback" not in provenance["warnings"]
+        assert dados["field_provenance"][field]["value"] is None
 
 
 def test_market_engine_manual_fii_fallback_does_not_apply_to_known_unit(monkeypatch):

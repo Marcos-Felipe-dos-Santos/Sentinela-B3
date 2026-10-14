@@ -456,8 +456,7 @@ class MarketEngine:
         if list_missing_required_fields(dados, classifier):
             self._aplicar_cache_fundamentos(ticker, dados)
 
-        if list_missing_required_fields(dados, classifier):
-            self._aplicar_fallback_manual_fii(ticker, dados)
+        # F2A-23: a estimativa manual de FII (`FII_MANUAL_FALLBACK`) deixou de ser aplicada.
 
         # F2A-22: o Fundamentus saiu da cascata; a falta de campo obrigatório depois de
         # todas as fontes (inclusive cache e fallback manual) vira `fundamentos_incompletos`.

@@ -719,7 +719,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden pela regra;
   - gate da fase.
 
-- [ ] **F2A-23** · fix · `fix: stop using manual FII estimates` · **[golden]**
+- [x] **F2A-23** · fix · `fix: stop using manual FII estimates` · **[golden]**
   E-25 e F-10. São estimativas sem data nem fonte; duas delas atribuem vacância física a fundos de papel:
   - `VACANCIA_CONHECIDA` (`fii_engine.py:27-34`, lida em `:139-141`);
   - `FII_MANUAL_FALLBACK` (`config.py:72-76`, lida em `market_engine.py:621`).

@@ -127,7 +127,8 @@ class FIIEngine:
             if pvp <= 0:
                 pvp = None
 
-        # Vacância: CVM (quando disponível) > VACANCIA_CONHECIDA (manual) > None
+        # Vacância: só de fonte oficial (CVM, quando disponível). F2A-23: a estimativa manual
+        # (`VACANCIA_CONHECIDA`) deixou de ser lida; a tabela sai no F2A-13.
         vacancia: Optional[float] = None
         vacancia_fonte: Optional[str] = None
 
@@ -136,10 +137,6 @@ class FIIEngine:
             if vac_cvm is not None:
                 vacancia = vac_cvm
                 vacancia_fonte = "CVM"
-
-        if vacancia is None and ticker in VACANCIA_CONHECIDA:
-            vacancia = VACANCIA_CONHECIDA[ticker]
-            vacancia_fonte = "manual"
 
         # ── Bazin adaptado para FIIs (yield vs taxa livre de risco) ──────────
         # Fórmula, DY efetivo (ajustado por vacância) e Selic líquida em
