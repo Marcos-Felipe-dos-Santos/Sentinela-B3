@@ -49,6 +49,12 @@ class Entrada:
 CHANGELOG: dict[str, tuple[Mudanca, ...]] = {
     m.nome: (Mudanca("1.0.0", DESCRICAO_1_0_0),) for m in METODOS
 }
+CHANGELOG["Gordon"] += (
+    Mudanca(
+        "1.1.0",
+        "com LPA não positivo, abstém-se; sai o payout de 50% do fallback da V1",
+    ),
+)
 CHANGELOG["Bazin"] += (
     Mudanca(
         "1.0.1",

@@ -757,7 +757,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden pela regra;
   - gate da fase.
 
-- [ ] **F2A-25** · fix · `fix: abstain Gordon when earnings per share is not positive` · **[golden]**
+- [x] **F2A-25** · fix · `fix: abstain Gordon when earnings per share is not positive` · **[golden]**
   Com LPA ≤ 0, o Gordon 1.0.0 usa payout de 50%. É o fallback da V1, declarado em `assumptions`; o F1-6 diz que ele "só vira abstenção com versão nova". É número degradado, contra o contrato de método.
   - Gordon 1.1.0: LPA não positivo → `Abstention("LPA não positivo")`, depois dos testes de DY e de ROE.
   - Saem `PAYOUT_SEM_LPA` e a premissa do fallback; entra a versão 1.1.0 no changelog.

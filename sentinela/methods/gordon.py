@@ -1,9 +1,12 @@
-"""Gordon 1.0.0: comportamento da V1, extraído na Fase 1, sem mudança de número.
+"""Gordon 1.1.0: comportamento da V1, extraído na Fase 1, menos o fallback do LPA.
 
 Valor justo = dividendo do próximo ano ÷ (k − g), com k = Selic + prêmio de risco e
 g = ROE × retenção limitado a um teto. Tudo em regime nominal: a troca por taxa real
 (k e g no mesmo regime) é o F2B-1 (armadilha 1). Exige DY confiável, DY e ROE acima
-dos mínimos e k > g.
+dos mínimos, LPA positivo e k > g.
+
+1.1.0 (F2A-25): com LPA não positivo, abstém-se. A 1.0.0 usava payout de 50% (fallback da
+V1), número degradado contra o contrato de método.
 """
 
 from __future__ import annotations
@@ -21,10 +24,10 @@ from sentinela.methods.base import (
     ValuationMethod,
 )
 
-PAYOUT_SEM_LPA = 0.5
 MOTIVO_DY_NAO_CONFIAVEL = "DY não confiável"
 MOTIVO_DY_ABAIXO_DO_MINIMO = "DY abaixo do mínimo"
 MOTIVO_ROE_ABAIXO_DO_MINIMO = "ROE abaixo do mínimo"
+MOTIVO_LPA_NAO_POSITIVO = "LPA não positivo"
 MOTIVO_K_NAO_MAIOR_QUE_G = "k não maior que g"
 MOTIVO_NAO_FINITO = "resultado não finito"
 
@@ -40,14 +43,13 @@ class GordonParams:
 
 class Gordon(ValuationMethod):
     nome = "Gordon"
-    version = "1.0.0"
+    version = "1.1.0"
     regime = Regime.NOMINAL
     requires = ("preco", "lpa", "roe", "dy", "selic")
     assumptions = (
         "valor justo = dividendo do próximo ano ÷ (k − g)",
         "k = Selic + prêmio de risco; g = ROE × (1 − payout), limitado a um teto; tudo nominal",
-        "com LPA não positivo o payout é 50% (fallback da V1, sem abstenção)",
-        "exige DY confiável, DY e ROE acima dos mínimos e k maior que g",
+        "exige DY confiável, DY e ROE acima dos mínimos, LPA positivo e k maior que g",
     )
     applies_to = frozenset({AssetType.STOCK, AssetType.UNIT})
     params_type = GordonParams
@@ -63,11 +65,11 @@ class Gordon(ValuationMethod):
         roe = inputs.roe.valor
         if not roe > params.roe_min:
             return Abstention(self.nome, self.version, MOTIVO_ROE_ABAIXO_DO_MINIMO)
-        p = inputs.preco.valor
         lpa = inputs.lpa.valor
-        payout_ratio_g = (
-            min((dy * p) / lpa, params.payout_max) if lpa > 0 else PAYOUT_SEM_LPA
-        )
+        if not lpa > 0:
+            return Abstention(self.nome, self.version, MOTIVO_LPA_NAO_POSITIVO)
+        p = inputs.preco.valor
+        payout_ratio_g = min((dy * p) / lpa, params.payout_max)
         retencao_g = 1 - payout_ratio_g
         g = roe * retencao_g
         g = min(g, params.g_max)

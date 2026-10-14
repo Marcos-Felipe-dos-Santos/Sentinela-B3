@@ -13,7 +13,7 @@ from sentinela.methods.base import ValuationMethod
 from sentinela.methods.bazin import BazinParams
 from sentinela.methods.fii_nav import FiiNavParams
 from sentinela.methods.fii_yield import FiiYieldParams
-from sentinela.methods.gordon import PAYOUT_SEM_LPA, GordonParams
+from sentinela.methods.gordon import GordonParams
 from sentinela.methods.graham import FATOR_GRAHAM, GrahamParams
 from sentinela.methods.lynch import LynchParams
 
@@ -162,14 +162,15 @@ def test_parametros_da_1_0_0_fixados():
             assert getattr(MACRO, constante) == valor, f"{nome}.{campo} ({constante})"
     # constantes de fórmula que moram no módulo do método
     assert FATOR_GRAHAM == 22.5
-    assert PAYOUT_SEM_LPA == 0.5
 
 
 def test_changelog_tem_a_1_0_0():
     assert set(registry.CHANGELOG) == set(NOMES)
     for nome in NOMES:
         mudancas = registry.CHANGELOG[nome]
-        esperado = ["1.0.0", "1.0.1"] if nome == "Bazin" else ["1.0.0"]  # F2A-21
+        esperado = {"Bazin": ["1.0.0", "1.0.1"], "Gordon": ["1.0.0", "1.1.0"]}.get(
+            nome, ["1.0.0"]
+        )  # F2A-21 e F2A-25
         assert [m.version for m in mudancas] == esperado
         assert mudancas[0].descricao == (
             "comportamento da V1, extraído na Fase 1, sem mudança de número"
