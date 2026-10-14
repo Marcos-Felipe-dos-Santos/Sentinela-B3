@@ -184,7 +184,7 @@ def test_ticker_invalido_e_recusado(ruim):
 
 
 def test_ticker_valido_e_normalizado():
-    assert rastreabilidade.validar_ticker(" tst3 ") == "TST3"
+    assert rastreabilidade.validar_ticker(" tste3 ") == "TSTE3"
     assert rastreabilidade.validar_ticker("HGLG11") == "HGLG11"
 
 

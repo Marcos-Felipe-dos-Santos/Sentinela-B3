@@ -375,7 +375,7 @@ def test_no_cache_path_does_not_mark_cached_data(monkeypatch):
         info={"currentPrice": 12.0, "dividendYield": 0.0},
     )
 
-    dados = engine.buscar_dados_ticker("CACHE3")
+    dados = engine.buscar_dados_ticker("CACH3")
 
     assert dados["dados_cache"] is False
     assert dados.get("fonte_fundamentos") != "cache"
@@ -390,7 +390,7 @@ def test_cache_is_used_when_providers_fail(monkeypatch):
         cache=FakeCache({"pl": 6.0, "pvp": 0.9, "roe": 0.14, "dy": 0.07}),
     )
 
-    dados = engine.buscar_dados_ticker("CACHE3")
+    dados = engine.buscar_dados_ticker("CACH3")
 
     assert dados["pl"] == 6.0
     assert dados["pvp"] == 0.9
@@ -411,7 +411,7 @@ def test_cache_provenance_marks_cached_fields(monkeypatch):
         cache=FakeCache({"pl": 6.0, "pvp": 0.9, "roe": 0.14, "dy": 0.07}),
     )
 
-    dados = engine.buscar_dados_ticker("CACHE3")
+    dados = engine.buscar_dados_ticker("CACH3")
 
     for field in ("dy", "pl", "pvp", "roe"):
         provenance = dados["field_provenance"][field]["provenance"]
@@ -444,7 +444,7 @@ def test_cache_fills_missing_required_stock_fields(monkeypatch):
         cache=FakeCache({"pvp": 1.1, "roe": 0.18, "dy": 0.06}),
     )
 
-    dados = engine.buscar_dados_ticker("CACHE3")
+    dados = engine.buscar_dados_ticker("CACH3")
 
     assert dados["pl"] == 8.0
     assert dados["pvp"] == 1.1
@@ -595,10 +595,10 @@ def test_cvm_disponivel_false_when_ticker_not_mapped(monkeypatch):
         historico=_historico(15.0),
         info={"currentPrice": 15.0, "quoteType": "EQUITY", "trailingPE": 10.0,
               "priceToBook": 1.2, "returnOnEquity": 0.10, "dividendYield": 0.04},
-        cvm=FakeCVM(_cvm_ind()),  # CVM ativo mas ticker ZZZZZ9 não está no mapa
+        cvm=FakeCVM(_cvm_ind()),  # CVM ativo mas ticker ZZZZ9 não está no mapa
     )
 
-    dados = engine.buscar_dados_ticker("ZZZZZ9")
+    dados = engine.buscar_dados_ticker("ZZZZ9")
 
     assert dados["cvm_disponivel"] is False
 

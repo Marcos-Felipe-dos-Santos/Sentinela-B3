@@ -14,7 +14,7 @@ def ai():
 def test_ai_fallback_ollama(ai):
     # Test that when groq/gemini are not available, it calls local ollama
     with patch.object(ai, '_call_ollama', return_value={"content": "Ollama response", "model": "Ollama"}) as mock_ollama:
-        result = ai.analisar("Contexto fake", {
+        result = ai.analisar("PETR4", {
             "classificacao_heuristica": "SINAL POSITIVO",
             "recomendacao": "SINAL POSITIVO",
         })
@@ -37,7 +37,7 @@ def test_ai_fallback_gemini(ai):
                 
         mock_submit.return_value = FakeFuture()
         
-        result = ai.analisar("Contexto fake", {
+        result = ai.analisar("PETR4", {
             "classificacao_heuristica": "SINAL POSITIVO",
             "recomendacao": "SINAL POSITIVO",
         })

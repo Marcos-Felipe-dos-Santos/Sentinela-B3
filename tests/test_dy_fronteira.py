@@ -104,7 +104,7 @@ def test_cascata_converte_e_marca_a_proveniencia(monkeypatch):
         info={"currentPrice": 20.0, "dividendYield": 0.57},
         historico=_historico(20.0),
     )
-    dados = engine.buscar_dados_ticker("TST3")
+    dados = engine.buscar_dados_ticker("TSTE3")
     assert dados["dy"] == pytest.approx(0.0057)
     assert dados["proveniencia"]["dy"]["inferida"] is False
 
@@ -114,7 +114,7 @@ def test_cascata_converte_e_marca_a_proveniencia(monkeypatch):
         historico=_historico(20.0),
         brapi=FakeBrapi({"dy": 0.075}),
     )
-    dados = engine.buscar_dados_ticker("TST3")
+    dados = engine.buscar_dados_ticker("TSTE3")
     assert dados["dy"] == pytest.approx(0.075)
     assert dados["proveniencia"]["dy"]["fonte"] == "brapi"
     assert dados["proveniencia"]["dy"]["inferida"] is True

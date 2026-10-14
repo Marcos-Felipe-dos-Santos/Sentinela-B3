@@ -14,7 +14,6 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import math
-import re
 import sys
 from contextlib import contextmanager
 from datetime import date
@@ -25,12 +24,12 @@ from jinja2 import Environment
 
 import fii_engine as modulo_fii
 import valuation_engine as modulo_valuation
+from sentinela.domain import ticker as ticker_b3
 from sentinela.domain import units
 from sentinela.methods.base import Abstention, MethodResult
 
 RAIZ = Path(__file__).resolve().parents[2]
 PASTA_SAIDA = RAIZ / "outputs"
-TICKER = re.compile(r"[A-Z0-9]{4,7}")
 PLANO_URL = (
     "https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3/blob/main/docs/PLANO.md"
 )
@@ -502,10 +501,7 @@ def renderizar(contexto: dict[str, Any]) -> str:
 
 
 def validar_ticker(texto: str) -> str:
-    ticker = (texto or "").upper().strip()
-    if not TICKER.fullmatch(ticker):
-        raise ValueError(f"ticker inválido: {texto!r}")
-    return ticker
+    return ticker_b3.validar(texto)  # F2A-12: a mesma lista permitida das fronteiras
 
 
 def gravar(html: str, ticker: str, hoje: date, pasta: Path = PASTA_SAIDA) -> Path:

@@ -157,7 +157,7 @@ def test_brapi_nao_preenche_a_alavancagem(monkeypatch):
         historico=_historico(20.0),
         brapi=brapi,
     )
-    dados = engine.buscar_dados_ticker("TST3")
+    dados = engine.buscar_dados_ticker("TSTE3")
     assert dados["pl"] == 8.0  # a brapi segue preenchendo o resto
     assert "divida_liq_ebitda" not in dados
     assert "divida_liq_ebitda" not in dados["valores_por_fonte"].get("brapi", {})

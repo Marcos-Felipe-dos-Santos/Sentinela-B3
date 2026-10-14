@@ -23,7 +23,7 @@ def test_roe_em_percentual_do_yfinance_nao_chega_ao_motor(monkeypatch):
     engine = _engine(
         monkeypatch, info={**INFO, "returnOnEquity": 21.0}, historico=_historico(20.0)
     )
-    dados = engine.buscar_dados_ticker("TST3")
+    dados = engine.buscar_dados_ticker("TSTE3")
     assert dados.get("roe") is None
     assert any("ROE descartado (yfinance)" in r for r in dados["riscos_dados"])
     (descarte,) = dados["proveniencia"]["roe_descartes"]
@@ -73,7 +73,7 @@ def test_roe_acima_do_limite_vira_ausente_com_motivo(monkeypatch):
         historico=_historico(20.0),
         brapi=FakeBrapi({"roe": 3.5, "pl": 8.0}),
     )
-    dados = engine.buscar_dados_ticker("TST3")
+    dados = engine.buscar_dados_ticker("TSTE3")
     assert dados.get("roe") is None
     assert (
         f"ROE descartado (brapi): {normalizacao.MOTIVO_ROE_ACIMA}"
@@ -96,7 +96,7 @@ def test_roe_negativo_passa(monkeypatch):
     engine = _engine(
         monkeypatch, info={**INFO, "returnOnEquity": -0.12}, historico=_historico(20.0)
     )
-    dados = engine.buscar_dados_ticker("TST3")
+    dados = engine.buscar_dados_ticker("TSTE3")
     assert dados["roe"] == pytest.approx(-0.12)
     assert dados["proveniencia"]["roe"] == normalizacao.proveniencia_roe("yfinance")
     assert not any("ROE descartado" in r for r in dados["riscos_dados"])
@@ -131,7 +131,7 @@ def test_yfinance_valido_marca_a_representacao(monkeypatch):
     engine = _engine(
         monkeypatch, info={**INFO, "returnOnEquity": 0.215}, historico=_historico(20.0)
     )
-    dados = engine.buscar_dados_ticker("TST3")
+    dados = engine.buscar_dados_ticker("TSTE3")
     assert dados["roe"] == pytest.approx(0.215)
     assert dados["proveniencia"]["roe"]["inferida"] is False
     assert (
@@ -197,7 +197,7 @@ def test_descarte_de_outra_fonte_nao_apaga_a_proveniencia_do_roe_vigente(monkeyp
         historico=_historico(20.0),
         brapi=FakeBrapi({"roe": 3.5, "pl": 8.0}),
     )
-    dados = engine.buscar_dados_ticker("TST3")
+    dados = engine.buscar_dados_ticker("TSTE3")
     assert dados["roe"] == pytest.approx(0.18)
     assert dados["proveniencia"]["roe"]["fonte"] == "yfinance"
     assert [d["fonte"] for d in dados["proveniencia"]["roe_descartes"]] == ["brapi"]

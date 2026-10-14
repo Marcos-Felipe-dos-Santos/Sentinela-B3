@@ -16,6 +16,7 @@ from database import DatabaseManager
 from sentinela.data import acoes_cvm, contas_cvm, normalizacao, series_cvm
 from sentinela.data.providers.ifdata import IFDataProvider
 from sentinela.data.referencia.carga import ReferenciaOficial
+from sentinela.domain import ticker as ticker_b3
 from sentinela.domain.provenance import FieldProvenance, FieldValue
 from sentinela.domain.enums import AssetType
 from sentinela.services.asset_classifier import AssetClassifier
@@ -416,7 +417,12 @@ class MarketEngine:
 
     def buscar_dados_ticker(self, ticker: str) -> Optional[Dict[str, Any]]:
         """Busca dados de mercado com fallback multi-fonte."""
-        ticker = ticker.upper().replace(".SA", "").strip()
+        # F2A-12: ticker fora do formato da B3 não chega a nenhuma fonte externa.
+        normalizado = ticker_b3.normalizar(ticker)
+        if normalizado is None:
+            logger.warning(f"Ticker inválido recusado: {ticker!r}")
+            return None
+        ticker = normalizado
 
         dados: Dict[str, Any] = {
             'ticker': ticker,

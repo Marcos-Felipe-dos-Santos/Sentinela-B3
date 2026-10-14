@@ -7,6 +7,7 @@ from typing import Any
 import requests
 
 from config import GEMINI_MODEL, GROQ_MODEL, OLLAMA_MODEL, OLLAMA_URL
+from sentinela.domain import ticker as ticker_b3
 
 # CORRIGIDO: removido `import html` que foi importado mas nunca usado
 
@@ -146,7 +147,11 @@ Forneça uma análise estruturada, direta e em Português, contendo exatamente:
 """
 
     def analisar(self, ticker, dados):
-        prompt = self._montar_prompt(ticker, dados)
+        # F2A-12: ticker fora do formato da B3 não entra no prompt nem chama provedor.
+        normalizado = ticker_b3.normalizar(ticker)
+        if normalizado is None:
+            return {"content": "Análise indisponível: ticker inválido.", "model": "nenhum"}
+        prompt = self._montar_prompt(normalizado, dados)
 
         # 1. Groq (primário)
         if 'groq' in self.clients:

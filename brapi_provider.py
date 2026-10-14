@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 import requests
 
 from sentinela.data import normalizacao
+from sentinela.domain import ticker as ticker_b3
 
 logger = logging.getLogger("BrapiProvider")
 
@@ -99,8 +100,9 @@ class BrapiProvider:
             return None
 
     def _primeiro_resultado(self, ticker: str, params: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
-        ticker_norm = _normalizar_ticker(ticker)
-        if not ticker_norm:
+        # F2A-12: só ticker no formato da B3 entra na URL.
+        ticker_norm = ticker_b3.normalizar(ticker)
+        if ticker_norm is None:
             return None
 
         data = self._get(f"/quote/{ticker_norm}", params=params)

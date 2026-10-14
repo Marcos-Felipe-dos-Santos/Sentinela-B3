@@ -775,7 +775,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden pela regra;
   - gate da fase.
 
-- [ ] **F2A-12** · fix · `fix: validate tickers against an allowlist before URLs and prompts`
+- [x] **F2A-12** · fix · `fix: validate tickers against an allowlist before URLs and prompts`
   E-18. O ticker digitado (`app.py:202`) chega sem validação a três lugares: a URL da brapi (`brapi_provider.py:115`), o yfinance (`market_engine.py:365`) e o prompt do LLM (`_montar_prompt` do `ai_core.py`). O `app.py` não muda, então a validação fica em cada fronteira:
   - **A função.** `sentinela/domain/ticker.py`, pura. Normaliza (maiúsculas, sem espaços, sem `.SA`) e só aceita `^[A-Z0-9]{4}[0-9]{1,2}$`: raiz de 4 caracteres e 1 ou 2 dígitos. Isso cobre ações, units, FIIs, ETFs e BDRs como `A1MD34`. Não exige que o ticker esteja no índice; fora dele, a classe é `UNKNOWN` (F2A-20).
   - **Quem chama:**
