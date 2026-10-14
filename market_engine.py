@@ -8,10 +8,8 @@ import pandas as pd
 
 from brapi_provider import BrapiProvider
 from config import FII_MANUAL_FALLBACK
-from cvm_fii_map import get_cnpj_fii
 from cvm_fii_provider import CVMFIIProvider
 from cvm_provider import CVMProvider
-from cvm_ticker_map import get_cd_cvm
 from database import DatabaseManager
 from sentinela.data import acoes_cvm, contas_cvm, liquidez, normalizacao, series_cvm
 from sentinela.data.providers.b3_cotahist import HistoricoRecente
@@ -83,6 +81,7 @@ _CAMPOS_DA_REFERENCIA = {
 }
 RISCO_FORA_DA_REFERENCIA = 'ticker fora da referência oficial'
 RISCO_FORA_DA_CVM = 'ticker fora da cobertura da CVM'
+RISCO_SEM_REFERENCIA = 'referência oficial indisponível: dados da CVM não consultados'
 AVISO_CODIGO_DA_TABELA = 'cvm_code_from_correction_table'
 AVISO_ACOES_FIM_DO_PERIODO = 'shares_end_of_period'
 RISCO_SEM_POR_ACAO_CVM = 'CVM não derivou LPA, VPA, P/L e P/VP'
@@ -477,18 +476,19 @@ class MarketEngine:
         dados.setdefault('ticker', ticker)
         self._attach_field_provenance(dados)
         dados['valores_coletados'] = _retrato(dados)
+        dados.pop('_sem_referencia', None)
         return dados
 
     def _aplicar_referencia(self, ticker: str, dados: Dict[str, Any]) -> None:
         """Copia para `dados` o registro do ticker no índice oficial, com a fonte.
 
-        Sem índice (rede e índice salvo indisponíveis), não faz nada: a cascata usa o mapa manual.
+        Sem índice (rede e índice salvo indisponíveis), marca `_sem_referencia`: a CVM não é
+        consultada (F2A-31), porque os mapas manuais deixaram de ser lidos.
         """
         referencia = getattr(self, 'referencia', None)
-        if referencia is None:
-            return
-        indice = referencia.indice(datetime.now(UTC))
+        indice = referencia.indice(datetime.now(UTC)) if referencia is not None else None
         if indice is None:
+            dados['_sem_referencia'] = True
             return
         registro = indice.buscar(ticker)
         if registro is None:
@@ -661,7 +661,7 @@ class MarketEngine:
     def _buscar_cvm_fii(self, ticker: str, dados: Dict[str, Any]) -> bool:
         """VPA, P/VP, PL e cotas do FII pelo Informe Mensal da CVM (F2A-11; E-10, armadilha 9).
 
-        O CNPJ vem do índice oficial, com `cvm_fii_map.py` de reserva até o F2A-31. O P/VP
+        O CNPJ vem só do índice oficial (F2A-31; sem ele, o Informe não é consultado). O P/VP
         oficial (preço ÷ valor da cota) sobrescreve as outras fontes; sem o Informe, elas
         ficam. Provedor por `getattr`: os motores montados com `__new__` não passam por aqui.
         """
@@ -670,7 +670,7 @@ class MarketEngine:
         provedor = getattr(self, 'cvm_fii', None)
         if provedor is None:
             return False
-        cnpj = dados.get('cnpj') or get_cnpj_fii(ticker)
+        cnpj = dados.get('cnpj')  # F2A-31: só do índice oficial
         if not cnpj:
             return False
         try:
@@ -740,10 +740,13 @@ class MarketEngine:
         if cvm is None:
             return False
 
-        cd_cvm = dados.get('cd_cvm') or get_cd_cvm(ticker)
+        # F2A-31: o CD_CVM vem só do índice oficial; os mapas manuais não são mais lidos.
+        cd_cvm = dados.get('cd_cvm')
         if cd_cvm is None:
             dados['cvm_disponivel'] = False
-            dados.setdefault('riscos_dados', []).append(RISCO_FORA_DA_CVM)
+            dados.setdefault('riscos_dados', []).append(
+                RISCO_SEM_REFERENCIA if dados.get('_sem_referencia') else RISCO_FORA_DA_CVM
+            )
             return False
 
         try:

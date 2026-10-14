@@ -59,8 +59,7 @@ def _motor(monkeypatch, referencia, cvm=None):
               "priceToBook": 1.2, "returnOnEquity": 0.10, "dividendYield": 0.04},
         cvm=cvm if cvm is not None else CVMQueAnota(_cvm_ind()),
     )  # fmt: skip
-    if referencia is not None:
-        engine.referencia = referencia
+    engine.referencia = referencia  # None: sem índice (F2A-31)
     return engine
 
 
@@ -76,18 +75,19 @@ def test_ticker_fora_do_mapa_manual_recebe_cvm_pelo_indice(monkeypatch):
     assert dados["roe"] == pytest.approx(0.21)
 
 
-def test_sem_indice_usa_o_mapa_manual(monkeypatch):
+def test_sem_indice_nao_usa_o_mapa_manual(monkeypatch):
+    # F2A-31: antes, sem índice, o CD_CVM vinha de `cvm_ticker_map.py`.
     cvm = CVMQueAnota(_cvm_ind())
     engine = _motor(monkeypatch, FakeReferencia(None), cvm)
     dados = engine.buscar_dados_ticker("PETR4")
-    assert cvm.codigos == [9512]
-    assert dados["cvm_disponivel"] is True
+    assert cvm.codigos == []
+    assert dados["cvm_disponivel"] is False
     assert "classe_ativo" not in dados
 
 
 def test_ticker_fora_da_cvm_tem_motivo_em_riscos_dados(monkeypatch):
     cvm = CVMQueAnota(_cvm_ind())
-    engine = _motor(monkeypatch, FakeReferencia(None), cvm)
+    engine = _motor(monkeypatch, FakeReferencia(_indice(_registro())), cvm)
     dados = engine.buscar_dados_ticker("ZZZZ3")
     assert cvm.codigos == []
     assert dados["cvm_disponivel"] is False
@@ -148,11 +148,13 @@ def test_ticker_fora_do_indice_sem_motivo(monkeypatch):
     assert "classe_ativo" not in dados
 
 
-def test_ticker_fora_do_indice_cai_no_mapa_manual(monkeypatch):
+def test_ticker_fora_do_indice_nao_consulta_a_cvm(monkeypatch):
+    # F2A-31: antes, caía no mapa manual (CD_CVM 9512).
     cvm = CVMQueAnota(_cvm_ind())
     engine = _motor(monkeypatch, FakeReferencia(_indice(_registro())), cvm)
-    engine.buscar_dados_ticker("PETR4")
-    assert cvm.codigos == [9512]
+    dados = engine.buscar_dados_ticker("PETR4")
+    assert cvm.codigos == []
+    assert "ticker fora da cobertura da CVM" in dados["riscos_dados"]
 
 
 def test_cd_cvm_do_indice_prevalece_sobre_o_mapa_manual(monkeypatch):
@@ -163,20 +165,24 @@ def test_cd_cvm_do_indice_prevalece_sobre_o_mapa_manual(monkeypatch):
     assert cvm.codigos == [123]
 
 
-def test_registro_sem_cd_cvm_cai_no_mapa_manual(monkeypatch):
+def test_registro_sem_cd_cvm_nao_consulta_a_cvm(monkeypatch):
+    # F2A-31: antes, caía no mapa manual (CD_CVM 9512) e não ganhava o risco de cobertura.
     cvm = CVMQueAnota(_cvm_ind())
     registro = _registro("PETR4", cd_cvm=None)
     engine = _motor(monkeypatch, FakeReferencia(_indice(registro)), cvm)
     dados = engine.buscar_dados_ticker("PETR4")
-    assert cvm.codigos == [9512]
-    assert "ticker fora da cobertura da CVM" not in dados["riscos_dados"]
+    assert cvm.codigos == []
+    assert "ticker fora da cobertura da CVM" in dados["riscos_dados"]
 
 
-def test_motor_sem_referencia_nao_muda(monkeypatch):
+def test_motor_sem_referencia_nao_consulta_a_cvm(monkeypatch):
+    # F2A-31: sem a referência injetada, é o mesmo que sem índice.
     engine = _motor(monkeypatch, None)
     dados = engine.buscar_dados_ticker("PETR4")
     assert "referencia_oficial" not in dados
-    assert dados["riscos_dados"] == []
+    assert dados["riscos_dados"] == [
+        "referência oficial indisponível: dados da CVM não consultados"
+    ]
 
 
 def test_ticker_sem_cvm_injetada_nao_ganha_risco_de_cobertura(monkeypatch):
@@ -374,3 +380,43 @@ def test_relatorio_sem_correcao_mostra_so_a_regra():
 
 def test_relatorio_sem_referencia_nao_tem_a_linha():
     assert "Referência oficial" not in _fontes_do_relatorio(None)
+
+
+# ── F2A-31: dados da CVM só pela referência oficial ──────────────────────────
+
+
+def test_sem_indice_a_cvm_nao_e_consultada_e_o_motivo_aparece(monkeypatch):
+    cvm = CVMQueAnota(_cvm_ind())
+    engine = _motor(monkeypatch, FakeReferencia(None), cvm)
+    dados = engine.buscar_dados_ticker("PETR4")  # está em `cvm_ticker_map.py`
+    assert cvm.codigos == []
+    assert (
+        "referência oficial indisponível: dados da CVM não consultados"
+        in dados["riscos_dados"]
+    )
+    assert "ticker fora da cobertura da CVM" not in dados["riscos_dados"]
+    assert dados["preco_atual"] == 20.0  # as outras fontes seguem
+    assert "_sem_referencia" not in dados
+
+
+def test_fii_sem_indice_nao_consulta_o_informe(monkeypatch):
+    class _Informe:
+        def __init__(self):
+            self.cnpjs = []
+
+        def obter_dados_fii(self, cnpj):
+            self.cnpjs.append(cnpj)
+            return {"valor_cota": 100.0}
+
+    informe = _Informe()
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(90.0),
+        info={"currentPrice": 90.0, "priceToBook": 1.5, "dividendYield": 9.0},
+    )
+    engine.cvm_fii = informe
+    engine.referencia = FakeReferencia(None)
+    dados = engine.buscar_dados_ticker("HGLG11")  # está em `cvm_fii_map.py`
+    assert informe.cnpjs == []
+    assert dados["pvp"] == 1.5
+    assert "vpa" not in dados

@@ -813,7 +813,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   Se o F2A-16 registrou COTAHIST inacessível, o item fica `[!]`.
 
-- [ ] **F2A-31** · fix · `fix: resolve CVM data only from the official reference`
+- [x] **F2A-31** · fix · `fix: resolve CVM data only from the official reference`
   Decisão de 5/10/2026: a remoção dos mapas manuais deixa de ser condicional dentro da limpeza e vira este item, com a mudança de comportamento isolada. O F2A-13 só remove o que ficar sem uso.
   - **Pré-condição** (PLANO: só se o mapa automático cobrir o universo). O diário do F2A-1 registrou 100% dos mapeáveis, e o do F2A-19, nenhuma diferença entre os mapas manuais e o índice. Se não, o item fica `[!]`, com o motivo no diário.
   - **Cascata.** `_buscar_cvm` (F2A-19) e a busca de FII (F2A-11) leem só o índice: deixam de ler `cvm_ticker_map.py` e `cvm_fii_map.py`.

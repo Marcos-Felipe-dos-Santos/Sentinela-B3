@@ -1,12 +1,12 @@
 """VPA e P/VP oficiais do FII pela cascata (F2A-11; E-10, armadilha 9).
 
 O `CVMFIIProvider` nunca rodava: o `app.py` monta `FIIEngine()` sem provedor. A busca vai
-para a cascata: Informe Mensal pelo CNPJ do índice, com `cvm_fii_map.py` de reserva.
+para a cascata: Informe Mensal pelo CNPJ do índice oficial (sem reserva no mapa desde o F2A-31).
 """
 
 import pytest
 
-from tests.test_market_engine import _engine, _historico
+from tests.test_market_engine import ReferenciaDosMapas, _engine, _historico
 
 INFO = {
     "currentPrice": 90.0,
@@ -40,6 +40,7 @@ class _InformeFalso:
 def _cascata(monkeypatch, informe):
     engine = _engine(monkeypatch, info=INFO, historico=_historico(90.0))
     engine.cvm_fii = informe
+    engine.referencia = ReferenciaDosMapas()  # F2A-31: o CNPJ vem só do índice
     return engine.buscar_dados_ticker("HGLG11")  # FII do mapa público
 
 

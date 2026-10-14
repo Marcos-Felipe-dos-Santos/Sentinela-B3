@@ -263,6 +263,6 @@ class _CVMQueGuardaOModelo:
 def test_cascata_passa_o_modelo_do_setor(monkeypatch, setor, esperado):
     cvm = _CVMQueGuardaOModelo()
     engine = _engine(monkeypatch, info={"currentPrice": 20.0}, cvm=cvm)
-    dados = {"setor": setor, "riscos_dados": []}
+    dados = {"setor": setor, "cd_cvm": 9512, "riscos_dados": []}  # F2A-31: CD_CVM do índice
     engine._buscar_cvm("PETR4", dados)
     assert cvm.chamadas == [esperado]

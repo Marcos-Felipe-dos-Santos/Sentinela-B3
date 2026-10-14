@@ -65,7 +65,7 @@ def test_banco_nao_recebe_margem_nem_alavancagem(tmp_path, monkeypatch):
             return {2025: ind}
 
     engine = _engine(monkeypatch, info={"currentPrice": 20.0}, cvm=_CVM())
-    dados = {"setor": "Bancos", "riscos_dados": [], "preco_atual": 20.0}
+    dados = {"setor": "Bancos", "cd_cvm": 19348, "riscos_dados": [], "preco_atual": 20.0}
     engine._buscar_cvm("ITUB4", dados)
     riscos = " | ".join(dados["riscos_dados"])
     assert f"receita_liquida: {cvm_provider.MOTIVO_SEM_SIGNIFICADO_BANCO}" in riscos

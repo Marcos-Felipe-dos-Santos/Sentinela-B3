@@ -91,6 +91,36 @@ def _historico(preco=10.0):
     )
 
 
+class ReferenciaDosMapas:
+    """Índice oficial falso, montado dos mapas públicos (F2A-31).
+
+    A cascata só lê o CD_CVM e o CNPJ do índice; a classe de cada registro é a que o
+    classificador já dava ao ticker sem dados, para os testes não mudarem de caminho.
+    """
+
+    def __init__(self):
+        from cvm_fii_map import FII_CNPJ_MAP
+        from cvm_ticker_map import _TICKER_TO_CVM
+        from sentinela.data.referencia.registro import Indice, Registro
+
+        classificador = market_engine.AssetClassifier()
+        registros = {
+            ticker: Registro(
+                ticker=ticker,
+                classe=classificador.classify(ticker, {}).value,
+                regra="mapa público (teste)",
+                fonte={},
+                cd_cvm=_TICKER_TO_CVM.get(ticker),
+                cnpj=FII_CNPJ_MAP.get(ticker),
+            )
+            for ticker in {*_TICKER_TO_CVM, *FII_CNPJ_MAP}
+        }
+        self._indice = Indice(gerado_em="2026-10-08", fontes={}, registros=registros, excecoes=[])
+
+    def indice(self, agora):
+        return self._indice
+
+
 def _engine(monkeypatch, *, info, historico=None, brapi=None, cache=None, cvm=None):
     monkeypatch.setattr(
         "market_engine.yf.Ticker",
@@ -102,6 +132,8 @@ def _engine(monkeypatch, *, info, historico=None, brapi=None, cache=None, cvm=No
     # cvm=None → atributo não definido → getattr(engine, 'cvm', None) retorna None → pula CVM
     if cvm is not None:
         engine.cvm = cvm
+        # F2A-31: o CD_CVM vem só do índice oficial; os testes de CVM injetam um índice falso.
+        engine.referencia = ReferenciaDosMapas()
     return engine
 
 
