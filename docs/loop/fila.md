@@ -792,7 +792,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden inalterado;
   - gate da fase.
 
-- [ ] **F2A-26** · feat · `feat: add liquidity metrics from COTAHIST` · **[D7]**
+- [x] **F2A-26** · feat · `feat: add liquidity metrics from COTAHIST` · **[D7]**
   Insumo da **[LIQUIDEZ]** e do F2A-10, que foram para a 2B. É aditivo: nenhum motor lê.
   - **`dados['liquidez']`.** A cascata grava, pelo COTAHIST do F2A-18, para 21 e 63 pregões:
     - volume financeiro diário mediano e médio;

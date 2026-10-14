@@ -13,7 +13,8 @@ from cvm_fii_provider import CVMFIIProvider
 from cvm_provider import CVMProvider
 from cvm_ticker_map import get_cd_cvm
 from database import DatabaseManager
-from sentinela.data import acoes_cvm, contas_cvm, normalizacao, series_cvm
+from sentinela.data import acoes_cvm, contas_cvm, liquidez, normalizacao, series_cvm
+from sentinela.data.providers.b3_cotahist import HistoricoRecente
 from sentinela.data.providers.ifdata import IFDataProvider
 from sentinela.data.referencia.carga import ReferenciaOficial
 from sentinela.domain import ticker as ticker_b3
@@ -299,6 +300,7 @@ class MarketEngine:
         self.cvm = CVMProvider()
         self.ifdata = IFDataProvider()
         self.cvm_fii = CVMFIIProvider()
+        self.cotahist = HistoricoRecente()
         self.database = DatabaseManager()
         self.asset_classifier = asset_classifier or AssetClassifier()
         self.referencia = REFERENCIA_OFICIAL
@@ -458,6 +460,7 @@ class MarketEngine:
 
         self._buscar_ifdata(dados)
         self._buscar_cvm_fii(ticker, dados)
+        self._buscar_liquidez(ticker, dados)
 
         if list_missing_required_fields(dados, classifier):
             self._aplicar_cache_fundamentos(ticker, dados)
@@ -631,6 +634,29 @@ class MarketEngine:
             logger.warning(f"[{ticker}] Brapi error: {e}")
 
         return False
+
+    def _buscar_liquidez(self, ticker: str, dados: Dict[str, Any]) -> None:
+        """Liquidez do ticker pelo COTAHIST (F2A-26), em `dados['liquidez']`, fora do prompt.
+
+        Só mede: nenhum motor lê. Provedor por `getattr`; sem ele ou com falha, a chave fica
+        de fora.
+        """
+        historico = getattr(self, 'cotahist', None)
+        if historico is None:
+            return
+        try:
+            coleta = historico.coletar(datetime.now(UTC))
+        except Exception as exc:
+            logger.warning(f"[{ticker}] COTAHIST indisponível para a liquidez: {exc}")
+            return
+        resultado = liquidez.metricas(
+            coleta.cotacoes, ticker, meses_ausentes=coleta.meses_ausentes
+        )
+        dados['liquidez'] = (
+            {'abstencao': resultado.motivo, 'meses_ausentes': list(coleta.meses_ausentes)}
+            if isinstance(resultado, liquidez.Abstencao)
+            else resultado
+        )
 
     def _buscar_cvm_fii(self, ticker: str, dados: Dict[str, Any]) -> bool:
         """VPA, P/VP, PL e cotas do FII pelo Informe Mensal da CVM (F2A-11; E-10, armadilha 9).

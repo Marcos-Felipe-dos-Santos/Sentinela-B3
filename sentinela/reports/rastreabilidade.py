@@ -300,6 +300,20 @@ def _bloco_nao_calculado(inst, motivo: str) -> dict[str, Any]:
     }
 
 
+def _texto_liquidez(liquidez: dict[str, Any]) -> str:
+    ausentes = liquidez.get("meses_ausentes") or []
+    lacuna = f"; meses ausentes na coleta: {', '.join(ausentes)}" if ausentes else ""
+    if "abstencao" in liquidez:
+        return f"não calculada: {liquidez['abstencao']}{lacuna}"
+    partes = [
+        f"{n} pregões{' (incompleta)' if j['incompleta'] else ''}: volume mediano "
+        f"R$ {_numero(j['volume_mediano'])}/dia, negócios {_numero(j['negocios_mediana'], 1)}/dia, "
+        f"presença {_numero(100 * j['presenca'], 1)}%"
+        for n, j in liquidez["janelas"].items()
+    ]
+    return f"{'; '.join(partes)}; até {liquidez['data_final']} ({liquidez['fonte']}){lacuna}"
+
+
 def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str, Any]:
     """Roda o motor da V1 sobre `dados`, capturando o detalhe de cada método."""
     instancias = _instancias(eh_fii)
@@ -439,6 +453,11 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
                 "Série da CVM (F2A-7, ainda sem uso nos métodos)",
                 f"exercícios: {anos}; proventos por {serie.get('proventos_base')}",
             )
+        )
+    liquidez = dados.get("liquidez")
+    if liquidez:
+        fontes.append(
+            ("Liquidez (F2A-26, ainda sem uso nos métodos)", _texto_liquidez(liquidez))
         )
     ttm = dados.get("ttm_cvm")
     if ttm:

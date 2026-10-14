@@ -16,6 +16,7 @@ O parser não lê relógio nem rede; o download recebe o instante atual como par
 from __future__ import annotations
 
 import logging
+import threading
 import zipfile
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
@@ -161,3 +162,98 @@ def baixar_mes(
         raise
     antigo.unlink()
     return baixado
+
+
+# ── Meses recentes (F2A-26) ──────────────────────────────────────────────────
+
+# O mês corrente e os três anteriores: costumam cobrir 63 pregões; nos primeiros dias do
+# mês, ou com feriados, a janela pode ficar incompleta (e vem marcada).
+MESES_RECENTES = 4
+ESPERA_APOS_FALHA_S = 3600  # mês que falhou não é tentado de novo por uma hora
+_CACHE_LEITURA_MAX = 6
+_cache_leitura: dict[tuple, list[Cotacao]] = {}
+_trava_leitura = threading.Lock()
+_travas_mes: dict[tuple, threading.Lock] = {}
+_falhas: dict[tuple, float] = {}
+
+
+def meses_ate(ano: int, mes: int, quantos: int) -> list[tuple[int, int]]:
+    """Os `quantos` meses até (ano, mês), do mais antigo ao mais recente."""
+    meses = []
+    for _ in range(quantos):
+        meses.append((ano, mes))
+        ano, mes = (ano - 1, 12) if mes == 1 else (ano, mes - 1)
+    return meses[::-1]
+
+
+def ler_zip_em_cache(zip_path: Path) -> list[Cotacao]:
+    """`ler_zip` com memória por processo; a chave inclui mtime e tamanho do arquivo."""
+    stat = Path(zip_path).stat()
+    chave = (str(Path(zip_path).resolve()), stat.st_mtime_ns, stat.st_size)
+    with _trava_leitura:
+        if chave in _cache_leitura:
+            return _cache_leitura[chave]
+    cotacoes = ler_zip(zip_path)
+    with _trava_leitura:
+        _cache_leitura[chave] = cotacoes
+        while len(_cache_leitura) > _CACHE_LEITURA_MAX:
+            _cache_leitura.pop(next(iter(_cache_leitura)))
+    return cotacoes
+
+
+@dataclass(frozen=True)
+class Coleta:
+    """Cotações dos meses obtidos e os meses que faltaram ("MM/AAAA")."""
+
+    cotacoes: list[Cotacao]
+    meses_ausentes: tuple[str, ...]
+
+
+class HistoricoRecente:
+    """Cotações do mercado à vista dos meses recentes, para a liquidez da cascata."""
+
+    def __init__(
+        self, cache_dir: str | Path = "data/cotahist", meses: int = MESES_RECENTES
+    ):
+        self.cache_dir = cache_dir
+        self.meses = meses
+
+    def coletar(self, agora: datetime) -> Coleta:
+        """Uma trava por mês cobre download e leitura (a comparação setorial chama a cascata
+        em várias threads). Mês que não baixa nem abre vai para `meses_ausentes` e não é
+        tentado de novo por `ESPERA_APOS_FALHA_S`, contados a partir de `agora`.
+        """
+        local = agora.astimezone(_FUSO_B3)
+        instante = agora.timestamp()
+        cotacoes: list[Cotacao] = []
+        ausentes: list[str] = []
+        for ano, mes in meses_ate(local.year, local.month, self.meses):
+            chave = (str(Path(self.cache_dir).resolve()), ano, mes)
+            with _trava_leitura:
+                trava = _travas_mes.setdefault(chave, threading.Lock())
+            with trava:
+                # A falha é consultada já com a trava: quem esperava na fila não repete o
+                # download que a thread anterior acabou de ver falhar.
+                with _trava_leitura:
+                    falha = _falhas.get(chave)
+                if falha is not None and instante - falha < ESPERA_APOS_FALHA_S:
+                    ausentes.append(f"{mes:02d}/{ano}")
+                    continue
+                try:
+                    cotacoes += ler_zip_em_cache(
+                        baixar_mes(ano, mes, agora, self.cache_dir)
+                    )
+                except (
+                    requests.RequestException,
+                    OSError,
+                    zipfile.BadZipFile,
+                    ValueError,
+                ) as exc:
+                    with _trava_leitura:
+                        _falhas[chave] = instante
+                    ausentes.append(f"{mes:02d}/{ano}")
+                    logger.warning("COTAHIST %02d/%d indisponível: %s", mes, ano, exc)
+                    continue
+            with _trava_leitura:
+                _falhas.pop(chave, None)
+        return Coleta(cotacoes, tuple(ausentes))
