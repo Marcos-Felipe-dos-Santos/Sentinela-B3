@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from fii_engine import FIIEngine
+from sentinela.methods import registry
 from sentinela.reports import rastreabilidade
 from valuation_engine import ValuationEngine
 
@@ -98,7 +99,8 @@ def test_relatorio_mostra_cada_metodo_com_versao():
     html = _html(_acao())
     for nome in ("Graham", "Bazin", "Lynch", "Gordon"):
         assert nome in html
-    assert html.count("versão 1.0.0") == 4
+    for nome in ("Graham", "Bazin", "Lynch", "Gordon"):
+        assert f"{nome} <small>versão {registry.obter(nome).version}" in html
     assert "SEM_TAXA" in html and "NOMINAL" in html
     # premissas, parâmetros e resultado de um método que calculou
     assert "raiz de 22,5" in html

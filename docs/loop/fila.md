@@ -684,7 +684,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden inalterado: a guarda é da cascata, e os motores não mudam;
   - gate da fase.
 
-- [ ] **F2A-21** · fix · `fix: report untrusted DY as the Bazin abstention reason`
+- [x] **F2A-21** · fix · `fix: report untrusted DY as the Bazin abstention reason`
   Registrado no diário do F1-6. Com DY não confiável, o `_normalizar_dy` zera o DY, e o Bazin 1.0.0 testa o mínimo antes da confiança: o motivo sai "DY abaixo do mínimo". O número não muda, mas o relatório do F1-12 já mostra o motivo.
 
   O Bazin 1.0.1 testa "DY não confiável" antes do DY mínimo. Entra no changelog do registro com a nota "motivo da abstenção; nenhum número muda".

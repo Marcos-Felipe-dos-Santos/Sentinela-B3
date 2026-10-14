@@ -73,7 +73,7 @@ PARAMETROS_1_0_0 = {
 def test_registro_tem_os_seis_metodos():
     assert [e.nome for e in registry.entradas()] == NOMES
     for e in registry.entradas():
-        assert e.version == "1.0.0"
+        assert e.version == registry.CHANGELOG[e.nome][-1].version
         assert isinstance(e.regime, Regime)
         assert e.requires
         assert e.assumptions
@@ -169,7 +169,8 @@ def test_changelog_tem_a_1_0_0():
     assert set(registry.CHANGELOG) == set(NOMES)
     for nome in NOMES:
         mudancas = registry.CHANGELOG[nome]
-        assert [m.version for m in mudancas] == ["1.0.0"]
+        esperado = ["1.0.0", "1.0.1"] if nome == "Bazin" else ["1.0.0"]  # F2A-21
+        assert [m.version for m in mudancas] == esperado
         assert mudancas[0].descricao == (
             "comportamento da V1, extraído na Fase 1, sem mudança de número"
         )
