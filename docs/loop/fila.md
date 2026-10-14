@@ -741,7 +741,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden pela regra;
   - gate da fase.
 
-- [ ] **F2A-24** · fix · `fix: keep non-finite values out of engine outputs` · **[golden]**
+- [x] **F2A-24** · fix · `fix: keep non-finite values out of engine outputs` · **[golden]**
   Registrado no F1-7 e no F1-16: a V1 propaga NaN e infinito até a saída. Nas ações, isso vem do preço não finito. No FII, o método não calculado vira NaN em `fair_value` e `upside`, e a Selic zero caiu nesse caminho.
 
   Regra deste item: nenhuma saída dos motores tem NaN ou infinito.

@@ -418,6 +418,14 @@ def _acoes_classe_ativo():
     ]
 
 
+def _acoes_preco_nao_finito():
+    """F2A-24: preço NaN e infinito devolvem `None`."""
+    return [
+        _acao(f"preco-nao-finito-{nome}", {**_RENDA, "preco_atual": preco})
+        for nome, preco in (("nan", float("nan")), ("inf", float("inf")))
+    ]
+
+
 # ── grade: FII ────────────────────────────────────────────────────────────────
 
 _FII = {
@@ -536,6 +544,18 @@ def _fii_selic_e_vacancia():
     return casos
 
 
+def _fii_nao_finitos():
+    """F2A-24: preço NaN e infinito devolvem `None`; Selic zero e não finita, o resultado
+    sem método calculado."""
+    return [
+        _fii(f"preco-nao-finito-{nome}", {**_FII, "preco_atual": preco})
+        for nome, preco in (("nan", float("nan")), ("inf", float("inf")))
+    ] + [
+        _fii(f"selic-sem-metodo-{nome}", dict(_FII), selic=selic)
+        for nome, selic in (("zero", 0.0), ("nan", float("nan")), ("inf", float("inf")))
+    ]
+
+
 def _fii_aleatorios(n=250):
     rng = random.Random(20261003)
     casos = []
@@ -576,9 +596,11 @@ def montar_casos():
         + _acoes_varredura_classificacao()
         + _acoes_aleatorias()
         + _acoes_classe_ativo()
+        + _acoes_preco_nao_finito()
         + _fii_fronteiras()
         + _fii_selic_e_vacancia()
         + _fii_aleatorios()
+        + _fii_nao_finitos()
     )
     vistos, unicos = set(), []
     for c in casos:

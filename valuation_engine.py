@@ -115,6 +115,9 @@ class ValuationEngine:
 
         ticker = str(dados.get('ticker', '')).upper()
         p   = float(dados['preco_atual'])
+        if not math.isfinite(p):
+            # F2A-24: preço não finito, como preço zero, não é analisado.
+            return None
 
         # ── GUARD: CLASSE FORA DO ESCOPO (F2A-29, P7) ─────────────────────────
         # ETF, BDR e classe desconhecida não recebem os métodos de ação: abstenção

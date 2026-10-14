@@ -87,7 +87,8 @@ class FIIEngine:
             return None
 
         p = float(dados.get("preco_atual", 0) or 0)
-        if p == 0:
+        if p == 0 or not math.isfinite(p):
+            # F2A-24: preço não finito, como preço zero, não é analisado.
             return None
 
         ticker = dados.get("ticker", "")
@@ -148,9 +149,21 @@ class FIIEngine:
             dy_efetivo = rendimento.obter("dy_efetivo").valor
             selic_liquida = rendimento.obter("selic_liquida").valor
         else:
-            # método não calculado (valor não finito): a V1 propagava NaN até a saída
-            preco_justo = dy_efetivo = float("nan")
-            selic_liquida = selic * MACRO.FII_FATOR_IR
+            # F2A-24: método não calculado (Selic zero ou não finita, vacância não finita).
+            # A V1 propagava NaN até a saída; agora é o resultado do DY inválido, com o motivo.
+            motivo = (
+                rendimento.motivo
+                if rendimento is not None
+                else "valor não finito na entrada (Selic ou vacância)"
+            )
+            return {
+                "fair_value":     round(p, 2),
+                "upside":         0.0,
+                "score_final":    50,
+                "recomendacao":   "NEUTRO",
+                "perfil":         "FII",
+                "metodos_usados": f"Dados insuficientes ({_FII_YIELD.nome}: {motivo})",
+            }
         upside = (preco_justo / p) - 1
 
         # ── Score ─────────────────────────────────────────────────────────────
