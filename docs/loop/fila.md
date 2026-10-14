@@ -697,7 +697,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - mutation de `sentinela.methods*` ≥ 80%, por módulo no diário;
   - gate da fase.
 
-- [ ] **F2A-11** · fix · `fix: feed FII book value from CVM and abstain without it` · **[golden]**
+- [x] **F2A-11** · fix · `fix: feed FII book value from CVM and abstain without it` · **[golden]**
   E-10 e armadilha 9: o `CVMFIIProvider` nunca roda, porque o `app.py:158` monta `FIIEngine()` sem provedor, e o `app.py` não muda nesta fase. A ligação vai para a cascata, onde o PLANO quer a busca de dado:
   - **Cascata.** Para FII (classe do F2A-20), busca no Informe Mensal o CNPJ do índice, com `cvm_fii_map.py` como fallback até o F2A-31. Grava, com fonte CVM:
     - `vpa` (valor da cota);

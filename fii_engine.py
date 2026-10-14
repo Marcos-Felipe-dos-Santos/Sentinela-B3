@@ -116,12 +116,16 @@ class FIIEngine:
         # ── CVM: VPA oficial e vacância ───────────────────────────────────────
         cvm = self._obter_cvm_dados(ticker)
 
-        # P/VP: prioriza VPA oficial da CVM (PL/cotas)
+        # P/VP: prioriza VPA oficial da CVM (PL/cotas). F2A-11: sem P/VP positivo (ausente,
+        # zero ou negativo), a lente não é calculada, não pontua e a saída traz `pvp` nulo.
+        # NaN e infinito seguem como antes (F2A-24).
         vpa_cvm = cvm.get("valor_cota") if cvm else None
         if vpa_cvm and vpa_cvm > 0:
             pvp = p / vpa_cvm
         else:
-            pvp = float(dados.get("pvp", 1.0) or 1.0)
+            pvp = float(dados.get("pvp") or 0)
+            if pvp <= 0:
+                pvp = None
 
         # Vacância: CVM (quando disponível) > VACANCIA_CONHECIDA (manual) > None
         vacancia: Optional[float] = None
@@ -160,7 +164,7 @@ class FIIEngine:
             score -= 20
 
         # Faixa de P/VP em sentinela/methods/fii_nav.py; os pontos ficam aqui.
-        lente_pvp = self._faixa_pvp(pvp)
+        lente_pvp = self._faixa_pvp(pvp) if pvp is not None else None
         if isinstance(lente_pvp, MethodResult):
             score += sum(_PONTOS_PVP.get(faixa, 0) for faixa in lente_pvp.alertas)
 

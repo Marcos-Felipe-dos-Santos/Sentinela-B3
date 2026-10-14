@@ -8,6 +8,8 @@ import pandas as pd
 
 from brapi_provider import BrapiProvider
 from config import FII_MANUAL_FALLBACK
+from cvm_fii_map import get_cnpj_fii
+from cvm_fii_provider import CVMFIIProvider
 from cvm_provider import CVMProvider
 from cvm_ticker_map import get_cd_cvm
 from database import DatabaseManager
@@ -295,6 +297,7 @@ class MarketEngine:
         self.brapi = BrapiProvider()
         self.cvm = CVMProvider()
         self.ifdata = IFDataProvider()
+        self.cvm_fii = CVMFIIProvider()
         self.database = DatabaseManager()
         self.asset_classifier = asset_classifier or AssetClassifier()
         self.referencia = REFERENCIA_OFICIAL
@@ -448,6 +451,7 @@ class MarketEngine:
             return None
 
         self._buscar_ifdata(dados)
+        self._buscar_cvm_fii(ticker, dados)
 
         if list_missing_required_fields(dados, classifier):
             self._aplicar_cache_fundamentos(ticker, dados)
@@ -622,6 +626,60 @@ class MarketEngine:
             logger.warning(f"[{ticker}] Brapi error: {e}")
 
         return False
+
+    def _buscar_cvm_fii(self, ticker: str, dados: Dict[str, Any]) -> bool:
+        """VPA, P/VP, PL e cotas do FII pelo Informe Mensal da CVM (F2A-11; E-10, armadilha 9).
+
+        O CNPJ vem do índice oficial, com `cvm_fii_map.py` de reserva até o F2A-31. O P/VP
+        oficial (preço ÷ valor da cota) sobrescreve as outras fontes; sem o Informe, elas
+        ficam. Provedor por `getattr`: os motores montados com `__new__` não passam por aqui.
+        """
+        if not self._is_fii_ticker(ticker, dados):
+            return False
+        provedor = getattr(self, 'cvm_fii', None)
+        if provedor is None:
+            return False
+        cnpj = dados.get('cnpj') or get_cnpj_fii(ticker)
+        if not cnpj:
+            return False
+        try:
+            informe = provedor.obter_dados_fii(cnpj)
+        except Exception as exc:
+            logger.warning(f"[{ticker}] Informe Mensal do FII indisponível: {exc}")
+            dados.setdefault('riscos_dados', []).append(
+                f"Informe Mensal do FII indisponível: {exc}"
+            )
+            return False
+        if not informe:
+            return False
+        vpa = _as_float(informe.get('valor_cota'))
+        if not vpa or vpa <= 0:
+            return False
+        campos: Dict[str, Any] = {
+            'vpa': vpa,
+            'patrimonio_liquido': informe.get('patrimonio_liquido'),
+        }
+        preco = _as_float(dados.get('preco_atual'))
+        if preco and preco > 0:
+            campos['pvp'] = preco / vpa
+        preenchidos = merge_if_valid(
+            dados, campos, overwrite=True, allowed_keys=set(FUNDAMENTAL_KEYS)
+        )
+        self._record_field_sources(dados, preenchidos, 'CVM')
+        dados['cotas_emitidas'] = informe.get('cotas_emitidas')
+        dados['cvm_fii_dt_referencia'] = informe.get('dt_referencia')
+        if informe.get('proveniencia'):
+            # P/VP fica de fora: depende também do preço, que não tem registro (F2A-32).
+            dados.setdefault('proveniencia', {}).update(
+                {
+                    campo: informe['proveniencia']
+                    for campo in preenchidos
+                    if campo not in _CAMPOS_COM_PRECO
+                }
+            )
+        _registrar_fonte_fundamentos(dados, 'CVM')
+        dados['cvm_disponivel'] = True
+        return True
 
     @staticmethod
     def _roe_guardado(dados: Dict[str, Any], fonte: str, valor: Any) -> Optional[float]:
