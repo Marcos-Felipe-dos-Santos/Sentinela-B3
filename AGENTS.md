@@ -8,7 +8,7 @@
 Plataforma educacional de análise de ações e FIIs da B3.
 Python 3.13 + Streamlit (interface FastAPI + HTMX prevista para a Fase 7), local-first, SQLite.
 **Não é consultoria financeira.**
-Suíte: ~655 testes, 44 módulos em `tests/`, ~5 s.
+Suíte: ~1.360 testes, 76 módulos em `tests/`, ~8 s.
 
 ---
 
@@ -49,7 +49,6 @@ inclusive os bugs. Isso cimenta o erro com aparência de garantia.
 
 **Tem spec externa — pode trabalhar:**
 - `technical_engine.py` — RSI, MACD, Bollinger, ATR têm definição publicada
-- `fundamentus_scraper._limpar_valor` — formato numérico brasileiro
 - `database.adicionar_posicao` — média ponderada é aritmética
 - `cvm_provider.py` — o layout dos arquivos da CVM é documentado pela CVM
 - Invariantes de unidade: DY em `[0, 0.30]`, score em `[0, 100]`, fair value e
@@ -146,15 +145,14 @@ verificá-lo. Reporte a divergência; não a "conserte".
 ## Contexto que evita retrabalho
 
 - Os IDs de achado (E-*, F-*) citados nos tickets vêm de `docs/auditoria/2026-09-red-team.md`
-- Cascata de dados: `yfinance → brapi → CVM → Fundamentus`. Preço do
-  yfinance (brapi só se o yfinance falhar), fechamento D-1. O README descreve outra ordem e está errado
+- Cascata de dados: `índice oficial → yfinance → brapi → CVM`, depois IF.data (bancos), Informe
+  Mensal (FII), liquidez (COTAHIST) e cache. O Fundamentus saiu. Preço do yfinance (brapi só se
+  o yfinance falhar), fechamento D-1. O README descreve outra ordem e está errado
 - Duas camadas de orquestração: `app.py` (roda) e `sentinela/services/`
   (implementada, não conectada). Não adicione a mesma feature nas duas
 - Importar `config` dispara uma chamada HTTP ao Banco Central. A suíte só fica sem
   rede com a fixture de Selic do `tests/conftest.py` (criada no item F0-2)
-- `cloudscraper` é importado por `fundamentus_scraper.py` e não está no
-  `requirements.txt` — decisão pendente do mantenedor, não resolva sozinho
-- `BRAPI_TOKEN` é lido em `brapi_provider.py:72` e, segundo o levantamento, falta no `.env.example` (o loop não lê `.env*`; não verificado)
+- `BRAPI_TOKEN` é lido em `brapi_provider.py:64` e, segundo o levantamento, falta no `.env.example` (o loop não lê `.env*`; não verificado)
 
 ---
 

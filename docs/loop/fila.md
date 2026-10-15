@@ -831,7 +831,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: a mudança de comportamento, e quem ainda importa os mapas (`git grep`);
   - gate da fase.
 
-- [ ] **F2A-27** · docs · `docs: sync agent instructions with phase 2A data layer`
+- [x] **F2A-27** · docs · `docs: sync agent instructions with phase 2A data layer`
   Valida contra o código e corrige três arquivos: `CLAUDE.md`, `AGENTS.md` (menos a seção "Fase atual", que é do Marcos) e a tabela da Fase 2A do `docs/PLANO.md`, que ganha os IDs finais e a ordem desta fila; o F2A-10 passa para a tabela da 2B.
 
   **No `CLAUDE.md`:**
