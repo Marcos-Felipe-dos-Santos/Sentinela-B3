@@ -828,3 +828,31 @@
 Registrada sem decisão, a pedido do Marcos: `docs/loop/historico/fase-2a/auditoria-gemini-completa.md`.
 - **Para o resumo da fase (F2A-14):** os nove achados conferidos no código entram em "decisões pendentes", com destaque para os quatro que mudam número ou contrariam decisão registrada: (1) valores ≤ 0 da CVM descartados no merge e prejuízo contado como dado ausente; (2) reserva dos controladores liberada com "sem correspondência", contra a D20; (3) P/VP não finito na saída do motor de FII, contra o F2A-24; (4) ativo fora do índice (BPAC11) recebendo métodos de ação, apesar do F2A-29.
 - **Para a proposta da 2B (F2A-28):** os nove achados e as decisões A a D do arquivo entram como candidatos, com o destino que o arquiteto propuser; nenhum é decidido pelo texto.
+
+### Retomada da sessão (15/10/2026)
+- **Preparação:** branch `v2/fase-2a`, os seis documentos presentes. O Claude Code abriu sem a venv ativada (`which python` → `/usr/bin/python3`); como cada comando roda num shell novo, todos os comandos desta sessão começam com `source venv/bin/activate`, e com ela `which python` → `venv/bin/python`. `python -m pytest -q`: 1.362 passed, 1 skipped, 1 xfailed.
+
+### F2A-28 — docs: propose phase 2B queue
+- **Status:** sucesso
+- **O que foi feito:** o `fable-architect` escreveu `docs/loop/fila-fase2b-proposta.md` (826 linhas; 832 depois dos acréscimos abaixo) no formato da fila da 2A, a partir da seção "Fase 2B" do PLANO, das perguntas 2, 3 e 5 do dossiê, dos itens 2, 3 e 5 da seção 4 do checkpoint da Fase 0, deste diário, do F2A-10 (com a distribuição do F2A-26 como insumo da [LIQUIDEZ]), das pendências com destino na 2B (DY do Informe Mensal no F2B-2 e F2B-28, texto de dívida e script de invalidação no F2B-5) e da auditoria do Gemini (os nove achados e as decisões A a D como candidatos, sob a **[AUDITORIA]**). Nada foi implementado.
+  - IDs do PLANO preservados (F2B-1 a F2B-6, F2A-10 e F2A-39); novos de F2B-7 a F2B-34. O F2B-3 do PLANO foi dividido em F2B-3 (`feat:`, a lente) e F2B-32 (`fix:`, a ligação no motor), para o `feat:` não mudar saída.
+  - Ordem: correções de dados primeiro (achados do Gemini e pontos da ficha 1.1), levantamento das taxas e das fontes (F2B-21), fichas de método (F2B-22 a F2B-26) e provedores (F2B-27, F2B-28), um **[DECISÃO]** intermediário para o Marcos aprovar as fichas e fixar o prêmio só depois da nova coleta da NTN-B (checkpoint, item 2), e depois a troca de taxa, o escopo, bancos, liquidez, documentação, proposta da 2C, limpeza e resumo.
+  - Decisões abertas, cada uma com as opções e o efeito, nenhuma tomada pelo texto: **[SEÇÃO A]** (o gate "seção A inalterada" do PLANO conflita com o item 3 do checkpoint no teste A4, e A1 a A3 dependem da taxa do Bazin), **[LIQUIDEZ]**, **[AUDITORIA]**, **[FICHA 1.1]**, **[TAXA]**, **[BAZIN]** (nem o PLANO nem o checkpoint decidem a taxa do Bazin; F-5), **[FII]**, **[BANCOS]**, **[FINANCEIRAS]** (decisão B do Gemini), **[BTG]** e **[CACHE]**.
+- **Dificuldades:** o F2B-6 (resumo da fase) saiu sem linha de aceite, como o F2A-14 que serviu de modelo.
+- **Como resolvi:** acrescentei um **Aceite:** verificável ao F2B-6 (arquivos movidos com `git mv`, `fila.md` só com a linha do [DECISÃO], seções do resumo e commits existentes). Os outros 35 itens já tinham aceite (contagem por `awk` sobre os marcadores).
+- **Revisão:** a 1ª e a 2ª aprovaram. As três ressalvas da 1ª foram corrigidas antes do commit: o F2B-4 entrou na lista dos que podem mexer nos módulos dos seis métodos (versão e escopo ficam em cada um); a regra de vocabulário ganhou a exceção em aberto dos campos "taxa de compra" e "taxa de venda" do Tesouro, decidida na [TAXA]; e a ficha de bancos (F2B-26) passou a exigir o ROE convertido por Fisher no regime real, sem o qual os dois regimes não dão o mesmo P/VP.
+- **Conferência:** linhas citadas de amostra conferidas com `sed -n`: `config.py:122` (`NTNB_LONGA_FALLBACK`), `:147` (`BAZIN_TAXA_MIN`), `:159` (`GORDON_PREMIO_RISCO`), `:184` (`FII_DY_SELIC_RATIO_MIN`), `:271` e `:301` (`_fetch_ntnb` e o retorno do fallback); `tests/test_financeiro_pre_refactor.py:71`, `:81`, `:92` e `:100` (A1 a A4). Nenhum dado da carteira; o comando de limpeza do cache no [DECISÃO] final apaga a tabela inteira, sem lista de tickers.
+- **Testes:** 1.362 passed, 1 skipped, 1 xfailed, sem mudança (só documento).
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** todas as marcadas na proposta; a ativação depende da [SEÇÃO A], da [LIQUIDEZ] e da [AUDITORIA] (condição 3 da proposta).
+- **Para o Marcos revisar:**
+  - A conta à mão do Gordon do teste A1 com a taxa real (cerca de 47, no F2B-1): payout 60%, g nominal 4,8%, g real −0,66% (Fisher com IPCA de 5,5%), k real 12%. O item manda conferir.
+  - O F2B-5 limpa o cache de fundamentos inteiro no fim da 2B, porque o script por ticker sai nele; a alternativa fica na [CACHE].
+  - A taxa real entra pelo ponto de entrada da V1 com semente no `tests/conftest.py`, e `dados['taxa_real']` leva a proveniência; a alternativa e o efeito nas seções A e C estão no texto.
+  - Pontos da 2ª revisão, deixados para a aprovação da proposta (não mudam nada agora):
+    - a exceção dos campos do Tesouro é decidida na [TAXA], no [DECISÃO] intermediário, mas o F2B-27, que precisa nomeá-los, vem antes dele: ou o nome dos campos é decidido na ativação, ou o F2B-27 passa para depois do marcador;
+    - o aceite do F2B-5 ("`git grep` de cada nome removido sem resultado fora de `docs/`") falha com `scripts/dossie_fase2.py`, que lê `MACRO.GORDON_PREMIO_RISCO`, `MACRO.BAZIN_TAXA_MIN` e `MACRO.ntnb_longa`; o item não diz se o script sai, muda ou é exceção;
+    - o F2B-4 não diz se é a cascata ou o motor que deriva o modelo da demonstração e grava a limitação "sem setor"; no motor, os casos STOCK e UNIT do golden mudam e o `--onde "False"` falha;
+    - o k de 20,75% citado na [TAXA] e nos riscos é o da data do dossiê (Selic de 13,75%); com a semente atual de 14,75%, seria 21,75%;
+    - na opção (a) do achado 1, a empresa com prejuízo ainda leva os −10 de "Dados incompletos" do motor com `pl <= 0`;
+    - na [SEÇÃO A] (a), a frase sobre o F2B-31 com a [BAZIN] em (a) ou (d) é ambígua (nessas opções ele sai da fila); e a lista de travados não traz `tests/test_ai_core.py`, embora itens mexam na lista `excluir` do `ai_core.py`.

@@ -851,7 +851,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - cada linha citada conferida com `grep -n` e listada no diário;
   - `CLAUDE.md` e `AGENTS.md` sem contradição entre si.
 
-- [ ] **F2A-28** · levantamento · `docs: propose phase 2B queue`
+- [x] **F2A-28** · levantamento · `docs: propose phase 2B queue`
   O `fable-architect` propõe a fila da 2B em `docs/loop/fila-fase2b-proposta.md`, no formato desta. Partes:
   - a seção "Fase 2B" do PLANO;
   - o dossiê, perguntas 2, 3 e 5;
