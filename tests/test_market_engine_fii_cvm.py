@@ -20,7 +20,6 @@ INFORME = {
     "patrimonio_liquido": 5_000_000_000.0,
     "cotas_emitidas": 50_000_000.0,
     "valor_cota": 100.0,
-    "dy_mes_decimal": 0.0075,
     "vacancia_fisica": None,
     "proveniencia": {"documento": "Informe Mensal", "periodo_referencia": "2026-08-01"},
 }

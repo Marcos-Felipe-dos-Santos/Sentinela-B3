@@ -1,10 +1,10 @@
 import logging
 import math
 from datetime import UTC, date, datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
-import yfinance as yf
 import pandas as pd
+import yfinance as yf
 
 from brapi_provider import BrapiProvider
 from config import FII_MANUAL_FALLBACK
@@ -16,8 +16,8 @@ from sentinela.data.providers.b3_cotahist import HistoricoRecente
 from sentinela.data.providers.ifdata import IFDataProvider
 from sentinela.data.referencia.carga import ReferenciaOficial
 from sentinela.domain import ticker as ticker_b3
-from sentinela.domain.provenance import FieldProvenance, FieldValue
 from sentinela.domain.enums import AssetType
+from sentinela.domain.provenance import FieldProvenance, FieldValue
 from sentinela.services.asset_classifier import AssetClassifier
 
 logger = logging.getLogger("MarketEngine")
@@ -109,7 +109,7 @@ def is_missing(value: Any) -> bool:
     return False
 
 
-def _as_float(value: Any) -> Optional[float]:
+def _as_float(value: Any) -> float | None:
     if is_missing(value):
         return None
     try:
@@ -118,7 +118,7 @@ def _as_float(value: Any) -> Optional[float]:
         return None
 
 
-def _is_field_missing(field: str, value: Any, dados: Optional[Dict[str, Any]] = None) -> bool:
+def _is_field_missing(field: str, value: Any, dados: dict[str, Any] | None = None) -> bool:
     if is_missing(value):
         return True
 
@@ -138,16 +138,16 @@ def _is_field_missing(field: str, value: Any, dados: Optional[Dict[str, Any]] = 
 
 def _is_fii_ticker(
     ticker: str,
-    dados: Optional[Dict[str, Any]] = None,
-    asset_classifier: Optional[AssetClassifier] = None,
+    dados: dict[str, Any] | None = None,
+    asset_classifier: AssetClassifier | None = None,
 ) -> bool:
     classifier = asset_classifier or _DEFAULT_ASSET_CLASSIFIER
     return classifier.is_fii(ticker, dados)
 
 
 def _required_fundamentals_for(
-    dados: Dict[str, Any],
-    asset_classifier: Optional[AssetClassifier] = None,
+    dados: dict[str, Any],
+    asset_classifier: AssetClassifier | None = None,
 ) -> tuple[str, ...]:
     ticker = str(dados.get('ticker', '')).upper()
     if _is_fii_ticker(ticker, dados, asset_classifier):
@@ -156,11 +156,11 @@ def _required_fundamentals_for(
 
 
 def merge_if_valid(
-    base: Dict[str, Any],
-    supplemental: Dict[str, Any],
+    base: dict[str, Any],
+    supplemental: dict[str, Any],
     *,
     overwrite: bool = False,
-    allowed_keys: Optional[set[str]] = None,
+    allowed_keys: set[str] | None = None,
 ) -> list[str]:
     """Merge supplemental values when valid, optionally overwriting fields."""
     preenchidos: list[str] = []
@@ -188,8 +188,8 @@ def merge_if_valid(
 
 
 def list_missing_required_fields(
-    dados: Dict[str, Any],
-    asset_classifier: Optional[AssetClassifier] = None,
+    dados: dict[str, Any],
+    asset_classifier: AssetClassifier | None = None,
 ) -> list[str]:
     """List required fields still absent after source consolidation."""
     return [
@@ -199,7 +199,7 @@ def list_missing_required_fields(
     ]
 
 
-def list_missing_market_fields(dados: Dict[str, Any]) -> list[str]:
+def list_missing_market_fields(dados: dict[str, Any]) -> list[str]:
     """List required price/history fields still absent."""
     return [
         campo
@@ -208,12 +208,12 @@ def list_missing_market_fields(dados: Dict[str, Any]) -> list[str]:
     ]
 
 
-def _retrato(dados: Dict[str, Any]) -> Dict[str, Any]:
+def _retrato(dados: dict[str, Any]) -> dict[str, Any]:
     """Cópia simples e serializável do preço e de FUNDAMENTAL_KEYS como a cascata os entregou (F2A-6, E-3).
 
     Campo ausente ou não finito vira `None`; número vira `float`; texto fica texto.
     """
-    retrato: Dict[str, Any] = {}
+    retrato: dict[str, Any] = {}
     for chave in ('preco_atual', *FUNDAMENTAL_KEYS):
         valor = dados.get(chave)
         if isinstance(valor, str):
@@ -225,8 +225,8 @@ def _retrato(dados: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _lpa_divulgado_comparado(
-    ind: Dict[str, Any], especie: Optional[str], especie_base: Optional[str] = None
-) -> Optional[Dict[str, Any]]:
+    ind: dict[str, Any], especie: str | None, especie_base: str | None = None
+) -> dict[str, Any] | None:
     """LPA divulgado da classe do ticker (F2A-5), ou o da espécie quando a DRE não traz a classe.
 
     Sem classe (unit ou sem índice), o da escala.
@@ -241,7 +241,7 @@ def _lpa_divulgado_comparado(
     return None
 
 
-def _linhas_de_lpa(ind: Dict[str, Any]) -> Dict[str, list]:
+def _linhas_de_lpa(ind: dict[str, Any]) -> dict[str, list]:
     """Linhas de LPA básico por classe; provedor anterior ao F2A-36 entrega só a primeira."""
     if 'lpa_basico_por_classe' in ind:
         return ind['lpa_basico_por_classe'] or {}
@@ -261,7 +261,7 @@ _CAMPOS_DA_RESERVA = {
 }
 
 
-def _guardar_por_fonte(dados: Dict[str, Any], fonte: str, valores: Dict[str, Any]) -> None:
+def _guardar_por_fonte(dados: dict[str, Any], fonte: str, valores: dict[str, Any]) -> None:
     """Guarda o que a fonte entregou, antes do merge (F2A-5), para a validação cruzada."""
     entregues = {
         chave: valor
@@ -272,7 +272,7 @@ def _guardar_por_fonte(dados: Dict[str, Any], fonte: str, valores: Dict[str, Any
         dados.setdefault('valores_por_fonte', {})[fonte] = entregues
 
 
-def _registrar_fonte_fundamentos(dados: Dict[str, Any], fonte: str) -> None:
+def _registrar_fonte_fundamentos(dados: dict[str, Any], fonte: str) -> None:
     atual = dados.get('fonte_fundamentos')
     if not atual:
         dados['fonte_fundamentos'] = fonte
@@ -282,19 +282,19 @@ def _registrar_fonte_fundamentos(dados: Dict[str, Any], fonte: str) -> None:
         dados['fonte_fundamentos'] = f"{atual}+{fonte}"
 
 
-def _definir_fonte_fundamentos(dados: Dict[str, Any], fonte: str) -> None:
+def _definir_fonte_fundamentos(dados: dict[str, Any], fonte: str) -> None:
     dados['fonte_fundamentos'] = fonte
 
 
 def _fundamentos_validos_para_cache(
-    dados: Dict[str, Any],
-    asset_classifier: Optional[AssetClassifier] = None,
+    dados: dict[str, Any],
+    asset_classifier: AssetClassifier | None = None,
 ) -> bool:
     return not list_missing_required_fields(dados, asset_classifier)
 
 
 class MarketEngine:
-    def __init__(self, asset_classifier: Optional[AssetClassifier] = None) -> None:
+    def __init__(self, asset_classifier: AssetClassifier | None = None) -> None:
         self.brapi = BrapiProvider()
         self.cvm = CVMProvider()
         self.ifdata = IFDataProvider()
@@ -304,7 +304,7 @@ class MarketEngine:
         self.asset_classifier = asset_classifier or AssetClassifier()
         self.referencia = REFERENCIA_OFICIAL
 
-    def _is_fii_ticker(self, ticker: str, dados: Optional[Dict[str, Any]] = None) -> bool:
+    def _is_fii_ticker(self, ticker: str, dados: dict[str, Any] | None = None) -> bool:
         return _is_fii_ticker(
             ticker,
             dados,
@@ -313,7 +313,7 @@ class MarketEngine:
 
     def _record_field_sources(
         self,
-        dados: Dict[str, Any],
+        dados: dict[str, Any],
         fields: list[str] | tuple[str, ...],
         source: str,
     ) -> None:
@@ -331,7 +331,7 @@ class MarketEngine:
         source_key = source_text.split('+')[-1].strip()
         return SOURCE_ALIASES.get(source_key, source_key or 'unknown'), inferred
 
-    def _infer_field_source(self, field: str, dados: Dict[str, Any]) -> tuple[str, bool]:
+    def _infer_field_source(self, field: str, dados: dict[str, Any]) -> tuple[str, bool]:
         field_sources = dados.get('_field_sources')
         if isinstance(field_sources, dict) and field in field_sources:
             return self._normalize_provenance_source(field_sources[field])
@@ -345,7 +345,7 @@ class MarketEngine:
     def _field_provenance_confidence(
         self,
         field: str,
-        dados: Dict[str, Any],
+        dados: dict[str, Any],
         source: str,
         inferred: bool,
     ) -> float:
@@ -364,7 +364,7 @@ class MarketEngine:
     def _field_provenance_warnings(
         self,
         field: str,
-        dados: Dict[str, Any],
+        dados: dict[str, Any],
         source: str,
         inferred: bool,
     ) -> list[str]:
@@ -393,7 +393,7 @@ class MarketEngine:
 
         return warnings
 
-    def _field_value_dict(self, field: str, dados: Dict[str, Any]) -> dict[str, Any]:
+    def _field_value_dict(self, field: str, dados: dict[str, Any]) -> dict[str, Any]:
         source, inferred = self._infer_field_source(field, dados)
         provenance = FieldProvenance(
             source=source,
@@ -409,14 +409,14 @@ class MarketEngine:
             provenance=provenance,
         ).to_dict()
 
-    def _attach_field_provenance(self, dados: Dict[str, Any]) -> None:
+    def _attach_field_provenance(self, dados: dict[str, Any]) -> None:
         dados['field_provenance'] = {
             field: self._field_value_dict(field, dados)
             for field in FIELD_PROVENANCE_KEYS
         }
         dados.pop('_field_sources', None)
 
-    def buscar_dados_ticker(self, ticker: str) -> Optional[Dict[str, Any]]:
+    def buscar_dados_ticker(self, ticker: str) -> dict[str, Any] | None:
         """Busca dados de mercado com fallback multi-fonte."""
         # F2A-12: ticker fora do formato da B3 não chega a nenhuma fonte externa.
         normalizado = ticker_b3.normalizar(ticker)
@@ -425,7 +425,7 @@ class MarketEngine:
             return None
         ticker = normalizado
 
-        dados: Dict[str, Any] = {
+        dados: dict[str, Any] = {
             'ticker': ticker,
             'historico': pd.DataFrame(),
             'fonte_preco': None,
@@ -479,7 +479,7 @@ class MarketEngine:
         dados.pop('_sem_referencia', None)
         return dados
 
-    def _aplicar_referencia(self, ticker: str, dados: Dict[str, Any]) -> None:
+    def _aplicar_referencia(self, ticker: str, dados: dict[str, Any]) -> None:
         """Copia para `dados` o registro do ticker no índice oficial, com a fonte.
 
         Sem índice (rede e índice salvo indisponíveis), marca `_sem_referencia`: a CVM não é
@@ -506,7 +506,7 @@ class MarketEngine:
             'gerado_em': indice.gerado_em,
         }
 
-    def _buscar_yfinance(self, ticker: str, dados: Dict[str, Any]) -> bool:
+    def _buscar_yfinance(self, ticker: str, dados: dict[str, Any]) -> bool:
         """Busca dados via yfinance. Retorna True se obteve preco valido."""
         try:
             tk = yf.Ticker(f"{ticker}.SA")
@@ -583,7 +583,7 @@ class MarketEngine:
             logger.warning(f"Yahoo error {ticker}: {e}")
             return False
 
-    def _buscar_brapi(self, ticker: str, dados: Dict[str, Any]) -> bool:
+    def _buscar_brapi(self, ticker: str, dados: dict[str, Any]) -> bool:
         """Busca fundamentos via Brapi, sobrescrevendo fundamentos do Yahoo."""
         if not self.brapi.disponivel:
             logger.warning(f"[{ticker}] Brapi indisponivel: BRAPI_TOKEN ausente")
@@ -635,7 +635,7 @@ class MarketEngine:
 
         return False
 
-    def _buscar_liquidez(self, ticker: str, dados: Dict[str, Any]) -> None:
+    def _buscar_liquidez(self, ticker: str, dados: dict[str, Any]) -> None:
         """Liquidez do ticker pelo COTAHIST (F2A-26), em `dados['liquidez']`, fora do prompt.
 
         Só mede: nenhum motor lê. Provedor por `getattr`; sem ele ou com falha, a chave fica
@@ -658,7 +658,7 @@ class MarketEngine:
             else resultado
         )
 
-    def _buscar_cvm_fii(self, ticker: str, dados: Dict[str, Any]) -> bool:
+    def _buscar_cvm_fii(self, ticker: str, dados: dict[str, Any]) -> bool:
         """VPA, P/VP, PL e cotas do FII pelo Informe Mensal da CVM (F2A-11; E-10, armadilha 9).
 
         O CNPJ vem só do índice oficial (F2A-31; sem ele, o Informe não é consultado). O P/VP
@@ -686,7 +686,7 @@ class MarketEngine:
         vpa = _as_float(informe.get('valor_cota'))
         if not vpa or vpa <= 0:
             return False
-        campos: Dict[str, Any] = {
+        campos: dict[str, Any] = {
             'vpa': vpa,
             'patrimonio_liquido': informe.get('patrimonio_liquido'),
         }
@@ -713,7 +713,7 @@ class MarketEngine:
         return True
 
     @staticmethod
-    def _roe_guardado(dados: Dict[str, Any], fonte: str, valor: Any) -> Optional[float]:
+    def _roe_guardado(dados: dict[str, Any], fonte: str, valor: Any) -> float | None:
         """ROE depois da guarda de fronteira (F2A-30).
 
         O valor descartado não entra na cascata; o de outra fonte, se houver, fica. O descarte
@@ -728,7 +728,7 @@ class MarketEngine:
             )
         return roe
 
-    def _buscar_cvm(self, ticker: str, dados: Dict[str, Any]) -> bool:
+    def _buscar_cvm(self, ticker: str, dados: dict[str, Any]) -> bool:
         """Preenche fundamentos a partir das DFPs oficiais da CVM.
 
         Cobre: ROE (dos controladores), margens, PL, lucro, receita, ativo circulante/total,
@@ -763,7 +763,7 @@ class MarketEngine:
             ind = historico[max(historico)]
 
             # Campos com mapeamento direto para FUNDAMENTAL_KEYS
-            cvm_campos: Dict[str, Any] = {}
+            cvm_campos: dict[str, Any] = {}
             for cvm_key, market_key in _CVM_TO_MARKET.items():
                 v = ind.get(cvm_key)
                 if v is not None:
@@ -845,7 +845,7 @@ class MarketEngine:
         dados['cvm_disponivel'] = False
         return False
 
-    def _buscar_ifdata(self, dados: Dict[str, Any]) -> None:
+    def _buscar_ifdata(self, dados: dict[str, Any]) -> None:
         """Basileia e inadimplência do IF.data para banco (F2A-9), com a fonte e a data-base.
 
         Só para o setor de banco (F2A-2). O que falta vira limitação declarada em `riscos_dados`.
@@ -873,7 +873,7 @@ class MarketEngine:
             riscos.append(f"{RISCO_LIMITACAO_BANCO} ({campo}): {motivo}")
 
     def _serie_cvm(
-        self, ticker: str, dados: Dict[str, Any], cvm: Any, cd_cvm: int, modelo: str
+        self, ticker: str, dados: dict[str, Any], cvm: Any, cd_cvm: int, modelo: str
     ) -> None:
         """Série de cinco exercícios e TTM da CVM (F2A-7), em `dados['serie_cvm']` e `dados['ttm_cvm']`.
 
@@ -909,8 +909,8 @@ class MarketEngine:
             logger.warning(f"[{ticker}] CVM série/TTM error: {exc}")
 
     def _por_acao_cvm(
-        self, ticker: str, dados: Dict[str, Any], ind: Dict[str, Any]
-    ) -> Dict[str, float]:
+        self, ticker: str, dados: dict[str, Any], ind: dict[str, Any]
+    ) -> dict[str, float]:
         """LPA, VPA, P/L e P/VP da CVM; sem eles, o motivo vai para `riscos_dados`.
 
         O LPA dos métodos é o divulgado da classe do ticker, quando coerente; sem ele, o
@@ -955,7 +955,7 @@ class MarketEngine:
             recalculado=recalculado,
         )
         self._registrar_abstencoes_por_acao(dados, resultado, lpa)
-        campos: Dict[str, Any] = {}
+        campos: dict[str, Any] = {}
         if not isinstance(lpa, acoes_cvm.Abstencao):
             campos['lpa'], dados['lpa_cvm'] = lpa
             preco = _as_float(dados.get('preco_atual'))
@@ -993,7 +993,7 @@ class MarketEngine:
 
     @staticmethod
     def _registrar_abstencoes_por_acao(
-        dados: Dict[str, Any],
+        dados: dict[str, Any],
         resultado: Any,
         lpa: Any,
     ) -> None:
@@ -1011,7 +1011,7 @@ class MarketEngine:
     def _aplicar_cache_fundamentos(
         self,
         ticker: str,
-        dados: Dict[str, Any],
+        dados: dict[str, Any],
     ) -> bool:
         database = getattr(self, 'database', None)
         if database is None:
@@ -1043,7 +1043,7 @@ class MarketEngine:
         logger.info(f"[{ticker}] Usando cache de fundamentos ({len(preenchidos)} campos)")
         return True
 
-    def _aplicar_fallback_manual_fii(self, ticker: str, dados: Dict[str, Any]) -> bool:
+    def _aplicar_fallback_manual_fii(self, ticker: str, dados: dict[str, Any]) -> bool:
         ticker_norm = ticker.upper().replace(".SA", "").strip()
         if not self._is_fii_ticker(ticker_norm, dados):
             return False
@@ -1069,7 +1069,7 @@ class MarketEngine:
         logger.info(f"[{ticker_norm}] Fallback manual FII preencheu {len(preenchidos)} campos")
         return True
 
-    def _salvar_cache_se_valido(self, ticker: str, dados: Dict[str, Any]) -> None:
+    def _salvar_cache_se_valido(self, ticker: str, dados: dict[str, Any]) -> None:
         if (
             dados.get('dados_cache')
             or dados.get('dados_manual')
@@ -1103,18 +1103,3 @@ class MarketEngine:
             database.salvar_fundamentos_cache(ticker, payload, fonte)
         except Exception as e:
             logger.warning(f"[{ticker}] Falha ao salvar cache de fundamentos: {e}")
-
-    def buscar_noticias(self, ticker: str):
-        """Busca ultimas noticias via yfinance."""
-        try:
-            tk = yf.Ticker(f"{ticker}.SA")
-            news = tk.news
-            safe_news = []
-            for n in (news or [])[:3]:
-                titulo = n.get('title', n.get('content', {}).get('title', 'Sem titulo'))
-                link = n.get('link', n.get('url', '#'))
-                safe_news.append({'titulo': titulo, 'link': link})
-            return safe_news
-        except Exception as e:
-            logger.warning(f"News error {ticker}: {e}")
-            return []

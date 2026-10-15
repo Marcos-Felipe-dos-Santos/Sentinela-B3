@@ -47,13 +47,13 @@ def test_pvp_nao_finito_nao_calcula_a_lente(ruim):
 # caía na faixa de desconto, com bônus. Agora a lente não é calculada, não pontua e a saída
 # traz `pvp` nulo.
 
-# XPML11 não está em `VACANCIA_CONHECIDA`; DY acima da Selic líquida.
+# XPML11 nunca esteve na tabela de vacância manual (removida no F2A-13); DY acima da Selic líquida.
 BASE = {"ticker": "XPML11", "preco_atual": 100.0, "dy": 0.12}
 
 
 def _analisar(**extra):
     with patch("fii_engine.get_selic_atual", return_value=0.10):
-        return FIIEngine(cvm_provider=None).analisar({**BASE, **extra})
+        return FIIEngine().analisar({**BASE, **extra})
 
 
 @pytest.mark.parametrize("pvp", [None, 0, 0.0])

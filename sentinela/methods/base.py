@@ -45,7 +45,7 @@ _TIPOS_CAMPOS: dict[str, type] = {
     "vacancia": Ratio,
     "perfil": Perfil,
 }
-_FLAGS = ("pl_confiavel", "dy_confiavel", "erro_scraper")
+_FLAGS = ("pl_confiavel", "dy_confiavel")
 _VERSAO = re.compile(r"\d+\.\d+\.\d+")
 
 
@@ -64,7 +64,6 @@ class MethodInputs:
     perfil: Perfil | None = None
     pl_confiavel: bool = True
     dy_confiavel: bool = True
-    erro_scraper: bool = False
 
     def __post_init__(self) -> None:
         if not isinstance(self.as_of, date) or isinstance(self.as_of, datetime):

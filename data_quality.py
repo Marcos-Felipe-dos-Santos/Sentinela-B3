@@ -8,12 +8,10 @@ Para comparação direta por fonte, seria necessário guardar _raw_source_values
 no market_engine — fora do escopo desta sessão.
 
 Mapeamento de confiança usa lowercase para fontes (alinha com market_engine.py).
-O spec original escreveu "Fundamentus" com maiúscula; o codebase usa "fundamentus".
 """
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 # ---------------------------------------------------------------------------
 # Constantes
@@ -54,7 +52,6 @@ _FONTE_CONFIANCA: dict[str, int] = {
     "CVM":         100,
     "brapi":        80,
     "yfinance":     60,
-    "fundamentus":  40,
     "manual":       20,
     "cache":        30,
     "unknown":      10,
@@ -85,7 +82,7 @@ def _best_fonte(fonte_str: str) -> str:
     return max(fontes, key=lambda f: _FONTE_CONFIANCA.get(f, 0))
 
 
-def _safe_float(v) -> Optional[float]:
+def _safe_float(v) -> float | None:
     """Converte para float, retorna None se inválido ou NaN."""
     try:
         f = float(v)
@@ -265,7 +262,7 @@ class DataQualityReport:
         do_mesmo = _safe_float(entregue.get(por_acao))
         return do_mesmo is not None and abs(do_mesmo - valor) <= _FOLGA * max(1.0, abs(valor))
 
-    def _alertas_fontes_independentes(self, lpa: Optional[float]) -> list[str]:
+    def _alertas_fontes_independentes(self, lpa: float | None) -> list[str]:
         """Ações da CVM × yfinance e LPA recalculado × LPA básico divulgado (F2A-5, E-2)."""
         alertas: list[str] = []
         d = self.dados

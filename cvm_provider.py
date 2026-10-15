@@ -11,7 +11,13 @@ from pathlib import Path
 import pandas as pd
 
 from cvm_download import baixar_arquivo
-from sentinela.data import contas_cvm, controladores, divida_liquida, proveniencia, series_cvm
+from sentinela.data import (
+    contas_cvm,
+    controladores,
+    divida_liquida,
+    proveniencia,
+    series_cvm,
+)
 from sentinela.data.acoes_cvm import (
     MOTIVO_DOCUMENTO_DIFERENTE,
     MOTIVO_SEM_COMPOSICAO,

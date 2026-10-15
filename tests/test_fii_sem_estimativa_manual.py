@@ -1,7 +1,7 @@
 """Sem estimativas manuais de FII (F2A-23; E-25, F-10).
 
-`VACANCIA_CONHECIDA` (motor) e `FII_MANUAL_FALLBACK` (cascata) são estimativas sem data nem
-fonte; duas atribuem vacância física a fundos de papel. Vacância, só de fonte oficial, e o
+A tabela de vacância manual do motor (removida no F2A-13) e `FII_MANUAL_FALLBACK` (cascata)
+eram estimativas sem data nem fonte; duas atribuíam vacância física a fundos de papel. Vacância, só de fonte oficial, e o
 Informe Mensal não a traz.
 """
 
@@ -9,18 +9,17 @@ from unittest.mock import patch
 
 import pytest
 
-from fii_engine import VACANCIA_CONHECIDA, FIIEngine
+from fii_engine import FIIEngine
 from tests.test_market_engine import FakeBrapi, FakeCache, _engine, _historico
 
 
 def _analisar(ticker):
     dados = {"ticker": ticker, "preco_atual": 150.0, "dy": 0.08, "pvp": 0.9}
     with patch("fii_engine.get_selic_atual", return_value=0.10):
-        return FIIEngine(cvm_provider=None).analisar(dados)
+        return FIIEngine().analisar(dados)
 
 
 def test_vacancia_manual_nao_altera_dy_nem_score():
-    assert "CVBI11" in VACANCIA_CONHECIDA  # 25% estimados, num fundo de papel
     com_estimativa = _analisar("CVBI11")
     sem_estimativa = _analisar("XPML11")  # fora da tabela, mesmos números
     assert com_estimativa["dy_efetivo"] == pytest.approx(0.08)

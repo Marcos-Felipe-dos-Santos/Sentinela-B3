@@ -129,7 +129,7 @@ class CVMFIIProvider:
 
         Campos no retorno:
           cnpj_fundo, dt_referencia, patrimonio_liquido, cotas_emitidas,
-          valor_cota (VPA oficial = PL/cotas), dy_mes_decimal,
+          valor_cota (VPA oficial = PL/cotas),
           vacancia_fisica (sempre None — não disponível no informe mensal),
           proveniencia (F2A-32).
         """
@@ -156,7 +156,6 @@ class CVMFIIProvider:
                 pl = _to_float(row.get("Patrimonio_Liquido"))
                 cotas = _to_float(row.get("Cotas_Emitidas"))
                 vpa = _to_float(row.get("Valor_Patrimonial_Cotas"))
-                dy_mes = _to_float(row.get("Percentual_Dividend_Yield_Mes"))
 
                 if pl is None:
                     continue
@@ -167,7 +166,6 @@ class CVMFIIProvider:
                     "patrimonio_liquido": pl,
                     "cotas_emitidas":    cotas,
                     "valor_cota":        vpa,
-                    "dy_mes_decimal":    dy_mes,
                     # Vacância física não disponível no informe mensal CVM.
                     # Quando disponível em fonte futura, preencher aqui.
                     "vacancia_fisica":   None,

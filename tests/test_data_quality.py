@@ -56,13 +56,13 @@ def test_normalize_passthrough():
 
 
 def test_best_fonte_composto_retorna_maior_confianca():
-    # CVM (100) > brapi (80) > fundamentus (40)
+    # CVM (100) > brapi (80) > fundamentus (fora da tabela desde o F2A-13: 0)
     assert _best_fonte("brapi+fundamentus") == "brapi"
     assert _best_fonte("CVM+brapi+fundamentus") == "CVM"
 
 
 def test_best_fonte_alias():
-    # yfinance_partial normaliza para yfinance (60) > fundamentus (40)
+    # yfinance_partial normaliza para yfinance (60) > fundamentus (fora da tabela: 0)
     assert _best_fonte("yfinance_partial+fundamentus") == "yfinance"
 
 
@@ -270,7 +270,7 @@ def test_fonte_cache_tem_confianca_propria():
     dados["fonte_fundamentos"] = "fundamentals_cache"
     r = DataQualityReport(dados)
     comp = r.completude()
-    # Cache (30) deve ter score menor ou igual a fundamentus (40) ou coleta fresca
+    # Cache (30) deve ter score menor ou igual ao de uma coleta fresca
     for campo in ("dy", "pl"):
         assert comp["campos"][campo]["fonte"] == "cache"
         assert comp["campos"][campo]["confianca"] == 30

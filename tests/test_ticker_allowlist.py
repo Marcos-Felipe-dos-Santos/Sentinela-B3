@@ -113,7 +113,7 @@ def test_brapi_valida_e_normaliza_antes_da_url(monkeypatch):
 
     monkeypatch.setenv("BRAPI_TOKEN", "token-test")
     monkeypatch.setattr("brapi_provider.requests.get", get)
-    assert BrapiProvider().get_quote(" petr4.sa ") is not None
+    assert BrapiProvider().get_fundamentals(" petr4.sa ") is not None
     assert urls[0].endswith("/quote/PETR4")
 
 

@@ -864,7 +864,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** arquivo no formato desta fila; todo item com aceite verificável; nenhuma decisão do Marcos tomada pelo texto.
 
-- [ ] **F2A-13** · limpeza · `chore: clean up phase 2A residue` · **[golden]**
+- [x] **F2A-13** · limpeza · `chore: clean up phase 2A residue` · **[golden]**
   Faz só o que segue, conforme o inventário (seções 1.2, 3.1, 5 e 7), o PLANO (seção 11) e o checkpoint da Fase 0 (seção 3):
   - **Vacância manual.** `VACANCIA_CONHECIDA`, sem leitor desde o F2A-23, junto com o patch dela no harness e o import em `tests/test_fii_engine.py`.
   - **Caminho de provedor do motor de FII,** sem uso em produção desde o F2A-11:

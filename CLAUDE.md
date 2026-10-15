@@ -46,11 +46,11 @@ A lista de exceções do vulture (`vulture_whitelist.py`) traz o motivo de cada 
 | Módulo | Linhas | Papel |
 |---|---|---|
 | `app.py` | 554 | Streamlit, 4 abas, orquestração real. **Cobertura 0%** |
-| `market_engine.py` | 1.120 | Cascata de coleta e merge de fontes; a lógica de dado nova fica em `sentinela/data/` |
+| `market_engine.py` | 1.105 | Cascata de coleta e merge de fontes; a lógica de dado nova fica em `sentinela/data/` |
 | `valuation_engine.py` | 363 | Orquestra os métodos de `sentinela/methods/` (Graham, Bazin, Lynch, Gordon), score, classificação (na V1, "recomendação"); abstém-se para ETF, BDR e `UNKNOWN` quando `dados['classe_ativo']` existe |
-| `fii_engine.py` | 210 | Valuation de FII: orquestra `fii_yield` e `fii_nav`, score |
+| `fii_engine.py` | 157 | Valuation de FII: orquestra `fii_yield` e `fii_nav`, score |
 | `config.py` | 318 | Constantes, `MacroContext`, `_normalizar_dy` (invariante do DY) |
-| `data_quality.py` | 305 | Completude, badge, `validacao_cruzada` (linha 185) |
+| `data_quality.py` | 302 | Completude, badge, `validacao_cruzada` (linha 182) |
 | `database.py` | 217 | SQLite WAL, queries parametrizadas |
 | `portfolio_engine.py` | 145 | Markowitz / máximo Sharpe |
 | `technical_engine.py` | 104 | RSI, MACD, Bollinger, ATR, MAs |
@@ -62,7 +62,8 @@ A lista de exceções do vulture (`vulture_whitelist.py`) traz o motivo de cada 
 
 **Provedores:** `cvm_provider.py`, `cvm_fii_provider.py`, `brapi_provider.py`. O Fundamentus
 saiu no F2A-22. `cvm_ticker_map.py` e `cvm_fii_map.py` não são mais lidos pela cascata
-(F2A-31) e saem no F2A-13.
+(F2A-31); no F2A-13 ficaram só os dicionários, lidos por `scripts/levantamento_fase2a.py`,
+`scripts/dossie_fase2.py` e o índice falso de `tests/test_market_engine.py`.
 
 **Camada de dados (`sentinela/data/`, Fase 2A).** Funções puras chamadas pela cascata e pelos
 provedores: `referencia/` (índice oficial ticker ↔ CNPJ ↔ CD_CVM ↔ classe, com setor, segmento
@@ -134,7 +135,7 @@ Erros que **passam nos testes** e produzem resultado errado. Leia antes de tocar
 Trocar Selic por NTN-B sem converter os dois derruba `k − g` de ~13,75% para ~6%
 e mais que dobra todos os fair values. Escolha um regime, converta tudo.
 
-**2. Validação cruzada tautológica — resolvida na CVM de ações (F2A-5)** (`data_quality.py:185`)
+**2. Validação cruzada tautológica — resolvida na CVM de ações (F2A-5)** (`data_quality.py:182`)
 O P/L da CVM é `preço ÷ LPA` (`market_engine.py:963`), então compará-lo com `preço ÷ LPA` dá zero.
 Os checks 2 e 3 só rodam com fontes diferentes (`_mesma_fonte`), e o LPA é comparado com o
 divulgado e as ações com o yfinance. Ainda vale para FII: o P/VP da CVM é `preço ÷ VPA` e não
@@ -171,7 +172,7 @@ A suíte contorna isso com a semente do `tests/conftest.py`; a correção (E-6) 
 **9. Integrações inertes**
 `cost_of_equity_real`, `ntnb_longa`, `cdi`, `ipca_12m` sem consumidor fora dos testes
 (`ntnb_longa` só é lido por `cost_of_equity_real`). Resolvidas na 2A: o `CVMFIIProvider` roda
-pela cascata (F2A-11), embora o `app.py:158` ainda monte `FIIEngine()` sem provedor; o
+pela cascata (F2A-11), e o motor de FII perdeu o caminho de provedor próprio (F2A-13); o
 `baixar_itr` alimenta o TTM (F2A-7); o `cloudscraper` saiu com o scraper (F2A-22).
 
 **10. Escala da quantidade de ações na CVM**
@@ -204,7 +205,8 @@ ETF, BDR e `UNKNOWN` não recebem os métodos de ação (`valuation_engine.py:12
 **15. Cobertura dos mapas manuais — resolvida (F2A-1, F2A-2, F2A-31)**
 O índice oficial cobre todos os pares (CNPJ, código) no formato do FCA e os FIIs do Informe e do
 COTAHIST; a cascata lê só ele, e sem índice local a CVM não é consultada. Setor, segmento do
-FII e controle acionário vêm do índice. A `CVMTickerMap` e os mapas manuais saem no F2A-13.
+FII e controle acionário vêm do índice. O mapa com cache SQLite saiu no F2A-13; dos mapas manuais
+ficaram só os dicionários, sem leitor na cascata.
 
 **16. Markowitz com um ano de dados**
 Retorno esperado estimado com um ano de pregões (erro-padrão enorme), divisão fixa
@@ -312,8 +314,7 @@ Arquivos travados por fase: `docs/PLANO.md`, seção 8.
 - Nunca `git push` sem aprovação explícita — no loop, há deny para isso
 - Não remover ou enfraquecer testes para passar
 - Ticker validado por lista permitida (`sentinela/domain/ticker.py`, F2A-12) antes do yfinance
-  e da brapi (cascata e `brapi_provider._primeiro_resultado`) e do prompt (`SentinelaAI.analisar`).
-  `MarketEngine.buscar_noticias` ainda chama o yfinance sem validar (sem chamador no app)
+  e da brapi (cascata e `brapi_provider._primeiro_resultado`) e do prompt (`SentinelaAI.analisar`)
 - **O repositório é público.** Dados da carteira do Marcos (posições, pesos, lista
   de ativos) nunca entram em arquivo versionado — nem em docs, testes, fixtures ou
   diário. Análises que usam a carteira vão para `outputs/`, que o git ignora

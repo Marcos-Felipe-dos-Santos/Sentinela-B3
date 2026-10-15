@@ -214,7 +214,6 @@ def test_contrato_informe_mensal_fii(tmp_path, monkeypatch):
     assert dados["dt_referencia"] == "2026-08-01"
     assert dados["valor_cota"] == pytest.approx(165.951408188109)
     assert dados["cotas_emitidas"] == pytest.approx(45_601_713)
-    assert dados["dy_mes_decimal"] == pytest.approx(0.007027)
     assert dados["proveniencia"]["versao"] == "2"
     assert dados["proveniencia"]["data_entrega"] == "2026-09-23"
 

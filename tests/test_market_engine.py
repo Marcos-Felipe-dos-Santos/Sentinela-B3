@@ -263,6 +263,33 @@ def test_price_provenance_uses_fonte_preco(monkeypatch):
     assert dados["field_provenance"]["preco_atual"]["provenance"]["source"] == "yfinance"
 
 
+def test_preco_reserva_da_brapi_vem_do_get_fundamentals(monkeypatch):
+    """F2A-13: sem preço no yfinance, o preço da brapi vem do `get_fundamentals`."""
+    chamados = []
+
+    class _Brapi(FakeBrapi):
+        def get_fundamentals(self, ticker):
+            chamados.append("get_fundamentals")
+            return super().get_fundamentals(ticker)
+
+        def __getattr__(self, nome):
+            chamados.append(nome)
+            raise AttributeError(nome)
+
+    engine = _engine(
+        monkeypatch,
+        info={"quoteType": "EQUITY"},
+        brapi=_Brapi({"preco_atual": 33.0, "pl": 9.0}),
+    )
+
+    dados = engine.buscar_dados_ticker("PETR4")
+
+    assert dados["preco_atual"] == 33.0
+    assert dados["fonte_preco"] == "brapi"
+    assert dados["field_provenance"]["preco_atual"]["provenance"]["source"] == "brapi"
+    assert chamados == ["get_fundamentals"]
+
+
 def test_fundamentals_provenance_uses_fonte_fundamentos(monkeypatch):
     engine = _engine(
         monkeypatch,

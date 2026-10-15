@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any
 
 import requests
 
@@ -19,7 +19,7 @@ def _normalizar_ticker(ticker: str) -> str:
     return str(ticker or "").upper().replace(".SA", "").strip()
 
 
-def _to_float(value: Any) -> Optional[float]:
+def _to_float(value: Any) -> float | None:
     if value is None or value == "":
         return None
     try:
@@ -28,14 +28,14 @@ def _to_float(value: Any) -> Optional[float]:
         return None
 
 
-def _positive_float(value: Any) -> Optional[float]:
+def _positive_float(value: Any) -> float | None:
     numero = _to_float(value)
     if numero is None or numero <= 0:
         return None
     return numero
 
 
-def _first_number(*values: Any) -> Optional[float]:
+def _first_number(*values: Any) -> float | None:
     for value in values:
         numero = _to_float(value)
         if numero is not None:
@@ -43,7 +43,7 @@ def _first_number(*values: Any) -> Optional[float]:
     return None
 
 
-def _first_value(raw: Dict[str, Any], *keys: str) -> Any:
+def _first_value(raw: dict[str, Any], *keys: str) -> Any:
     nested = (
         raw.get("fundamentalist")
         or raw.get("fundamentals")
@@ -61,7 +61,7 @@ class BrapiProvider:
     """Provider opcional de dados via Brapi API."""
 
     def __init__(self) -> None:
-        self._token: Optional[str] = os.environ.get("BRAPI_TOKEN")
+        self._token: str | None = os.environ.get("BRAPI_TOKEN")
         if not self._token:
             logger.info("[Brapi] BRAPI_TOKEN nao encontrado; provider desabilitado")
 
@@ -70,7 +70,7 @@ class BrapiProvider:
         """Retorna True se o token esta configurado."""
         return bool(self._token)
 
-    def _get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+    def _get(self, endpoint: str, params: dict[str, Any] | None = None) -> dict[str, Any] | None:
         """Faz GET seguro na API Brapi."""
         if not self._token:
             return None
@@ -99,7 +99,7 @@ class BrapiProvider:
             logger.warning(f"[Brapi] Request falhou para {endpoint}: {e}")
             return None
 
-    def _primeiro_resultado(self, ticker: str, params: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+    def _primeiro_resultado(self, ticker: str, params: dict[str, Any] | None = None) -> dict[str, Any] | None:
         # F2A-12: só ticker no formato da B3 entra na URL.
         ticker_norm = ticker_b3.normalizar(ticker)
         if ticker_norm is None:
@@ -115,22 +115,7 @@ class BrapiProvider:
 
         return results[0]
 
-    def get_quote(self, ticker: str) -> Optional[Dict[str, Any]]:
-        """Busca cotacao atual de um ticker."""
-        quote = self._primeiro_resultado(ticker)
-        if not quote:
-            return None
-
-        preco = _to_float(quote.get("regularMarketPrice"))
-        if preco is None:
-            return None
-
-        return {
-            "preco_atual": preco,
-            "quote_type": quote.get("quoteType", quote.get("type", "")),
-        }
-
-    def get_fundamentals(self, ticker: str) -> Optional[Dict[str, Any]]:
+    def get_fundamentals(self, ticker: str) -> dict[str, Any] | None:
         """Busca e normaliza indicadores fundamentalistas disponiveis."""
         raw = self._primeiro_resultado(ticker, params={"fundamental": "true"})
         if not raw:
