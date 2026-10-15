@@ -822,3 +822,9 @@
 - **Para o Marcos revisar:**
   - O `README.md` (ticket C-A do Jules) não foi tocado e ainda descreve outra ordem da cascata.
   - Pendências da revisão do F2A-31 (`c827920`), registradas aqui porque a seção dele já estava commitada: FII sem índice só ganha o risco "referência oficial indisponível" porque `_buscar_cvm` roda antes para todo ticker (nenhum teste fixa o motivo no caso do FII); `test_motor_sem_referencia_nao_consulta_a_cvm` não confere `cvm.codigos`; os testes de outras suítes que usavam o mapa sem índice passaram a rodar com o índice falso, e o caminho real "sem índice" só é exercitado em `tests/test_market_engine_referencia.py`; `ReferenciaDosMapas` usa o classificador, que pode ler o índice salvo em `data/referencia/`, e importa o nome privado `_TICKER_TO_CVM`.
+
+### Auditoria completa do Gemini 4 Argon (14/10/2026)
+
+Registrada sem decisão, a pedido do Marcos: `docs/loop/historico/fase-2a/auditoria-gemini-completa.md`.
+- **Para o resumo da fase (F2A-14):** os nove achados conferidos no código entram em "decisões pendentes", com destaque para os quatro que mudam número ou contrariam decisão registrada: (1) valores ≤ 0 da CVM descartados no merge e prejuízo contado como dado ausente; (2) reserva dos controladores liberada com "sem correspondência", contra a D20; (3) P/VP não finito na saída do motor de FII, contra o F2A-24; (4) ativo fora do índice (BPAC11) recebendo métodos de ação, apesar do F2A-29.
+- **Para a proposta da 2B (F2A-28):** os nove achados e as decisões A a D do arquivo entram como candidatos, com o destino que o arquiteto propuser; nenhum é decidido pelo texto.
