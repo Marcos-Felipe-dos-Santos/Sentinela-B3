@@ -897,3 +897,13 @@ Registrada sem decisão, a pedido do Marcos: `docs/loop/historico/fase-2a/audito
   - Dois testes ficaram sem objeto, com o nome antigo: `tests/test_fii_sem_estimativa_manual.py::test_vacancia_manual_nao_altera_dy_nem_score` (não há mais tabela que diferencie CVBI11 de XPML11) e `tests/test_fii_engine.py::test_fii_engine_vacancy_adjustment` (não ajusta vacância). Não esconderam defeito; ficaram redundantes.
   - O teste novo do preço da brapi registra só métodos que o dublê não define; se o `FakeBrapi` ganhar métodos, o registro precisa acompanhar.
   - O `FIIEngine` perdeu o parâmetro do construtor; quem chamar `FIIEngine(provedor)` recebe `TypeError`. Os chamadores do repositório (`app.py`, `auditoria.py`, `auditar_recomendacoes.py`, o relatório do F1-12 e os testes) já usam `FIIEngine()`.
+
+### F2A-14 — docs: add phase 2A summary and archive loop files
+- **Status:** sucesso
+- **O que foi feito:** `docs/loop/pr-fase-2a.md`, escrito a partir deste diário, com os itens e commits (tabela gerada por script a partir da fila e do `git log v2-fase-1..HEAD`), os testes antes → depois (653 na tag `v2-fase-1`, 685 na ativação, 1.343 no fim), a mutação dos módulos novos, de `sentinela/methods/` e dos V1, cada mudança de comportamento (as oito do golden com predicado e contagem; as da cascata com o efeito medido nos diários), a cobertura do índice, as decisões pendentes (com os nove achados do Gemini e os quatro em destaque, como o registro de 14/10/2026 pedia), os resíduos para o Marcos e o que revisar primeiro. Depois, `git mv` da fila, deste diário e do resumo para `docs/loop/historico/fase-2a/`, e um `docs/loop/fila.md` novo só com a linha do [DECISÃO].
+- **Dificuldades:** o diário tem cerca de 230 KB; os números do resumo vêm de várias seções e de revisões que os corrigiram depois.
+- **Como resolvi:** usei o último valor registrado de cada número (por exemplo, o LPA do BBDC4 depois do F2A-36, 2,35, e não o do F2A-3) e conferi as contagens do golden do F2A-13 contra o `HEAD`.
+- **Testes:** 1.343 passed, 1 skipped, 1 xfailed, sem mudança (só documentos).
+- **Resíduos:** nenhum novo; os da fase estão no resumo.
+- **Decisões que ficaram para o Marcos:** as do [DECISÃO] da fase e as listadas no resumo.
+- **Para o Marcos revisar:** o resumo é o corpo do PR da fase (passo 8 do [DECISÃO]); a seção "O que revisar primeiro" segue a ordem de alcance das mudanças, não a da fila.
