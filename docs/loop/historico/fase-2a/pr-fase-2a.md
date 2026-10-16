@@ -155,3 +155,54 @@ Arquivos de 8/10/2026: FCA 2025 e 2026, Informe de FII 2025 e 2026, COTAHIST de 
 4. **Golden do F2A-25 e do F2A-23**: 9 e 15 classificações mudam; no FII, a ausência de vacância oficial favorece o fundo em silêncio (`fii/TST11-sem-provedor` foi de score 10 para 50).
 5. **Testes alterados fora da lista** (seção "Testes"), em especial o caso NaN do F2A-37 e a asserção invertida do F2A-8.
 6. **Os outros três achados do Gemini que contrariam decisão** (2, 3 e 4 acima) e a proposta da 2B.
+
+## Fechamento das auditorias
+
+Auditorias externas da fase (Codex, modo FASE, e Gemini 4 Argon, duas passadas), consolidadas em `docs/loop/historico/fase-2a/auditoria-externa.md`. Decisão do Marcos de 15/10/2026: todo bug confirmado vira teste de regressão; os bloqueios criados pela própria 2A são corrigidos agora, e os demais ficam como xfail estrito apontando o item que corrige. Fila e diário deste fechamento: `fila-fechamento.md` e `diario-fechamento.md`, nesta pasta.
+
+### Itens e commits
+
+| Item | Commit | O que fez |
+|---|---|---|
+| F2A-40 | `82e68a3` | `tests/regressao/` com 18 testes de bug (BUG-2A-01 a 18), xfail estrito; registro `tests/regressao/README.md`; regra "Bugs e regressão" no protocolo e no `AGENTS.md`; `-rxX` no CI |
+| F2A-41 | `edce32f` | D20 nas reservas dos controladores: par sem correspondência é abstenção; linha ausente só vale o total sem minoritários no balanço; 2.03.09 lida em qualquer modelo; PL total inválido com motivo |
+| F2A-42 | `3b977a9` | P/VP NaN ou infinito vira `None` antes da lente do FII |
+| F2A-43 | `8f2badb` | fora do índice, a cascata grava a classe do classificador; a guarda de escopo do F2A-29 passa a valer |
+| F2A-44 | `861323f` | relatório de rastreabilidade: LPA da CVM pelo divulgado da classe (F2A-36) e FII sem P/VP com a lente abstida (F2A-11) |
+| F2A-45 | este commit | este resumo e o arquivamento |
+
+### Testes, antes → depois
+
+- **1.343 passed + 1 skipped + 1 xfailed** em `c9d72d5` (abertura do fechamento) → **1.362 passed + 1 skipped + 18 xfailed** em `861323f`. Os 17 xfailed novos são os bugs abertos (28 casos registrados no F2A-40; 11 passaram a PASS nas correções). Módulos de teste: 76 → 94 (os 18 de `tests/regressao/`).
+- Golden inalterado em todos os itens (no F2A-42, regenerado e idêntico: o golden não tem caso de FII com P/VP não finito). `tests/test_financeiro_pre_refactor.py` inalterado.
+- Mutação em `sentinela.data.controladores*` (F2A-41): 98 mortos e 3 sobreviventes pelo mutmut (97,0%); os 3 morrem com os testes existentes quando rodados contra o mutante (o mapa de testes do mutmut não associava os testes antigos à função nova).
+- Testes existentes alterados fora da lista do item, com justificativa no diário: F2A-41, `test_controladora_sem_correspondencia_se_abstem` (era `…_vale_o_lucro_total_como_no_f2a_3`) e uma asserção de `test_pl_subtrai_minoritarios_e_reserva_so_sem_evidencia`; F2A-43, `test_sem_indice_nao_usa_o_mapa_manual` e `test_ticker_fora_do_indice_sem_motivo`; F2A-44, `test_relatorio_mostra_documento_e_escala_do_lpa_e_do_vpa` e a reformulação do teste do BUG-2A-09 (a asserção passou do HTML inteiro para a linha do LPA). Todos afirmavam o comportamento que o bug descreve; nenhum foi removido.
+
+### Estado de cada bug (`tests/regressao/README.md`)
+
+| ID | Corrige | Estado |
+|---|---|---|
+| BUG-2A-01 (≤ 0 da CVM descartado no merge) | F2B-8 | aberto |
+| BUG-2A-02 (sem correspondência libera reserva) | F2A-41 | corrigido |
+| BUG-2A-03 (ausente com minoritários no balanço) | F2A-41 | corrigido |
+| BUG-2A-04 (2.03.09 só no modelo do setor) | F2A-41 | corrigido |
+| BUG-2A-05 (PL total inválido sem motivo) | F2A-41 | corrigido |
+| BUG-2A-06 (P/VP não finito no FII) | F2A-42 | corrigido |
+| BUG-2A-07 (fora do índice recebe métodos) | F2A-43 | corrigido |
+| BUG-2A-08 (rastreabilidade: P/VP = 1,0) | F2A-44 | corrigido |
+| BUG-2A-09 (rastreabilidade: LPA = lucro ÷ ações) | F2A-44 | corrigido |
+| BUG-2A-10 a 18 (TTM sem 7.2; alerta antes da coerência; FII sem `valores_por_fonte`; risco "fora da CVM" no FII; Informe sem desempate por versão; DY inválido sobrescreve válido; ZIP vazio do COTAHIST; `FiiNav` com P/VP ≤ 0; `Graham` com VPA < 0) | proposta da 2B | aberto |
+
+### Correções deste resumo apontadas pelas auditorias
+
+- **"Efeito nulo hoje" do F2A-13 (item 8 das decisões pendentes) não vale para o relatório de qualidade.** Com a fonte `fundamentus` fora de `_FONTE_CONFIANCA`, um registro antigo com `fonte_fundamentos = "fundamentus"` cai no padrão de 10 (`data_quality.py:164`): com os dez campos esperados presentes, a confiança por campo e o `score_confianca` vão de **40 para 10** (conferido rodando `DataQualityReport.completude()` com o `data_quality.py` de `b1322e1~1` e o atual). O efeito sobre os números dos motores segue nulo.
+- **"ROE negativo passa" (F2A-4 e F2A-30) depende da fonte (BUG-2A-01).** A fronteira não tem piso, mas o merge descarta ROE ≤ 0. Conferido na cascata com as fixtures da suíte: ROE −0,05 só do yfinance fica, mas conta como campo obrigatório faltando; com yfinance 0,10 e brapi −0,05, fica 0,10; com yfinance 0,10 e CVM −0,05, fica 0,10.
+- **"76 módulos de teste" estava certo.** A 2ª passada do Gemini disse 75, supondo que o F2A-13 apagou `tests/test_cvm_ticker_map.py`; o F2A-13 tirou 12 testes do arquivo, mas o arquivo continua rastreado (`git ls-tree -r c05f4ed tests/`: 76 arquivos `test_*.py`). Depois do fechamento são 94.
+
+### Pendências para o Marcos (das revisões deste fechamento)
+
+1. **`CLAUDE.md` desatualizado:** armadilha 14 ("fora do índice, `classe_ativo` não é gravado […] o guard do motor não atua") e a linha do `valuation_engine.py` na tabela de arquitetura, depois do F2A-43; a seção "Bugs e regressão" entrou no `AGENTS.md` e no protocolo, mas não no `CLAUDE.md`, de que o `AGENTS.md` deveria ser subconjunto. Pede item próprio.
+2. **Relatório de rastreabilidade:** a nota "ausente: a lente de P/VP se abstém" só aparece com P/VP `None` ou 0; com NaN, infinito ou negativo o motor também se abstém, mas a nota não aparece (a condição é anterior ao F2A-44). Na unit, o texto do VPA não diz que o VPA é multiplicado pelas ações da unit.
+3. **Testes de regressão:** os xfail não usam `raises=` (uma mudança de assinatura de helper passaria por "bug aberto"); no BUG-2A-10 a leitura de `valores["lucro_controladores"]` é com `[]` (uma correção por abstenção que não grave a chave daria `KeyError`); o BUG-2A-16 fixa a semântica "mês ausente".
+4. **Itens da 2B e da 2C:** o BUG-2A-17 contradiz dois casos de `tests/test_methods_fii_nav.py::test_faixa_pelos_limites_estritos_da_v1` (0,0 e −1,0 como desconto), que o item que o corrigir precisa listar; o teste do BUG-2A-07 lê `recomendacao`, e o F2C-4 deve listá-lo.
+5. **Limites conhecidos das correções:** fora do índice, ticker que não termina em 11 (ex.: BDR) segue `STOCK` e recebe os métodos de ação; com a 2.03.09 ilegível, o lucro dos controladores se abstém com o motivo "com não controladores no balanço"; a união dos pares de todos os modelos pode transformar uma 2.03.09 de outra conta num banco em "sem correspondência" (nenhum dos 12 bancos da DFP 2025 é afetado: o levantamento do F2A-41 não achou companhia que mude de lado).
