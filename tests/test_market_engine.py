@@ -58,16 +58,6 @@ class FakeTicker:
         return self._historico
 
 
-class FakeScraper:
-    def __init__(self, resposta):
-        self.resposta = resposta
-        self.calls = 0
-
-    def buscar_dados(self, ticker):
-        self.calls += 1
-        return self.resposta
-
-
 class FakeBrapi:
     def __init__(self, resposta=None, disponivel=True):
         self.resposta = resposta
@@ -101,18 +91,49 @@ def _historico(preco=10.0):
     )
 
 
-def _engine(monkeypatch, *, info, historico=None, scraper=None, brapi=None, cache=None, cvm=None):
+class ReferenciaDosMapas:
+    """Índice oficial falso, montado dos mapas públicos (F2A-31).
+
+    A cascata só lê o CD_CVM e o CNPJ do índice; a classe de cada registro é a que o
+    classificador já dava ao ticker sem dados, para os testes não mudarem de caminho.
+    """
+
+    def __init__(self):
+        from cvm_fii_map import FII_CNPJ_MAP
+        from cvm_ticker_map import _TICKER_TO_CVM
+        from sentinela.data.referencia.registro import Indice, Registro
+
+        classificador = market_engine.AssetClassifier()
+        registros = {
+            ticker: Registro(
+                ticker=ticker,
+                classe=classificador.classify(ticker, {}).value,
+                regra="mapa público (teste)",
+                fonte={},
+                cd_cvm=_TICKER_TO_CVM.get(ticker),
+                cnpj=FII_CNPJ_MAP.get(ticker),
+            )
+            for ticker in {*_TICKER_TO_CVM, *FII_CNPJ_MAP}
+        }
+        self._indice = Indice(gerado_em="2026-10-08", fontes={}, registros=registros, excecoes=[])
+
+    def indice(self, agora):
+        return self._indice
+
+
+def _engine(monkeypatch, *, info, historico=None, brapi=None, cache=None, cvm=None):
     monkeypatch.setattr(
         "market_engine.yf.Ticker",
         lambda ticker: FakeTicker(info=info, historico=historico),
     )
     engine = MarketEngine.__new__(MarketEngine)
-    engine.scraper = FakeScraper(scraper if scraper is not None else {"erro_scraper": True})
     engine.brapi = brapi if brapi is not None else FakeBrapi(disponivel=False)
     engine.database = cache
     # cvm=None → atributo não definido → getattr(engine, 'cvm', None) retorna None → pula CVM
     if cvm is not None:
         engine.cvm = cvm
+        # F2A-31: o CD_CVM vem só do índice oficial; os testes de CVM injetam um índice falso.
+        engine.referencia = ReferenciaDosMapas()
     return engine
 
 
@@ -124,11 +145,13 @@ def test_market_engine_known_fii_treated_as_fii():
     assert _is_fii_ticker("HGLG11", {}) is True
 
 
-def test_market_engine_suffix_11_non_unit_still_fii():
-    assert _is_fii_ticker("ABCD11", {}) is True
+def test_market_engine_suffix_11_without_official_data_is_not_fii():
+    # F2A-20: a classe vem de dados['classe_ativo'] (cascata), não do sufixo.
+    assert _is_fii_ticker("ABCD11", {}) is False
+    assert _is_fii_ticker("ABCD11", {"classe_ativo": "FII"}) is True
 
 
-def test_yfinance_data_is_preserved_when_fundamentus_fails(monkeypatch):
+def test_yfinance_data_is_preserved_without_fundamentus(monkeypatch):
     engine = _engine(
         monkeypatch,
         historico=_historico(22.0),
@@ -137,7 +160,7 @@ def test_yfinance_data_is_preserved_when_fundamentus_fails(monkeypatch):
             "trailingPE": 8.0,
             "priceToBook": 1.2,
             "returnOnEquity": 0.15,
-            "dividendYield": 0.04,
+            "dividendYield": 4.0,
             "quoteType": "EQUITY",
         },
     )
@@ -152,7 +175,7 @@ def test_yfinance_data_is_preserved_when_fundamentus_fails(monkeypatch):
     assert dados["dy"] == 0.04
     assert dados["fonte_preco"] == "yfinance"
     assert dados["fonte_fundamentos"] == "yfinance_partial"
-    assert dados["erro_scraper"] is True
+    assert dados["fundamentos_incompletos"] is False
     assert dados["campos_faltantes"] == []
     assert dados["dados_parciais"] is False
 
@@ -212,7 +235,7 @@ def test_field_provenance_preserves_raw_values(monkeypatch):
             "trailingPE": 8.0,
             "priceToBook": 1.2,
             "returnOnEquity": 0.15,
-            "dividendYield": 0.04,
+            "dividendYield": 4.0,
             "quoteType": "EQUITY",
         },
     )
@@ -238,6 +261,33 @@ def test_price_provenance_uses_fonte_preco(monkeypatch):
 
     assert dados["fonte_preco"] == "yfinance"
     assert dados["field_provenance"]["preco_atual"]["provenance"]["source"] == "yfinance"
+
+
+def test_preco_reserva_da_brapi_vem_do_get_fundamentals(monkeypatch):
+    """F2A-13: sem preço no yfinance, o preço da brapi vem do `get_fundamentals`."""
+    chamados = []
+
+    class _Brapi(FakeBrapi):
+        def get_fundamentals(self, ticker):
+            chamados.append("get_fundamentals")
+            return super().get_fundamentals(ticker)
+
+        def __getattr__(self, nome):
+            chamados.append(nome)
+            raise AttributeError(nome)
+
+    engine = _engine(
+        monkeypatch,
+        info={"quoteType": "EQUITY"},
+        brapi=_Brapi({"preco_atual": 33.0, "pl": 9.0}),
+    )
+
+    dados = engine.buscar_dados_ticker("PETR4")
+
+    assert dados["preco_atual"] == 33.0
+    assert dados["fonte_preco"] == "brapi"
+    assert dados["field_provenance"]["preco_atual"]["provenance"]["source"] == "brapi"
+    assert chamados == ["get_fundamentals"]
 
 
 def test_fundamentals_provenance_uses_fonte_fundamentos(monkeypatch):
@@ -311,7 +361,7 @@ def test_brapi_does_not_overwrite_valid_fields_with_missing_values(monkeypatch):
             "trailingPE": 7.0,
             "priceToBook": 1.4,
             "returnOnEquity": 0.12,
-            "dividendYield": 0.03,
+            "dividendYield": 3.0,
         },
         brapi=FakeBrapi({"pl": None, "pvp": 0, "roe": 0, "dy": None, "preco_atual": 0}),
     )
@@ -325,13 +375,13 @@ def test_brapi_does_not_overwrite_valid_fields_with_missing_values(monkeypatch):
     assert dados["dy"] == 0.03
 
 
-def test_fundamentus_fills_only_missing_fields(monkeypatch):
+def test_missing_fields_stay_missing_without_fundamentus(monkeypatch):
+    # F2A-22: sem o passo 4, o que nenhuma fonte entregou continua faltando.
     engine = _engine(
         monkeypatch,
         historico=_historico(18.0),
         info={"currentPrice": 18.0, "quoteType": "EQUITY"},
         brapi=FakeBrapi({"pl": 9.0, "dy": 0.04, "quote_type": "EQUITY"}),
-        scraper={"pl": 1.0, "pvp": 1.2, "roe": 0.18, "dy": 0.99},
         cache=FakeCache(),
     )
 
@@ -339,29 +389,28 @@ def test_fundamentus_fills_only_missing_fields(monkeypatch):
 
     assert dados["pl"] == 9.0
     assert dados["dy"] == 0.04
-    assert dados["pvp"] == 1.2
-    assert dados["roe"] == 0.18
-    assert dados["fonte_fundamentos"] == "brapi+fundamentus"
-    assert dados["dados_parciais"] is False
+    assert "pvp" not in dados
+    assert "roe" not in dados
+    assert dados["fonte_fundamentos"] == "brapi"
+    assert dados["fundamentos_incompletos"] is True
+    assert dados["dados_parciais"] is True
 
 
-def test_scraper_failure_does_not_make_data_partial_when_brapi_complete(monkeypatch):
+def test_brapi_complete_data_is_not_incomplete(monkeypatch):
     engine = _engine(
         monkeypatch,
         historico=_historico(25.0),
         info={"currentPrice": 25.0, "quoteType": "EQUITY"},
         brapi=FakeBrapi({"pl": 8.0, "pvp": 1.1, "roe": 0.16, "dy": 0.05}),
-        scraper={"erro_scraper": True},
         cache=FakeCache(),
     )
 
     dados = engine.buscar_dados_ticker("BBAS3")
 
     assert dados["fonte_fundamentos"] == "brapi"
-    assert dados["erro_scraper"] is False
+    assert dados["fundamentos_incompletos"] is False
     assert dados["campos_faltantes"] == []
     assert dados["dados_parciais"] is False
-    assert engine.scraper.calls == 0
 
 
 def test_missing_fields_and_partial_flag_are_set(monkeypatch):
@@ -385,7 +434,7 @@ def test_no_cache_path_does_not_mark_cached_data(monkeypatch):
         info={"currentPrice": 12.0, "dividendYield": 0.0},
     )
 
-    dados = engine.buscar_dados_ticker("CACHE3")
+    dados = engine.buscar_dados_ticker("CACH3")
 
     assert dados["dados_cache"] is False
     assert dados.get("fonte_fundamentos") != "cache"
@@ -397,11 +446,10 @@ def test_cache_is_used_when_providers_fail(monkeypatch):
         historico=_historico(12.0),
         info={"currentPrice": 12.0, "trailingPE": 99.0},
         brapi=FakeBrapi(disponivel=False),
-        scraper={"erro_scraper": True},
         cache=FakeCache({"pl": 6.0, "pvp": 0.9, "roe": 0.14, "dy": 0.07}),
     )
 
-    dados = engine.buscar_dados_ticker("CACHE3")
+    dados = engine.buscar_dados_ticker("CACH3")
 
     assert dados["pl"] == 6.0
     assert dados["pvp"] == 0.9
@@ -419,11 +467,10 @@ def test_cache_provenance_marks_cached_fields(monkeypatch):
         historico=_historico(12.0),
         info={"currentPrice": 12.0, "trailingPE": 99.0},
         brapi=FakeBrapi(disponivel=False),
-        scraper={"erro_scraper": True},
         cache=FakeCache({"pl": 6.0, "pvp": 0.9, "roe": 0.14, "dy": 0.07}),
     )
 
-    dados = engine.buscar_dados_ticker("CACHE3")
+    dados = engine.buscar_dados_ticker("CACH3")
 
     for field in ("dy", "pl", "pvp", "roe"):
         provenance = dados["field_provenance"][field]["provenance"]
@@ -435,9 +482,8 @@ def test_fii_without_pl_roe_but_with_dy_pvp_is_not_partial(monkeypatch):
     engine = _engine(
         monkeypatch,
         historico=_historico(100.0),
-        info={"currentPrice": 100.0, "priceToBook": 0.98, "dividendYield": 0.10},
+        info={"currentPrice": 100.0, "priceToBook": 0.98, "dividendYield": 10.0},
         brapi=FakeBrapi(disponivel=False),
-        scraper={"erro_scraper": True},
     )
 
     dados = engine.buscar_dados_ticker("MXRF11")
@@ -452,13 +498,12 @@ def test_cache_fills_missing_required_stock_fields(monkeypatch):
     engine = _engine(
         monkeypatch,
         historico=_historico(12.0),
-        info={"currentPrice": 12.0, "trailingPE": 8.0, "dividendYield": 0.04},
+        info={"currentPrice": 12.0, "trailingPE": 8.0, "dividendYield": 4.0},
         brapi=FakeBrapi(disponivel=False),
-        scraper={"erro_scraper": True},
         cache=FakeCache({"pvp": 1.1, "roe": 0.18, "dy": 0.06}),
     )
 
-    dados = engine.buscar_dados_ticker("CACHE3")
+    dados = engine.buscar_dados_ticker("CACH3")
 
     assert dados["pl"] == 8.0
     assert dados["pvp"] == 1.1
@@ -475,19 +520,19 @@ def test_manual_fii_fallback_fills_missing_dy_pvp(monkeypatch):
         historico=_historico(100.0),
         info={"currentPrice": 100.0},
         brapi=FakeBrapi(disponivel=False),
-        scraper={"erro_scraper": True},
         cache=FakeCache(),
     )
 
     dados = engine.buscar_dados_ticker("CVBI11")
 
-    assert dados["dy"] == 0.10
-    assert dados["pvp"] == 0.85
-    assert dados["vacancia"] == 0.25
-    assert dados["dados_manual"] is True
-    assert dados["fonte_fundamentos"] == "manual_fii"
-    assert "fundamentos FII preenchidos manualmente" in dados["riscos_dados"]
-    assert dados["dados_parciais"] is False
+    # F2A-23: a estimativa manual não entra; o que falta continua faltando.
+    assert "dy" not in dados
+    assert "pvp" not in dados
+    assert "vacancia" not in dados
+    assert dados["dados_manual"] is False
+    assert "manual_fii" not in (dados.get("fonte_fundamentos") or "")
+    assert "fundamentos FII preenchidos manualmente" not in dados["riscos_dados"]
+    assert dados["dados_parciais"] is True
 
 
 def test_manual_fallback_provenance_marks_manual_fields(monkeypatch):
@@ -496,17 +541,18 @@ def test_manual_fallback_provenance_marks_manual_fields(monkeypatch):
         historico=_historico(100.0),
         info={"currentPrice": 100.0},
         brapi=FakeBrapi(disponivel=False),
-        scraper={"erro_scraper": True},
         cache=FakeCache(),
     )
 
     dados = engine.buscar_dados_ticker("CVBI11")
 
+    # F2A-23: nenhum campo marcado como estimativa manual.
     for field in ("dy", "pvp"):
         provenance = dados["field_provenance"][field]["provenance"]
-        assert provenance["source"] == "manual_fallback"
-        assert provenance["manual"] is True
-        assert "manual_fallback" in provenance["warnings"]
+        assert provenance["source"] != "manual_fallback"
+        assert provenance["manual"] is False
+        assert "manual_fallback" not in provenance["warnings"]
+        assert dados["field_provenance"][field]["value"] is None
 
 
 def test_market_engine_manual_fii_fallback_does_not_apply_to_known_unit(monkeypatch):
@@ -535,9 +581,8 @@ def test_manual_fii_fallback_never_overwrites_fresh_provider_values(monkeypatch)
     engine = _engine(
         monkeypatch,
         historico=_historico(100.0),
-        info={"currentPrice": 100.0, "priceToBook": 1.05, "dividendYield": 0.09},
+        info={"currentPrice": 100.0, "priceToBook": 1.05, "dividendYield": 9.0},
         brapi=FakeBrapi(disponivel=False),
-        scraper={"erro_scraper": True},
         cache=FakeCache(),
     )
 
@@ -609,10 +654,10 @@ def test_cvm_disponivel_false_when_ticker_not_mapped(monkeypatch):
         historico=_historico(15.0),
         info={"currentPrice": 15.0, "quoteType": "EQUITY", "trailingPE": 10.0,
               "priceToBook": 1.2, "returnOnEquity": 0.10, "dividendYield": 0.04},
-        cvm=FakeCVM(_cvm_ind()),  # CVM ativo mas ticker ZZZZZ9 não está no mapa
+        cvm=FakeCVM(_cvm_ind()),  # CVM ativo mas ticker ZZZZ9 não está no mapa
     )
 
-    dados = engine.buscar_dados_ticker("ZZZZZ9")
+    dados = engine.buscar_dados_ticker("ZZZZ9")
 
     assert dados["cvm_disponivel"] is False
 
@@ -638,15 +683,12 @@ def test_cvm_failure_falls_back_gracefully(monkeypatch):
     assert dados["pl"] == pytest.approx(8.0)   # yfinance fallback intacto
 
 
-def test_cvm_computes_pl_pvp_from_shares(monkeypatch):
-    """Com sharesOutstanding disponível, CVM deriva P/L e P/VP."""
+def test_cvm_no_longer_divides_by_shares_outstanding(monkeypatch):
+    """F2A-3: o sharesOutstanding do yfinance não entra no LPA nem no VPA da CVM (E-1)."""
     shares = 13_000_000_000.0  # 13 bilhões de ações
     lucro  = 60_000_000_000.0  # 60 bi lucro
     pl_val = 300_000_000_000.0  # 300 bi PL
     preco  = 38.0
-
-    lpa_esperado = lucro / shares
-    vpa_esperado = pl_val / shares
 
     engine = _engine(
         monkeypatch,
@@ -658,10 +700,11 @@ def test_cvm_computes_pl_pvp_from_shares(monkeypatch):
 
     dados = engine.buscar_dados_ticker("PETR4")
 
-    assert dados["lpa"] == pytest.approx(lpa_esperado)
-    assert dados["vpa"] == pytest.approx(vpa_esperado)
-    assert dados["pl"]  == pytest.approx(preco / lpa_esperado)
-    assert dados["pvp"] == pytest.approx(preco / vpa_esperado)
+    # Sem P/L nem P/VP no yfinance, só a divisão pelo sharesOutstanding os produziria.
+    assert "lpa" not in dados
+    assert "vpa" not in dados
+    assert "pl" not in dados
+    assert "pvp" not in dados
 
 
 def test_cvm_overrides_brapi_fundamentals(monkeypatch):

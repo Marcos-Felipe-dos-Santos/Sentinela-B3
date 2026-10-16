@@ -39,6 +39,7 @@ from config import MACRO, _normalizar_dy
 from cvm_fii_map import FII_CNPJ_MAP
 from cvm_provider import CVMProvider
 from cvm_ticker_map import _TICKER_TO_CVM
+from sentinela.data import normalizacao
 from sentinela.services.asset_classifier import AssetClassifier
 from valuation_engine import ValuationEngine
 
@@ -441,14 +442,15 @@ def entrada_acao(t, d, ano=None):
         return None
     p = m["preco"]
     lpa, vpa = lucro / shares, pl_cvm / shares
-    dy_raw = m.get("dy_info") or 0
+    # F2A-4: o `dividendYield` do yfinance é percentual; converte na fronteira.
+    dy = normalizacao.dy_na_fronteira(m.get("dy_info"), "yfinance").valor or 0
     return {
         "ticker": t,
         "preco_atual": p,
         "roe": lucro / pl_cvm,
         "pl": p / lpa if lpa else 0,
         "pvp": p / vpa if vpa else 0,
-        "dy": dy_raw,
+        "dy": dy,
     }
 
 
@@ -1063,7 +1065,7 @@ Este documento **não decide nada**: reúne os números para as decisões D-* e 
 - **Selic dirige Bazin e Gordon** (seção 2) e o regime misto de taxas {fator_txt}.
 - **Cobertura** (seção 7): o cadastro oficial permite mapear as ações listadas e os FIIs automaticamente; o ticker do FII sai do ISIN.
 
-> Limites conhecidos: (1) a NTN-B {"é o **fallback do código** (o Tesouro Direto falhou), e as seções 2, 3, 4 e 6 dependem dela" if macro_cache()["ntnb_fallback"] else "veio do Tesouro Direto"}; (2) o DY é de bases diferentes — seções 2 e 3 usam o `dividendYield` do yfinance via `_normalizar_dy` (armadilha 4), seções 4 e 5 usam proventos dos últimos 12 meses ÷ preço; (3) a seção 5 recalcula Graham e Bazin sem as travas de entrada da V1 (limites de P/L e P/VP, piso de P/L, separação crescimento × renda); (4) o FCA lido é só o do ano corrente, então ticker "sem negociação ativa" pode ser entrega pendente; (5) o IF.data só foi testado com os relatórios 5 e 8, sem uma chamada de controle; (6) a seção 2 recalcula com k real só o Gordon (seção 3) e o FII (seção 4), não Bazin nem Graham por método.
+> Limites conhecidos: (1) a NTN-B {"é o **fallback do código** (o Tesouro Direto falhou), e as seções 2, 3, 4 e 6 dependem dela" if macro_cache()["ntnb_fallback"] else "veio do Tesouro Direto"}; (2) o DY é de bases diferentes — seções 2 e 3 usam o `dividendYield` do yfinance convertido na fronteira (F2A-4, `sentinela.data.normalizacao`), seções 4 e 5 usam proventos dos últimos 12 meses ÷ preço; (3) a seção 5 recalcula Graham e Bazin sem as travas de entrada da V1 (limites de P/L e P/VP, piso de P/L, separação crescimento × renda); (4) o FCA lido é só o do ano corrente, então ticker "sem negociação ativa" pode ser entrega pendente; (5) o IF.data só foi testado com os relatórios 5 e 8, sem uma chamada de controle; (6) a seção 2 recalcula com k real só o Gordon (seção 3) e o FII (seção 4), não Bazin nem Graham por método.
 >
 > O yfinance é fonte não oficial e o `sharesOutstanding` dele é o objeto de teste do E-1; os números de mercado mudam a cada execução (a Selic, a NTN-B e os preços são os do dia da geração).
 

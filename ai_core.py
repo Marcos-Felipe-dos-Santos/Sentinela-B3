@@ -7,6 +7,7 @@ from typing import Any
 import requests
 
 from config import GEMINI_MODEL, GROQ_MODEL, OLLAMA_MODEL, OLLAMA_URL
+from sentinela.domain import ticker as ticker_b3
 
 # CORRIGIDO: removido `import html` que foi importado mas nunca usado
 
@@ -64,7 +65,13 @@ class SentinelaAI:
     def _formatar_dados(self, dados):
         if isinstance(dados, dict):
             # Exclui campos volumosos que não agregam ao prompt
-            excluir = {'historico', 'analise_ia', 'tech', 'field_provenance'}
+            excluir = {
+                'historico', 'analise_ia', 'tech', 'field_provenance',
+                'acoes_por_unit', 'referencia_oficial', 'acoes_cvm',
+                'divergencia_acoes', 'valores_coletados', 'valores_por_fonte',
+                'proveniencia', 'lpa_cvm', 'classe_preferencial', 'classes_preferenciais',
+                'serie_cvm', 'ttm_cvm', 'alavancagem_cvm', 'ifdata', 'liquidez',
+            }
             return "\n".join(
                 [f"- {k}: {v}" for k, v in dados.items()
                  if v is not None and k not in excluir]
@@ -140,7 +147,11 @@ Forneça uma análise estruturada, direta e em Português, contendo exatamente:
 """
 
     def analisar(self, ticker, dados):
-        prompt = self._montar_prompt(ticker, dados)
+        # F2A-12: ticker fora do formato da B3 não entra no prompt nem chama provedor.
+        normalizado = ticker_b3.normalizar(ticker)
+        if normalizado is None:
+            return {"content": "Análise indisponível: ticker inválido.", "model": "nenhum"}
+        prompt = self._montar_prompt(normalizado, dados)
 
         # 1. Groq (primário)
         if 'groq' in self.clients:

@@ -1,1 +1,1 @@
-[DECISÃO] Fase 1 encerrada. Histórico em docs/loop/historico/fase-1/. Próxima fila aguardando aprovação: docs/loop/fila-fase2a-proposta.md.
+- [DECISÃO] **Fim da Fase 2A.** O Marcos: confere o CI verde no GitHub depois do push; roda a auditoria rápida (modo FASE, só `F2A-40..HEAD`) num auditor de outra família; abre o PR da fase com `pr-fase-2a.md` como corpo; faz o merge, a tag `v2-fase-2a` e atualiza a "Fase atual" do `AGENTS.md`; revisa a proposta da 2B com a lista de correções da auditoria.

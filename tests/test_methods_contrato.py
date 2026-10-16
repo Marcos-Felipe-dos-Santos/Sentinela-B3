@@ -95,7 +95,6 @@ def test_inputs_comecam_vazios_e_com_flags_da_v1():
         assert getattr(i, campo) is None
     assert i.pl_confiavel is True
     assert i.dy_confiavel is True
-    assert i.erro_scraper is False
 
 
 def test_inputs_checam_o_tipo_de_cada_campo():
@@ -130,7 +129,7 @@ def test_inputs_checam_o_tipo_de_cada_campo():
 
 
 def test_flags_precisam_ser_booleanas():
-    for campo in ("pl_confiavel", "dy_confiavel", "erro_scraper"):
+    for campo in ("pl_confiavel", "dy_confiavel"):
         with pytest.raises(TypeError, match=f"{campo} deve ser bool"):
             _inputs(**{campo: 1})
 

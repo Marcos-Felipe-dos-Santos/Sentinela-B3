@@ -91,4 +91,7 @@ def test_brapi_skips_invalid_negative_and_impossible_fields(monkeypatch):
     provider = BrapiProvider()
     dados = provider.get_fundamentals("RUIM3")
 
-    assert dados == {"quote_type": "EQUITY"}
+    # F2A-4: a fronteira converte (250 → 2,5, regra da V1) e não valida; o invariante é do
+    # motor, que rejeita DY acima de 25%. F2A-30: ROE negativo é válido; pela regra da V1 em
+    # módulo, −2 é −2% (−0,02); a guarda de ROE acima de 2 é da cascata.
+    assert dados == {"dy": 2.5, "roe": -0.02, "quote_type": "EQUITY"}

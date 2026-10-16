@@ -25,6 +25,11 @@ def _finito(valor):
     return valor if math.isfinite(valor) else None
 
 
+# F2A-29 (P7): classes sem os métodos de ação; o `applies_to` dos métodos é do F2B-4.
+CLASSES_FORA_DO_ESCOPO = frozenset({"ETF", "BDR", "UNKNOWN"})
+ROTULO_FORA_DO_ESCOPO = "FORA DO ESCOPO DOS MÉTODOS"
+
+
 class ValuationEngine:
     def _montar_inputs(
         self,
@@ -110,6 +115,27 @@ class ValuationEngine:
 
         ticker = str(dados.get('ticker', '')).upper()
         p   = float(dados['preco_atual'])
+        if not math.isfinite(p):
+            # F2A-24: preço não finito, como preço zero, não é analisado.
+            return None
+
+        # ── GUARD: CLASSE FORA DO ESCOPO (F2A-29, P7) ─────────────────────────
+        # ETF, BDR e classe desconhecida não recebem os métodos de ação: abstenção
+        # antes de qualquer método, sem número no lugar. Sem a chave, nada muda.
+        classe = dados.get('classe_ativo')
+        if classe is not None:
+            classe = str(getattr(classe, 'value', classe)).upper()
+            if classe in CLASSES_FORA_DO_ESCOPO:
+                logger.info(f"[{ticker}] Classe {classe} fora do escopo dos métodos de ação")
+                return {
+                    'recomendacao':   ROTULO_FORA_DO_ESCOPO,
+                    'metodos_usados': '',
+                    'perfil':         classe,
+                    'pl_confiavel':   False,
+                    'dy_confiavel':   False,
+                    'confianca':      0,
+                    'riscos':         [f"Classe {classe} fora do escopo dos métodos de ação"],
+                }
 
         # ── GUARD: DISTRESSED TICKERS ────────────────────────────────────────
         # Empresas em recuperação judicial ou situação especial não devem
@@ -135,19 +161,15 @@ class ValuationEngine:
         pl  = float(dados.get('pl',  0) or 0)
         pvp = float(dados.get('pvp', 0) or 0)
 
-        # ── NORMALIZAÇÃO DO DY ────────────────────────────────────────────────
-        # Yahoo Finance retorna dividendYield de formas inconsistentes entre tickers BR:
-        #   Ex: PETR4 → 12.47  (percentagem bruta)  → dividir por 100 → 0.1247
-        #   Ex: WEGE3 → 3.02   (percentagem bruta)  → dividir por 100 → 0.0302
-        #   Ex: ITUB4 → 0.45   (dado suspeito)       → 45% DY impossível → cap
+        # ── INVARIANTE DO DY ──────────────────────────────────────────────────
+        # O DY chega em razão: a conversão de percentual é da fronteira de cada
+        # provedor (F2A-4, `sentinela.data.normalizacao`). Aqui só o invariante.
         dy_raw = float(dados.get('dy', 0) or 0)
         dy, dy_confiavel = _normalizar_dy(dy_raw)
-        if dy_raw > MACRO.DY_PERCENTUAL_THRESHOLD:
-            logger.info(f"[{dados.get('ticker','?')}] DY normalizado: {dy_raw:.4f}% → {dy:.4f} decimal")
-        elif not dy_confiavel:
+        if not dy_confiavel:
             logger.warning(
-                f"[{dados.get('ticker','?')}] DY={dy_raw:.4f} ({dy_raw*100:.1f}%) improvável para B3 "
-                f"— dado suspeito (Yahoo bug?). Desconsiderado."
+                f"[{dados.get('ticker','?')}] DY={dy_raw:.4f} fora de 0 a 25% "
+                f"— dado suspeito. Desconsiderado."
             )
 
         lpa = (p / pl)  if pl  > 0 else 0
@@ -157,9 +179,9 @@ class ValuationEngine:
         confianca = 100
         riscos = []
 
-        if dados.get("erro_scraper"):
+        if dados.get("fundamentos_incompletos"):
             confianca -= 30
-            riscos.append("Dados fundamentais indisponíveis (scraper)")
+            riscos.append("Dados fundamentais obrigatórios ausentes")
 
         # pl_confiavel: False quando Yahoo retornou PL negativo (prejuízo) ou > 80 (TTM atípico)
         # Definido em market_engine.py; padrão True para dados do Fundamentus (mais confiáveis)
@@ -304,18 +326,18 @@ class ValuationEngine:
         if rec == "COMPRA FORTE" and riscos:
             rec = "COMPRA"
 
-        # ── GUARD: Scraper falhou → não recomendar compra ─────────────────────
+        # ── GUARD: campo obrigatório ausente (F2A-22) → sem classificação positiva ──
         # Dados fundamentais incompletos não significam que o ativo é ruim,
-        # apenas que não há confiança suficiente para sugerir compra.
+        # apenas que não há confiança suficiente para uma classificação positiva.
         # Preserva valores calculados para transparência.
         # Não sobrescreve VENDA nem ALTO RISCO — EVITAR.
-        if rec in ("COMPRA", "COMPRA FORTE") and dados.get('erro_scraper'):
+        if rec in ("COMPRA", "COMPRA FORTE") and dados.get('fundamentos_incompletos'):
             rec = "DADOS INSUFICIENTES — AGUARDAR"
             riscos.append("Dados fundamentais insuficientes para análise precisa")
             confianca = min(confianca, 50)
             logger.warning(
                 f"[{ticker}] Downgrade → DADOS INSUFICIENTES: "
-                f"erro_scraper=True, rec original seria COMPRA/FORTE"
+                f"fundamentos_incompletos=True, rec original seria COMPRA/FORTE"
             )
 
         detalhes = ", ".join([f"{k}: R${v:.2f}" for k, v in metodos.items()])

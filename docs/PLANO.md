@@ -1,6 +1,6 @@
 # Plano V2 — Sentinela B3
 
-> Roteiro único do projeto. Decisões de arquitetura em `docs/adr/`: 0001 (refactor V1 → V2.1) e 0002 (execução por loop, tempo como entrada, dados oficiais primeiro, limpeza e núcleo financeiro). Execução em `docs/loop/`.
+> Roteiro único do projeto. Decisões de arquitetura em `docs/adr/`: 0001 (refactor V1 → V2.1) e 0002 (execução por loop, tempo como entrada, dados oficiais primeiro, limpeza e núcleo financeiro) e 0003 (validade de dados, de método e auditoria externa, aceito em 13/10/2026). Execução em `docs/loop/`.
 >
 > Itens marcados **[D5]**, **[D6]** etc. dependem das propostas do ADR-0002, aceitas ou recusadas no checkpoint da Fase 0.
 >
@@ -120,7 +120,7 @@ Um SQLite único, alterado só por migração numerada (`sentinela/data/store/mi
 | `carteira` | posições do usuário — dado local, nunca exportado para arquivo versionado | ticker |
 | `watchlist`, `digests`, `fatos_relevantes` | operação e notícias | — |
 
-**Regra de leitura ponto-no-tempo:** numa data D, vale a última versão entregue até D. Onde versões antigas não estiverem disponíveis, usa-se a versão atual e a limitação fica registrada na proveniência.
+**Regra de leitura ponto-no-tempo:** numa data D, vale a última versão entregue até D. Dois modos de histórico (ADR-0003, D17): o **estrito** usa só informação comprovadamente disponível até D e, sem ela, se abstém; a **reconstrução exploratória** pode usar aproximações documentadas (por exemplo, a versão atual de uma demonstração reapresentada), com resultados separados e rótulo próprio. A regra anterior, que permitia usar a versão atual com a limitação registrada, foi substituída pela D17. A proveniência de cada dado segue a D16 desde a Fase 2A.
 
 ## 6. Fases
 
@@ -196,22 +196,49 @@ Correções com teste xfail primeiro. Dados de referência antes de tudo.
 
 | Item | Entrega |
 |---|---|
-| F2A-1 | Dados de referência: mapa ticker ↔ CNPJ automático para todas as companhias e FIIs listados; classe do ativo (ação, unit, FII, ETF, BDR) por dado oficial, nunca pelo sufixo do ticker; conserto da classe de atualização automática (`CVMTickerMap`, nunca instanciada fora dos testes e que não preenche `ticker`). Os mapas manuais viram fallback |
+| F2A-15 | Ferramenta de diff do golden, para provar o escopo de cada item que muda saída |
+| F2A-17 | Cache por arquivo dos demonstrativos da CVM (refactor) |
+| F2A-18 | Provedor do COTAHIST da B3 [D7] |
+| F2A-16 | Levantamento das fontes oficiais da fase |
+| F2A-1 | Dados de referência: índice oficial ticker ↔ CNPJ ↔ CD_CVM ↔ classe (ação, unit, FII, ETF, BDR) por dado oficial, nunca pelo sufixo do ticker |
 | F2A-2 | Setor, segmento do FII e grupo de controle, lidos dos arquivos da CVM que o projeto já baixa |
-| F2A-3 | Ações da Composição do Capital (ON + PN − tesouraria, escala via `units.py`, mesmo documento do lucro) — E-1 [D7] |
-| F2A-4 | Um único normalizador de DY, na fronteira do provedor; os outros dois saem |
-| F2A-5 | Validação cruzada contra fonte independente — E-2 |
+| F2A-19 | Códigos da CVM e atributos do ativo pela referência oficial, com a tabela de correções |
+| F2A-20 | Classe do ativo pelo índice oficial, não pelo sufixo |
+| F2A-3 | Ações da Composição do Capital (ON + PN − tesouraria, escala inferida pelo LPA divulgado, mesmo documento do lucro) — E-1 [D7] |
 | F2A-6 | Fim da mutação de `dados` antes das checagens de qualidade |
+| F2A-5 | Validação cruzada contra fonte independente — E-2 |
+| F2A-32 | Proveniência temporal dos dados coletados e contratos de provedor (ADR-0003) |
+| F2A-33 | Contas da CVM por código e descrição (ADR-0003) |
+| F2A-38 | Leituras existentes da CVM pela tabela de contas (ADR-0003) |
+| F2A-34 | Ficha metodológica dos números por ação (ADR-0003) |
+| F2A-35 | Universo inicial (ADR-0003) |
+| F2A-36 | LPA divulgado por classe nos métodos (ADR-0003, D19) |
+| F2A-37 | Reservas dos controladores só com evidência de ausência de minoritários (ADR-0003, D20) |
 | F2A-7 | Série de cinco anos por empresa a partir da DFP, e TTM a partir do ITR (quatro trimestres; o quarto = DFP − acumulado de nove meses) |
-| F2A-8 | Dívida financeira líquida (empréstimos + debêntures − caixa e aplicações), que passa a ser a medida de alavancagem no lugar do endividamento contábil total |
-| F2A-9 | Dados de bancos: patrimônio, lucro e ROE da DFP; Basileia e inadimplência de fonte oficial do Banco Central, confirmada no dossiê |
-| F2A-10 | Gate de liquidez com volume e negócios do COTAHIST; abaixo do limiar, abstenção [D7] |
-| F2A-11 | `CVMFIIProvider` conectado; P/VP ausente vira abstenção em vez de 1,0 |
+| F2A-8 | Dívida financeira líquida (empréstimos, debêntures e arrendamento − caixa e aplicações), que passa a ser a medida de alavancagem no lugar do endividamento contábil total |
+| F2A-22 | Saída do Fundamentus da cascata; checagem genérica de campo obrigatório faltando |
+| F2A-9 | Dados de bancos: patrimônio, lucro e ROE pelo modelo de instituição financeira; Basileia do Banco Central (IF.data) e a limitação da inadimplência declarada |
+| F2A-4 | Um único normalizador de DY, na fronteira do provedor; os outros dois saem |
+| F2A-29 | ETF, BDR e `UNKNOWN` fora dos métodos de ação |
+| F2A-30 | Guarda do ROE na fronteira de cada provedor |
+| F2A-21 | DY não confiável como motivo da abstenção do Bazin |
+| F2A-11 | VPA e P/VP do FII pela CVM na cascata; P/VP ausente vira abstenção em vez de 1,0 |
+| F2A-23 | Fim das estimativas manuais de FII |
+| F2A-24 | Nenhuma saída dos motores com NaN ou infinito |
+| F2A-25 | Gordon se abstém com LPA não positivo |
 | F2A-12 | Validação de ticker (allowlist) antes de URL e de prompt |
-| F2A-13 | Limpeza: tabelas de vacância manuais (`FII_MANUAL_FALLBACK`, `VACANCIA_CONHECIDA`), fallbacks que perderam função, heurística de classe pelo sufixo e — se o mapa automático cobrir o universo — os mapas manuais |
+| F2A-26 | Métricas de liquidez do COTAHIST (só medida; o gate é o F2A-10, na 2B) [D7] |
+| F2A-31 | Dados da CVM só pela referência oficial; os mapas manuais deixam de ser lidos |
+| F2A-27 | Instruções dos agentes sincronizadas com a camada de dados |
+| F2A-28 | Proposta da fila da 2B |
+| F2A-13 | Limpeza: vacância manual, caminho de provedor do motor de FII, atualizador e mapas manuais, sobras do scraper |
 | F2A-14 | Resumo e arquivamento |
 
-**Gate:** cada correção com XPASS; seção A inalterada; seção B só muda onde está marcada; mutation; cobertura CVM de 100% dos listados mapeáveis.
+Ordem da fila, não a numérica. O F2A-10 (gate de liquidez) e o F2A-39 (correção do BTG no índice) foram para a 2B.
+
+O ADR-0003 acrescenta, antes do F2A-7: F2A-32 (proveniência temporal e contratos de provedor), F2A-33 (tabela de contas por código e descrição), F2A-38 (leituras existentes pela tabela), F2A-34 (ficha dos números por ação), F2A-35 (universo inicial), F2A-36 (LPA divulgado por espécie) e F2A-37 (reservas de controladores). Detalhes na fila.
+
+**Gate:** cada correção com xfail estrito → marca retirada → PASS (ADR-0003, D27); seção A inalterada; seção B só muda onde está marcada; mutation; cobertura CVM de 100% dos listados mapeáveis, com o denominador da D32 do ADR-0003 (pares CNPJ e código ativos no FCA mais recente e FIIs listados no Informe Mensal; toda exclusão com motivo); auditoria externa no checkpoint (D30).
 **Decisões:** limiares de divergência de ações e de liquidez; fonte dos dados bancários.
 **Jules:** os tickets dele em `cvm_provider.py` precisam estar integrados antes do F2A-1.
 
@@ -226,6 +253,8 @@ Decisão do Marcos item a item, com o dossiê do F0-6. Cada método alterado mud
 | F2B-3 | Lente de bancos: P/VP justificado pelo ROE e pelo custo de capital do F2B-1; Basileia e inadimplência como qualidade. Holdings de banco pelo desconto sobre as participações (opcional) |
 | F2B-4 | `applies_to`: métodos de empresa não financeira se abstêm em bancos e seguradoras; ETFs e BDRs ficam fora do escopo dos métodos, com o motivo exibido |
 | F2B-5 | Limpeza: constantes e caminhos que usavam a Selic como taxa de desconto |
+| F2A-10 | Gate de liquidez com volume e negócios do COTAHIST (medidos no F2A-26); abaixo do limiar, abstenção [D7] [LIQUIDEZ]. Veio da 2A |
+| F2A-39 | Unit do BTG (BPAC11) pela tabela de correções, com fonte oficial da B3 que traga ISIN e CNPJ juntos. Veio da 2A (decisão de 13/10/2026) |
 | F2B-6 | Resumo e arquivamento |
 
 **Gate:** seção A inalterada; seção B virou exatamente onde marcada; mutation ≥ 80%; os resultados antes e depois da taxa real estão comparados no diário.
@@ -409,9 +438,9 @@ IDs conforme a auditoria normalizada no F0-0 (`docs/auditoria/2026-09-red-team.m
 | Alavancagem pelo endividamento contábil total | F2A-8 |
 | Bancos sem regras próprias | F2A-9, F2B-3, F2B-4 |
 | Markowitz com um ano de dados, divisão fixa 40/60 e "Alocação Sugerida" | F0-9, F2C-9, F4-7 |
-| Cobertura por mapas manuais; atualizador que não preenche ticker | F2A-1, F2A-13 |
+| Cobertura por mapas manuais; atualizador que não preenche ticker | F2A-1, F2A-31, F2A-13 |
 | Segmento do FII e controle acionário baixados e não lidos | F2A-2 |
-| BDRs tratados como ações e ETFs como FIIs | F2A-1, F2B-4 |
+| BDRs tratados como ações e ETFs como FIIs | F2A-1, F2A-20, F2A-29, F2B-4 |
 | Histórico de preço de um ano; séries macro só com o último valor | F3-4, F3-1 |
 | Três normalizadores de DY | F2A-4 |
 | E-6 — Selic congelada no import | F3-1 |
@@ -428,6 +457,12 @@ IDs conforme a auditoria normalizada no F0-0 (`docs/auditoria/2026-09-red-team.m
 | Dois bancos SQLite | F3-2 e F3-9 |
 | Mapa de pares fixo; MGLU3 duplicado | F2C-7 |
 | `BRAPI_TOKEN` fora do `.env.example` | Jules, grupo C |
+| E-15 — ROE do yfinance sem guarda (cenário de falha do achado) | F2A-30 |
+| ROE e P/L ausentes ou não finitos no score (ausente vira 0 e penaliza) | F2C-3 |
+| F-7 — JCP no DY | F2C-1 |
+| DY do Informe Mensal de FII | F2B-2 |
+| Ponto de extensão público no lugar dos singletons dos motores | F3-6 |
+| Texto de dívida em pt-BR no motor de ações, sem fonte depois da saída do Fundamentus | F2B-5 |
 
 ## 11. Resíduos e limpeza (D14)
 
@@ -532,7 +567,9 @@ O núcleo financeiro custou cerca de um mês: a linha de corte passou de feverei
 | Benchmark do FII (Selic líquida, NTN-B ou os dois) | antes da Fase 2B | dossiê F0-6 |
 | Janela de cada método (último ano, TTM ou cinco anos) | antes da Fase 2C | dossiê F0-6 |
 | Histerese, lentes e valuation reverso | antes da Fase 2C | dossiê F0-6 |
-| Universo, profundidade histórica e reapresentações | antes da Fase 3 | teste de volume |
+| Faixa da inferência de escala das ações [0,1; 10] | antes do F2A-36 | ficha do F2A-34 |
+| Lista fechada do universo inicial | depois do F2A-35 | ADR-0003, D32 |
+| Universo, profundidade histórica, reapresentações e intervalo de datas do histórico estrito | antes da Fase 3 | teste de volume; ADR-0003, D17 e D32 |
 | Limites de concentração da camada de risco | Fase 4 | — |
 | Canal do digest | Fase 4 | — |
 | Janelas e referência do estudo de evento | antes da Fase 5 | — |

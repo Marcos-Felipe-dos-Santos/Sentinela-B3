@@ -1,0 +1,201 @@
+"""Tabela de correções de fonte (F2A-19, [CORREÇÕES]): tabelas sintéticas em `tmp_path`, sem rede."""
+
+import pytest
+
+from sentinela.data.referencia.cobertura import cobertura
+from sentinela.data.referencia.correcoes import (
+    CAMINHO_PADRAO,
+    Correcao,
+    CorrecaoInvalida,
+    ler_correcoes,
+    validar_correcoes,
+)
+from sentinela.data.referencia.montagem import MOTIVO_CORRECAO, montar_indice
+from tests.test_referencia import (
+    CNPJ_A,
+    FONTES,
+    _cadastro,
+    _cot,
+    _fca,
+    _informe,
+    _sem_fii,
+)
+
+CABECALHO = "ticker;cnpj;codigo_na_fonte;motivo;arquivo;coluna;data"
+LINHA_CSN = (
+    f"TSTC3;{CNPJ_A};4030;código fora do formato;fca_cia_aberta_valor_mobiliario_2026.csv;"
+    "Codigo_Negociacao;2026-01-01"
+)
+
+
+def _tabela(tmp_path, *linhas, cabecalho=CABECALHO):
+    caminho = tmp_path / "correcoes.csv"
+    caminho.write_text("\n".join([cabecalho, *linhas]) + "\n", encoding="utf-8")
+    return caminho
+
+
+def _correcao(**campos):
+    base = dict(
+        ticker="TSTC3", cnpj=CNPJ_A, codigo_na_fonte="4030", motivo="código fora do formato",
+        arquivo="fca_cia_aberta_valor_mobiliario_2026.csv", coluna="Codigo_Negociacao",
+        data="2026-01-01",
+    )  # fmt: skip
+    return Correcao(**{**base, **campos})
+
+
+def _montar(fca=None, informe=None, cotacoes=(), correcoes=()):
+    return montar_indice(
+        [(2026, fca if fca is not None else _fca({"Codigo_Negociacao": "4030"}))],
+        _cadastro(),
+        informe if informe is not None else _sem_fii(),
+        list(cotacoes),
+        FONTES,
+        "2026-10-08",
+        correcoes,
+    )
+
+
+# ── aceite ───────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("campo", ["arquivo", "coluna", "data"])
+def test_correcao_sem_evidencia_e_rejeitada(tmp_path, campo):
+    valores = dict(zip(CABECALHO.split(";"), LINHA_CSN.split(";"), strict=True))
+    valores[campo] = "  "
+    caminho = _tabela(tmp_path, ";".join(valores.values()))
+    with pytest.raises(CorrecaoInvalida, match=campo):
+        ler_correcoes(caminho)
+    with pytest.raises(CorrecaoInvalida, match=campo):
+        _montar(correcoes=[_correcao(**{campo: ""})])
+
+
+def test_correcao_aparece_na_proveniencia(tmp_path):
+    correcoes = ler_correcoes(_tabela(tmp_path, LINHA_CSN))
+    indice = _montar(correcoes=correcoes)
+    registro = indice.registros["TSTC3"]
+    assert registro.regra == "correcao"
+    assert registro.correcao == {
+        "ticker": "TSTC3",
+        "cnpj": CNPJ_A,
+        "codigo_na_fonte": "4030",
+        "motivo": "código fora do formato",
+        "arquivo": "fca_cia_aberta_valor_mobiliario_2026.csv",
+        "coluna": "Codigo_Negociacao",
+        "data": "2026-01-01",
+    }
+    assert registro.fonte == FONTES["fca"]["2026"]
+    assert (registro.classe, registro.especie, registro.cd_cvm) == ("STOCK", "ON", 100)
+    assert indice.excecoes == []
+
+
+# ── demais regras ────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("campo", ["ticker", "cnpj", "codigo_na_fonte", "motivo"])
+def test_correcao_sem_campo_obrigatorio_e_rejeitada(campo):
+    with pytest.raises(CorrecaoInvalida, match=campo):
+        validar_correcoes([_correcao(**{campo: None})])
+
+
+def test_correcao_repetida_e_rejeitada():
+    with pytest.raises(CorrecaoInvalida, match="repetida"):
+        validar_correcoes([_correcao(), _correcao(ticker="TSTD3")])
+
+
+def test_tabela_sem_coluna_de_evidencia_e_rejeitada(tmp_path):
+    caminho = _tabela(
+        tmp_path,
+        f"TSTC3;{CNPJ_A};4030;motivo",
+        cabecalho="ticker;cnpj;codigo_na_fonte;motivo",
+    )
+    with pytest.raises(CorrecaoInvalida, match="colunas"):
+        ler_correcoes(caminho)
+
+
+def test_linha_curta_sem_as_colunas_de_evidencia_e_rejeitada(tmp_path):
+    caminho = _tabela(tmp_path, f"TSTC3;{CNPJ_A};4030;motivo")
+    with pytest.raises(CorrecaoInvalida, match="arquivo, coluna, data"):
+        ler_correcoes(caminho)
+
+
+def test_tabela_le_os_campos_sem_espacos(tmp_path):
+    linha = ";".join(f" {v} " for v in LINHA_CSN.split(";"))
+    assert ler_correcoes(_tabela(tmp_path, linha)) == [_correcao()]
+
+
+def test_tabela_vazia_nao_corrige_nada(tmp_path):
+    assert ler_correcoes(_tabela(tmp_path)) == []
+    indice = _montar()
+    assert "TSTC3" not in indice.registros
+    assert [e.codigo for e in indice.excecoes] == ["4030"]
+
+
+def test_correcao_so_vale_para_o_cnpj_e_o_codigo_da_evidencia():
+    fca = _fca(
+        {"Codigo_Negociacao": "4030", "CNPJ_Companhia": "99.999.999/0001-99"},
+        {"Codigo_Negociacao": "5050"},
+    )
+    indice = _montar(fca=fca, correcoes=[_correcao()])
+    assert "TSTC3" not in indice.registros
+    assert sorted(e.codigo for e in indice.excecoes) == ["4030", "5050"]
+
+
+def test_fonte_ja_corrigida_dispensa_a_correcao():
+    indice = _montar(fca=_fca({"Codigo_Negociacao": "TSTC3"}), correcoes=[_correcao()])
+    assert indice.registros["TSTC3"].regra == "fca:codigo_ativo"
+    assert indice.registros["TSTC3"].correcao is None
+
+
+def test_correcao_resolve_isin_repetido_de_fii():
+    isin = "BRTSTFCTF001"
+    informe = _informe(
+        {"CNPJ_Fundo_Classe": "33.333.333/0001-33", "Nome_Fundo_Classe": "ANTIGO"},
+        {"CNPJ_Fundo_Classe": "44.444.444/0001-44", "Nome_Fundo_Classe": "NOVO"},
+    )
+    correcao = _correcao(
+        ticker="TSTF11", cnpj="33.333.333/0001-33", codigo_na_fonte=isin,
+        arquivo="inf_mensal_fii_geral_2026.csv", coluna="Codigo_ISIN",
+    )  # fmt: skip
+    indice = _montar(
+        fca=_fca().iloc[0:0],
+        informe=informe,
+        cotacoes=[_cot("TSTF11", codbdi="12", especi="CI", isin=isin)],
+        correcoes=[correcao],
+    )
+    registro = indice.registros["TSTF11"]
+    assert (registro.cnpj, registro.regra, registro.classe) == (
+        "33.333.333/0001-33",
+        "correcao",
+        "FII",
+    )
+    assert [(e.codigo, e.motivo, e.cnpj) for e in indice.excecoes] == [
+        ("TSTF11", MOTIVO_CORRECAO, "44.444.444/0001-44")
+    ]
+
+
+def test_sem_correcao_o_isin_repetido_tira_os_dois():
+    informe = _informe(
+        {"CNPJ_Fundo_Classe": "33.333.333/0001-33"},
+        {"CNPJ_Fundo_Classe": "44.444.444/0001-44"},
+    )
+    indice = _montar(fca=_fca().iloc[0:0], informe=informe)
+    assert indice.registros == {}
+    assert len(indice.excecoes) == 2
+
+
+def test_cobertura_conta_a_correcao_de_companhia_como_mapeada():
+    fca = _fca({"Codigo_Negociacao": "4030"})
+    indice = _montar(fca=fca, correcoes=[_correcao()])
+    c = cobertura(indice, [(2026, fca)], _sem_fii())
+    assert c["companhias"] == {"codigos_ativos_no_fca": 1, "mapeados": 1}
+    assert c["correcoes"] == {"STOCK": ["TSTC3"]}
+
+
+def test_tabela_versionada_e_valida_e_traz_evidencia():
+    correcoes = ler_correcoes(CAMINHO_PADRAO)
+    por_ticker = {c.ticker: c for c in correcoes}
+    assert por_ticker["CSNA3"].cnpj == "33.042.730/0001-04"
+    assert por_ticker["CSNA3"].codigo_na_fonte == "4030"
+    assert por_ticker["CSNA3"].coluna == "Codigo_Negociacao"
+    assert por_ticker["TRXF11"].cnpj == "28.548.288/0001-52"
+    assert por_ticker["TRXF11"].codigo_na_fonte == "BRTRXFCTF003"

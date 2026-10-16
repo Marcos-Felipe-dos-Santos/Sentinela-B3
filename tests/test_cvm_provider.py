@@ -106,15 +106,15 @@ def test_calcular_indicadores_mock(tmp_path, monkeypatch):
          "VL_CONTA": 700_000.0, "CNPJ_CIA": "33.000.167/0001-01", "DT_REFER": "2023-12-31"},
         {"CD_CVM": 9512, "CD_CONTA": "2.01", "DS_CONTA": "Passivo Circulante",
          "VL_CONTA": 200_000.0, "CNPJ_CIA": "33.000.167/0001-01", "DT_REFER": "2023-12-31"},
-        {"CD_CVM": 9512, "CD_CONTA": "2.03", "DS_CONTA": "Patrimônio Líquido",
+        {"CD_CVM": 9512, "CD_CONTA": "2.03", "DS_CONTA": "Patrimônio Líquido Consolidado",
          "VL_CONTA": pl,        "CNPJ_CIA": "33.000.167/0001-01", "DT_REFER": "2023-12-31"},
     ])
     dre_df = pd.DataFrame([
-        {"CD_CVM": 9512, "CD_CONTA": "3.01", "DS_CONTA": "Receita",
+        {"CD_CVM": 9512, "CD_CONTA": "3.01", "DS_CONTA": "Receita de Venda de Bens e/ou Serviços",
          "VL_CONTA": 500_000.0, "CNPJ_CIA": "33.000.167/0001-01", "DT_REFER": "2023-12-31"},
-        {"CD_CVM": 9512, "CD_CONTA": "3.05", "DS_CONTA": "EBIT",
+        {"CD_CVM": 9512, "CD_CONTA": "3.05", "DS_CONTA": "Resultado Antes do Resultado Financeiro e dos Tributos",
          "VL_CONTA": 90_000.0,  "CNPJ_CIA": "33.000.167/0001-01", "DT_REFER": "2023-12-31"},
-        {"CD_CVM": 9512, "CD_CONTA": "3.11", "DS_CONTA": "Lucro Líquido",
+        {"CD_CVM": 9512, "CD_CONTA": "3.11", "DS_CONTA": "Lucro/Prejuízo Consolidado do Período",
          "VL_CONTA": lucro,     "CNPJ_CIA": "33.000.167/0001-01", "DT_REFER": "2023-12-31"},
     ])
 
@@ -436,9 +436,9 @@ def test_conta_republicada_nao_mistura_versao(tmp_path, monkeypatch):
     provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
 
     row_v1_ativo = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "1", "CD_CONTA": "1", "VL_CONTA": "100000"}
-    row_v1_passivo = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "1", "CD_CONTA": "2", "VL_CONTA": "200000"}
+    row_v1_passivo = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "1", "CD_CONTA": "2", "DS_CONTA": "Passivo Total", "VL_CONTA": "200000"}
     # V2 NÃO TEM ATIVO, MAS TEM PASSIVO
-    row_v2_passivo = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "2", "CD_CONTA": "2", "VL_CONTA": "400000"}
+    row_v2_passivo = {**_ROW_BASE, "DT_REFER": "2023-12-31", "VERSAO": "2", "CD_CONTA": "2", "DS_CONTA": "Passivo Total", "VL_CONTA": "400000"}
 
     def mock_parse(path, tipo, include_cd_cvm=False, include_versao=False):
         if tipo == "BPA_con":

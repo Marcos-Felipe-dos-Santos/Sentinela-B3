@@ -1,4 +1,7 @@
-"""Bazin 1.0.0: comportamento da V1, extraído na Fase 1, sem mudança de número.
+"""Bazin 1.0.1: comportamento da V1, extraído na Fase 1, sem mudança de número.
+
+1.0.1 (F2A-21): "DY não confiável" é testado antes do DY mínimo. Com DY não confiável, o motor
+zera o DY, e o motivo saía "DY abaixo do mínimo"; nenhum número muda.
 
 Valor justo = (DY × preço) ÷ taxa mínima, com taxa mínima = máx(Selic, piso). Só no
 perfil renda, com DY confiável e a partir de um DY mínimo. O DY acima do limite de
@@ -36,7 +39,7 @@ class BazinParams:
 
 class Bazin(ValuationMethod):
     nome = "Bazin"
-    version = "1.0.0"
+    version = "1.0.1"
     regime = Regime.NOMINAL
     requires = ("preco", "dy", "selic", "perfil")
     assumptions = (
@@ -53,11 +56,11 @@ class Bazin(ValuationMethod):
     ) -> MethodResult | Abstention:
         if inputs.perfil is Perfil.CRESCIMENTO:
             return Abstention(self.nome, self.version, MOTIVO_PERFIL_CRESCIMENTO)
+        if not inputs.dy_confiavel:
+            return Abstention(self.nome, self.version, MOTIVO_DY_NAO_CONFIAVEL)
         dy = inputs.dy.valor
         if not dy >= params.dy_min:
             return Abstention(self.nome, self.version, MOTIVO_DY_ABAIXO_DO_MINIMO)
-        if not inputs.dy_confiavel:
-            return Abstention(self.nome, self.version, MOTIVO_DY_NAO_CONFIAVEL)
         alertas = (ALERTA_DY_ARMADILHA,) if dy > params.dy_armadilha else ()
         taxa_minima = max(inputs.selic.valor, params.taxa_min)
         valor = (dy * inputs.preco.valor) / taxa_minima

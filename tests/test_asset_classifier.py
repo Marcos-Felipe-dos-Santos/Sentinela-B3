@@ -25,10 +25,12 @@ def test_known_unit_is_not_classified_as_fii():
     assert classifier.is_fii("SANB11") is False
 
 
-def test_mutualfund_quote_type_classifies_as_fii():
+def test_mutualfund_quote_type_no_longer_classifies_as_fii():
+    # F2A-20: o quoteType do yfinance não é fonte oficial (devolve EQUITY para FII).
     classifier = AssetClassifier(fiis_conhecidos=set(), units_conhecidas=set())
 
-    assert classifier.classify("ABCD3", {"quote_type": "MUTUALFUND"}) == AssetType.FII
+    assert classifier.classify("ABCD3", {"quote_type": "MUTUALFUND"}) == AssetType.STOCK
+    assert classifier.is_fii("ABCD3", {"quote_type": "MUTUALFUND"}) is False
 
 
 def test_mutualfund_known_unit_still_classifies_as_unit():
@@ -40,10 +42,12 @@ def test_mutualfund_known_unit_still_classifies_as_unit():
     assert classifier.is_fii("SANB11", {"quote_type": "MUTUALFUND"}) is False
 
 
-def test_suffix_11_classifies_as_fii_when_not_unit():
+def test_suffix_11_without_official_data_is_unknown():
+    # F2A-20: o sufixo 11 não define a classe (pode ser FII, unit, ETF ou BDR).
     classifier = AssetClassifier(fiis_conhecidos=set(), units_conhecidas=set())
 
-    assert classifier.classify("ABCD11") == AssetType.FII
+    assert classifier.classify("ABCD11") == AssetType.UNKNOWN
+    assert classifier.is_fii("ABCD11") is False
 
 
 def test_suffix_11_known_unit_classifies_as_unit():

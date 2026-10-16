@@ -8,22 +8,32 @@
 Plataforma educacional de análise de ações e FIIs da B3.
 Python 3.13 + Streamlit (interface FastAPI + HTMX prevista para a Fase 7), local-first, SQLite.
 **Não é consultoria financeira.**
-Suíte: ~655 testes, 44 módulos em `tests/`, ~5 s.
+Suíte: ~1.360 testes, 76 módulos em `tests/`, ~8 s.
 
 ---
 
 ## Fase atual
 
-**Fase 1 — Fundação.** O mantenedor trabalha num branch local por fase e só
+**Fase 2A — Dados corretos.** O mantenedor trabalha num branch local por fase e só
 publica no fim de cada fase. Baseie seu branch sempre na `main` mais recente.
 
 Arquivos travados enquanto esta fase estiver em andamento. Não abra PR que toque
 em nenhum deles:
 
 ```
-valuation_engine.py  fii_engine.py  sentinela/domain/  sentinela/methods/  sentinela/reports/
-cvm_ticker_map.py  tests/test_cvm_ticker_map.py  tests/fixtures/
+market_engine.py  cvm_provider.py  cvm_fii_provider.py  cvm_ticker_map.py  cvm_fii_map.py
+fii_engine.py  valuation_engine.py  brapi_provider.py  data_quality.py  config.py
+fundamentus_scraper.py  ai_core.py  requirements.txt
+sentinela/data/  sentinela/domain/  sentinela/methods/  sentinela/services/  sentinela/reports/
+scripts/  tests/conftest.py  tests/fixtures/  tests/golden_motores.py
+tests/test_market_engine*.py  tests/test_cvm_*.py  tests/test_fii_engine*.py
+tests/test_valuation_engine*.py  tests/test_brapi_provider.py  tests/test_data_quality*.py
+tests/test_asset_classifier*.py  tests/test_fundamentus_scraper.py  tests/test_ai_core.py
+tests/test_methods_*.py  tests/test_registry.py  tests/test_rastreabilidade.py
 ```
+
+Tickets com janela nesta fase: B1, B3, C-A, C-B e C-C. O B2 está cancelado (o scraper
+sai nesta fase). O C-E perdeu a janela se não foi mergeado na Fase 1.
 
 Esta seção é atualizada pelo mantenedor a cada fase.
 
@@ -39,7 +49,6 @@ inclusive os bugs. Isso cimenta o erro com aparência de garantia.
 
 **Tem spec externa — pode trabalhar:**
 - `technical_engine.py` — RSI, MACD, Bollinger, ATR têm definição publicada
-- `fundamentus_scraper._limpar_valor` — formato numérico brasileiro
 - `database.adicionar_posicao` — média ponderada é aritmética
 - `cvm_provider.py` — o layout dos arquivos da CVM é documentado pela CVM
 - Invariantes de unidade: DY em `[0, 0.30]`, score em `[0, 100]`, fair value e
@@ -101,6 +110,19 @@ Editar outro arquivo para obter o mesmo efeito conta como violação.
 
 ---
 
+## Bugs e regressão
+
+Decisão do mantenedor de 15/10/2026. Registro e detalhe em `tests/regressao/README.md`.
+
+1. Bug confirmado (auditoria, revisão ou uso) vira teste em `tests/regressao/` no mesmo dia,
+   antes de qualquer correção
+2. Bug ainda não corrigido fica xfail estrito com ID e item que corrige; o `xfail_strict` do
+   `pytest.ini` faz o CI quebrar se ele passar sem a marca ser retirada
+3. A correção retira a marca, o teste fica para sempre e o registro muda para "corrigido"
+4. Nenhum item `fix:` fecha sem o teste de regressão do bug que corrige
+
+---
+
 ## Comandos
 
 ```bash
@@ -136,15 +158,14 @@ verificá-lo. Reporte a divergência; não a "conserte".
 ## Contexto que evita retrabalho
 
 - Os IDs de achado (E-*, F-*) citados nos tickets vêm de `docs/auditoria/2026-09-red-team.md`
-- Cascata de dados: `yfinance → brapi → CVM → Fundamentus`. Preço do
-  yfinance (brapi só se o yfinance falhar), fechamento D-1. O README descreve outra ordem e está errado
+- Cascata de dados: `índice oficial → yfinance → brapi → CVM`, depois IF.data (bancos), Informe
+  Mensal (FII), liquidez (COTAHIST) e cache. O Fundamentus saiu. Preço do yfinance (brapi só se
+  o yfinance falhar), fechamento D-1. O README descreve outra ordem e está errado
 - Duas camadas de orquestração: `app.py` (roda) e `sentinela/services/`
   (implementada, não conectada). Não adicione a mesma feature nas duas
 - Importar `config` dispara uma chamada HTTP ao Banco Central. A suíte só fica sem
   rede com a fixture de Selic do `tests/conftest.py` (criada no item F0-2)
-- `cloudscraper` é importado por `fundamentus_scraper.py` e não está no
-  `requirements.txt` — decisão pendente do mantenedor, não resolva sozinho
-- `BRAPI_TOKEN` é lido em `brapi_provider.py:72` e, segundo o levantamento, falta no `.env.example` (o loop não lê `.env*`; não verificado)
+- `BRAPI_TOKEN` é lido em `brapi_provider.py:64` e, segundo o levantamento, falta no `.env.example` (o loop não lê `.env*`; não verificado)
 
 ---
 

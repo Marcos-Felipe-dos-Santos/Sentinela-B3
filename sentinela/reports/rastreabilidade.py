@@ -14,7 +14,6 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import math
-import re
 import sys
 from contextlib import contextmanager
 from datetime import date
@@ -25,12 +24,12 @@ from jinja2 import Environment
 
 import fii_engine as modulo_fii
 import valuation_engine as modulo_valuation
+from sentinela.domain import ticker as ticker_b3
 from sentinela.domain import units
 from sentinela.methods.base import Abstention, MethodResult
 
 RAIZ = Path(__file__).resolve().parents[2]
 PASTA_SAIDA = RAIZ / "outputs"
-TICKER = re.compile(r"[A-Z0-9]{4,7}")
 PLANO_URL = (
     "https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3/blob/main/docs/PLANO.md"
 )
@@ -50,9 +49,12 @@ CAMPOS_FII = (
     ("tipo", "texto"),
 )
 PROVENIENCIA_DERIVADA = {
-    "lpa": "derivado no motor: preço ÷ P/L (E-1: sem reconciliação de escopo)",
-    "vpa": "derivado no motor: preço ÷ P/VP (E-1: sem reconciliação de escopo)",
-    "dy": "normalizado no motor (_normalizar_dy: acima de 1 é percentual, acima de 0,25 é inválido e zerado)",
+    "lpa": "derivado no motor: preço ÷ P/L",
+    "vpa": "derivado no motor: preço ÷ P/VP",
+    "dy": (
+        "invariante no motor (_normalizar_dy: fora de 0 a 25% é inválido e zerado); a conversão "
+        "de percentual é da fronteira do provedor (F2A-4)"
+    ),
     "perfil": "derivado no motor: ROE e DY",
     "selic": "sem proveniência registrada (E-6): BCB SGS 432 ou valor de contingência",
 }
@@ -62,9 +64,15 @@ LIMITES = (
         "com cache de 24 horas ou de um valor de contingência fixo."
     ),
     (
-        "E-1: LPA e VPA são derivados do preço e dos múltiplos, sem reconciliar o escopo das ações "
-        "(lucro consolidado ÷ quantidade de ações de outra fonte); o selo de qualidade dos dados "
-        "não cobre isso."
+        "E-1: quando o P/L vem da CVM, o LPA é o LPA básico divulgado na DRE para a classe do "
+        "ticker (média ponderada de ações do exercício; na unit, o LPA de cada classe vezes a "
+        "quantidade dela na unit, somados). Divulgado incoerente faz o LPA se abster; sem linha "
+        "divulgada da classe, entra marcado o recalculado: lucro dos controladores ÷ ações "
+        "(ON + PN − tesouraria) da Composição do Capital do mesmo documento, ações do fim do "
+        "período; com escala indeterminada, ou numa preferencial de companhia com mais de uma "
+        "classe preferencial, o LPA se abstém. Quando o P/VP vem da CVM, o VPA é o PL dos controladores ÷ essas mesmas ações, "
+        "com a escala inferida pelo LPA divulgado. Com P/L e P/VP de outra fonte, LPA e VPA "
+        "herdam o escopo dela."
     ),
     (
         "A proveniência registrada pela cascata cobre cinco campos (preço, DY, P/L, P/VP e ROE); "
@@ -226,6 +234,84 @@ def _proveniencia(campo: str, dados: dict[str, Any]) -> str:
     return f"herdada de fonte_fundamentos: {dados.get('fonte_fundamentos') or 'desconhecida'}"
 
 
+def _texto_acoes(acoes: dict[str, Any]) -> str:
+    documento = acoes.get("documento") or {}
+    return (
+        f"{_numero(acoes.get('acoes'), 0)} ações da Composição do Capital "
+        f"(DFP de {documento.get('dt_refer')}, versão {documento.get('versao')}, "
+        f"escala {acoes.get('escala')}; {acoes.get('nota')})"
+    )
+
+
+def _texto_lpa_da_classe(origem: dict[str, Any], acoes: dict[str, Any] | None) -> str:
+    """Origem do LPA de uma classe (F2A-36, D19): o divulgado ou o recalculado, com as notas."""
+    if origem.get("origem") == "divulgado":
+        texto = (
+            f"LPA básico divulgado na DRE da classe {origem.get('classe')} "
+            "(média ponderada de ações do exercício)"
+        )
+    else:
+        denominador = _texto_acoes(acoes) if acoes else "ações da Composição do Capital"
+        texto = (
+            f"LPA recalculado da classe {origem.get('classe')}: lucro dos controladores ÷ "
+            f"{denominador}"
+        )
+    notas = origem.get("notas") or []
+    return f"{texto} [{'; '.join(notas)}]" if notas else texto
+
+
+def _texto_lpa_cvm(lpa_cvm: dict[str, Any], acoes: dict[str, Any] | None) -> str:
+    """LPA da CVM nos métodos (F2A-36): da classe do ticker ou, na unit, a soma das classes."""
+    if lpa_cvm.get("origem") != "unit":
+        return _texto_lpa_da_classe(lpa_cvm, acoes)
+    partes = [
+        f"{_numero(componente.get('quantidade'), 0)} × "
+        f"{_texto_lpa_da_classe(componente, acoes)}"
+        for componente in (lpa_cvm.get("componentes") or {}).values()
+    ]
+    return f"soma das classes da unit: {' + '.join(partes)}"
+
+
+def _proveniencia_derivada(campo: str, dados: dict[str, Any]) -> str:
+    """LPA e VPA: com P/L ou P/VP da CVM, dizem a origem (F2A-3, F2A-36, F2A-44).
+
+    LPA: o divulgado ou o recalculado da classe (`dados['lpa_cvm']`), mesmo sem a Composição
+    do Capital (escala indeterminada). VPA: o PL dos controladores ÷ as ações do documento.
+    """
+    texto = PROVENIENCIA_DERIVADA[campo]
+    multiplo = {"lpa": "pl", "vpa": "pvp"}.get(campo)
+    fonte = ((dados.get("field_provenance") or {}).get(multiplo) or {}).get(
+        "provenance"
+    ) or {}
+    if not multiplo or fonte.get("source") != "CVM":
+        return texto
+    acoes = dados.get("acoes_cvm")
+    if campo == "lpa":
+        lpa_cvm = dados.get("lpa_cvm")
+        return (
+            f"{texto}; P/L da CVM: {_texto_lpa_cvm(lpa_cvm, acoes)}"
+            if lpa_cvm
+            else texto
+        )
+    if not acoes:
+        return texto
+    return f"{texto}; P/VP da CVM: PL dos controladores ÷ {_texto_acoes(acoes)}"
+
+
+def _texto_referencia(referencia: dict[str, Any]) -> str:
+    """Regra do índice oficial (F2A-19); com correção, o código veio da tabela, não da fonte."""
+    texto = f"{referencia.get('regra')} (índice de {referencia.get('gerado_em')})"
+    correcao = referencia.get("correcao")
+    if correcao:
+        texto += (
+            f"; código da tabela de correções, não do arquivo da fonte: "
+            f"{correcao.get('codigo_na_fonte')} → {correcao.get('ticker')} "
+            f"(evidência: {correcao.get('arquivo')}, {correcao.get('coluna')}, "
+            f"{correcao.get('data')})"
+        )
+    return texto
+
+
 def _bloco_metodo(registro) -> dict[str, Any]:
     inst, _, params, resultado = registro
     bloco: dict[str, Any] = {
@@ -262,6 +348,20 @@ def _bloco_nao_calculado(inst, motivo: str) -> dict[str, Any]:
     }
 
 
+def _texto_liquidez(liquidez: dict[str, Any]) -> str:
+    ausentes = liquidez.get("meses_ausentes") or []
+    lacuna = f"; meses ausentes na coleta: {', '.join(ausentes)}" if ausentes else ""
+    if "abstencao" in liquidez:
+        return f"não calculada: {liquidez['abstencao']}{lacuna}"
+    partes = [
+        f"{n} pregões{' (incompleta)' if j['incompleta'] else ''}: volume mediano "
+        f"R$ {_numero(j['volume_mediano'])}/dia, negócios {_numero(j['negocios_mediana'], 1)}/dia, "
+        f"presença {_numero(100 * j['presenca'], 1)}%"
+        for n, j in liquidez["janelas"].items()
+    ]
+    return f"{'; '.join(partes)}; até {liquidez['data_final']} ({liquidez['fonte']}){lacuna}"
+
+
 def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str, Any]:
     """Roda o motor da V1 sobre `dados`, capturando o detalhe de cada método."""
     instancias = _instancias(eh_fii)
@@ -272,7 +372,13 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         raise ValueError("dados insuficientes para a análise")
 
     por_instancia = {id(r[0]): r for r in registros}
-    if analise.get("perfil") == "DISTRESSED":
+    fora_do_escopo = (
+        analise.get("recomendacao") == modulo_valuation.ROTULO_FORA_DO_ESCOPO
+    )
+    if fora_do_escopo:
+        # F2A-29: classe fora do escopo dos métodos de ação; nenhum número no lugar.
+        motivo_ausente = analise["riscos"][0]
+    elif analise.get("perfil") == "DISTRESSED":
         motivo_ausente = (
             "guarda de situação especial (distressed): nenhum método foi chamado"
         )
@@ -305,11 +411,35 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         }
         for campo, unidade in (CAMPOS_FII if eh_fii else CAMPOS_ACAO)
     ]
+    descartes_roe = (dados.get("proveniencia") or {}).get("roe_descartes") or []
+    for i in insumos:
+        if i["campo"] == "roe":
+            i["proveniencia"] += (
+                "; guarda de fronteira (F2A-30): ROE não finito ou acima de 2 é descartado"
+            )
+            for descarte in descartes_roe:
+                i["proveniencia"] += (
+                    f"; descartado de {descarte['fonte']}: {descarte['motivo']}"
+                )
+    alavancagem = dados.get("alavancagem_cvm") or {}
+    for i in insumos:
+        if i["campo"] != "divida_liq_ebitda":
+            continue
+        if alavancagem.get("regime"):
+            i["proveniencia"] += f"; regime da dívida: {alavancagem['regime']}"
+        valor = dados.get("divida_liq_ebitda")
+        if not isinstance(valor, (int, float)) or not math.isfinite(valor):
+            motivo = (alavancagem.get("motivos") or {}).get(
+                "divida_liq_ebitda", "sem dado na cascata"
+            )
+            i["proveniencia"] += (
+                f"; alavancagem não avaliada ({motivo}): o motor não aplica a penalidade"
+            )
     if eh_fii and not dados.get("pvp"):
         for i in insumos:
             if i["campo"] == "pvp":
                 i["proveniencia"] += (
-                    "; ausente: o motor usa P/VP = 1,0 (sem CVMFIIProvider injetado)"
+                    "; ausente: a lente de P/VP se abstém e não pontua (F2A-11)"
                 )
     derivados = {}
     for _, inputs, _, _ in registros:
@@ -328,7 +458,7 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
                 "proveniencia": (
                     f"{analise.get('vacancia_fonte', 'desconhecida')}"
                     if campo == "vacancia"
-                    else PROVENIENCIA_DERIVADA[campo]
+                    else _proveniencia_derivada(campo, dados)
                 ),
             }
         )
@@ -343,7 +473,7 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
             }
         )
 
-    flags = ("dados_parciais", "dados_cache", "dados_manual", "erro_scraper")
+    flags = ("dados_parciais", "dados_cache", "dados_manual", "fundamentos_incompletos")
     fontes = [
         ("Fonte do preço", dados.get("fonte_preco") or "desconhecida"),
         ("Fonte dos fundamentos", dados.get("fonte_fundamentos") or "desconhecida"),
@@ -356,6 +486,37 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
             ", ".join(map(str, dados.get("campos_faltantes") or [])) or "nenhum",
         ),
     ]
+
+    referencia = dados.get("referencia_oficial")
+    if referencia:
+        fontes.append(("Referência oficial", _texto_referencia(referencia)))
+    serie = dados.get("serie_cvm")
+    if serie:
+        anos = (
+            ", ".join(str(e["exercicio"]) for e in serie.get("exercicios") or [])
+            or "nenhum"
+        )
+        fontes.append(
+            (
+                "Série da CVM (F2A-7, ainda sem uso nos métodos)",
+                f"exercícios: {anos}; proventos por {serie.get('proventos_base')}",
+            )
+        )
+    liquidez = dados.get("liquidez")
+    if liquidez:
+        fontes.append(
+            ("Liquidez (F2A-26, ainda sem uso nos métodos)", _texto_liquidez(liquidez))
+        )
+    ttm = dados.get("ttm_cvm")
+    if ttm:
+        fontes.append(
+            (
+                "Últimos doze meses da CVM",
+                f"não calculado: {ttm['abstencao']}"
+                if "abstencao" in ttm
+                else f"{ttm['inicio']} a {ttm['fim']}; proventos por {ttm.get('proventos_base')}",
+            )
+        )
 
     sintese = [
         (
@@ -382,6 +543,8 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
             ("Riscos sinalizados pelo motor", "; ".join(map(str, analise["riscos"])))
         )
     sintese.append(("Métodos usados", str(analise.get("metodos_usados") or "nenhum")))
+    if fora_do_escopo:
+        sintese = [("Abstenção do motor", motivo_ausente)]
 
     return {
         "ticker": dados.get("ticker", ""),
@@ -405,10 +568,7 @@ def renderizar(contexto: dict[str, Any]) -> str:
 
 
 def validar_ticker(texto: str) -> str:
-    ticker = (texto or "").upper().strip()
-    if not TICKER.fullmatch(ticker):
-        raise ValueError(f"ticker inválido: {texto!r}")
-    return ticker
+    return ticker_b3.validar(texto)  # F2A-12: a mesma lista permitida das fronteiras
 
 
 def gravar(html: str, ticker: str, hoje: date, pasta: Path = PASTA_SAIDA) -> Path:

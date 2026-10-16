@@ -198,11 +198,13 @@ def test_analysis_service_calls_save_run_for_append_only_repository():
 
 
 def test_analysis_service_uses_asset_classifier_by_default():
+    # F2A-20: o classificador padrão lê a classe oficial que a cascata põe em `dados`.
     market_data = {
         "ticker": "ABCD11",
         "preco_atual": 10.0,
         "historico": "HIST",
         "quote_type": "EQUITY",
+        "classe_ativo": "FII",
     }
     service, _, valuation, fii, _, peers, _, _ = _service(market_data=market_data)
 
@@ -245,7 +247,8 @@ def test_analysis_service_injected_classifier_is_used():
     assert result.is_fii is True
 
 
-def test_analysis_service_default_asset_classifier_keeps_suffix_11_as_fii():
+def test_analysis_service_default_asset_classifier_does_not_take_suffix_11_as_fii():
+    # F2A-20: sem dado oficial, o sufixo 11 não faz um FII.
     market_data = {
         "ticker": "ABCD11",
         "preco_atual": 10.0,
@@ -256,10 +259,9 @@ def test_analysis_service_default_asset_classifier_keeps_suffix_11_as_fii():
 
     result = service.analyze("ABCD11")
 
-    fii.analisar.assert_called_once()
-    valuation.processar.assert_not_called()
-    peers.comparar.assert_not_called()
-    assert result.is_fii is True
+    fii.analisar.assert_not_called()
+    valuation.processar.assert_called_once()
+    assert result.is_fii is False
 
 
 def test_analysis_service_known_unit_with_mutualfund_quote_type_routes_as_stock_or_non_fii():

@@ -35,6 +35,11 @@ def _requests_get_so_bcb(url, *args, **kwargs):
 with mock.patch("requests.get", _requests_get_so_bcb):
     import config  # instancia MACRO com a Selic semeada
 
+# ── Pasta de dados ─────────────────────────────────────────────────────────────
+# F2A-20: o índice oficial e o classificador leem `SENTINELA_DADOS`. A suíte a aponta
+# para uma pasta temporária vazia, para nunca ler o índice da máquina.
+os.environ["SENTINELA_DADOS"] = tempfile.mkdtemp(prefix="sentinela_dados_")
+
 # ── Guarda de rede ─────────────────────────────────────────────────────────────
 # Qualquer connect de socket (exceto AF_UNIX) vira falha. Como o código de produção
 # engole exceções genéricas, a tentativa também é registrada e derruba o teste

@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from cvm_fii_map import FII_CNPJ_MAP, get_cnpj_fii, get_ticker_fii
+from cvm_fii_map import FII_CNPJ_MAP
 from cvm_fii_provider import CVMFIIProvider
 
 # ---------------------------------------------------------------------------
@@ -41,23 +41,6 @@ _ROW_BASE = {
 # ---------------------------------------------------------------------------
 # cvm_fii_map
 # ---------------------------------------------------------------------------
-
-def test_mapa_hglg11_cnpj():
-    assert get_cnpj_fii("HGLG11") == "11.728.688/0001-47"
-
-
-def test_mapa_mxrf11_cnpj():
-    assert get_cnpj_fii("MXRF11") == "97.521.225/0001-25"
-
-
-def test_mapa_ticker_desconhecido_retorna_none():
-    assert get_cnpj_fii("ZZZZ99") is None
-
-
-def test_mapa_roundtrip_hglg11():
-    cnpj = get_cnpj_fii("HGLG11")
-    assert get_ticker_fii(cnpj) == "HGLG11"
-
 
 def test_mapa_cobre_30_fiis():
     assert len(FII_CNPJ_MAP) == 30

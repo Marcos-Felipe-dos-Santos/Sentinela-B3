@@ -1,11 +1,8 @@
 import logging
 import math
 from datetime import date
-from typing import Optional
 
-from config import get_selic_atual, MACRO, _normalizar_dy
-from cvm_fii_map import get_cnpj_fii
-from cvm_fii_provider import CVMFIIProvider
+from config import MACRO, _normalizar_dy, get_selic_atual
 from sentinela.domain.units import BRL, RateNominal, Ratio
 from sentinela.methods.base import MethodInputs, MethodResult
 from sentinela.methods.fii_nav import (
@@ -24,34 +21,8 @@ _FII_NAV = FiiNav()
 # pontos de score por faixa de P/VP; a faixa neutra não pontua
 _PONTOS_PVP = {FAIXA_PREMIO_ALTO: -15, FAIXA_PREMIO_MODERADO: -7, FAIXA_DESCONTO: 10}
 
-VACANCIA_CONHECIDA = {
-    # Estimativas manuais; revisar periodicamente.
-    "CVBI11": 0.25,
-    "MALL11": 0.18,
-    "HGLG11": 0.08,
-    "RBRP11": 0.00,
-    "MXRF11": 0.05,
-}
-
 
 class FIIEngine:
-    def __init__(self, cvm_provider: Optional[CVMFIIProvider] = None):
-        # None = CVM desabilitado (sem chamadas de rede); útil em testes.
-        self._cvm_provider = cvm_provider
-
-    def _obter_cvm_dados(self, ticker: str) -> Optional[dict]:
-        provider = getattr(self, "_cvm_provider", None)
-        if provider is None:
-            return None
-        cnpj = get_cnpj_fii(ticker)
-        if cnpj is None:
-            return None
-        try:
-            return provider.obter_dados_fii(cnpj)
-        except Exception as exc:
-            logger.warning("[FII %s] CVM error: %s", ticker, exc)
-            return None
-
     def _calcular_rendimento(self, p, dy, vacancia, selic):
         """Monta MethodInputs uma única vez e delega o preço justo ao método.
 
@@ -87,22 +58,20 @@ class FIIEngine:
             return None
 
         p = float(dados.get("preco_atual", 0) or 0)
-        if p == 0:
+        if p == 0 or not math.isfinite(p):
+            # F2A-24: preço não finito, como preço zero, não é analisado.
             return None
 
         ticker = dados.get("ticker", "")
 
-        # ── NORMALIZAÇÃO DO DY ────────────────────────────────────────────────
+        # ── INVARIANTE DO DY ──────────────────────────────────────────────────
+        # O DY chega em razão; a conversão é da fronteira do provedor (F2A-4).
         dy_raw = float(dados.get("dy", 0) or 0)
         dy, dy_confiavel = _normalizar_dy(dy_raw)
-        if dy_raw > MACRO.DY_PERCENTUAL_THRESHOLD:
-            logger.info(
-                f"[FII {ticker}] DY normalizado: {dy_raw:.4f}% → {dy:.4f} decimal"
-            )
-        elif not dy_confiavel:
+        if not dy_confiavel:
             logger.warning(
-                f"[FII {ticker}] DY={dy_raw:.4f} ({dy_raw*100:.1f}%) improvável "
-                "— dado suspeito (Yahoo bug?). Desconsiderado."
+                f"[FII {ticker}] DY={dy_raw:.4f} fora de 0 a 25% "
+                "— dado suspeito. Desconsiderado."
             )
 
         # ── FALLBACK: sem DY confiável não podemos calcular valuation ─────────
@@ -116,43 +85,40 @@ class FIIEngine:
                 "metodos_usados": "Dados insuficientes (DY ausente ou inválido)",
             }
 
-        # ── CVM: VPA oficial e vacância ───────────────────────────────────────
-        cvm = self._obter_cvm_dados(ticker)
+        # P/VP: o oficial da CVM chega pela cascata (F2A-11). Sem P/VP positivo e finito
+        # (ausente, zero, negativo, NaN ou infinito; F2A-42), a lente não é calculada, não
+        # pontua e a saída traz `pvp` nulo.
+        pvp = float(dados.get("pvp") or 0)
+        if pvp <= 0 or not math.isfinite(pvp):
+            pvp = None
 
-        # P/VP: prioriza VPA oficial da CVM (PL/cotas)
-        vpa_cvm = cvm.get("valor_cota") if cvm else None
-        if vpa_cvm and vpa_cvm > 0:
-            pvp = p / vpa_cvm
-        else:
-            pvp = float(dados.get("pvp", 1.0) or 1.0)
-
-        # Vacância: CVM (quando disponível) > VACANCIA_CONHECIDA (manual) > None
-        vacancia: Optional[float] = None
-        vacancia_fonte: Optional[str] = None
-
-        if cvm:
-            vac_cvm = cvm.get("vacancia_fisica")
-            if vac_cvm is not None:
-                vacancia = vac_cvm
-                vacancia_fonte = "CVM"
-
-        if vacancia is None and ticker in VACANCIA_CONHECIDA:
-            vacancia = VACANCIA_CONHECIDA[ticker]
-            vacancia_fonte = "manual"
-
+        # Vacância: sem fonte oficial (o Informe Mensal não a traz), o método recebe None
+        # (F2A-23, F2A-13).
         # ── Bazin adaptado para FIIs (yield vs taxa livre de risco) ──────────
         # Fórmula, DY efetivo (ajustado por vacância) e Selic líquida em
         # sentinela/methods/fii_yield.py.
         selic = get_selic_atual()
-        rendimento = self._calcular_rendimento(p, dy, vacancia, selic)
+        rendimento = self._calcular_rendimento(p, dy, None, selic)
         if isinstance(rendimento, MethodResult):
             preco_justo = rendimento.valor.valor
             dy_efetivo = rendimento.obter("dy_efetivo").valor
             selic_liquida = rendimento.obter("selic_liquida").valor
         else:
-            # método não calculado (valor não finito): a V1 propagava NaN até a saída
-            preco_justo = dy_efetivo = float("nan")
-            selic_liquida = selic * MACRO.FII_FATOR_IR
+            # F2A-24: método não calculado (Selic zero ou não finita, vacância não finita).
+            # A V1 propagava NaN até a saída; agora é o resultado do DY inválido, com o motivo.
+            motivo = (
+                rendimento.motivo
+                if rendimento is not None
+                else "valor não finito na entrada (Selic ou vacância)"
+            )
+            return {
+                "fair_value":     round(p, 2),
+                "upside":         0.0,
+                "score_final":    50,
+                "recomendacao":   "NEUTRO",
+                "perfil":         "FII",
+                "metodos_usados": f"Dados insuficientes ({_FII_YIELD.nome}: {motivo})",
+            }
         upside = (preco_justo / p) - 1
 
         # ── Score ─────────────────────────────────────────────────────────────
@@ -163,12 +129,9 @@ class FIIEngine:
             score -= 20
 
         # Faixa de P/VP em sentinela/methods/fii_nav.py; os pontos ficam aqui.
-        lente_pvp = self._faixa_pvp(pvp)
+        lente_pvp = self._faixa_pvp(pvp) if pvp is not None else None
         if isinstance(lente_pvp, MethodResult):
             score += sum(_PONTOS_PVP.get(faixa, 0) for faixa in lente_pvp.alertas)
-
-        if vacancia is not None and vacancia > 0.15:
-            score -= int(100 * vacancia)
 
         score = max(0, min(100, score))
 
@@ -180,7 +143,7 @@ class FIIEngine:
         if upside < MACRO.FII_UPSIDE_VENDA:
             rec = "VENDA"
 
-        result: dict = {
+        return {
             "fair_value":     round(preco_justo, 2),
             "upside":         round(upside * 100, 1),
             "score_final":    int(score),
@@ -192,8 +155,3 @@ class FIIEngine:
             "dy_efetivo":     dy_efetivo,
             "pvp":            pvp,
         }
-
-        if vacancia_fonte is not None:
-            result["vacancia_fonte"] = vacancia_fonte
-
-        return result

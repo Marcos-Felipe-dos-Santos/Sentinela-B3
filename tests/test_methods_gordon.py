@@ -53,7 +53,7 @@ def test_formula_igual_a_da_v1():
     r = _gordon(preco=100.0, lpa=10.0, roe=0.15, dy=0.06, selic=0.145)
     assert isinstance(r, MethodResult)
     assert r.valor.valor == _v1(100.0, 10.0, 0.15, 0.06, 0.145)
-    assert (r.metodo, r.versao) == ("Gordon", "1.0.0")
+    assert (r.metodo, r.versao) == ("Gordon", Gordon.version)
 
 
 @pytest.mark.parametrize(
@@ -98,15 +98,18 @@ def test_payout_limitado_a_95_por_cento():
 
 
 @pytest.mark.parametrize("lpa", [0.0, -2.0])
-def test_lpa_nao_positivo_usa_payout_de_50_por_cento(lpa):
+def test_lpa_nao_positivo_abstem(lpa):
+    # 1.0.0 usava payout de 50% (fallback da V1): número degradado, contra o contrato.
     r = _gordon(lpa=lpa)
-    assert isinstance(r, MethodResult)
-    assert r.obter("payout") == Ratio(0.5)
-    assert r.valor.valor == _v1(100.0, lpa, 0.15, 0.06, 0.145)
+    assert isinstance(r, Abstention)
+    assert r.motivo == "LPA não positivo"
+    assert (r.metodo, r.versao) == ("Gordon", "1.1.0")
 
 
-def test_o_fallback_do_lpa_esta_declarado_nas_premissas():
-    assert any("LPA" in a and "50%" in a for a in Gordon.assumptions)
+def test_premissas_exigem_lpa_positivo_sem_fallback():
+    # F2A-25: sai a premissa do payout de 50%; o LPA positivo passa a ser exigência.
+    assert not any("50%" in a for a in Gordon.assumptions)
+    assert any("LPA positivo" in a for a in Gordon.assumptions)
 
 
 def test_k_igual_ou_menor_que_g_abstem_se():
@@ -166,7 +169,7 @@ def test_vale_para_qualquer_perfil():
 def test_abstencao_identifica_metodo_e_versao(kw):
     r = _gordon(**kw)
     assert isinstance(r, Abstention)
-    assert (r.metodo, r.versao) == ("Gordon", "1.0.0")
+    assert (r.metodo, r.versao) == ("Gordon", Gordon.version)
 
 
 @pytest.mark.parametrize("campo", ["preco", "lpa", "roe", "dy", "selic"])
@@ -189,7 +192,7 @@ def test_resultado_que_estoura_para_infinito_abstem_se():
         MethodInputs(
             as_of=date(2026, 10, 2),
             preco=BRL(1e308),
-            lpa=BRL(0.0),
+            lpa=BRL(1.0),
             roe=Ratio(0.9),
             dy=Ratio(0.9),
             selic=RateNominal(0.145),
@@ -198,13 +201,13 @@ def test_resultado_que_estoura_para_infinito_abstem_se():
     )
     assert isinstance(r, Abstention)
     assert r.motivo == "resultado não finito"
-    assert (r.metodo, r.versao) == ("Gordon", "1.0.0")
+    assert (r.metodo, r.versao) == ("Gordon", Gordon.version)
 
 
 def test_metadados():
     m = Gordon()
     assert m.nome == "Gordon"
-    assert m.version == "1.0.0"
+    assert m.version == "1.1.0"
     assert m.regime is Regime.NOMINAL
     assert m.requires == ("preco", "lpa", "roe", "dy", "selic")
     assert m.applies_to == frozenset({AssetType.STOCK, AssetType.UNIT})

@@ -37,7 +37,7 @@ def test_formula_dy_vezes_preco_sobre_a_selic():
     assert isinstance(r, MethodResult)
     assert r.valor == BRL((0.08 * 100.0) / 0.145)
     assert r.obter("taxa_aplicada") == RateNominal(0.145)
-    assert (r.metodo, r.versao) == ("Bazin", "1.0.0")
+    assert (r.metodo, r.versao) == ("Bazin", Bazin.version)
     assert r.alertas == ()
 
 
@@ -95,7 +95,7 @@ def test_dy_acima_de_15_por_cento_gera_alerta_mas_calcula():
 def test_abstencao_identifica_metodo_e_versao(kw):
     r = _bazin(**kw)
     assert isinstance(r, Abstention)
-    assert (r.metodo, r.versao) == ("Bazin", "1.0.0")
+    assert (r.metodo, r.versao) == ("Bazin", Bazin.version)
 
 
 @pytest.mark.parametrize("campo", ["preco", "dy", "selic", "perfil"])
@@ -116,16 +116,25 @@ def test_resultado_que_estoura_para_infinito_abstem_se():
     r = _bazin(preco=1e308, dy=0.9, selic=0.05)
     assert isinstance(r, Abstention)
     assert r.motivo == "resultado não finito"
-    assert (r.metodo, r.versao) == ("Bazin", "1.0.0")
+    assert (r.metodo, r.versao) == ("Bazin", Bazin.version)
 
 
 def test_metadados():
     b = Bazin()
     assert b.nome == "Bazin"
-    assert b.version == "1.0.0"
+    assert b.version == "1.0.1"
     assert b.regime is Regime.NOMINAL
     assert b.requires == ("preco", "dy", "selic", "perfil")
     assert b.applies_to == frozenset({AssetType.STOCK, AssetType.UNIT})
     assert b.params_type is BazinParams
     assert b.assumptions
     assert all(isinstance(a, str) and a for a in b.assumptions)
+
+
+def test_dy_nao_confiavel_tem_prioridade_sobre_o_minimo():
+    # Com DY não confiável, o motor zera o DY (`_normalizar_dy`): o motivo certo é a
+    # confiança, não o mínimo.
+    r = _bazin(dy=0.0, dy_confiavel=False)
+    assert isinstance(r, Abstention)
+    assert r.motivo == MOTIVO_DY_NAO_CONFIAVEL
+    assert r.versao == "1.0.1"

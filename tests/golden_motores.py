@@ -21,25 +21,9 @@ from valuation_engine import ValuationEngine
 GOLDEN = Path(__file__).parent / "fixtures" / "golden_motores.jsonl"
 SELIC_PADRAO = 0.145
 DISTRESSED = frozenset({"TSD3"})
-CNPJ_FALSO = "00.000.000/0001-00"
-# TST11: CNPJ e vacância manual · TST12: só CNPJ · TST13: só vacância manual · TST14: nenhum
-FII_CNPJS = frozenset({"TST11", "TST12"})
-FII_VACANCIA_MANUAL = {"TST11": 0.2, "TST13": 0.2}
 
 
 # ── execução ──────────────────────────────────────────────────────────────────
-
-
-class _ProvedorFalso:
-    def __init__(self, spec):
-        self.spec = spec
-
-    def obter_dados_fii(self, cnpj):
-        if cnpj != CNPJ_FALSO:
-            return None
-        if self.spec.get("levanta"):
-            raise RuntimeError("falha simulada")
-        return self.spec.get("dados")
 
 
 def executar(caso):
@@ -54,18 +38,8 @@ def executar(caso):
                 patch.object(valuation_engine, "DISTRESSED_TICKERS", DISTRESSED),
             ):
                 return ValuationEngine().processar(entrada)
-        spec = caso.get("cvm")
-        provedor = _ProvedorFalso(spec) if spec is not None else None
-        with (
-            patch.object(fii_engine, "get_selic_atual", return_value=caso["selic"]),
-            patch.object(fii_engine, "VACANCIA_CONHECIDA", dict(FII_VACANCIA_MANUAL)),
-            patch.object(
-                fii_engine,
-                "get_cnpj_fii",
-                lambda t: CNPJ_FALSO if t in FII_CNPJS else None,
-            ),
-        ):
-            return FIIEngine(provedor).analisar(entrada)
+        with patch.object(fii_engine, "get_selic_atual", return_value=caso["selic"]):
+            return FIIEngine().analisar(entrada)
     except Exception as exc:
         return {"__erro__": type(exc).__name__}
 
@@ -164,7 +138,7 @@ def _acoes_fronteiras():
             "",
         ],
         "pl_confiavel": [True, False],
-        "erro_scraper": [True, False],
+        "fundamentos_incompletos": [True, False],
     }
     casos = []
     for nome_base, base in (("renda", _RENDA), ("cresc", _CRESC)):
@@ -218,7 +192,7 @@ def _acoes_especiais():
         _acao("nan-dy", {**_RENDA, "dy": float("nan")}),
         _acao(
             "scraper-sem-fundamentos",
-            {"ticker": "TST3", "preco_atual": 20.0, "erro_scraper": True},
+            {"ticker": "TST3", "preco_atual": 20.0, "fundamentos_incompletos": True},
         ),
         _acao(
             "tudo-ruim",
@@ -228,7 +202,7 @@ def _acoes_especiais():
                 "pl": -5.0,
                 "pvp": 0.0,
                 "dy": 0.3,
-                "erro_scraper": True,
+                "fundamentos_incompletos": True,
                 "pl_confiavel": False,
                 "divida_liq_ebitda": 9,
             },
@@ -345,7 +319,7 @@ def _acoes_varredura_classificacao():
     casos = []
     extras = {
         "": {},
-        "scraper": {"erro_scraper": True},
+        "scraper": {"fundamentos_incompletos": True},
         "divida": {"divida_liq_ebitda": 4},
         "plsuspeito": {"pl_confiavel": False},
         "incompleto": {"pl": 0.0, "pvp": 0.0},
@@ -394,7 +368,7 @@ def _acoes_aleatorias(n=300):
             ),
         }
         if rng.random() < 0.2:
-            entrada["erro_scraper"] = True
+            entrada["fundamentos_incompletos"] = True
         if rng.random() < 0.2:
             entrada["pl_confiavel"] = False
         if rng.random() < 0.2:
@@ -409,6 +383,23 @@ def _acoes_aleatorias(n=300):
     return casos
 
 
+def _acoes_classe_ativo():
+    """F2A-29: ETF, BDR e UNKNOWN se abstêm; STOCK e UNIT são o controle."""
+    return [
+        _acao(f"classe-{classe}-{nome}", {**base, "classe_ativo": classe})
+        for classe in ("ETF", "BDR", "UNKNOWN", "STOCK", "UNIT")
+        for nome, base in (("renda", _RENDA), ("cresc", _CRESC))
+    ]
+
+
+def _acoes_preco_nao_finito():
+    """F2A-24: preço NaN e infinito devolvem `None`."""
+    return [
+        _acao(f"preco-nao-finito-{nome}", {**_RENDA, "preco_atual": preco})
+        for nome, preco in (("nan", float("nan")), ("inf", float("inf")))
+    ]
+
+
 # ── grade: FII ────────────────────────────────────────────────────────────────
 
 _FII = {
@@ -420,11 +411,8 @@ _FII = {
 }
 
 
-def _fii(id_, entrada, selic=SELIC_PADRAO, cvm=None):
-    caso = {"id": id_, "motor": "fii", "selic": selic, "entrada": entrada}
-    if cvm is not None:
-        caso["cvm"] = cvm
-    return caso
+def _fii(id_, entrada, selic=SELIC_PADRAO):
+    return {"id": id_, "motor": "fii", "selic": selic, "entrada": entrada}
 
 
 def _fii_fronteiras():
@@ -458,51 +446,9 @@ def _fii_selic_e_vacancia():
     for selic in (0.02, 0.049, 0.05, 0.051, 0.0975, 0.1, 0.1375, 0.145, 0.2):
         for dy in (0.04, 0.0595, 0.0599, 0.06, 0.0825, 0.1, 0.12):
             casos.append(_fii(f"selic{selic}-dy{dy}", {**_FII, "dy": dy}, selic=selic))
-    # vacância: manual (TST11, TST13), CVM, ausente, nos dois lados do limite de 15%
+    # tickers que, até o F2A-13, separavam CNPJ e vacância manual no harness
     for ticker in ("TST11", "TST12", "TST13", "TST14"):
         casos.append(_fii(f"{ticker}-sem-provedor", {**_FII, "ticker": ticker}))
-        for vac in (0.0, 0.05, 0.1499, 0.15, 0.1501, 0.3, 0.9, None):
-            casos.append(
-                _fii(
-                    f"{ticker}-cvm-vac{vac}",
-                    {**_FII, "ticker": ticker},
-                    cvm={"dados": {"valor_cota": 100.0, "vacancia_fisica": vac}},
-                )
-            )
-    # CVM: valor da cota (P/VP oficial) e erros do provedor
-    for cota in (None, 0, -1.0, 50.0, 80.0, 100.0, 120.0, 95.2, 87.0):
-        casos.append(
-            _fii(f"cvm-cota{cota}", dict(_FII), cvm={"dados": {"valor_cota": cota}})
-        )
-        casos.append(
-            _fii(
-                f"cvm-cota{cota}-pvp-ausente",
-                {**_FII, "pvp": None},
-                cvm={"dados": {"valor_cota": cota, "vacancia_fisica": 0.1}},
-            )
-        )
-    for ticker in ("TST11", "TST12", "TST13"):
-        casos.append(
-            _fii(
-                f"{ticker}-provedor-levanta",
-                {**_FII, "ticker": ticker},
-                cvm={"levanta": True},
-            )
-        )
-        casos.append(
-            _fii(
-                f"{ticker}-provedor-none",
-                {**_FII, "ticker": ticker},
-                cvm={"dados": None},
-            )
-        )
-        casos.append(
-            _fii(
-                f"{ticker}-provedor-dict-vazio",
-                {**_FII, "ticker": ticker},
-                cvm={"dados": {}},
-            )
-        )
     # DY exatamente na Selic líquida (selic × 0,85): fronteira do bônus de score
     for selic, dy in ((0.06, 0.051), (0.1, 0.085), (0.12, 0.102), (0.15, 0.1275)):
         for d in (dy - 0.0001, dy, dy + 0.0001):
@@ -517,14 +463,20 @@ def _fii_selic_e_vacancia():
     casos += [
         _fii("sem-preco", {"ticker": "TST12", "dy": 0.1, "pvp": 1.0}),
         _fii("fallback-preco-longo", {**_FII, "preco_atual": 12.3456, "dy": 0.0}),
-        _fii("cvm-cota-abaixo-de-1", dict(_FII), cvm={"dados": {"valor_cota": 0.5}}),
-        _fii("cvm-cota-1", dict(_FII), cvm={"dados": {"valor_cota": 1.0}}),
     ]
-    # DY inválido: o provedor não pode ser chamado antes do teste de DY
-    casos.append(
-        _fii("dy-invalido-provedor-levanta", {**_FII, "dy": 0.3}, cvm={"levanta": True})
-    )
     return casos
+
+
+def _fii_nao_finitos():
+    """F2A-24: preço NaN e infinito devolvem `None`; Selic zero e não finita, o resultado
+    sem método calculado."""
+    return [
+        _fii(f"preco-nao-finito-{nome}", {**_FII, "preco_atual": preco})
+        for nome, preco in (("nan", float("nan")), ("inf", float("inf")))
+    ] + [
+        _fii(f"selic-sem-metodo-{nome}", dict(_FII), selic=selic)
+        for nome, selic in (("zero", 0.0), ("nan", float("nan")), ("inf", float("inf")))
+    ]
 
 
 def _fii_aleatorios(n=250):
@@ -538,24 +490,15 @@ def _fii_aleatorios(n=250):
             "pvp": round(rng.uniform(0.4, 1.8), 3),
             "tipo": rng.choice(["Tijolo", "Papel", None]),
         }
-        cvm = None
-        if rng.random() < 0.5:
-            cvm = {
-                "dados": {
-                    "valor_cota": round(rng.uniform(40, 200), 2),
-                    "vacancia_fisica": rng.choice(
-                        [None, round(rng.uniform(0, 0.5), 3)]
-                    ),
-                }
-            }
-        casos.append(
-            _fii(
-                f"aleatorio-{i}",
-                entrada,
-                selic=rng.choice([0.0525, 0.1, 0.1375, 0.145]),
-                cvm=cvm,
-            )
-        )
+        # F2A-13: os casos com provedor saíram; os sorteios dele ficam, para a sequência
+        # do gerador, e com ela os casos restantes, não mudar.
+        com_provedor = rng.random() < 0.5
+        if com_provedor:
+            rng.uniform(40, 200)
+            rng.choice([None, rng.uniform(0, 0.5)])
+        selic = rng.choice([0.0525, 0.1, 0.1375, 0.145])
+        if not com_provedor:
+            casos.append(_fii(f"aleatorio-{i}", entrada, selic=selic))
     return casos
 
 
@@ -566,9 +509,12 @@ def montar_casos():
         + _acoes_chaves_e_extremos()
         + _acoes_varredura_classificacao()
         + _acoes_aleatorias()
+        + _acoes_classe_ativo()
+        + _acoes_preco_nao_finito()
         + _fii_fronteiras()
         + _fii_selic_e_vacancia()
         + _fii_aleatorios()
+        + _fii_nao_finitos()
     )
     vistos, unicos = set(), []
     for c in casos:

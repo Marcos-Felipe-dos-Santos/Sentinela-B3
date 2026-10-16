@@ -3,18 +3,19 @@ from unittest.mock import patch
 import pytest
 
 from fii_engine import FIIEngine
+from sentinela.data import normalizacao
 from valuation_engine import ValuationEngine
 
 
 def test_dy_normalization_percentual() -> None:
-    """DY percentual vindo do Yahoo deve ser convertido para decimal."""
+    """F2A-4: o DY percentual do Yahoo vira razão na fronteira; o motor recebe 0,1247."""
     dados = {
         'ticker': 'PETR4',
         'preco_atual': 100.0,
         'roe': 0.10,
         'pl': 30.0,
         'pvp': 4.0,
-        'dy': 12.47,
+        'dy': normalizacao.dy_na_fronteira(12.47, 'yfinance').valor,
     }
 
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
@@ -330,7 +331,7 @@ def test_distressed_ticker_nunca_compra_forte() -> None:
 
 
 def test_scraper_falhou_compra_vira_dados_insuficientes() -> None:
-    """Scraper failure + COMPRA deve virar DADOS INSUFICIENTES — AGUARDAR."""
+    """Campo obrigatório ausente (F2A-22) + COMPRA deve virar DADOS INSUFICIENTES — AGUARDAR."""
     dados = {
         'ticker': 'ITUB4',
         'preco_atual': 42.87,
@@ -338,7 +339,7 @@ def test_scraper_falhou_compra_vira_dados_insuficientes() -> None:
         'pl': 10.69,
         'pvp': 2.31,
         'dy': 0.0124,
-        'erro_scraper': True,
+        'fundamentos_incompletos': True,
     }
     with patch('valuation_engine.get_selic_atual', return_value=0.145):
         resultado = ValuationEngine().processar(dados)
@@ -364,7 +365,7 @@ def test_scraper_falhou_nao_sobrescreve_venda() -> None:
         'pl': 50.0,
         'pvp': 5.0,
         'dy': 0.06,
-        'erro_scraper': True,
+        'fundamentos_incompletos': True,
     }
     with patch('valuation_engine.get_selic_atual', return_value=0.145):
         resultado = ValuationEngine().processar(dados)
@@ -382,7 +383,7 @@ def test_scraper_falhou_nao_sobrescreve_alto_risco() -> None:
         'pl': 8.5,
         'pvp': 0.24,
         'dy': 0.0,
-        'erro_scraper': True,
+        'fundamentos_incompletos': True,
     }
     with patch('valuation_engine.get_selic_atual', return_value=0.145):
         resultado = ValuationEngine().processar(dados)

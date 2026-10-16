@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from fii_engine import FIIEngine
+from sentinela.methods import registry
 from sentinela.reports import rastreabilidade
 from valuation_engine import ValuationEngine
 
@@ -98,7 +99,8 @@ def test_relatorio_mostra_cada_metodo_com_versao():
     html = _html(_acao())
     for nome in ("Graham", "Bazin", "Lynch", "Gordon"):
         assert nome in html
-    assert html.count("versão 1.0.0") == 4
+    for nome in ("Graham", "Bazin", "Lynch", "Gordon"):
+        assert f"{nome} <small>versão {registry.obter(nome).version}" in html
     assert "SEM_TAXA" in html and "NOMINAL" in html
     # premissas, parâmetros e resultado de um método que calculou
     assert "raiz de 22,5" in html
@@ -182,7 +184,7 @@ def test_ticker_invalido_e_recusado(ruim):
 
 
 def test_ticker_valido_e_normalizado():
-    assert rastreabilidade.validar_ticker(" tst3 ") == "TST3"
+    assert rastreabilidade.validar_ticker(" tste3 ") == "TSTE3"
     assert rastreabilidade.validar_ticker("HGLG11") == "HGLG11"
 
 
@@ -199,10 +201,11 @@ def test_variacao_do_fii_esta_em_pontos_percentuais():
 
 
 def test_dy_normalizado_aparece_ao_lado_do_bruto():
-    html = _html(_acao(dy=8.0))  # percentual bruto: o motor normaliza para 0,08
-    assert "<td>8,0000</td>" in html
-    assert "dy (normalizado)" in html
+    # F2A-4: o DY chega em razão; o motor só aplica o invariante, e o texto diz isso.
+    html = _html(_acao(dy=0.08))
     assert "<td>0,0800</td>" in html
+    assert "dy (normalizado)" in html
+    assert "a conversão de percentual é da fronteira do provedor (F2A-4)" in html
 
 
 def test_dy_invalido_zerado_pelo_motor_fica_visivel():
@@ -225,8 +228,9 @@ def test_sintese_sem_metodo_nao_chama_o_preco_de_mediana():
 
 
 def test_pvp_ausente_do_fii_e_sinalizado():
+    # F2A-44: desde o F2A-11 a lente se abstém; o 1,0 e o provedor injetado saíram.
     html = _html(_fii(pvp=None), eh_fii=True)
-    assert "o motor usa P/VP = 1,0" in html
+    assert "ausente: a lente de P/VP se abstém e não pontua (F2A-11)" in html
 
 
 def test_captura_nao_deixa_os_motores_instrumentados():
@@ -261,3 +265,40 @@ def test_sintese_do_fii_sem_dy_nao_chama_o_preco_de_preco_justo():
 def test_dy_bruto_nao_e_rotulado_como_razao():
     html = _html(_acao(dy=8.0))
     assert "<td>8,0000</td><td>como veio da fonte</td>" in html
+
+
+def _proveniencia_do_insumo(contexto, campo):
+    return next(i["proveniencia"] for i in contexto["insumos"] if i["campo"] == campo)
+
+
+def test_alavancagem_ausente_aparece_como_nao_avaliada():
+    # F2A-8: sem o dado, o motor não penaliza (o 0,0 interno); o relatório diz por quê.
+    dados = _acao(
+        divida_liq_ebitda=None,
+        alavancagem_cvm={
+            "regime": "pós-IFRS 16, arrendamento incluído na dívida",
+            "motivos": {"divida_liq_ebitda": "EBITDA ≤ 0"},
+        },
+    )
+    texto = _proveniencia_do_insumo(_contexto(dados), "divida_liq_ebitda")
+    assert "alavancagem não avaliada (EBITDA ≤ 0)" in texto
+    assert "não aplica a penalidade" in texto
+    # Fora da CVM (sem o bloco), o motivo é a ausência na cascata.
+    sem_cvm = _proveniencia_do_insumo(
+        _contexto(_acao(divida_liq_ebitda=None)), "divida_liq_ebitda"
+    )
+    assert "alavancagem não avaliada (sem dado na cascata)" in sem_cvm
+    # Com o dado, nada de "não avaliada".
+    com_dado = _proveniencia_do_insumo(_contexto(_acao()), "divida_liq_ebitda")
+    assert "não avaliada" not in com_dado
+
+
+def test_regime_da_divida_e_declarado():
+    dados = _acao(
+        alavancagem_cvm={
+            "regime": "pós-IFRS 16, arrendamento incluído na dívida",
+            "motivos": {},
+        }
+    )
+    texto = _proveniencia_do_insumo(_contexto(dados), "divida_liq_ebitda")
+    assert "regime da dívida: pós-IFRS 16, arrendamento incluído na dívida" in texto

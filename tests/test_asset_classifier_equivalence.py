@@ -41,10 +41,6 @@ def legacy_app_is_fii(ticker: str, dados: dict | None = None) -> bool:
         ("SANB11", None),
         ("TAEE11", None),
         ("KLBN11", None),
-        ("ABCD11", None),
-        ("ABCD11.SA", None),
-        (" abcd11 ", None),
-        ("ABCD3", {"quote_type": "MUTUALFUND"}),
         ("PETR4", {"quote_type": "EQUITY"}),
         ("HGLG11", {}),
         ("HGLG11", None),
@@ -54,6 +50,23 @@ def test_asset_classifier_matches_legacy_app_fii_rule(ticker, dados):
     classifier = AssetClassifier()
 
     assert classifier.is_fii(ticker, dados) is legacy_app_is_fii(ticker, dados)
+
+
+@pytest.mark.parametrize(
+    ("ticker", "dados"),
+    [
+        ("ABCD11", None),
+        ("ABCD11.SA", None),
+        (" abcd11 ", None),
+        ("ABCD3", {"quote_type": "MUTUALFUND"}),
+    ],
+)
+def test_suffix_and_mutualfund_no_longer_follow_the_legacy_rule(ticker, dados):
+    # F2A-20: sem dado oficial, nem o sufixo 11 nem o MUTUALFUND fazem um FII.
+    classifier = AssetClassifier()
+
+    assert legacy_app_is_fii(ticker, dados) is True
+    assert classifier.is_fii(ticker, dados) is False
 
 
 def test_mutualfund_known_unit_documents_literal_legacy_divergence():

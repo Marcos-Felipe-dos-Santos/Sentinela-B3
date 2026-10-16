@@ -2,6 +2,8 @@
 # CNPJs verificados contra inf_mensal_fii_geral_2024.csv (CVM, 2024-06).
 # Adicione novas entradas apenas após conferir o CNPJ no portal de dados abertos:
 #   https://dados.cvm.gov.br/dados/FII/DOC/INF_MENSAL/DADOS/
+# Sem leitor na cascata desde o F2A-31. Fica enquanto `scripts/levantamento_fase2a.py`,
+# `scripts/dossie_fase2.py` e o índice falso de `tests/test_market_engine.py` o leem (F2A-13).
 
 FII_CNPJ_MAP: dict[str, str] = {
     "ALZR11": "28.737.771/0001-85",  # BRALZRCTF006 ALIANZA TRUST RI FII
@@ -35,15 +37,3 @@ FII_CNPJ_MAP: dict[str, str] = {
     "XPLG11": "26.502.794/0001-85",  # BRXPLGCTF002 FII XP LOG
     "XPML11": "28.757.546/0001-00",  # BRXPMLCTF000 XP MALLS FII
 }
-
-_CNPJ_TO_TICKER: dict[str, str] = {v: k for k, v in FII_CNPJ_MAP.items()}
-
-
-def get_cnpj_fii(ticker: str) -> str | None:
-    """Retorna o CNPJ do fundo para um ticker FII, ou None se não mapeado."""
-    return FII_CNPJ_MAP.get(ticker.upper().strip())
-
-
-def get_ticker_fii(cnpj: str) -> str | None:
-    """Retorna o ticker FII para um CNPJ, ou None se não mapeado."""
-    return _CNPJ_TO_TICKER.get(cnpj.strip())

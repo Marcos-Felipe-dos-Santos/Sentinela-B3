@@ -306,9 +306,13 @@ MACRO = MacroContext()
 
 
 def _normalizar_dy(dy_raw: float) -> tuple[float, bool]:
-    """Normaliza DY do Yahoo Finance. Retorna (dy_decimal, dy_confiavel)."""
-    if dy_raw > MACRO.DY_PERCENTUAL_THRESHOLD:
-        return dy_raw / 100, True
-    if dy_raw > MACRO.DY_SANIDADE_MAX:
+    """Invariante do DY nos motores (F2A-4). Retorna (dy, dy_confiavel).
+
+    O DY já chega em razão: a conversão de percentual é da fronteira de cada provedor
+    (`sentinela.data.normalizacao`). Fora de 0 ≤ DY ≤ `DY_SANIDADE_MAX`, ou não finito,
+    vira (0.0, False).
+    """
+    # NaN e infinito falham a comparação e caem aqui.
+    if not 0 <= dy_raw <= MACRO.DY_SANIDADE_MAX:
         return 0.0, False
     return dy_raw, True

@@ -8,12 +8,10 @@ Para comparação direta por fonte, seria necessário guardar _raw_source_values
 no market_engine — fora do escopo desta sessão.
 
 Mapeamento de confiança usa lowercase para fontes (alinha com market_engine.py).
-O spec original escreveu "Fundamentus" com maiúscula; o codebase usa "fundamentus".
 """
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 # ---------------------------------------------------------------------------
 # Constantes
@@ -27,7 +25,7 @@ _CAMPOS_ESPERADOS: list[str] = [
     "roe",
     "lpa",
     "vpa",
-    "divida_liq_ebitda",  # NÃO está em _CVM_CAMPOS: CVM só fornece div_liq_patrimonio (passivo/PL).
+    "divida_liq_ebitda",  # F2A-8: só a CVM, pela dívida financeira líquida ÷ EBITDA.
     "margem_liquida",
     "receita_liquida",
 ]
@@ -39,6 +37,7 @@ _CVM_CAMPOS: frozenset[str] = frozenset({
     "receita_liquida",
     "lpa",   # lucro_liquido / shares — requer sharesOutstanding do yfinance
     "vpa",   # patrimonio_liquido / shares — requer sharesOutstanding do yfinance
+    "divida_liq_ebitda",  # F2A-8: dívida financeira líquida ÷ EBITDA (pós-IFRS 16)
 })
 
 # Normaliza aliases usados em fonte_fundamentos (de market_engine.py SOURCE_ALIASES).
@@ -53,7 +52,6 @@ _FONTE_CONFIANCA: dict[str, int] = {
     "CVM":         100,
     "brapi":        80,
     "yfinance":     60,
-    "fundamentus":  40,
     "manual":       20,
     "cache":        30,
     "unknown":      10,
@@ -84,7 +82,7 @@ def _best_fonte(fonte_str: str) -> str:
     return max(fontes, key=lambda f: _FONTE_CONFIANCA.get(f, 0))
 
 
-def _safe_float(v) -> Optional[float]:
+def _safe_float(v) -> float | None:
     """Converte para float, retorna None se inválido ou NaN."""
     try:
         f = float(v)
@@ -109,9 +107,23 @@ def _is_present(v) -> bool:
 # Classe principal
 # ---------------------------------------------------------------------------
 
+_LIMIAR_ACOES = 0.05  # checkpoint da Fase 0, seção 4, item 1
+_LIMIAR_LPA = 0.10  # o mesmo dos checks 2 e 3
+_FOLGA = 1e-9
+
+
+def _numero_br(x: float, casas: int = 2) -> str:
+    return f"{x:.{casas}f}".replace(".", ",")
+
+
 class DataQualityReport:
     def __init__(self, dados: dict):
-        self.dados = dados or {}
+        # F2A-6 (E-3): com o retrato da cascata (`valores_coletados`), os campos coletados
+        # são avaliados como a cascata os entregou, e não como os motores os sobrescreveram
+        # (`app.py`: `dados.update(analise)`). Sem retrato, valem os valores de `dados`.
+        dados = dados or {}
+        retrato = dados.get("valores_coletados")
+        self.dados = {**dados, **retrato} if isinstance(retrato, dict) else dados
 
     # ── API pública ────────────────────────────────────────────────────────
 
@@ -143,7 +155,7 @@ class DataQualityReport:
             elif presente and cvm_ok and campo in _CVM_CAMPOS:
                 fonte = "CVM"
             elif presente:
-                # Não creditar CVM a campos que ela não fornece (ex: divida_liq_ebitda)
+                # Não creditar CVM a campos que ela não fornece (fora de _CVM_CAMPOS, ex: pvp)
                 fb = fonte_base if fonte_base != "unknown" else "unknown"
                 fonte = fb if not (fb == "CVM" and campo not in _CVM_CAMPOS) else "unknown"
             else:
@@ -195,8 +207,11 @@ class DataQualityReport:
                 f"Yahoo possivelmente retornou como % (valor real estimado: {dy / 100:.4f})"
             )
 
-        # 2. P/L derivado de preço/LPA vs P/L declarado
-        if preco and lpa and abs(lpa) > 0.001 and pl is not None and pl > 0:
+        # 2. P/L derivado de preço/LPA vs P/L declarado (só entre fontes diferentes: F2A-5)
+        if (
+            preco and lpa and abs(lpa) > 0.001 and pl is not None and pl > 0
+            and not self._mesma_fonte("pl", "lpa")
+        ):
             pl_derivado = preco / lpa
             if pl_derivado > 0:
                 divergencia = abs(pl_derivado - pl) / pl
@@ -206,8 +221,11 @@ class DataQualityReport:
                         f"(divergência {divergencia:.0%})"
                     )
 
-        # 3. P/VP derivado de preço/VPA vs P/VP declarado
-        if preco and vpa and abs(vpa) > 0.001 and pvp is not None and pvp > 0:
+        # 3. P/VP derivado de preço/VPA vs P/VP declarado (só entre fontes diferentes: F2A-5)
+        if (
+            preco and vpa and abs(vpa) > 0.001 and pvp is not None and pvp > 0
+            and not self._mesma_fonte("pvp", "vpa")
+        ):
             pvp_derivado = preco / vpa
             divergencia = abs(pvp_derivado - pvp) / pvp
             if divergencia > 0.10:
@@ -224,6 +242,54 @@ class DataQualityReport:
                     "possível inconsistência de fonte"
                 )
 
+        alertas += self._alertas_fontes_independentes(lpa)
+        return alertas
+
+    def _mesma_fonte(self, multiplo: str, por_acao: str) -> bool:
+        """O múltiplo e o valor por ação vieram da mesma fonte? Então a comparação é identidade.
+
+        A fonte do múltiplo vem de `field_provenance`; a do valor por ação, de
+        `valores_por_fonte` (a fonte que entregou o valor que ficou). Sem esses registros
+        (chamadas antigas), não se sabe, e a comparação roda como antes.
+        """
+        d = self.dados
+        prov = ((d.get("field_provenance") or {}).get(multiplo) or {}).get("provenance") or {}
+        fonte_multiplo = prov.get("source")
+        valor = _safe_float(d.get(por_acao))
+        if not fonte_multiplo or valor is None:
+            return False
+        entregue = (d.get("valores_por_fonte") or {}).get(fonte_multiplo) or {}
+        do_mesmo = _safe_float(entregue.get(por_acao))
+        return do_mesmo is not None and abs(do_mesmo - valor) <= _FOLGA * max(1.0, abs(valor))
+
+    def _alertas_fontes_independentes(self, lpa: float | None) -> list[str]:
+        """Ações da CVM × yfinance e LPA recalculado × LPA básico divulgado (F2A-5, E-2)."""
+        alertas: list[str] = []
+        d = self.dados
+        divergencia = d.get("divergencia_acoes") or {}
+        diferenca = _safe_float(divergencia.get("diferenca"))
+        if diferenca is not None and abs(diferenca) > _LIMIAR_ACOES + _FOLGA:
+            alertas.append(
+                f"ações {divergencia.get('especie')}: CVM {divergencia.get('acoes_cvm'):,.0f} × "
+                f"yfinance {divergencia.get('acoes_yfinance'):,.0f} (divergência {diferenca:+.0%})"
+            )
+        acoes_cvm = d.get("acoes_cvm") or {}
+        comparado = acoes_cvm.get("lpa_divulgado_comparado") or {}
+        divulgado = _safe_float(comparado.get("valor"))
+        papel = _safe_float(acoes_cvm.get("acoes_por_papel")) or 1.0
+        if "lpa_recalculado" in acoes_cvm:
+            # F2A-36 (ficha, 7.3): o LPA dos métodos já é o divulgado; confere-se o recalculado.
+            lpa = _safe_float(acoes_cvm["lpa_recalculado"])
+        if lpa is not None and divulgado:
+            por_acao = lpa / papel
+            divergencia_lpa = abs(por_acao - divulgado) / abs(divulgado)
+            if divergencia_lpa > _LIMIAR_LPA + _FOLGA:
+                alertas.append(
+                    f"LPA {_numero_br(por_acao)} × LPA básico divulgado "
+                    f"{_numero_br(divulgado)} ({comparado.get('especie')}): divergência "
+                    f"{divergencia_lpa:.0%}. O divulgado usa a média ponderada de ações do "
+                    "exercício; o calculado, as ações do fim do período"
+                )
         return alertas
 
     def badge(self) -> str:

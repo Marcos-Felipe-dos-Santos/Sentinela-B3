@@ -47,13 +47,13 @@ O `CLAUDE.md` prevê `vulture_whitelist.py` com o motivo de cada exceção. O F0
 | `config.py:33` | `TIMEOUT_API` | removido no F0-8 | Nenhum leitor no repositório, nem nos testes. Fora das seções intocáveis |
 | `config.py:120` | `RISK_FREE_RATE_FALLBACK` | removido no F0-8 | Alias estático sem leitor; o próprio comentário manda usar `get_selic_atual()`. Fora das seções intocáveis |
 | `market_engine.py:340, 342` | `fundamentus_ok` | removido no F0-8 | Variável atribuída e nunca lida (também é o F841). Remover a atribuição, mantendo a chamada `_buscar_fundamentus(...)`, que tem efeito colateral |
-| `market_engine.py:678` | `buscar_noticias` | investigar | Nenhum chamador; a Fase 5 constrói o módulo de notícias. Decidir se sai agora ou com a Fase 5 |
-| `brapi_provider.py:125` | `get_quote` | investigar | Nenhum chamador, nem nos testes; a cascata usa `get_fundamentals`. Pode ser o caminho do preço da brapi (`CLAUDE.md`, "preço: brapi só se o yfinance falhar"), então a decisão é do Marcos |
+| `market_engine.py:678` | `buscar_noticias` | removido no F2A-13 | Nenhum chamador; a Fase 5 constrói o módulo de notícias. Decidido no checkpoint da Fase 0 (seção 3) |
+| `brapi_provider.py:125` | `get_quote` | removido no F2A-13 | Nenhum chamador em produção; o preço reserva da brapi vem do `get_fundamentals` (`tests/test_market_engine.py::test_preco_reserva_da_brapi_vem_do_get_fundamentals`). Decidido no checkpoint da Fase 0 (seção 3) |
 | `cvm_provider.py:63` | `baixar_itr` | remover na fase | Será usado pelo TTM — F2A-7 |
-| `sentinela/domain/enums.py:10-11` | `ETF`, `BDR` | remover na fase | Previstos para a classe do ativo — F2A-1. Entram no `vulture_whitelist.py` até lá |
+| `sentinela/domain/enums.py:10-11` | `ETF`, `BDR` | removido do whitelist no F2A-13 | Usados desde o F2A-1 e o F2A-29; saíram do `vulture_whitelist.py` |
 | `sentinela/domain/models.py:73,74,101,103,105,165,167,205` | campos `fonte_preco`, `fonte_fundamentos`, `roic`, `div_liq_patrimonio`, `margem_bruta`, `score_final`, `metodos_usados`, `atr` | manter | Campos de dataclass lidos por serialização e pelos testes de domínio; fazem parte do modelo `sentinela/`, hoje desconectado (E-21, F3-6) |
 | `sentinela/domain/provenance.py:101` | `with_warning` | manter | API do domínio da camada `sentinela/` ainda desconectada (E-21); sem chamador hoje, nem nos testes. Whitelist até o F3-6 decidir |
-| `auditoria.py:663`, `cvm_ticker_map.py:91`, `limpar_banco.py:47`, `sentinela/repositories/analysis_repository.py:24` | `row_factory` | manter | Atribuição a atributo do `sqlite3.Connection`; o vulture não entende. Whitelist |
+| `auditoria.py:663`, `cvm_ticker_map.py:91` (saiu no F2A-13), `limpar_banco.py:47`, `sentinela/repositories/analysis_repository.py:24` | `row_factory` | manter | Atribuição a atributo do `sqlite3.Connection`; o vulture não entende. Whitelist |
 
 ---
 
@@ -142,8 +142,8 @@ Nenhum `.py` é órfão no sentido estrito. Os que ninguém importa em produçã
 | `backtesting/backtest_engine.py` | CLI e teste | remover na fase 3 | Backtest real no F3-8; os CSVs fabricados saem junto |
 | `sentinela/services/analyze_asset.py`, `sentinela/repositories/analysis_repository.py` | só testes | remover na fase 3 | Camada nova desconectada (E-21); o F3-6 liga o `AnalysisService` ao `app.py` |
 | `scripts/dossie_fase2.py` | execução manual | manter | Reproduz o dossiê da Fase 2 |
-| `scripts/gerar_mapa_cvm.py` e `tests/fixtures/cvm_codigos_oficiais.csv` (criados no F1-15) | execução manual; a fixture também pelo teste do mapa | remover na fase 2A (F2A-1) | Geram e conferem o mapa ticker → CD_CVM a partir de um retrato do FCA; saem quando o F2A-1 automatizar o mapa |
-| `scripts/invalidar_cache_cvm.py` e o teste dele (criados no F1-15) | execução manual, pelo Marcos, no checkpoint da Fase 1 | remover na fase 2A (F2A-1) | Sai junto com o gerador. Não sai no F1-13: a limpeza vem antes do checkpoint em que o script é rodado |
+| `scripts/gerar_mapa_cvm.py` e `tests/fixtures/cvm_codigos_oficiais.csv` (criados no F1-15) | execução manual; a fixture também pelo teste do mapa e por `scripts/levantamento_fase2a.py` | gerador removido no F2A-13; fixture fica | O gerador saiu; a fixture fica enquanto `scripts/levantamento_fase2a.py` a lê (seção 13) |
+| `scripts/invalidar_cache_cvm.py` e o teste dele (criados no F1-15) | execução manual, pelo Marcos, nos checkpoints | remover na fase 2B (F2B-5) | O passo 4 do [DECISÃO] da Fase 2A usa o script (decidido em 5/10/2026) |
 
 ---
 
@@ -176,7 +176,7 @@ Entradas sem alvo local, inofensivas: `verificar_setup.bat`, `.agent/`, `.gemini
 
 | Duplicidade | Categoria | Detalhe |
 |---|---|---|
-| `FII_MANUAL_FALLBACK` (`config.py:73`, 3 FIIs) × `VACANCIA_CONHECIDA` (`fii_engine.py:10`, 5 FIIs) | remover na fase 2A (F2A-13) | Os 3 FIIs em comum têm a mesma vacância (CVBI11 25%, HGLG11 8%, MXRF11 5%). `FII_MANUAL_FALLBACK` é lido por `market_engine.py:622` e `VACANCIA_CONHECIDA` por `fii_engine.py`; `fii_engine.py` é intocável na Fase 0 |
+| `FII_MANUAL_FALLBACK` (`config.py:73`, 3 FIIs) × `VACANCIA_CONHECIDA` (`fii_engine.py:10`, 5 FIIs) | `VACANCIA_CONHECIDA` removida no F2A-13; `FII_MANUAL_FALLBACK`, sem leitor desde o F2A-23, sai no F2C-10 | Os 3 FIIs em comum têm a mesma vacância (CVBI11 25%, HGLG11 8%, MXRF11 5%). `FII_MANUAL_FALLBACK` é lido por `market_engine.py:622` e `VACANCIA_CONHECIDA` por `fii_engine.py`; `fii_engine.py` é intocável na Fase 0 |
 | MGLU3 em `peers_engine.py:16` (par de varejo), `config.py:68` (`DISTRESSED_TICKERS`) e `auditar_recomendacoes.py:31` | remover na fase 2C (F2C-7) | Mesmo ticker é par setorial e bloqueado como distressed; `VIIA3`, na lista de `auditar_recomendacoes.py`, não existe desde 2023 (F-22) |
 | Propriedades do `MacroContext` sem leitor em produção: `cdi`, `ipca_12m`, `ntnb_longa`, `cost_of_equity_real` | remover na fase 2B / 3 (F2B-1, F3-1) | Só os testes as leem. `ntnb_longa` é lido por `cost_of_equity_real`. A seção `MacroContext` é intocável na Fase 0 |
 | Constantes do `MacroContext` sem leitor em produção | — | Nenhuma: toda constante tem leitor em produção; `DY_SANIDADE_MAX` é lida só dentro de `config._normalizar_dy` (intocável) |
@@ -295,3 +295,32 @@ Resultado do que ficou: os achados da seção 3.2 (BLE001, DTZ, SIM117, B023, PL
 **Lacuna do `.gitignore` achada na execução (resolvida em `05bb38f`):** a linha 172, `data/`, não era ancorada e também ignorava `sentinela/data/`, onde a proposta da Fase 2A põe código novo (`git check-ignore -v sentinela/data/x.py` → `.gitignore:172`). Virou `/data/`.
 
 Testes: 653 passam, 1 pulado e 1 xfail estrito, igual a antes. As seções A, B e C e o golden seguem iguais.
+
+## 13. Execução do F2A-13 (Fase 2A)
+
+Executado em 15/10/2026, um commit (`chore: clean up phase 2A residue`).
+
+| # | Item | Resultado |
+|---|---|---|
+| 1 | Vacância manual | `VACANCIA_CONHECIDA` removida do `fii_engine.py`, com o patch no harness do golden e os imports nos testes |
+| 2 | Caminho de provedor do motor de FII | Saíram o parâmetro `cvm_provider`, `_obter_cvm_dados`, o import de `get_cnpj_fii`, a resolução de P/VP e de vacância pelo provedor e o ramo de vacância do score. O método de rendimento continua aceitando vacância (recebe `None`): ela volta com fonte oficial e decisão de método (F-10). Golden: 185 casos removidos, exatamente os que tinham `cvm`; nenhum alterado ou incluído |
+| 3 | `CVMTickerMap` e gerador | A classe (`_seed_manual_map`, `refresh`, `ensure_seeded`), `get_cd_cvm`, `get_ticker` e os testes deles saíram; `scripts/gerar_mapa_cvm.py` saiu com `git rm` |
+| 4 | Mapas manuais | Ficam só os dicionários (`_MANUAL_MAP`, `_TICKER_TO_CVM`, `FII_CNPJ_MAP`) e a fixture `tests/fixtures/cvm_codigos_oficiais.csv`: `scripts/levantamento_fase2a.py` os lê, e o índice falso de `tests/test_market_engine.py` também. Saíram `get_cnpj_fii`, `get_ticker_fii` e `_CNPJ_TO_TICKER`, com os testes deles. `scripts/dossie_fase2.py` não mudou |
+| 5 | Itens *investigar* | `buscar_noticias` e `get_quote` removidos (seção 1.2) |
+| 6 | Sobras do scraper | Flag `erro_scraper` do `MethodInputs` e a fonte `fundamentus` do `data_quality.py`. Ficam, como o item manda, o `erro_scraper` de `sentinela/domain/models.py`, `backtesting/`, `auditar_recomendacoes.py` e `app.py`; também o de `peers_engine.py` (Jules) e o da lista de chaves ignoradas no merge do `market_engine.py` |
+| 7 | `dy_mes_decimal` do `CVMFIIProvider` | Removido (E-30) |
+| 8 | `vulture_whitelist.py` | `ETF` e `BDR` saíram; as citações de `cvm_ticker_map.py` e `test_cvm_ticker_map` nos comentários, e a lista do *investigar*, também |
+| 9 | Correções automáticas seguras | UP045, UP006, I001 em `market_engine.py`, `brapi_provider.py`, `cvm_provider.py`, `cvm_fii_provider.py`, `fii_engine.py`, `data_quality.py` e nos dois mapas (82 correções), e os 5 imports de `typing` que perderam uso |
+
+Antes → depois:
+
+| Ferramenta | Antes | Depois |
+|---|---|---|
+| `ruff check .` completo | **259 erros**, 133 com correção automática | **156 erros**, 42 com correção automática |
+| UP006 / UP045 / UP035 / I001 | 55 / 32 / 3 / 8 | 1 / 1 / 1 / 4 (só em `app.py`, `auditoria.py`, `portfolio_engine.py` e `tests/test_peers_engine.py`) |
+| BLE001 / DTZ005 / DTZ011 / SIM117 | 42 / 14 / 13 / 15 | 39 / 11 / 10 / 12 (saíram com a `CVMTickerMap`, o `buscar_noticias` e o caminho de provedor do motor de FII) |
+| `vulture --min-confidence 80` (com o whitelist) | 2 achados em `tests/` (`chunk_size`) | os mesmos 2 |
+| `vulture --min-confidence 60`, fora de `tests/` | `buscar_noticias`, `buscar_analise`, `quote_type` e `USADOS` | `buscar_analise`, `quote_type` e `USADOS` |
+| `deptry .` | 1 achado (`pytest` no `requirements.txt`) | o mesmo |
+
+Resíduos que ficam para outras fases: `FII_MANUAL_FALLBACK` (F2C-10); os dicionários dos mapas e a fixture, até `scripts/levantamento_fase2a.py` deixar de lê-los; `scripts/invalidar_cache_cvm.py` e o teste dele (F2B-5); `erro_scraper` fora do `MethodInputs` (F3 e F3-6); a linha de vacância do relatório do F1-12 (`sentinela/reports/rastreabilidade.py`, lê `vacancia_fonte`, que nenhum motor grava agora), sem efeito enquanto a vacância for `None`.

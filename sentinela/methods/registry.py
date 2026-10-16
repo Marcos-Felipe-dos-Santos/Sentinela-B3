@@ -1,7 +1,7 @@
 """Registro dos métodos de valuation: catálogo e changelog.
 
-Fixa a 1.0.0 de cada método ao comportamento da V1. O `applies_to` é declarado, mas
-não aplicado: descreve o roteamento da V1 (ações para STOCK e UNIT, FII para FII; o
+Fixa a 1.0.0 de cada método ao comportamento da V1; as versões seguintes ficam no
+changelog. O `applies_to` é declarado, mas não aplicado: descreve o roteamento da V1 (ações para STOCK e UNIT, FII para FII; o
 classificador atual nunca devolve ETF nem BDR). Aplicar e estreitar é o F2B-4.
 """
 
@@ -49,6 +49,18 @@ class Entrada:
 CHANGELOG: dict[str, tuple[Mudanca, ...]] = {
     m.nome: (Mudanca("1.0.0", DESCRICAO_1_0_0),) for m in METODOS
 }
+CHANGELOG["Gordon"] += (
+    Mudanca(
+        "1.1.0",
+        "com LPA não positivo, abstém-se; sai o payout de 50% do fallback da V1",
+    ),
+)
+CHANGELOG["Bazin"] += (
+    Mudanca(
+        "1.0.1",
+        "motivo da abstenção (DY não confiável antes do mínimo); nenhum número muda",
+    ),
+)
 
 
 def validar(

@@ -25,7 +25,7 @@ O cabeçalho da fila define o branch da fase e os arquivos intocáveis.
 1. **Já feito?** Confira no código e no `git log`. Se o item já foi entregue, marque `[x]`, anote "já estava feito" no diário e siga.
 2. **Escopo.** Só o que o item descreve. Nenhuma correção extra "de passagem".
 3. **Rito pelo tipo do item:**
-   - `fix`: teste xfail provando o problema → implementação → XPASS.
+   - `fix`: teste xfail provando o problema → implementação → marca retirada → PASS.
    - `refactor`: comportamento idêntico; nenhum teste existente muda.
    - `feat`: teste novo primeiro, falhando pelo motivo certo, depois a implementação.
    - `docs`: valide cada afirmação contra o código; divergindo, corrija o documento, nunca o código.
@@ -33,7 +33,7 @@ O cabeçalho da fila define o branch da fase e os arquivos intocáveis.
    - `chore`: cumpra o aceite do item à risca.
    - `levantamento`: só escreve análise em `docs/` e, se o item pedir, script em `scripts/`. Não altera módulos de produção.
    - `limpeza`: remova só o que o item lista. Antes de remover, confirme por busca que nada usa o que sai. Arquivo rastreado sai com `git rm`, ou `git rm --cached` se deve continuar existindo localmente. Depois, rode de novo as ferramentas do inventário e atualize `docs/limpeza/inventario.md`.
-4. **Verificação.** `python -m pytest -q` e `ruff check --select E9,F63,F7,F82 .` verdes — o mesmo gate do CI. A dívida antiga do `ruff check .` completo fica no inventário (F0-7) e é paga a partir da Fase 1. `ruff format` só nos arquivos que o item criou ou alterou. No máximo 3 rodadas de correção; na 3ª falha, marque `[!]`, registre no diário e pare o loop.
+4. **Verificação.** `python -m pytest -q` e `ruff check --select E9,F63,F7,F82 .` verdes — o mesmo gate do CI. Também verde, e bloqueante, o `ruff check` com as regras completas em `sentinela/methods/` e `sentinela/data/`, só nos diretórios que existirem (o ruff falha com E902 em caminho inexistente). Fora desses diretórios, a dívida antiga do `ruff check .` completo fica no inventário (F0-7) e é paga a partir da Fase 1. `ruff format` só nos arquivos que o item criou ou alterou. No máximo 3 rodadas de correção; na 3ª falha, marque `[!]`, registre no diário e pare o loop.
 5. **Sem resíduo novo.** O item não acrescenta código comentado, import sem uso, print de depuração, arquivo temporário nem TODO sem item na fila.
 6. **Diário.** Acrescente a seção do item em `docs/loop/diario.md`, no formato abaixo.
 7. **Fila.** Marque o item como `[x]`.
@@ -54,6 +54,15 @@ O cabeçalho da fila define o branch da fase e os arquivos intocáveis.
 - Métodos de valuation não ganham rede, banco nem leitura de relógio.
 - O repositório é público: dados da carteira do Marcos (posições, pesos, lista de ativos) nunca entram em arquivo versionado — nem no diário. O que usar a carteira vai para `outputs/`.
 - Não fazer perguntas durante o loop. Onde a especificação dizia "me diga", "me mostre" ou "pare e me mostre o diff", escreva no diário e siga. Dúvida que muda o resultado vira `[!]`, registro no diário e parada.
+
+## Bugs e regressão
+
+Decisão do Marcos de 15/10/2026. Registro e detalhe em `tests/regressao/README.md`.
+
+1. Bug confirmado (auditoria, revisão ou uso) vira teste em `tests/regressao/` no mesmo dia, antes de qualquer correção.
+2. Bug ainda não corrigido fica xfail estrito com ID e item que corrige; o `xfail_strict` do `pytest.ini` faz o CI quebrar se ele passar sem a marca ser retirada.
+3. A correção retira a marca, o teste fica para sempre e o registro muda para "corrigido".
+4. Nenhum item `fix:` fecha sem o teste de regressão do bug que corrige.
 
 ## Formato do diário
 
