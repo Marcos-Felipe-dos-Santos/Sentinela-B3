@@ -65,7 +65,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   **Testes que mudam:** `tests/test_controladores.py::test_linha_de_outra_conta_conta_como_ausente`, `tests/test_contas_cvm_consumidores.py::test_controladora_zerada_e_minoritarios_nao_lidos_valem_o_total_como_no_f2a_3` e `tests/test_market_engine_acoes_cvm.py::test_sem_linha_da_controladora_vale_o_lucro_total` (fixavam o comportamento revogado; justificativa no diário).
   **Aceite:** os quatro testes de `tests/regressao/` passam a PASS com a marca retirada; registro atualizado; diário com quantas companhias da DFP 2025 mudam de lado (levantamento só de leitura, script e saída em `outputs/`); golden inalterado; mutation ≥ 80% em `sentinela.data.controladores*`; gate da fase.
 
-- [ ] **F2A-42** · fix · `fix: keep non-finite P/VP out of the FII engine output` · **[golden]**
+- [x] **F2A-42** · fix · `fix: keep non-finite P/VP out of the FII engine output` · **[golden]**
   Corrige BUG-2A-06 (furo do F2A-24): P/VP NaN ou infinito vira `None` antes da lente, e o comentário provisório "NaN e infinito seguem como antes (F2A-24)" sai.
   **Aceite:** teste de regressão em PASS; `tests/test_saidas_finitas.py` cobre NaN e infinito no P/VP do FII; golden só no `pvp` dos casos de FII com P/VP não finito na entrada (predicado e contagem no diário); gate da fase.
 

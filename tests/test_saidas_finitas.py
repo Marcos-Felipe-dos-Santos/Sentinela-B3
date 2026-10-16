@@ -50,6 +50,15 @@ def test_fii_com_selic_zero_nao_devolve_nan(selic):
     assert resultado["recomendacao"] == "NEUTRO"
 
 
+@pytest.mark.parametrize("pvp", [math.nan, math.inf, -math.inf])
+def test_fii_com_pvp_nao_finito_sai_sem_pvp(pvp):
+    # F2A-42: P/VP não finito é tratado como ausente; a lente não pontua.
+    resultado = _fii(pvp=pvp)
+    assert _nao_finitos(resultado) == []
+    assert resultado["pvp"] is None
+    assert resultado["score_final"] == _fii(pvp=None)["score_final"]
+
+
 def test_golden_sem_nan_nem_infinito():
     with GOLDEN.open(encoding="utf-8") as f:
         casos = [json.loads(linha) for linha in f]

@@ -85,11 +85,11 @@ class FIIEngine:
                 "metodos_usados": "Dados insuficientes (DY ausente ou inválido)",
             }
 
-        # P/VP: o oficial da CVM chega pela cascata (F2A-11). Sem P/VP positivo (ausente,
-        # zero ou negativo), a lente não é calculada, não pontua e a saída traz `pvp` nulo.
-        # NaN e infinito seguem como antes (F2A-24).
+        # P/VP: o oficial da CVM chega pela cascata (F2A-11). Sem P/VP positivo e finito
+        # (ausente, zero, negativo, NaN ou infinito; F2A-42), a lente não é calculada, não
+        # pontua e a saída traz `pvp` nulo.
         pvp = float(dados.get("pvp") or 0)
-        if pvp <= 0:
+        if pvp <= 0 or not math.isfinite(pvp):
             pvp = None
 
         # Vacância: sem fonte oficial (o Informe Mensal não a traz), o método recebe None

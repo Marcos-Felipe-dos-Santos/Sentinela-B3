@@ -13,10 +13,6 @@ import pytest
 from fii_engine import FIIEngine
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG-2A-06 · P/VP NaN ou infinito na saída do motor de FII · corrige: F2A-42",
-)
 @pytest.mark.parametrize("pvp", [math.nan, math.inf])
 def test_pvp_nao_finito_vira_nulo_na_saida(pvp):
     with patch("fii_engine.get_selic_atual", return_value=0.145):
