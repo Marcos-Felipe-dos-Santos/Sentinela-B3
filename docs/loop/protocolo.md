@@ -55,6 +55,15 @@ O cabeçalho da fila define o branch da fase e os arquivos intocáveis.
 - O repositório é público: dados da carteira do Marcos (posições, pesos, lista de ativos) nunca entram em arquivo versionado — nem no diário. O que usar a carteira vai para `outputs/`.
 - Não fazer perguntas durante o loop. Onde a especificação dizia "me diga", "me mostre" ou "pare e me mostre o diff", escreva no diário e siga. Dúvida que muda o resultado vira `[!]`, registro no diário e parada.
 
+## Bugs e regressão
+
+Decisão do Marcos de 15/10/2026. Registro e detalhe em `tests/regressao/README.md`.
+
+1. Bug confirmado (auditoria, revisão ou uso) vira teste em `tests/regressao/` no mesmo dia, antes de qualquer correção.
+2. Bug ainda não corrigido fica xfail estrito com ID e item que corrige; o `xfail_strict` do `pytest.ini` faz o CI quebrar se ele passar sem a marca ser retirada.
+3. A correção retira a marca, o teste fica para sempre e o registro muda para "corrigido".
+4. Nenhum item `fix:` fecha sem o teste de regressão do bug que corrige.
+
 ## Formato do diário
 
     ### <ID> — <título do commit>

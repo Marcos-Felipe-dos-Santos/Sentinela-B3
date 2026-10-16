@@ -13,7 +13,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
 ## Itens
 
-- [ ] **F2A-40** · test · `test: register audited bugs as strict regression tests`
+- [x] **F2A-40** · test · `test: register audited bugs as strict regression tests`
   Cria a prática "todo bug vira teste" e registra os bugs confirmados pelas auditorias.
   - **Diretório** `tests/regressao/`, um arquivo por bug: `test_bug_2a_NN_<descricao>.py`. Cada teste exercita o comportamento correto esperado e falha hoje pelo motivo do bug. Marca: `@pytest.mark.xfail(strict=True, reason="BUG-2A-NN · <sintoma> · corrige: <item>")`.
   - **Registro** `tests/regressao/README.md`: a regra (abaixo) e uma tabela com ID, sintoma, evidência (arquivo:linha), origem (auditoria e data), teste, item que corrige e estado (aberto | corrigido).

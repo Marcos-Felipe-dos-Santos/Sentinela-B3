@@ -20,7 +20,7 @@ jobs:
       - name: Lint (gate de erros reais)
         run: ruff check --select E9,F63,F7,F82 .
       - name: Tests
-        run: python -m pytest tests/ --tb=short
+        run: python -m pytest tests/ --tb=short -rxX
       # Passos em modo relatório: não bloqueiam. O gate bloqueante é o lint de erros reais e o pytest.
       - name: Ruff completo (relatório)
         continue-on-error: true

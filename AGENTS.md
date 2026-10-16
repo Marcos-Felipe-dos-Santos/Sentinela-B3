@@ -110,6 +110,19 @@ Editar outro arquivo para obter o mesmo efeito conta como violação.
 
 ---
 
+## Bugs e regressão
+
+Decisão do mantenedor de 15/10/2026. Registro e detalhe em `tests/regressao/README.md`.
+
+1. Bug confirmado (auditoria, revisão ou uso) vira teste em `tests/regressao/` no mesmo dia,
+   antes de qualquer correção
+2. Bug ainda não corrigido fica xfail estrito com ID e item que corrige; o `xfail_strict` do
+   `pytest.ini` faz o CI quebrar se ele passar sem a marca ser retirada
+3. A correção retira a marca, o teste fica para sempre e o registro muda para "corrigido"
+4. Nenhum item `fix:` fecha sem o teste de regressão do bug que corrige
+
+---
+
 ## Comandos
 
 ```bash
