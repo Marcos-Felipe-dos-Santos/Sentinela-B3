@@ -11,6 +11,7 @@ import pytest
 import cvm_provider
 from cvm_provider import CVMProvider
 from sentinela.data import contas_cvm
+from sentinela.data.controladores import MOTIVO_LUCRO_SEM_CORRESPONDENCIA
 from tests.test_contratos_provedores import _montar
 from tests.test_market_engine import _engine, _historico
 from tests.test_market_engine_acoes_cvm import _calcular
@@ -154,17 +155,16 @@ def test_seguradora_le_o_lucro_na_3_13(tmp_path, monkeypatch):
     assert ind["roe"] == pytest.approx(89.0 / 890.0)
 
 
-def test_controladora_sem_correspondencia_vale_o_lucro_total_como_no_f2a_3(
-    tmp_path, monkeypatch
-):
-    # A revisão das reservas (D20) é do F2A-37; aqui o resultado do F2A-3 não muda.
+def test_controladora_sem_correspondencia_se_abstem(tmp_path, monkeypatch):
+    # F2A-41 (D20): par sem correspondência é abstenção, não o lucro total do F2A-3.
     ind = _calcular(
         tmp_path, monkeypatch,
         dre=[("3.11", "Lucro/Prejuízo Consolidado do Período", 1_000.0),
              ("3.11.01", "Outra Conta", 800.0)],
         bpp=[("2.03", "Patrimônio Líquido Consolidado", 5_000.0)],
     )  # fmt: skip
-    assert ind["lucro_controladores"] == pytest.approx(1_000.0)
+    assert ind["lucro_controladores"] is None
+    assert ind["roe_motivo"] == MOTIVO_LUCRO_SEM_CORRESPONDENCIA
 
 
 def test_lucro_dos_controladores_invalido_abstem(tmp_path, monkeypatch):
@@ -183,9 +183,10 @@ def test_lucro_dos_controladores_invalido_abstem(tmp_path, monkeypatch):
     # autoriza reserva (`tests/test_cvm_controladores.py::test_valor_invalido_nao_autoriza_reserva`).
     [("3.11.02", "Outra Conta", 1_000.0)],
 )  # fmt: skip
-def test_controladora_zerada_e_minoritarios_nao_lidos_valem_o_total_como_no_f2a_3(
+def test_controladora_zerada_e_minoritarios_sem_correspondencia_se_abstem(
     tmp_path, monkeypatch, minoritarios
 ):
+    # F2A-41 (D20): a linha dos não controladores com outra descrição não autoriza a reserva.
     ind = _calcular(
         tmp_path, monkeypatch,
         dre=[("3.11", "Lucro/Prejuízo Consolidado do Período", 1_000.0),
@@ -193,7 +194,8 @@ def test_controladora_zerada_e_minoritarios_nao_lidos_valem_o_total_como_no_f2a_
              minoritarios],
         bpp=[("2.03", "Patrimônio Líquido Consolidado", 5_000.0)],
     )  # fmt: skip
-    assert ind["lucro_controladores"] == pytest.approx(1_000.0)
+    assert ind["lucro_controladores"] is None
+    assert ind["roe_motivo"] == MOTIVO_LUCRO_SEM_CORRESPONDENCIA
 
 
 def test_banco_sem_setor_segue_com_o_lucro_dos_controladores(tmp_path, monkeypatch):

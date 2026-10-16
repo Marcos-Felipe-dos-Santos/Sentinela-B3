@@ -23,6 +23,8 @@ a falha de cada um: `python -m pytest tests/regressao -q --runxfail`.
 
 ## Registro
 
+A evidência aponta o código no momento do registro; depois da correção a linha pode não existir.
+
 Origem: auditoria externa da Fase 2A (`docs/loop/historico/fase-2a/auditoria-externa.md`):
 Codex, modo FASE, e Gemini 4 Argon em duas passadas (1ª e 2ª). "proposta da 2B" = item a
 definir na revisão da proposta da Fase 2B.
@@ -30,10 +32,10 @@ definir na revisão da proposta da Fase 2B.
 | ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
 |---|---|---|---|---|---|---|
 | BUG-2A-01 | LPA, VPA, ROE, P/L ou P/VP ≤ 0 da CVM descartados no merge; o valor positivo anterior ou do cache fica; prejuízo conta como dado ausente | `market_engine.py:133` (`_is_field_missing`), `:158` (`merge_if_valid`) | Gemini 1ª (14/10), Codex (15/10) | `test_bug_2a_01_cvm_nao_positivo_descartado.py` | F2B-8 | aberto |
-| BUG-2A-02 | reserva dos controladores liberada quando a conta existe com outra descrição (`MOTIVO_SEM_CORRESPONDENCIA`), contra a D20 | `sentinela/data/controladores.py:44` (`_AUSENTE`) | Gemini 1ª (14/10) e 2ª (15/10), Codex (15/10) | `test_bug_2a_02_controladores_sem_correspondencia.py` | F2A-41 | aberto |
-| BUG-2A-03 | linha dos controladores ausente devolve o lucro consolidado mesmo com minoritários no balanço (2.03.09 ≠ 0) | `sentinela/data/controladores.py:88` (`lucro_dos_controladores`) | Codex (15/10), Gemini 2ª (15/10) | `test_bug_2a_03_controladores_ausente_com_minoritarios.py` | F2A-41 | aberto |
-| BUG-2A-04 | minoritários do balanço lidos só no modelo do setor, enquanto as outras leituras da reserva usam todos os modelos | `cvm_provider.py:124` (`lucro_controladores_com_reserva`) | Gemini 1ª (14/10), Codex (15/10) | `test_bug_2a_04_minoritarios_so_no_modelo_do_setor.py` | F2A-41 | aberto |
-| BUG-2A-05 | PL total inválido (NaN, linhas divergentes) devolve `None` sem motivo | `sentinela/data/controladores.py:106` (`pl_dos_controladores`) | Gemini 2ª (15/10) | `test_bug_2a_05_pl_total_invalido_sem_motivo.py` | F2A-41 | aberto |
+| BUG-2A-02 | reserva dos controladores liberada quando a conta existe com outra descrição (`MOTIVO_SEM_CORRESPONDENCIA`), contra a D20 | `sentinela/data/controladores.py:44` (`_AUSENTE`) | Gemini 1ª (14/10) e 2ª (15/10), Codex (15/10) | `test_bug_2a_02_controladores_sem_correspondencia.py` | F2A-41 | corrigido |
+| BUG-2A-03 | linha dos controladores ausente devolve o lucro consolidado mesmo com minoritários no balanço (2.03.09 ≠ 0) | `sentinela/data/controladores.py:88` (`lucro_dos_controladores`) | Codex (15/10), Gemini 2ª (15/10) | `test_bug_2a_03_controladores_ausente_com_minoritarios.py` | F2A-41 | corrigido |
+| BUG-2A-04 | minoritários do balanço lidos só no modelo do setor, enquanto as outras leituras da reserva usam todos os modelos | `cvm_provider.py:124` (`lucro_controladores_com_reserva`) | Gemini 1ª (14/10), Codex (15/10) | `test_bug_2a_04_minoritarios_so_no_modelo_do_setor.py` | F2A-41 | corrigido |
+| BUG-2A-05 | PL total inválido (NaN, linhas divergentes) devolve `None` sem motivo | `sentinela/data/controladores.py:106` (`pl_dos_controladores`) | Gemini 2ª (15/10) | `test_bug_2a_05_pl_total_invalido_sem_motivo.py` | F2A-41 | corrigido |
 | BUG-2A-06 | P/VP NaN ou infinito sai na saída do motor de FII | `fii_engine.py:92` (`analisar`) | Gemini 1ª (14/10), Codex (15/10) | `test_bug_2a_06_pvp_nao_finito_no_fii.py` | F2A-42 | aberto |
 | BUG-2A-07 | ativo fora do índice oficial (ex.: BPAC11) recebe métodos de ação: `classe_ativo` não é preenchido e a guarda do F2A-29 não dispara | `market_engine.py:494` (`_aplicar_referencia`), `valuation_engine.py:125` | Gemini 1ª (14/10) e 2ª (15/10), Codex (15/10) | `test_bug_2a_07_fora_do_indice_recebe_metodos.py` | F2A-43 | aberto |
 | BUG-2A-08 | relatório de rastreabilidade diz que o FII sem P/VP usa 1,0 | `sentinela/reports/rastreabilidade.py:394` | Gemini 2ª (15/10) | `test_bug_2a_08_rastreabilidade_pvp_um.py` | F2A-44 | aberto |

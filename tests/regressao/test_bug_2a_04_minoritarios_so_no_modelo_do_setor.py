@@ -7,7 +7,6 @@ total. Origem: auditoria externa da Fase 2A (Gemini 1ª passada e Codex, 15/10/2
 """
 
 import pandas as pd
-import pytest
 
 from cvm_provider import lucro_controladores_com_reserva
 from sentinela.data.controladores import MOTIVO_LUCRO_NAO_SEPARADO
@@ -22,20 +21,15 @@ def _df(*linhas):
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG-2A-04 · minoritários do balanço lidos só no modelo do setor · corrige: F2A-41"
-    ),
-)
 def test_minoritarios_do_balanco_de_outro_modelo_impedem_a_reserva():
-    # Layout do Itaú (DFP 2025): DRE em 3.09, participação dos não controladores em 2.08.09.
+    # Layout do Itaú (DFP 2025): DRE em 3.09, participação dos não controladores em 2.08.09,
+    # num banco sem setor no índice (antes, a 2.03.09 era lida só no modelo de empresa).
     dre = _df(
         ("3.09", "Lucro/Prejuízo Consolidado do Período", 100.0),
         ("3.09.01", "Atribuído a Sócios da Empresa Controladora", 0.0),
         ("3.09.02", "Atribuído a Sócios Não Controladores", 0.0),
     )
     bpp = _df(("2.08.09", "Participação dos Acionistas Não Controladores", 50.0))
-    resultado = lucro_controladores_com_reserva(dre, bpp, "empresa")
+    resultado = lucro_controladores_com_reserva(dre, bpp)
     assert resultado.valor is None
     assert resultado.motivo == MOTIVO_LUCRO_NAO_SEPARADO

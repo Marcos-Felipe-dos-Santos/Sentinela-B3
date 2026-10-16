@@ -111,17 +111,19 @@ def _ler_em_qualquer_modelo(df: pd.DataFrame, campo: str):
 
 
 def lucro_controladores_com_reserva(
-    dre_emp: pd.DataFrame, bpp_emp: pd.DataFrame, modelo: str = "empresa"
+    dre_emp: pd.DataFrame, bpp_emp: pd.DataFrame
 ) -> controladores.Resultado:
     """Lucro atribuído aos sócios da controladora (3.11.01, 3.09.01 ou 3.13.01), pela tabela.
 
-    As reservas seguem a D20 e a decisão 7.2 da ficha (`sentinela.data.controladores`).
+    As reservas seguem a D20 e a decisão 7.2 da ficha (`sentinela.data.controladores`). As
+    quatro leituras, inclusive a dos não controladores no balanço, são em qualquer modelo
+    (F2A-41), por isso o modelo do setor não entra.
     """
     return controladores.lucro_dos_controladores(
         _ler_em_qualquer_modelo(dre_emp, "lucro_controladores"),
         _ler_em_qualquer_modelo(dre_emp, "lucro_nao_controladores"),
         _ler_em_qualquer_modelo(dre_emp, "lucro_liquido"),
-        _ler(bpp_emp, "pl_nao_controladores", modelo),
+        _ler_em_qualquer_modelo(bpp_emp, "pl_nao_controladores"),
     )
 
 
@@ -558,7 +560,7 @@ class CVMProvider:
                      if not df.empty and "CNPJ_CIA" in df.columns),
                     None,
                 )
-                lucro_res = lucro_controladores_com_reserva(dre_emp, bpp_emp, modelo)
+                lucro_res = lucro_controladores_com_reserva(dre_emp, bpp_emp)
                 pl_res = pl_controladores_com_reserva(bpp_emp, dre_emp, modelo)
                 lucro_ctrl, pl_ctrl = lucro_res.valor, pl_res.valor
                 linhas_399, cc = self._dados_por_acao(zip_path)

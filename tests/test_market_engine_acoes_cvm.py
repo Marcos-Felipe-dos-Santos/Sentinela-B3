@@ -27,6 +27,7 @@ from sentinela.data.acoes_cvm import (
     NOTA_SINAL_CONSOLIDADO,
     Composicao,
 )
+from sentinela.data.controladores import MOTIVO_LUCRO_NAO_SEPARADO
 from tests.test_market_engine import FakeCVM, _engine, _historico
 from tests.test_market_engine_referencia import FakeReferencia, _indice, _registro
 
@@ -445,7 +446,10 @@ def test_controladora_zerada_com_minoritarios_fica_zero(tmp_path, monkeypatch):
     assert ind["lucro_controladores"] == 0.0
 
 
-def test_sem_linha_da_controladora_vale_o_lucro_total(tmp_path, monkeypatch):
+def test_sem_linha_da_controladora_e_minoritarios_de_outra_descricao_se_abstem(
+    tmp_path, monkeypatch
+):
+    # F2A-41 (D20): a 2.03.09 com outra descrição não é ausência de minoritários.
     ind = _calcular(
         tmp_path,
         monkeypatch,
@@ -453,9 +457,10 @@ def test_sem_linha_da_controladora_vale_o_lucro_total(tmp_path, monkeypatch):
         bpp=[("2.03", "Patrimônio Líquido Consolidado", 7_000.0),
              ("2.03.09", "Outra conta", 300.0)],
     )  # fmt: skip
-    assert ind["lucro_controladores"] == pytest.approx(700.0)
-    assert ind["pl_controladores"] == pytest.approx(7_000.0)
-    assert ind["roe"] == pytest.approx(0.1)
+    assert ind["lucro_controladores"] is None
+    assert ind["pl_controladores"] is None
+    assert ind["roe"] is None
+    assert ind["roe_motivo"] == MOTIVO_LUCRO_NAO_SEPARADO
 
 
 def test_pl_e_pvp_da_cvm_declaram_as_acoes_do_fim_do_periodo(monkeypatch):

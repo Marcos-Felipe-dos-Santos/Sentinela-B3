@@ -56,7 +56,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - mutação não se aplica a teste xfail: registre no diário que o rito `test` foi cumprido pela execução com `--runxfail`;
   - gate da fase.
 
-- [ ] **F2A-41** · fix · `fix: apply D20 to controlling-interest fallbacks without exceptions`
+- [x] **F2A-41** · fix · `fix: apply D20 to controlling-interest fallbacks without exceptions`
   Corrige BUG-2A-02 a BUG-2A-05, pela D20 e pela decisão 7.2 da ficha (`docs/metodologia/por-acao.md`), sem decisão nova:
   - "par sem correspondência" é abstenção, não linha ausente (D20: "par sem correspondência vira abstenção com motivo");
   - com a linha dos controladores ausente, o lucro total só entra se não houver minoritários na DRE **nem** no balanço;

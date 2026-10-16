@@ -18,10 +18,6 @@ from sentinela.data.controladores import MOTIVO_PL_INVALIDO, pl_dos_controladore
 AUSENTE = Abstencao(MOTIVO_LINHA_AUSENTE)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG-2A-05 · PL total inválido devolve None sem motivo · corrige: F2A-41",
-)
 @pytest.mark.parametrize("motivo", [MOTIVO_VALOR_INVALIDO, MOTIVO_LINHAS_DIVERGENTES])
 def test_pl_total_invalido_traz_o_motivo(motivo):
     resultado = pl_dos_controladores(Abstencao(motivo), AUSENTE, AUSENTE)
