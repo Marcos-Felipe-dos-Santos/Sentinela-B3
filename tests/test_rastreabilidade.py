@@ -228,8 +228,9 @@ def test_sintese_sem_metodo_nao_chama_o_preco_de_mediana():
 
 
 def test_pvp_ausente_do_fii_e_sinalizado():
+    # F2A-44: desde o F2A-11 a lente se abstém; o 1,0 e o provedor injetado saíram.
     html = _html(_fii(pvp=None), eh_fii=True)
-    assert "o motor usa P/VP = 1,0" in html
+    assert "ausente: a lente de P/VP se abstém e não pontua (F2A-11)" in html
 
 
 def test_captura_nao_deixa_os_motores_instrumentados():

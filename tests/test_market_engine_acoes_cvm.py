@@ -384,13 +384,45 @@ def _proveniencias(**dados):
 
 
 def test_relatorio_mostra_documento_e_escala_do_lpa_e_do_vpa():
-    proveniencias, _ = _proveniencias(acoes_cvm=ACOES_CVM)
+    # F2A-44: o LPA da CVM é o recalculado só quando `lpa_cvm` o marca (F2A-36).
+    recalculado = {"origem": "recalculado", "classe": "ON", "notas": [NOTA_RECALCULADO]}
+    proveniencias, _ = _proveniencias(acoes_cvm=ACOES_CVM, lpa_cvm=recalculado)
     assert proveniencias["lpa"] == (
-        "derivado no motor: preço ÷ P/L; P/L da CVM: lucro dos controladores ÷ 1.234.567 "
-        "ações da Composição do Capital (DFP de 2025-12-31, versão 2, escala MIL; ações do "
-        "fim do período)"
+        "derivado no motor: preço ÷ P/L; P/L da CVM: LPA recalculado da classe ON: lucro dos "
+        "controladores ÷ 1.234.567 ações da Composição do Capital (DFP de 2025-12-31, versão "
+        "2, escala MIL; ações do fim do período) [ações do fim do período, não média "
+        "ponderada]"
     )
     assert "P/VP da CVM: PL dos controladores ÷ 1.234.567 ações" in proveniencias["vpa"]
+
+
+def test_relatorio_descreve_o_lpa_da_unit_e_o_divulgado_sem_acoes():
+    # F2A-44: unit com classes de origens diferentes; o divulgado traz a nota do sinal.
+    unit = {
+        "origem": "unit",
+        "componentes": {
+            "ON": {"quantidade": 1, "lpa": 2.1, "origem": "divulgado", "classe": "ON",
+                   "notas": [NOTA_SINAL_CONSOLIDADO]},
+            "PN": {"quantidade": 2.0, "lpa": 2.0, "origem": "recalculado", "classe": "PN",
+                   "notas": [NOTA_RECALCULADO]},
+        },
+        "notas": [NOTA_SINAL_CONSOLIDADO, NOTA_RECALCULADO],
+    }  # fmt: skip
+    proveniencias, _ = _proveniencias(acoes_cvm=ACOES_CVM, lpa_cvm=unit)
+    assert proveniencias["lpa"] == (
+        "derivado no motor: preço ÷ P/L; P/L da CVM: soma das classes da unit: 1 × LPA "
+        "básico divulgado na DRE da classe ON (média ponderada de ações do exercício) "
+        f"[{NOTA_SINAL_CONSOLIDADO}] + 2 × LPA recalculado da classe PN: lucro dos "
+        "controladores ÷ 1.234.567 ações da Composição do Capital (DFP de 2025-12-31, versão "
+        f"2, escala MIL; ações do fim do período) [{NOTA_RECALCULADO}]"
+    )
+    # Escala indeterminada: sem a Composição do Capital, o LPA divulgado ainda é da CVM.
+    divulgado = {"origem": "divulgado", "classe": "ON", "notas": []}
+    sem_acoes, _ = _proveniencias(lpa_cvm=divulgado)
+    assert sem_acoes["lpa"] == (
+        "derivado no motor: preço ÷ P/L; P/L da CVM: LPA básico divulgado na DRE da classe "
+        "ON (média ponderada de ações do exercício)"
+    )
 
 
 def test_relatorio_sem_multiplo_da_cvm_nao_cita_o_documento():
@@ -407,7 +439,10 @@ def test_relatorio_sem_multiplo_da_cvm_nao_cita_o_documento():
     assert sem_acoes["lpa"] == "derivado no motor: preço ÷ P/L"
     from tests.test_rastreabilidade import _acao, _contexto
 
-    dados = _acao(acoes_cvm=ACOES_CVM)
+    dados = _acao(
+        acoes_cvm=ACOES_CVM,
+        lpa_cvm={"origem": "divulgado", "classe": "ON", "notas": []},
+    )
     dados["field_provenance"]["pl"] = pl_de_outra_fonte
     outras = {i["campo"]: i["proveniencia"] for i in _contexto(dados)["insumos"]}
     assert outras["lpa"] == "derivado no motor: preço ÷ P/L"

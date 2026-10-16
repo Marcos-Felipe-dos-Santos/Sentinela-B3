@@ -73,7 +73,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   Corrige BUG-2A-07 (furo do F2A-29): quando o índice não preenche `classe_ativo`, a cascata grava a classe do `AssetClassifier` (UNKNOWN para final 11 sem dado oficial), e a guarda do `ValuationEngine` passa a valer. Sem mudança no classificador nem na guarda.
   **Aceite:** teste de regressão em PASS, com índice falso sem o ticker e ticker terminado em 11; um teste confirma que ticker do índice segue igual; golden inalterado (o harness já passa `classe_ativo`); gate da fase.
 
-- [ ] **F2A-44** · fix · `fix: describe current per-share and FII P/VP sources in the traceability report`
+- [x] **F2A-44** · fix · `fix: describe current per-share and FII P/VP sources in the traceability report`
   Corrige BUG-2A-08 e BUG-2A-09: o relatório passa a dizer o que o código faz desde o F2A-11, o F2A-13 e o F2A-36 (FII sem P/VP: lente abstida; LPA da CVM: LPA básico divulgado da espécie, com o recalculado como conferência ou reserva marcada). Valide cada frase contra o código.
   **Testes que mudam:** `tests/test_rastreabilidade.py::test_pvp_ausente_do_fii_e_sinalizado` (exigia o texto antigo).
   **Aceite:** os dois testes de regressão em PASS; nenhuma outra saída muda; golden inalterado; gate da fase.

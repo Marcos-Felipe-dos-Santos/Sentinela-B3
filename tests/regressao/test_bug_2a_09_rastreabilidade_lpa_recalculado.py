@@ -6,9 +6,7 @@ Desde o F2A-36 (D19) o LPA dos métodos é o LPA básico divulgado da espécie, 
 externa da Fase 2A (Gemini 2ª passada, 15/10/2026).
 """
 
-import pytest
-
-from tests.test_rastreabilidade import _acao, _html
+from tests.test_rastreabilidade import _acao, _contexto, _html
 
 ACOES_CVM = {
     "documento": {"dt_refer": "2025-12-31", "versao": "1"},
@@ -19,14 +17,9 @@ ACOES_CVM = {
 LPA_DIVULGADO = {"origem": "divulgado", "classe": "ON", "notas": []}
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG-2A-09 · rastreabilidade diz que o LPA da CVM é lucro ÷ ações, e não o "
-        "divulgado · corrige: F2A-44"
-    ),
-)
 def test_lpa_divulgado_nao_e_descrito_como_lucro_sobre_acoes():
-    html = _html(_acao(acoes_cvm=ACOES_CVM, lpa_cvm=LPA_DIVULGADO))
-    assert "lucro dos controladores ÷" not in html
-    assert "LPA e VPA são o lucro" not in html
+    dados = _acao(acoes_cvm=ACOES_CVM, lpa_cvm=LPA_DIVULGADO)
+    insumos = {i["campo"]: i["proveniencia"] for i in _contexto(dados)["insumos"]}
+    assert "lucro dos controladores ÷" not in insumos["lpa"]
+    assert "LPA básico divulgado" in insumos["lpa"]
+    assert "LPA e VPA são o lucro" not in _html(dados)

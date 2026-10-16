@@ -64,11 +64,15 @@ LIMITES = (
         "com cache de 24 horas ou de um valor de contingência fixo."
     ),
     (
-        "E-1: quando P/L e P/VP vêm da CVM, LPA e VPA são o lucro e o PL dos controladores ÷ as "
-        "ações (ON + PN − tesouraria) da Composição do Capital do mesmo documento, com a escala "
-        "inferida pelo LPA divulgado; são as ações do fim do período, e o LPA divulgado usa a "
-        "média ponderada do exercício. Com P/L e P/VP de outra fonte, LPA e VPA herdam o escopo "
-        "dela."
+        "E-1: quando o P/L vem da CVM, o LPA é o LPA básico divulgado na DRE para a classe do "
+        "ticker (média ponderada de ações do exercício; na unit, o LPA de cada classe vezes a "
+        "quantidade dela na unit, somados). Divulgado incoerente faz o LPA se abster; sem linha "
+        "divulgada da classe, entra marcado o recalculado: lucro dos controladores ÷ ações "
+        "(ON + PN − tesouraria) da Composição do Capital do mesmo documento, ações do fim do "
+        "período; com escala indeterminada, ou numa preferencial de companhia com mais de uma "
+        "classe preferencial, o LPA se abstém. Quando o P/VP vem da CVM, o VPA é o PL dos controladores ÷ essas mesmas ações, "
+        "com a escala inferida pelo LPA divulgado. Com P/L e P/VP de outra fonte, LPA e VPA "
+        "herdam o escopo dela."
     ),
     (
         "A proveniência registrada pela cascata cobre cinco campos (preço, DY, P/L, P/VP e ROE); "
@@ -230,24 +234,68 @@ def _proveniencia(campo: str, dados: dict[str, Any]) -> str:
     return f"herdada de fonte_fundamentos: {dados.get('fonte_fundamentos') or 'desconhecida'}"
 
 
-def _proveniencia_derivada(campo: str, dados: dict[str, Any]) -> str:
-    """LPA e VPA (F2A-3): com P/L ou P/VP da CVM, dizem o documento e a escala usados."""
-    texto = PROVENIENCIA_DERIVADA[campo]
-    multiplo = {"lpa": "pl", "vpa": "pvp"}.get(campo)
-    acoes = dados.get("acoes_cvm")
-    fonte = ((dados.get("field_provenance") or {}).get(multiplo) or {}).get(
-        "provenance"
-    ) or {}
-    if not multiplo or not acoes or fonte.get("source") != "CVM":
-        return texto
+def _texto_acoes(acoes: dict[str, Any]) -> str:
     documento = acoes.get("documento") or {}
     return (
-        f"{texto}; P/{'L' if campo == 'lpa' else 'VP'} da CVM: "
-        f"{'lucro' if campo == 'lpa' else 'PL'} dos controladores ÷ "
         f"{_numero(acoes.get('acoes'), 0)} ações da Composição do Capital "
         f"(DFP de {documento.get('dt_refer')}, versão {documento.get('versao')}, "
         f"escala {acoes.get('escala')}; {acoes.get('nota')})"
     )
+
+
+def _texto_lpa_da_classe(origem: dict[str, Any], acoes: dict[str, Any] | None) -> str:
+    """Origem do LPA de uma classe (F2A-36, D19): o divulgado ou o recalculado, com as notas."""
+    if origem.get("origem") == "divulgado":
+        texto = (
+            f"LPA básico divulgado na DRE da classe {origem.get('classe')} "
+            "(média ponderada de ações do exercício)"
+        )
+    else:
+        denominador = _texto_acoes(acoes) if acoes else "ações da Composição do Capital"
+        texto = (
+            f"LPA recalculado da classe {origem.get('classe')}: lucro dos controladores ÷ "
+            f"{denominador}"
+        )
+    notas = origem.get("notas") or []
+    return f"{texto} [{'; '.join(notas)}]" if notas else texto
+
+
+def _texto_lpa_cvm(lpa_cvm: dict[str, Any], acoes: dict[str, Any] | None) -> str:
+    """LPA da CVM nos métodos (F2A-36): da classe do ticker ou, na unit, a soma das classes."""
+    if lpa_cvm.get("origem") != "unit":
+        return _texto_lpa_da_classe(lpa_cvm, acoes)
+    partes = [
+        f"{_numero(componente.get('quantidade'), 0)} × "
+        f"{_texto_lpa_da_classe(componente, acoes)}"
+        for componente in (lpa_cvm.get("componentes") or {}).values()
+    ]
+    return f"soma das classes da unit: {' + '.join(partes)}"
+
+
+def _proveniencia_derivada(campo: str, dados: dict[str, Any]) -> str:
+    """LPA e VPA: com P/L ou P/VP da CVM, dizem a origem (F2A-3, F2A-36, F2A-44).
+
+    LPA: o divulgado ou o recalculado da classe (`dados['lpa_cvm']`), mesmo sem a Composição
+    do Capital (escala indeterminada). VPA: o PL dos controladores ÷ as ações do documento.
+    """
+    texto = PROVENIENCIA_DERIVADA[campo]
+    multiplo = {"lpa": "pl", "vpa": "pvp"}.get(campo)
+    fonte = ((dados.get("field_provenance") or {}).get(multiplo) or {}).get(
+        "provenance"
+    ) or {}
+    if not multiplo or fonte.get("source") != "CVM":
+        return texto
+    acoes = dados.get("acoes_cvm")
+    if campo == "lpa":
+        lpa_cvm = dados.get("lpa_cvm")
+        return (
+            f"{texto}; P/L da CVM: {_texto_lpa_cvm(lpa_cvm, acoes)}"
+            if lpa_cvm
+            else texto
+        )
+    if not acoes:
+        return texto
+    return f"{texto}; P/VP da CVM: PL dos controladores ÷ {_texto_acoes(acoes)}"
 
 
 def _texto_referencia(referencia: dict[str, Any]) -> str:
@@ -391,7 +439,7 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         for i in insumos:
             if i["campo"] == "pvp":
                 i["proveniencia"] += (
-                    "; ausente: o motor usa P/VP = 1,0 (sem CVMFIIProvider injetado)"
+                    "; ausente: a lente de P/VP se abstém e não pontua (F2A-11)"
                 )
     derivados = {}
     for _, inputs, _, _ in registros:
