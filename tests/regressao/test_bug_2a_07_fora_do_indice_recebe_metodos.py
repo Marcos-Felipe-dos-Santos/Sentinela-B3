@@ -9,8 +9,6 @@ passadas e Codex, 15/10/2026).
 
 from unittest.mock import patch
 
-import pytest
-
 from tests.test_market_engine_referencia import (
     FakeReferencia,
     _indice,
@@ -20,13 +18,6 @@ from tests.test_market_engine_referencia import (
 from valuation_engine import ROTULO_FORA_DO_ESCOPO, ValuationEngine
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG-2A-07 · ativo fora do índice recebe os métodos de ação: a guarda do F2A-29 "
-        "não dispara · corrige: F2A-43"
-    ),
-)
 def test_final_11_fora_do_indice_fica_fora_do_escopo(monkeypatch):
     engine = _motor(monkeypatch, FakeReferencia(_indice(_registro())))
     dados = engine.buscar_dados_ticker("BPAC11")

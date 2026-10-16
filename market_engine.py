@@ -439,8 +439,14 @@ class MarketEngine:
             'riscos_dados': [],
         }
 
+        classifier = getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER)
+
         # 0. Índice oficial: classe, CNPJ, CD_CVM e atributos do ticker.
         self._aplicar_referencia(ticker, dados)
+        if 'classe_ativo' not in dados:
+            # F2A-43: fora do índice (ou sem ele), a classe é a do classificador (final 11 sem
+            # dado oficial vira UNKNOWN), para a guarda de escopo do motor de ações valer.
+            dados['classe_ativo'] = classifier.classify(ticker, dados).value
 
         # 1. yfinance: always first for price, history and fallback basics.
         self._buscar_yfinance(ticker, dados)
@@ -451,8 +457,6 @@ class MarketEngine:
         # 3. CVM: fundamentos oficiais das demonstrações financeiras.
         #    Roda após brapi para ter a última palavra nos campos que provê.
         self._buscar_cvm(ticker, dados)
-
-        classifier = getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER)
 
         if not dados.get('fonte_preco'):
             return None

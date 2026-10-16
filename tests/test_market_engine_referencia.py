@@ -82,7 +82,8 @@ def test_sem_indice_nao_usa_o_mapa_manual(monkeypatch):
     dados = engine.buscar_dados_ticker("PETR4")
     assert cvm.codigos == []
     assert dados["cvm_disponivel"] is False
-    assert "classe_ativo" not in dados
+    # F2A-43: sem índice, a classe é a do classificador (não mais ausente).
+    assert dados["classe_ativo"] == "STOCK"
 
 
 def test_ticker_fora_da_cvm_tem_motivo_em_riscos_dados(monkeypatch):
@@ -145,7 +146,17 @@ def test_ticker_fora_do_indice_sem_motivo(monkeypatch):
     engine = _motor(monkeypatch, FakeReferencia(_indice(_registro())))
     dados = engine.buscar_dados_ticker("PETR4")
     assert "ticker fora da referência oficial" in dados["riscos_dados"]
-    assert "classe_ativo" not in dados
+    # F2A-43: fora do índice, a classe é a do classificador (não mais ausente).
+    assert dados["classe_ativo"] == "STOCK"
+
+
+def test_classe_do_indice_prevalece_sobre_o_classificador(monkeypatch):
+    # F2A-43: só sem classe do índice a cascata grava a do classificador. "COTA" o
+    # classificador converte em FII; a cascata guarda o valor do índice como veio.
+    cota = _registro("TSTA11", classe="COTA", especie=None)
+    dados = _motor(monkeypatch, FakeReferencia(_indice(cota))).buscar_dados_ticker("TSTA11")
+    assert dados["classe_ativo"] == "COTA"
+    assert dados["referencia_oficial"]["regra"] == "fca:codigo_ativo"
 
 
 def test_ticker_fora_do_indice_nao_consulta_a_cvm(monkeypatch):

@@ -69,7 +69,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   Corrige BUG-2A-06 (furo do F2A-24): P/VP NaN ou infinito vira `None` antes da lente, e o comentário provisório "NaN e infinito seguem como antes (F2A-24)" sai.
   **Aceite:** teste de regressão em PASS; `tests/test_saidas_finitas.py` cobre NaN e infinito no P/VP do FII; golden só no `pvp` dos casos de FII com P/VP não finito na entrada (predicado e contagem no diário); gate da fase.
 
-- [ ] **F2A-43** · fix · `fix: classify assets outside the official index before valuation`
+- [x] **F2A-43** · fix · `fix: classify assets outside the official index before valuation`
   Corrige BUG-2A-07 (furo do F2A-29): quando o índice não preenche `classe_ativo`, a cascata grava a classe do `AssetClassifier` (UNKNOWN para final 11 sem dado oficial), e a guarda do `ValuationEngine` passa a valer. Sem mudança no classificador nem na guarda.
   **Aceite:** teste de regressão em PASS, com índice falso sem o ticker e ticker terminado em 11; um teste confirma que ticker do índice segue igual; golden inalterado (o harness já passa `classe_ativo`); gate da fase.
 
