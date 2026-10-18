@@ -25,7 +25,7 @@ Python + Streamlit (V1; interface FastAPI + HTMX prevista para a Fase 7), local-
 
 ```bash
 streamlit run app.py                               # app (V1)
-python -m pytest tests/ -x --tb=short              # suíte (~1.360 testes, 76 módulos, ~8 s)
+python -m pytest tests/ -x --tb=short              # suíte (~1.380 testes, 94 módulos, ~10 s)
 python -m pytest tests/test_x.py::test_y -v        # teste único
 python -m pytest tests/ --cov=. --cov-report=term-missing
 python -m mutmut run "technical_engine*"           # mutação de um módulo (config em [tool.mutmut])
@@ -47,7 +47,7 @@ A lista de exceções do vulture (`vulture_whitelist.py`) traz o motivo de cada 
 |---|---|---|
 | `app.py` | 554 | Streamlit, 4 abas, orquestração real. **Cobertura 0%** |
 | `market_engine.py` | 1.105 | Cascata de coleta e merge de fontes; a lógica de dado nova fica em `sentinela/data/` |
-| `valuation_engine.py` | 363 | Orquestra os métodos de `sentinela/methods/` (Graham, Bazin, Lynch, Gordon), score, classificação (na V1, "recomendação"); abstém-se para ETF, BDR e `UNKNOWN` quando `dados['classe_ativo']` existe |
+| `valuation_engine.py` | 363 | Orquestra os métodos de `sentinela/methods/` (Graham, Bazin, Lynch, Gordon), score, classificação (na V1, "recomendação"); abstém-se para ETF, BDR e `UNKNOWN` pela `dados['classe_ativo']`, que a cascata sempre grava (do índice ou, fora dele, do classificador; F2A-43) |
 | `fii_engine.py` | 157 | Valuation de FII: orquestra `fii_yield` e `fii_nav`, score |
 | `config.py` | 318 | Constantes, `MacroContext`, `_normalizar_dy` (invariante do DY) |
 | `data_quality.py` | 302 | Completude, badge, `validacao_cruzada` (linha 182) |
@@ -138,8 +138,8 @@ e mais que dobra todos os fair values. Escolha um regime, converta tudo.
 **2. Validação cruzada tautológica — resolvida na CVM de ações (F2A-5)** (`data_quality.py:182`)
 O P/L da CVM é `preço ÷ LPA` (`market_engine.py:963`), então compará-lo com `preço ÷ LPA` dá zero.
 Os checks 2 e 3 só rodam com fontes diferentes (`_mesma_fonte`), e o LPA é comparado com o
-divulgado e as ações com o yfinance. Ainda vale para FII: o P/VP da CVM é `preço ÷ VPA` e não
-grava `valores_por_fonte['CVM']`, então o check 3 roda e nunca alerta (F2A-11).
+divulgado e as ações com o yfinance. Ainda vale para FII: o P/VP da CVM (F2A-11) é `preço ÷ VPA` e não
+grava `valores_por_fonte['CVM']`, então o check 3 roda e nunca alerta (BUG-2A-12, aberto; a correção é o F2B-16).
 
 **3. LPA/VPA sem reconciliação — resolvida (F2A-3, F2A-36, F2A-37)** (`market_engine._por_acao_cvm`)
 Era lucro consolidado da CVM ÷ `sharesOutstanding` do yfinance. Agora: lucro e PL dos
@@ -198,9 +198,9 @@ mutante morto — por isso o `[tool.mutmut]` desliga o `xfail_strict` só na mut
 
 **14. Classe do ativo deduzida do ticker — resolvida no índice (F2A-1, F2A-20, F2A-29)**
 Para ticker do índice oficial, a classe vem dele (`dados['classe_ativo']`), nunca do sufixo, e
-ETF, BDR e `UNKNOWN` não recebem os métodos de ação (`valuation_engine.py:125`). Fora do índice,
-`classe_ativo` não é gravado: o classificador cai no fallback (`FIIS_CONHECIDOS`,
-`UNITS_CONHECIDAS`; final 11 vira `UNKNOWN`, o resto `STOCK`), e o guard do motor não atua.
+ETF, BDR e `UNKNOWN` não recebem os métodos de ação (`valuation_engine.py:125`). Fora do índice
+(ou sem ele), a cascata grava a classe do classificador (F2A-43): fallback por `FIIS_CONHECIDOS` e
+`UNITS_CONHECIDAS`; final 11 vira `UNKNOWN`, o resto `STOCK`. A guarda do motor atua nos dois casos.
 
 **15. Cobertura dos mapas manuais — resolvida (F2A-1, F2A-2, F2A-31)**
 O índice oficial cobre todos os pares (CNPJ, código) no formato do FCA e os FIIs do Informe e do
@@ -252,7 +252,7 @@ Sem insumo, abstém-se — não devolve número conservador.
 
 0. **Preparação** — concluída (tag `v2-fase-0`)
 1. **Fundação** — concluída (tag `v2-fase-1`): `units.py`, contrato de método e extração de `methods/`, comportamento idêntico, golden dos motores
-2. **2A Dados corretos** — em execução (`docs/loop/fila.md`, branch `v2/fase-2a`; dados de referência, E-1, DY único, E-2, cinco anos, dívida líquida, bancos, medida de liquidez), **2B Taxa real, bancos e escopo** e **2C Qualidade e apresentação** (normalização, lente de qualidade, histerese, vocabulário, lentes, fim do Markowitz)
+2. **2A Dados corretos** — concluída (tag `v2-fase-2a`; dados de referência, E-1, DY único, E-2, cinco anos, dívida líquida, bancos, medida de liquidez); **2B Taxa real, bancos e escopo** — em execução (`docs/loop/fila.md`, branch `v2/fase-2b`); **2C Qualidade e apresentação** (normalização, lente de qualidade, histerese, vocabulário, lentes, fim do Markowitz)
 3. **Tempo como entrada** — E-6, E-14, ponto-no-tempo, `analisar(ticker, as_of)`, backtest real
 4. **Operação diária, rastreabilidade e risco da carteira**
 5. **Notícias medidas** — coletor do IPE e estudo de evento
@@ -297,13 +297,26 @@ Arquivos travados por fase: `docs/PLANO.md`, seção 8.
 
 ## Testes
 
-- Correção: teste xfail provando o bug → implementação → XPASS.
+- Correção: teste xfail estrito provando o bug → correção → marca retirada → PASS (ADR-0003, D27).
 - Refactor: nenhum teste existente muda; as seções A, B e C de
   `tests/test_financeiro_pre_refactor.py` e o golden dos motores
   (`tests/test_equivalencia_motores.py`, grade em `tests/fixtures/golden_motores.jsonl`) são o juiz.
 - Depois: `/review-diff` → `/safe-commit` (sem push) → checkpoint da fase → push manual.
 - `xfail_strict = true` é obrigatório, senão XPASS não falha e o gate é fictício.
 - Antipadrão recorrente: teste que asserta sem verificar. Valide por mutação.
+
+---
+
+## Bugs e regressão
+
+Decisão do Marcos de 15/10/2026. Registro e detalhe em `tests/regressao/README.md`.
+
+1. Bug confirmado (auditoria, revisão ou uso) vira teste em `tests/regressao/` no mesmo dia,
+   antes de qualquer correção
+2. Bug ainda não corrigido fica xfail estrito com ID e item que corrige; o `xfail_strict` do
+   `pytest.ini` faz o CI quebrar se ele passar sem a marca ser retirada
+3. A correção retira a marca, o teste fica para sempre e o registro muda para "corrigido"
+4. Nenhum item `fix:` fecha sem o teste de regressão do bug que corrige
 
 ---
 

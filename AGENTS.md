@@ -8,7 +8,7 @@
 Plataforma educacional de análise de ações e FIIs da B3.
 Python 3.13 + Streamlit (interface FastAPI + HTMX prevista para a Fase 7), local-first, SQLite.
 **Não é consultoria financeira.**
-Suíte: ~1.360 testes, 76 módulos em `tests/`, ~8 s.
+Suíte: ~1.380 testes, 94 módulos em `tests/`, ~10 s.
 
 ---
 

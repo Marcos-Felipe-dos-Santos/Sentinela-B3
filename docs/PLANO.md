@@ -236,8 +236,6 @@ Correções com teste xfail primeiro. Dados de referência antes de tudo.
 
 Ordem da fila, não a numérica. O F2A-10 (gate de liquidez) e o F2A-39 (correção do BTG no índice) foram para a 2B.
 
-O ADR-0003 acrescenta, antes do F2A-7: F2A-32 (proveniência temporal e contratos de provedor), F2A-33 (tabela de contas por código e descrição), F2A-38 (leituras existentes pela tabela), F2A-34 (ficha dos números por ação), F2A-35 (universo inicial), F2A-36 (LPA divulgado por espécie) e F2A-37 (reservas de controladores). Detalhes na fila.
-
 **Gate:** cada correção com xfail estrito → marca retirada → PASS (ADR-0003, D27); seção A inalterada; seção B só muda onde está marcada; mutation; cobertura CVM de 100% dos listados mapeáveis, com o denominador da D32 do ADR-0003 (pares CNPJ e código ativos no FCA mais recente e FIIs listados no Informe Mensal; toda exclusão com motivo); auditoria externa no checkpoint (D30).
 **Decisões:** limiares de divergência de ações e de liquidez; fonte dos dados bancários.
 **Jules:** os tickets dele em `cvm_provider.py` precisam estar integrados antes do F2A-1.
@@ -257,7 +255,7 @@ Decisão do Marcos item a item, com o dossiê do F0-6. Cada método alterado mud
 | F2A-39 | Unit do BTG (BPAC11) pela tabela de correções, com fonte oficial da B3 que traga ISIN e CNPJ juntos. Veio da 2A (decisão de 13/10/2026) |
 | F2B-6 | Resumo e arquivamento |
 
-**Gate:** seção A inalterada; seção B virou exatamente onde marcada; mutation ≥ 80%; os resultados antes e depois da taxa real estão comparados no diário.
+**Gate:** seção A muda só no F2B-7 ([SEÇÃO A] em (c), decisão de 18/10/2026); seção B virou exatamente onde marcada; mutation ≥ 80%; os resultados antes e depois da taxa real estão comparados no diário.
 
 ### Fase 2C — Qualidade e apresentação
 

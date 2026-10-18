@@ -144,7 +144,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
 ## Itens
 
-- [ ] **F2B-35** · docs · `docs: sync agent instructions after the phase 2A closure`
+- [x] **F2B-35** · docs · `docs: sync agent instructions after the phase 2A closure`
   Pendências do fechamento da 2A (diário do fechamento, F2A-40 e F2A-43; auditoria externa da 2A, "Correções do resumo da fase") e da [SEÇÃO A]. Valida contra o código e corrige:
   - **`CLAUDE.md`:**
     - "Testes": o rito da D27 (xfail estrito → correção → marca retirada → PASS; hoje termina em "XPASS") e uma seção "Bugs e regressão" com o texto do `AGENTS.md` (o `AGENTS.md` é subconjunto do `CLAUDE.md` e já a tem);
