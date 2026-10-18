@@ -131,6 +131,15 @@ O resultado vai para `docs/loop/historico/fase-N/auditoria-externa.md`. Achado *
 - **D20, linha zerada.** Lucro dos controladores e dos não controladores zerados, com lucro consolidado diferente de zero: vale o lucro total só se a participação dos não controladores no balanço (2.03.09) estiver ausente ou zerada; senão, o lucro dos controladores se abstém.
 - **D32.** Critério operacional de "atual" do universo inicial (no mínimo 100 negócios à vista em três meses do COTAHIST) aprovado, sem mudar o denominador. O BTG Pactual fica em exclusão provisória até o F2A-39 corrigir o índice.
 
+<!-- multiagente 14/10/2026 -->
+**14/10/2026 — executor de reserva e auditor por item (D30).** A independência da D30 passa a valer por item: o auditor externo é sempre de família de modelo diferente da do executor do item.
+- Itens executados pelo Claude Code: auditor Codex.
+- Itens executados pelo Codex: auditor Claude Code; sem cota do Claude, Antigravity CLI numa cópia descartável do repositório (`git worktree`).
+- Fichas metodológicas: auditor de família diferente da do autor; se auditor e autor divergirem num ponto de método, o Gemini 4 Argon (app do Gemini) dá uma segunda opinião sobre a divergência concreta, registrada no histórico, sem decidir por si.
+- A revisão por item do protocolo (`/review-diff`) pode continuar sendo da mesma família.
+- O executor de cada item fica no diário e no commit (`docs/loop/protocolo.md`, "Troca de executor").
+- Workflow: `docs/loop/workflow-multiagente.md`.
+
 ## Transição: o que já foi entregue
 
 Estado em 13/10/2026: F2A-15, 17, 18, 16, 1, 2, 19, 20, 3, 6 e 5 commitados (`b83dde1`).

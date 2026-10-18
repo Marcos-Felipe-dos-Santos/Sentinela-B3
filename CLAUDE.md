@@ -334,3 +334,8 @@ Arquivos travados por fase: `docs/PLANO.md`, seção 8.
 - Um commit por item da fila; um branch por fase
 - Depois do merge, o branch da fase é apagado e a fase ganha a tag `v2-fase-N`
 - Nunca commitar `.env`, `__pycache__`, `*.db`, `outputs/`, `venv/`, `mutants/`
+
+<!-- multiagente 14/10/2026 -->
+## Multiagente
+
+Ver a seção "Multiagente" do `AGENTS.md` e `docs/loop/workflow-multiagente.md`. Ao retomar trabalho começado por outro agente ou noutra sessão, use a skill `retomar` antes de editar. Ao parar com item pela metade, use `passagem`.

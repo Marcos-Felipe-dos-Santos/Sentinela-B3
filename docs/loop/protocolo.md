@@ -86,3 +86,12 @@ O último item de toda fila fecha a fase, nesta ordem:
 5. faz o stage, passa pelo `/review-diff`, commita com `/safe-commit` e roda `cat docs/loop/fila.md`.
 
 A próxima fila nunca é ativada pelo loop: quem a coloca em `docs/loop/fila.md` é o Marcos, depois de aprovar.
+
+<!-- multiagente 14/10/2026 -->
+## Troca de executor (14/10/2026)
+
+1. **Retomar.** Quem assume a fila roda a skill `retomar` antes de qualquer edição.
+2. **Passagem.** Quem sai com item pela metade roda a skill `passagem`. Se a cota acabou sem aviso, quem assume reconstrói pelo `git status`, pelo diário e pela memória, nessa ordem de autoridade.
+3. **Registro.** A entrada do diário de cada item traz `**Executor:** <claude-code | codex | antigravity> (<modelo>)`, e o corpo do commit termina com `Executor: <ferramenta>`.
+4. **Revisão do item.** Valem as mesmas três rodadas. Revisor de outra família quando houver cota; senão, sessão nova e somente leitura do mesmo CLI.
+5. **Um executor por vez.** Nunca dois agentes escrevendo no branch da fase ao mesmo tempo.

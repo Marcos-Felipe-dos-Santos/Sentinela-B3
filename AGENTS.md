@@ -174,3 +174,14 @@ verificá-lo. Reporte a divergência; não a "conserte".
 - Conventional Commits em inglês, imperativo: `fix: normalize DY at provider boundary`
 - Comentários e docstrings em português, seguindo o código existente
 - Type hints em código novo
+
+<!-- multiagente 14/10/2026 -->
+## Multiagente (Claude Code, Codex, Antigravity)
+
+- A fila (`docs/loop/fila.md`) é a única lista de trabalho. Um executor por item, nunca dois ao mesmo tempo.
+- Procedimentos compartilhados em `.agents/skills/<nome>/SKILL.md`: `retomar`, `passagem`, `verificar-entrega` e `executar-fila`. Agente que não carrega skills sozinho lê o arquivo quando o pedido citar o nome.
+- Ao abrir uma sessão de trabalho já começado, rode `retomar` antes de editar qualquer arquivo.
+- A memória do `ai-memory` é pista, não autoridade: fila, diário, ADRs e o git prevalecem.
+- Quem executou cada item fica no diário (`**Executor:**`) e no corpo do commit (`Executor: <ferramenta>`).
+- Auditoria externa sempre por família de modelo diferente da do executor (ADR-0003, D30, revisão de 14/10/2026).
+- Workflow completo: `docs/loop/workflow-multiagente.md`.
