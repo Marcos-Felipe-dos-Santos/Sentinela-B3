@@ -6,19 +6,10 @@ referência da conferência em `dados['acoes_cvm']['lpa_divulgado_comparado']`. 
 auditoria externa da Fase 2A (Gemini e Codex, 15/10/2026).
 """
 
-import pytest
-
 from tests.test_market_engine_acoes_cvm import _ind, _motor
 from tests.test_market_engine_referencia import FakeReferencia, _indice, _registro
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG-2A-11 · alerta do F2A-5 compara com o LPA divulgado rejeitado pela coerência "
-        "· corrige: F2B-14"
-    ),
-)
 def test_divulgado_de_sinal_oposto_nao_e_a_referencia_da_conferencia(monkeypatch):
     # Lucro dos controladores positivo (2.000); a PN divulgada negativa é incoerente.
     ind = _ind(

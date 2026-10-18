@@ -8,6 +8,7 @@ básico divulgado pela companhia, por espécie.
 import pytest
 
 from data_quality import DataQualityReport
+from sentinela.data.acoes_cvm import MOTIVO_SINAL_CONTROLADORES
 from tests.test_market_engine_acoes_cvm import _ind, _motor
 from tests.test_market_engine_referencia import FakeReferencia, _indice, _registro
 
@@ -153,3 +154,34 @@ def test_caminho_da_cvm_nao_compara_pl_com_preco_sobre_lpa(monkeypatch):
     dados["valores_por_fonte"]["CVM"]["lpa"] = 1.0
     del dados["valores_coletados"]
     assert not [a for a in _alertas(dados) if a.startswith("pl=")]
+
+
+# ── conferência só contra o divulgado coerente (F2B-14; BUG-2A-11; ficha, 7.3 e 7.5) ──
+
+
+def test_divulgado_incoerente_nao_entra_na_conferencia(monkeypatch):
+    # Lucro dos controladores positivo (2.000); a PN divulgada negativa é incoerente (7.5).
+    dados = _cvm(
+        monkeypatch,
+        lpa_basico_por_classe={"ON": [2.1], "PN": [-2.0]},
+        lpa_divulgado_por_especie={"ON": 2.1, "PN": -2.0},
+    )
+    assert dados["acoes_cvm"]["lpa_divulgado_comparado"] is None
+    assert not [a for a in _alertas(dados) if "LPA básico divulgado" in a]
+    assert (
+        f"CVM sem LPA: {MOTIVO_SINAL_CONTROLADORES}" in dados["riscos_dados"]
+    )  # o alerta é só o da incoerência
+
+
+def test_divulgado_coerente_segue_conferido(monkeypatch):
+    dados = _cvm(
+        monkeypatch,
+        lpa_basico_por_classe={"ON": [2.5], "PN": [2.5]},
+        lpa_divulgado_por_especie={"ON": 2.5, "PN": 2.5},
+    )
+    assert dados["acoes_cvm"]["lpa_divulgado_comparado"] == {
+        "especie": "PN",
+        "valor": 2.5,
+    }
+    (alerta,) = [a for a in _alertas(dados) if "LPA básico divulgado" in a]
+    assert "2,00" in alerta and "2,50" in alerta and "(PN)" in alerta

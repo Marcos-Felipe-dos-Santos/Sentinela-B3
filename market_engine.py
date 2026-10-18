@@ -225,19 +225,25 @@ def _retrato(dados: dict[str, Any]) -> dict[str, Any]:
 
 
 def _lpa_divulgado_comparado(
-    ind: dict[str, Any], especie: str | None, especie_base: str | None = None
+    divulgados: dict[str, Any], especie: str | None, especie_base: str | None = None
 ) -> dict[str, Any] | None:
-    """LPA divulgado da classe do ticker (F2A-5), ou o da espécie quando a DRE não traz a classe.
+    """LPA divulgado coerente da classe do ticker (F2A-5), ou o da espécie sem a classe.
 
-    Sem classe (unit ou sem índice), o da escala.
+    Só o coerente (F2B-14; ficha, 7.3 e 7.5): com o divulgado da classe descartado pela D19, não
+    há conferência, e o alerta é o da incoerência. Sem classe (unit ou sem índice), o da escala.
     """
-    por_especie = ind.get('lpa_divulgado_por_especie') or {}
     for chave in (especie, especie_base):
-        if chave in por_especie:
-            return {'especie': chave, 'valor': por_especie[chave]}
-    referencia = ind.get('lpa_divulgado')
-    if especie is None and referencia:
-        return {'especie': referencia.get('especie'), 'valor': referencia.get('valor')}
+        if chave in divulgados:
+            achado = divulgados[chave]
+            if not isinstance(achado, acoes_cvm.LpaDivulgado):
+                return None
+            return {'especie': chave, 'valor': achado.valor}
+    if especie is None:
+        ordem = [*acoes_cvm.ORDEM_DA_ESCALA, *sorted(set(divulgados) - set(acoes_cvm.ORDEM_DA_ESCALA))]
+        for chave in ordem:
+            achado = divulgados.get(chave)
+            if isinstance(achado, acoes_cvm.LpaDivulgado):
+                return {'especie': chave, 'valor': achado.valor}
     return None
 
 
@@ -1018,7 +1024,7 @@ class MarketEngine:
             'acoes_por_papel': fator,
             'lpa_recalculado': por_acao.lpa,
             'lpa_divulgado_comparado': _lpa_divulgado_comparado(
-                ind,
+                divulgados,
                 None if eh_unit else classe,
                 None if eh_unit else dados.get('especie'),
             ),

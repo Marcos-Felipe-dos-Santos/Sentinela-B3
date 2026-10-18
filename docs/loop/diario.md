@@ -245,3 +245,27 @@
   - A tabela não tem coluna de fim do intervalo; ver "Intervalo de validade" acima.
   - A conferência das duas evidências é textual (o `arquivo` precisa citar a Composição do Capital e a DRE); o loop conferiu os números nos arquivos, mas a tabela não guarda os valores.
   - Ressalva da revisão do F2B-12: o parser da unit guarda a sigla só em "PNA" a "PNH" no singular; "2 PNAs" e o código do papel ("KLBN4") seguem como "PN", que com várias classes preferenciais casa direto com a linha "PN", sem a marca do F2B-12.
+
+### F2B-14 — fix: cross-check recalculated EPS only against coherent reported EPS
+- **Executor:** claude-code (claude-opus-5-5)
+- **Status:** sucesso
+- **O que foi feito:** corrige o BUG-2A-11 (achado 6 da auditoria; ficha por ação, 7.3 e 7.5). `market_engine._lpa_divulgado_comparado` passou a ler o dicionário de divulgados coerentes (`acoes_cvm.divulgados_coerentes`, o mesmo que decide o LPA dos métodos pela D19), e não mais `lpa_divulgado_por_especie` e `lpa_divulgado` brutos. Classe ou espécie do ticker com divulgado incoerente (sinal oposto, linhas conflitantes, lucro zero ou sinal não conferível): sem comparação (`None`), e o alerta é só o da incoerência ("CVM sem LPA: <motivo>", que já existia). Sem classe (unit ou fora do índice), vale o divulgado coerente da escala (ON, depois PN, depois as classes em ordem), como `divulgado_da_escala`.
+- **Testes:**
+  - `tests/regressao/test_bug_2a_11_alerta_lpa_antes_da_coerencia.py` (BUG-2A-11): marca retirada, em PASS; registro em "corrigido".
+  - `tests/test_data_quality_fontes.py::test_divulgado_incoerente_nao_entra_na_conferencia`: xfail estrito, falhou com `--runxfail` pelo sintoma (`assert {'especie': 'PN', 'valor': -2.0} is None`), XPASS(strict) com a correção, marca retirada. Afirma também que o alerta de divergência não sai e que o risco da incoerência está lá.
+  - `::test_divulgado_coerente_segue_conferido`: a conferência da PN coerente (2,5 contra o recalculado 2,0) segue com o alerta de 20%.
+  - Nenhum teste existente mudou; os que conferiam o comparado (`test_sem_especie_compara_com_o_lpa_da_escala`, `test_lpa_de_unit_compara_por_acao`, `test_lpa_comparado_com_o_divulgado_da_mesma_especie`) seguem verdes.
+- **Medição** (`outputs/f2b14_alertas.py`, fora do git; as 38 ações atuais do universo inicial; cascata real com rede só de leitura, sem cache SQLite; "antes" com o código do `HEAD` numa worktree): uma só muda.
+  - **BBAS3:** o comparado era `None` (o ticker é ON, e `lpa_divulgado_por_especie` vinha vazio: o LPA da linha agregada do F2B-11 não entrava na conferência) e passa a ser ON 2,40, a linha agregada coerente; sem alerta (razão 0,9998).
+  - **QUAL3** (duas linhas ON conflitantes): sem mudança. A escala fica indeterminada, a CVM não deriva os números por ação, e a conferência não roda, antes e depois; o risco "CVM sem LPA: LPA divulgado com linhas conflitantes para a espécie" segue.
+  - Nenhuma ação atual do universo tem, na DFP 2025, divulgado de sinal oposto ao lucro dos controladores com escala determinada: o caso do bug não aparece nos dados de hoje.
+- **Testes:** 1434 passed, 1 skipped, 18 xfailed → 1437 passed, 1 skipped, 17 xfailed (+2 novos; o BUG-2A-11 passou de xfailed a passed). Golden sem diferença; `tests/test_financeiro_pre_refactor.py` sem mudança. `ruff format` nos dois arquivos de teste; `ruff check` verde neles.
+- **Mutação** (módulo V1 tocado, sem meta): `market_engine` 1.575/2.196 (71,7%; no F2B-8, 1.487/2.099), sem sobrevivente em `_lpa_divulgado_comparado`.
+- **Resíduos:** nenhum no repositório; `outputs/f2b14_*` fora do git.
+- **Decisões que ficaram para o Marcos:** nenhuma deste item. Ressalvas da revisão do F2B-13, registradas aqui porque o commit dele saiu como revisado:
+  - a correção de espécie não exige `ticker == codigo_na_fonte`: uma linha com ticker diferente do código passaria, o índice gravaria o código da fonte e o relatório citaria o ticker da linha;
+  - a conferência das duas evidências é textual e não confere que elas são do mesmo documento ("DFP 2025 + ITR 2024" passaria), e o trecho "dre" é curto;
+  - a MGLU3 corrigida para ON ainda carrega `classes_preferenciais=["PNA"]` (calculado antes da correção); sem efeito hoje, porque o único leitor só age com mais de uma classe PN;
+  - correção de espécie em linha de unit ou em chave de FII é aceita sem efeito (ou com o efeito da correção de código, no FII); a validação não restringe a correção de espécie às ações avulsas;
+  - `cobertura["correcoes"]` passou a misturar correção de código e de espécie; a docstring de `cobertura.py` fala em tickers "ligados" pela tabela.
+- **Para o Marcos revisar:** o comparado do BBAS3 passa a aparecer na conferência; antes, o banco não tinha nenhuma conferência de LPA.

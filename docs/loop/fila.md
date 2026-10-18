@@ -275,7 +275,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: o LPA da MGLU3 antes → depois e a cobertura do índice (`python -m sentinela.data.referencia --cobertura`);
   - gate da fase.
 
-- [ ] **F2B-14** · fix · `fix: cross-check recalculated EPS only against coherent reported EPS` · **[FICHA 1.1]** **[AUDITORIA]**
+- [x] **F2B-14** · fix · `fix: cross-check recalculated EPS only against coherent reported EPS` · **[FICHA 1.1]** **[AUDITORIA]**
   Corrige o BUG-2A-11. Achado 6; revisão do F2A-36 (registrada no diário do F2A-37). `_lpa_divulgado_comparado` (`market_engine.py`) busca o divulgado em `lpa_divulgado_por_especie` e `lpa_divulgado`, antes do filtro de coerência (`acoes_cvm.divulgados_coerentes`). Com o divulgado descartado pela D19 (linhas conflitantes ou sinal oposto), o alerta de 10% do F2A-5 compara o recalculado com um valor que a ficha mandou ignorar. Pela ficha (7.3 e 7.5): a conferência usa só o divulgado coerente da espécie; com o divulgado incoerente, o alerta é só o da incoerência.
 
   **Aceite:**
