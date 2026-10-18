@@ -235,7 +235,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: as 9 companhias, com razão, confirmação, escala e VPA antes → depois, e o motivo das que seguem em abstenção (Cataguases e Aliperti, pela ficha);
   - gate da fase.
 
-- [ ] **F2B-11** · fix · `fix: read the aggregate EPS line as the EPS of a single-class company` · **[FICHA 1.1]**
+- [x] **F2B-11** · fix · `fix: read the aggregate EPS line as the EPS of a single-class company` · **[FICHA 1.1]**
   Ponto (b) da ficha 1.1 (decisão 7.8, adotada em 18/10/2026). O BBAS3 e o Banco Pine (62.144.175/0001-20) trazem só as linhas agregadas (3.99 e 3.99.01), sem espécie: pela ficha (7.4), a escala fica indeterminada, e LPA, VPA e P/VP se abstêm (diário do F2A-36). Pela decisão 7.8:
   - companhia com uma só espécie no FCA (o BBAS3, só ON) e sem linhas por espécie: a linha de LPA básico agregada (3.99.01) é o LPA divulgado dessa espécie; zerada ou ausente, vale a 3.99, só se o recalculado na escala escolhida ficar a até 10% dela (no BBAS3, 3.99.01 = 0 e 3.99 = 2,40; razão 1,000 no F2A-3; ficha, 7.8), com o mesmo teste de coerência (D19, regra 1; ficha, 7.5 e 7.6), e serve à escala; a proveniência registra "LPA da linha agregada: companhia de espécie única no FCA";
   - mais de uma espécie (o Pine): a abstenção continua.

@@ -503,6 +503,15 @@ class MarketEngine:
             return
         for chave, campo in _CAMPOS_DA_REFERENCIA.items():
             dados[chave] = getattr(registro, campo)
+        # F2B-11 (ficha 1.1, 7.8): espécies da companhia no FCA, pelos registros do mesmo CNPJ.
+        dados['especies_da_companhia'] = sorted(
+            {
+                especie
+                for r in indice.registros.values()
+                if r.cnpj and r.cnpj == registro.cnpj
+                for especie in ([r.especie] if r.especie else list(r.acoes_por_unit or ()))
+            }
+        )
         dados['referencia_oficial'] = {
             'regra': registro.regra,
             'fonte': registro.fonte,
@@ -937,8 +946,16 @@ class MarketEngine:
         eh_unit = classifier.classify(ticker, dados) == AssetType.UNIT
         acoes_por_unit = dados.get('acoes_por_unit')
         classe = dados.get('classe_preferencial') or dados.get('especie')
-        divulgados = acoes_cvm.divulgados_coerentes(
+        composicao = ind.get('composicao_capital')
+        linhas, linha_agregada = acoes_cvm.linhas_da_especie_unica(
             _linhas_de_lpa(ind),
+            ind.get('lpa_basico_agregado'),
+            dados.get('especies_da_companhia'),
+            lucro_controladores=ind.get('lucro_controladores'),
+            acoes=composicao.total if composicao is not None else 0.0,
+        )
+        divulgados = acoes_cvm.divulgados_coerentes(
+            linhas,
             ind.get('lucro_controladores'),
             ind.get('lucro_liquido'),
         )
@@ -973,6 +990,13 @@ class MarketEngine:
         campos: dict[str, Any] = {}
         if not isinstance(lpa, acoes_cvm.Abstencao):
             campos['lpa'], dados['lpa_cvm'] = lpa
+            if linha_agregada is not None and dados['lpa_cvm'].get('origem') == 'divulgado':
+                # F2B-11 (D16): o LPA veio da linha agregada da companhia de espécie única.
+                dados['lpa_cvm'] = {
+                    **dados['lpa_cvm'],
+                    'linha_agregada': linha_agregada,
+                    'notas': [*dados['lpa_cvm'].get('notas', []), linha_agregada['nota']],
+                }
             preco = _as_float(dados.get('preco_atual'))
             if preco and preco > 0:
                 campos['pl'] = preco / campos['lpa']

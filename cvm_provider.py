@@ -191,6 +191,17 @@ def lpa_basico_por_classe(linhas_399: pd.DataFrame) -> dict[str, list[float]]:
     return resultado
 
 
+def lpa_basico_agregado(linhas_399: pd.DataFrame) -> dict[str, float | None]:
+    """Valores das linhas agregadas 3.99.01 e 3.99, sem espécie (ficha 1.1, 7.8); zero vira `None`."""
+    resultado: dict[str, float | None] = {}
+    for conta in ("3.99.01", "3.99"):
+        linhas = linhas_399[linhas_399["CD_CONTA"] == conta] if not linhas_399.empty else linhas_399
+        valores = pd.to_numeric(linhas["VL_CONTA"], errors="coerce") if not linhas.empty else []
+        numeros = [float(v) for v in valores if pd.notna(v) and v != 0]
+        resultado[conta] = numeros[0] if numeros else None
+    return resultado
+
+
 def lpa_divulgado_por_especie(linhas_399: pd.DataFrame) -> dict[str, float]:
     """Primeiro LPA básico divulgado de cada classe (ON, PN, PNA…), sem zeros (F2A-5)."""
     return {
@@ -634,6 +645,7 @@ class CVMProvider:
                     "lpa_divulgado":      lpa_divulgado(linhas_399),
                     "lpa_divulgado_por_especie": lpa_divulgado_por_especie(linhas_399),
                     "lpa_basico_por_classe": lpa_basico_por_classe(linhas_399),
+                    "lpa_basico_agregado": lpa_basico_agregado(linhas_399),
                     "composicao_capital": composicao,
                     "composicao_motivo":  motivo_composicao,
                     "contas_abstidas":    contas_abstidas,

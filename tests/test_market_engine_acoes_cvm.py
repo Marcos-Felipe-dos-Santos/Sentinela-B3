@@ -11,6 +11,7 @@ import zipfile
 import pandas as pd
 import pytest
 
+import cvm_provider
 from cvm_provider import CVMProvider
 from sentinela.data import acoes_cvm
 from sentinela.data.acoes_cvm import (
@@ -965,3 +966,104 @@ def test_exemplo_da_ficha_klbn11():
     assert resultado.razao_lpa == pytest.approx(1.1965352, abs=1e-6)
     assert resultado.vpa == pytest.approx(6.4265659, abs=1e-6)
     assert resultado.lpa is None
+
+
+# ── linha agregada de LPA em companhia de espécie única (F2B-11; ficha 1.1, 7.8) ─
+
+
+def _so_agregada(v39901, v399, **campos):
+    """DRE sem linhas por espécie: só a 3.99.01 e a 3.99 (o caso do BBAS3 e do Pine)."""
+    return _ind(
+        lpa_divulgado=None,
+        lpa_basico_por_classe={},
+        lpa_basico_agregado={"3.99.01": v39901, "3.99": v399},
+        **campos,
+    )
+
+
+def _especie_unica():
+    return FakeReferencia(_indice(_registro("TSTA3", cnpj=CNPJ)))
+
+
+def _duas_especies():
+    return FakeReferencia(
+        _indice(
+            _registro("TSTA3", cnpj=CNPJ),
+            _registro("TSTA4", cnpj=CNPJ, especie="PN"),
+        )
+    )
+
+
+def test_linha_agregada_vale_para_companhia_de_especie_unica(monkeypatch):
+    # 3.99.01 = 2,0; lucro dos controladores 2.000 ÷ 1.000 ações → recalculado 2,0.
+    engine = _motor(monkeypatch, _so_agregada(2.0, 2.0), referencia=_especie_unica())
+    dados = engine.buscar_dados_ticker("TSTA3")
+    assert dados["lpa"] == pytest.approx(2.0)
+    assert dados["lpa_cvm"]["origem"] == "divulgado"
+    assert dados["lpa_cvm"]["linha_agregada"]["conta"] == "3.99.01"
+    assert acoes_cvm.NOTA_LINHA_AGREGADA in dados["lpa_cvm"]["notas"]
+    assert dados["vpa"] == pytest.approx(10.0)
+
+
+def test_linha_agregada_nao_vale_com_mais_de_uma_especie(monkeypatch):
+    engine = _motor(monkeypatch, _so_agregada(2.0, 2.0), referencia=_duas_especies())
+    dados = engine.buscar_dados_ticker("TSTA3")
+    assert "linha_agregada" not in (dados.get("lpa_cvm") or {})
+    assert dados.get("vpa") is None  # escala indeterminada, como antes
+
+
+@pytest.mark.parametrize(
+    ("v399", "vale"),
+    [
+        (2.0, True),  # recalculado 2,0: razão 1
+        (2.2, True),  # razão 0,909: a até 10%
+        (1.82, True),  # razão 1,0989
+        (1.8, False),  # razão 1,111
+        (2.3, False),  # razão 0,870
+    ],
+)
+def test_linha_399_vale_so_com_o_recalculado_a_ate_10_por_cento(
+    monkeypatch, v399, vale
+):
+    engine = _motor(monkeypatch, _so_agregada(0.0, v399), referencia=_especie_unica())
+    dados = engine.buscar_dados_ticker("TSTA3")
+    if vale:
+        assert dados["lpa"] == pytest.approx(v399)
+        assert dados["lpa_cvm"]["linha_agregada"]["conta"] == "3.99"
+    else:
+        assert "linha_agregada" not in (dados.get("lpa_cvm") or {})
+        assert dados.get("vpa") is None
+
+
+def test_exemplo_da_ficha_bbas3():
+    # Ficha 1.1, seção 5.3 (D28): 3.99.01 = 0; 3.99 = 2,40; recalculado na unidade
+    # 13.698.124.000 ÷ (5.730.834.040 − 22.370.399) = 2,3996166; razão 0,9998402.
+    composicao = _composicao(
+        on=5_730_834_040.0, pn=0.0, tes_on=22_370_399.0, tes_pn=0.0
+    )
+    linhas, registro = acoes_cvm.linhas_da_especie_unica(
+        {},
+        {"3.99.01": 0.0, "3.99": 2.40},
+        ["ON"],
+        lucro_controladores=13_698_124_000.0,
+        acoes=composicao.total,
+    )
+    assert linhas == {"ON": [2.40]}
+    assert registro["conta"] == "3.99"
+    assert registro["razao"] == pytest.approx(0.9998402, abs=1e-6)
+
+
+def test_provedor_le_as_linhas_agregadas_sem_zeros():
+    # Layout da DFP: 3.99 (título do grupo) e 3.99.01 (LPA básico), sem a espécie (BBAS3).
+    linhas = pd.DataFrame(
+        {
+            "CD_CONTA": ["3.99", "3.99.01", "3.99.02"],
+            "DS_CONTA": ["Lucro por Ação", "Lucro Básico por Ação", "Lucro Diluído"],
+            "VL_CONTA": ["2.40", "0", "2.39"],
+        }
+    )
+    assert cvm_provider.lpa_basico_agregado(linhas) == {"3.99.01": None, "3.99": 2.40}
+    assert cvm_provider.lpa_basico_agregado(linhas.iloc[0:0]) == {
+        "3.99.01": None,
+        "3.99": None,
+    }

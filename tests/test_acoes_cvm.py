@@ -33,6 +33,7 @@ from sentinela.data.acoes_cvm import (
     divulgado_da_escala,
     divulgados_coerentes,
     inferir_escala,
+    linhas_da_especie_unica,
     lpa_dos_metodos,
     roe_dos_controladores,
 )
@@ -462,3 +463,50 @@ def test_unit_pelo_consolidado_confirma_pelas_units():
     assert isinstance(resultado, PorAcao)
     assert resultado.escala_pelo_consolidado["acoes_cvm"] == pytest.approx(200.0)
     assert resultado.vpa == pytest.approx(10.0 * 5)
+
+
+# ── linha agregada em companhia de espécie única (F2B-11; ficha 1.1, 7.8) ───
+
+
+def _agregada(linhas=None, agregado=None, especies=("ON",), lucro=2_000.0):
+    return linhas_da_especie_unica(
+        linhas or {},
+        agregado,
+        list(especies),
+        lucro_controladores=lucro,
+        acoes=1_000.0,
+    )
+
+
+def test_linhas_por_especie_dispensam_a_linha_agregada():
+    assert _agregada({"ON": [1.0]}, {"3.99.01": 2.0, "3.99": 2.0}) == (
+        {"ON": [1.0]},
+        None,
+    )
+
+
+def test_sem_linha_agregada_nada_muda():
+    assert _agregada(agregado=None) == ({}, None)
+    assert _agregada(agregado={"3.99.01": None, "3.99": None}) == ({}, None)
+
+
+def test_linha_agregada_registra_a_conta_e_a_especie():
+    linhas, registro = _agregada(
+        agregado={"3.99.01": 2.0, "3.99": 9.0}, especies=("PN",)
+    )
+    assert linhas == {"PN": [2.0]}
+    assert registro == {
+        "conta": "3.99.01",
+        "especie": "PN",
+        "nota": "LPA da linha agregada (3.99.01 ou 3.99, conferida pelo recalculado): "
+        "companhia de espécie única no FCA",
+    }
+    linhas, registro = _agregada(agregado={"3.99.01": None, "3.99": 2.0})
+    assert linhas == {"ON": [2.0]}
+    assert (registro["conta"], registro["especie"]) == ("3.99", "ON")
+    assert registro["razao"] == pytest.approx(1.0)
+
+
+def test_linha_399_sem_escala_nao_vale():
+    # Lucro dos controladores ausente: sem recalculado, a 3.99 não é conferida e não entra.
+    assert _agregada(agregado={"3.99.01": None, "3.99": 2.0}, lucro=None) == ({}, None)

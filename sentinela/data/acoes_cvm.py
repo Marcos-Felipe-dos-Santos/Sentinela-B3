@@ -61,6 +61,12 @@ NOTA_SINAL_CONSOLIDADO = (
     "sinal conferido pelo lucro consolidado: lucro dos controladores indisponível"
 )
 NOTA_RECALCULADO = "ações do fim do período, não média ponderada"
+NOTA_LINHA_AGREGADA = (
+    "LPA da linha agregada (3.99.01 ou 3.99, conferida pelo recalculado): companhia de "
+    "espécie única no FCA"
+)
+# Ficha 1.1, 7.8: a 3.99 só vale com o recalculado a até 10% dela (o limiar da 7.3).
+LIMIAR_DA_LINHA_399 = 0.10
 NOTA_ESCALA_PELO_CONSOLIDADO = (
     "escala inferida pelo lucro consolidado e confirmada pela quantidade do yfinance: lucro "
     "dos controladores indisponível (7.2)"
@@ -182,6 +188,46 @@ class LpaDivulgado:
 
     valor: float
     nota: str | None = None
+
+
+def linhas_da_especie_unica(
+    linhas: dict[str, list[float]],
+    agregado: dict | None,
+    especies: list[str] | None,
+    *,
+    lucro_controladores: float | None,
+    acoes: float,
+) -> tuple[dict[str, list[float]], dict | None]:
+    """Linhas de LPA por classe, com a linha agregada na companhia de espécie única (7.8).
+
+    Sem linha por espécie na DRE e com uma só espécie no FCA, a 3.99.01 é o LPA divulgado
+    dessa espécie; zerada ou ausente, vale a 3.99, só com o recalculado (lucro dos
+    controladores ÷ ações, na escala que a própria 3.99 escolhe) a até 10% dela. Devolve as
+    linhas e o registro da linha usada (`None` se nenhuma). A coerência (7.5 e 7.6) é a de
+    `divulgados_coerentes`, depois.
+    """
+    if linhas or not agregado or len(set(especies or ())) != 1:
+        return linhas, None
+    (especie,) = set(especies)
+    base = agregado.get("3.99.01")
+    if base:
+        return {especie: [base]}, {
+            "conta": "3.99.01",
+            "especie": especie,
+            "nota": NOTA_LINHA_AGREGADA,
+        }
+    titulo = agregado.get("3.99")
+    if not titulo:
+        return linhas, None
+    inferida = inferir_escala(lucro_controladores, acoes, titulo)
+    if inferida is None or abs(inferida[1] - 1) > LIMIAR_DA_LINHA_399:
+        return linhas, None
+    return {especie: [titulo]}, {
+        "conta": "3.99",
+        "especie": especie,
+        "razao": inferida[1],
+        "nota": NOTA_LINHA_AGREGADA,
+    }
 
 
 def divulgados_coerentes(

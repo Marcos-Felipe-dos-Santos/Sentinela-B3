@@ -151,3 +151,37 @@
 - **Revisão, 2ª rodada:** reprovada porque o stage tinha a versão de `tests/test_acoes_cvm.py` com o import fora de ordem (I001); o arquivo corrigido no disco não tinha ido para o stage. Corrigido e refeito o stage; `ruff check` passou a rodar também nos arquivos de teste do item e no `market_engine.py` (os três erros que restam em `tests/test_acoes_cvm.py` são do `HEAD`, sem correção segura). Também nesta rodada: o teste dos limites ganhou um caso com razões 0,1 e 10 exatas (`test_confirmacao_recusa_os_limites_exatos`), porque o caso da ficha com `6.135.427.665 ÷ 0,1` depende do arredondamento. Ficam registrados:
   - nesses casos, a `divergencia_acoes` compara com a mesma `sharesOutstanding` que confirmou a escala, então não é conferência independente (mesma família da armadilha 2);
   - a proveniência do VPA recebe a chave `escala` pela existência do registro, não pela confirmação; hoje é equivalente (sem confirmação, o VPA da CVM não é gravado), mas depende da ordem da cascata.
+
+### F2B-11 — fix: read the aggregate EPS line as the EPS of a single-class company
+- **Executor:** claude-code (claude-opus-5-5)
+- **Status:** sucesso
+- **O que foi feito:** ficha por ação 1.1, decisão 7.8 (ficha aprovada em 18/10/2026).
+  - `cvm_provider.lpa_basico_agregado`: os valores das linhas agregadas 3.99.01 e 3.99 da DRE consolidada (sem a escala monetária, como as demais 3.99), com zero e não numérico como `None`; vai para o `ind` como `lpa_basico_agregado`.
+  - `sentinela/data/acoes_cvm.linhas_da_especie_unica` (função pura): sem linha de LPA por espécie na DRE e com uma só espécie da companhia no FCA, a 3.99.01 vira a linha dessa espécie; zerada ou ausente, vale a 3.99, só se o recalculado (lucro dos controladores ÷ ações, na escala que a própria 3.99 escolhe pela faixa da 7.1) ficar a até 10% dela (`LIMIAR_DA_LINHA_399`, o limiar da 7.3). Devolve as linhas e o registro da linha usada (conta, espécie, razão no caso da 3.99, e a nota `NOTA_LINHA_AGREGADA`, o texto da ficha). Mais de uma espécie, linha por espécie existente ou nenhuma linha agregada: nada muda. A coerência (7.5 e 7.6) continua em `divulgados_coerentes`, sobre as linhas que essa função devolve, e a linha usada serve à escala.
+  - `market_engine`: `_aplicar_referencia` grava `dados['especies_da_companhia']` (as espécies dos registros do índice com o mesmo CNPJ; para unit, as espécies da composição). `_por_acao_cvm` passa as linhas por `linhas_da_especie_unica` antes da coerência e, quando o LPA dos métodos é o divulgado vindo da linha agregada, acrescenta ao `lpa_cvm` o registro (`linha_agregada`) e a nota (proveniência do LPA, D16).
+  - `ai_core.py`: `especies_da_companhia` na lista `excluir`.
+  - A série de cinco anos (`series_cvm`) não mudou: o item fala só da cascata.
+- **Testes:**
+  - Com xfail estrito → XPASS(strict) → marca retirada: `tests/test_market_engine_acoes_cvm.py::test_linha_agregada_vale_para_companhia_de_especie_unica` (3.99.01 = 2,0 numa companhia ON: LPA 2,0 de origem "divulgado", registro da 3.99.01, nota, VPA 10) e os três casos de `::test_linha_399_vale_so_com_o_recalculado_a_ate_10_por_cento` em que a 3.99 vale (2,0, 2,2 e 1,82: razões 1, 0,909 e 1,099); `::test_exemplo_da_ficha_bbas3` (D28: 3.99.01 = 0, 3.99 = 2,40, recalculado 13.698.124.000 ÷ (5.730.834.040 − 22.370.399); razão 0,9998402 com tolerância 1e−6).
+  - Sem marca, porque já passam e devem continuar passando: `::test_linha_agregada_nao_vale_com_mais_de_uma_especie` (o Pine: duas espécies, abstenção) e os dois casos do parametrizado em que a 3.99 é recusada (1,8 e 2,3: razões 1,111 e 0,870).
+  - `::test_provedor_le_as_linhas_agregadas_sem_zeros` (leitura do provedor, com 3.99.01 zerada e documento vazio) e quatro testes de unidade em `tests/test_acoes_cvm.py` (linha por espécie dispensa a agregada; sem linha agregada nada muda; o registro com conta e espécie nas duas linhas; 3.99 sem lucro dos controladores não entra).
+- **Dificuldades:** a primeira contagem das companhias deu 3.99 = 2.400 no BBAS3: o script lia a DRE por `parsear_demonstrativo`, que aplica a escala monetária (MIL) também às linhas por ação.
+- **Como resolvi:** o script lê a DRE como o provedor lê as 3.99 (`_read_raw`, ordem "ÚLTIMO", sem a escala monetária).
+- **Medição** (`outputs/f2b11_contagem.py` e `outputs/f2b11_cascata.py`, fora do git; DFP 2025 local; cascata real com rede só de leitura, sem cache SQLite; "antes" com o código do `HEAD` numa worktree):
+  - Companhias da DFP 2025 (última versão de cada CNPJ) só com a linha agregada (sem linha 3.99.01.xx por espécie e com 3.99.01 ou 3.99 diferente de zero): **duas**. Uma espécie: 1, pela 3.99 (Banco do Brasil, razão 0,9998); duas espécies: 1, nenhuma linha usada (Pine). Nenhuma pela 3.99.01.
+  - Antes → depois:
+
+    | Ticker | LPA | VPA | P/VP |
+    |---|---|---|---|
+    | BBAS3 | — → 2,40 (linha 3.99, razão 0,9998) | — → 33,1451 | 0,7413 (yfinance) → 0,7129 (CVM) |
+    | PINE3 | — → — | — → — | 1,9128 (yfinance) → 1,9128 |
+    | PINE4 | — → — | — → — | 2,2304 (yfinance) → 2,2304 |
+
+    O Pine segue com "escala das ações indeterminada".
+- **Testes:** 1409 passed, 1 skipped, 18 xfailed → 1422 passed, 1 skipped, 18 xfailed (+13: 9 em `tests/test_market_engine_acoes_cvm.py`, um deles com 5 casos, e 4 em `tests/test_acoes_cvm.py`). Golden sem diferença; `tests/test_financeiro_pre_refactor.py` sem mudança. `ruff format` em `sentinela/data/acoes_cvm.py` e nos dois arquivos de teste; nos arquivos da raiz (`cvm_provider.py`, `market_engine.py`, `ai_core.py`), o `ruff check` dá a mesma contagem do `HEAD` (8, 11 e 7), sem erro novo.
+- **Mutação** (`sentinela.data.acoes_cvm*`, meta ≥ 80%): 394/419 (94,0%) na primeira rodada, com sete sobreviventes em `linhas_da_especie_unica`; com os quatro testes de unidade, 400/419 (95,5%). Sobra um em `linhas_da_especie_unica` (`>` → `>=` no limiar de 10%), equivalente na prática: em ponto flutuante, nenhuma razão dá desvio de exatamente 0,10 (1,1 − 1 = 0,10000000000000009).
+- **Resíduos:** nenhum no repositório; `outputs/f2b11_*` fora do git.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:**
+  - O BBAS3 passa a ter LPA, VPA e P/VP da CVM, e o P/VP da CVM sobrescreve o do yfinance pela ordem da cascata; o VPA vem do PL dos controladores pelo modelo de banco (F2A-9).
+  - "Espécies no FCA" é lido pelo índice oficial (registros do mesmo CNPJ), que só traz os papéis ativos com código de negociação; uma espécie sem código no FCA não conta.
