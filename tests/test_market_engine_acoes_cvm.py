@@ -1067,3 +1067,50 @@ def test_provedor_le_as_linhas_agregadas_sem_zeros():
         "3.99.01": None,
         "3.99": None,
     }
+
+
+# ── linha "PN" única com mais de uma classe preferencial (F2B-12; ficha 1.1, 7.9) ─
+
+
+def _unit_com(acoes_por_unit):
+    return _registro(
+        "TSTA11", classe="UNIT", especie=None, acoes_por_unit=acoes_por_unit,
+        classes_preferenciais=["PNA", "PNB"],
+    )  # fmt: skip
+
+
+def test_linha_pn_unica_com_classes_distintas(monkeypatch):
+    # Como a USIM5: PNA e PNB no FCA, uma só linha básica "PN" na DRE.
+    linhas = {"ON": [2.1], "PN": [2.3]}
+    pna = _por_classe(
+        monkeypatch, "TSTB5", linhas, registro=_banrisul("TSTB5", "PN", "PNA")
+    )
+    assert pna["lpa"] == pytest.approx(2.3)
+    assert pna["lpa_cvm"]["classe"] == "PNA"
+    assert acoes_cvm.nota_linha_pn_unica("PNA") in pna["lpa_cvm"]["notas"]
+    unit = _por_classe(
+        monkeypatch,
+        "TSTA11",
+        linhas,
+        registro=_unit_com({"ON": 1, "PNA": 2}),
+    )
+    assert unit["lpa"] == pytest.approx(2.1 + 2 * 2.3)
+    componente = unit["lpa_cvm"]["componentes"]["PNA"]
+    assert (componente["lpa"], componente["classe"]) == (2.3, "PNA")
+    assert acoes_cvm.nota_linha_pn_unica("PNA") in componente["notas"]
+
+
+def test_unit_com_componente_pna_usa_a_linha_da_classe(monkeypatch):
+    from sentinela.data.referencia.montagem import parsear_acoes_por_unit
+
+    composicao = parsear_acoes_por_unit("1 ON E 2 PNA")
+    assert composicao == {"ON": 1, "PNA": 2}
+    dados = _por_classe(
+        monkeypatch,
+        "TSTA11",
+        {"ON": [2.1], "PNA": [2.3], "PNB": [2.5]},
+        registro=_unit_com(composicao),
+    )
+    assert dados["lpa"] == pytest.approx(2.1 + 2 * 2.3)
+    assert dados["lpa_cvm"]["componentes"]["PNA"]["classe"] == "PNA"
+    assert dados["lpa_cvm"]["componentes"]["PNA"]["notas"] == []

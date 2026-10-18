@@ -185,3 +185,34 @@
 - **Para o Marcos revisar:**
   - O BBAS3 passa a ter LPA, VPA e P/VP da CVM, e o P/VP da CVM sobrescreve o do yfinance pela ordem da cascata; o VPA vem do PL dos controladores pelo modelo de banco (F2A-9).
   - "Espécies no FCA" é lido pelo índice oficial (registros do mesmo CNPJ), que só traz os papéis ativos com código de negociação; uma espécie sem código no FCA não conta.
+
+### F2B-12 — fix: apply one preferred-class rule to units and standalone shares
+- **Executor:** claude-code (claude-opus-5-5)
+- **Status:** sucesso
+- **O que foi feito:** ficha por ação 1.1, decisão 7.9, opção (i) (ficha aprovada em 18/10/2026).
+  - `sentinela/data/acoes_cvm._lpa_da_classe`: com mais de uma classe preferencial no FCA e sem a linha da classe na DRE, a linha básica "PN" única é atribuída à classe como LPA divulgado, com a marca `nota_linha_pn_unica(classe)` ("LPA da linha PN única, aplicado à classe <classe>"); a linha "PN" incoerente (7.5) leva a classe à abstenção; a linha da própria classe, coerente ou não, continua tendo precedência; o recalculado comum segue proibido para essas classes (regra 3). `especie_da_classe` (PN, PNA, PNB… → PN) passou a dar a espécie do componente da unit, que antes era a própria chave: a ação avulsa e o componente seguem a mesma ordem (a linha da classe e, sem ela, a "PN" única).
+  - `sentinela/data/referencia/montagem._especie_do_texto`: a composição da unit guarda a sigla da classe ("1 ON E 2 PNA" → `{"ON": 1, "PNA": 2}`), por `^PN([A-H])$`; "PN", "PNS" e os textos por extenso seguem como "PN".
+  - `market_engine._aplicar_referencia`: as espécies da companhia (F2B-11) passam a normalizar as chaves da composição da unit por `especie_da_classe`, para "PNA" não contar como espécie à parte.
+  - O índice salvo em `data/referencia/` só ganha as siglas na próxima montagem; até lá, as units seguem com "PN" na composição, e a linha "PN" vale para elas diretamente, sem a marca.
+- **Testes:**
+  - Com xfail estrito → marca retirada → PASS: `tests/test_market_engine_acoes_cvm.py::test_linha_pn_unica_com_classes_distintas` (ação avulsa PNA, como a USIM5, e unit `{"ON": 1, "PNA": 2}` no mesmo teste: LPA 2,3 com a marca na avulsa; 2,1 + 2 × 2,3 na unit, com a marca no componente PNA) e `::test_unit_com_componente_pna_usa_a_linha_da_classe` (o parser guarda "PNA"; a unit usa a linha PNA, sem marca). A primeira versão dos dois falhava por `TypeError` na montagem (o `_unit` dos testes já fixa a composição); corrigida a montagem com um `_unit_com`, conferi numa worktree do `HEAD` que os dois falham pelo sintoma (`KeyError: 'lpa'` e `{'ON': 1, 'PN': 2} == {'ON': 1, 'PNA': 2}`) e, com a correção, deram XPASS(strict).
+  - **Teste que mudou:** `tests/test_referencia.py::test_parser_de_acoes_por_unit`, o caso `"1 ON E 2 PNA"`, de `{"ON": 1, "PN": 2}` para `{"ON": 1, "PNA": 2}`: é a mudança que a decisão 7.9 pede ("a composição da unit guarda a sigla da classe").
+  - `test_pna_e_pnb_nao_usam_lpa_comum` e `test_unit_com_componente_sem_reserva_abstem` seguem verdes sem mudança: sem linha "PN" na DRE, a PNB e o componente PN continuam em abstenção.
+- **Medição** (`outputs/f2b12_contagem.py` e `outputs/f2b12_cascata.py`, fora do git; DFP 2025 local; cascata real com rede só de leitura, sem cache SQLite; "antes" com o código do `HEAD` numa worktree):
+  - Companhias da DFP 2025 com mais de uma classe preferencial no FCA (índice oficial): nove (CEB, MRS, Sansuy, Sondotécnica, Unipar, Braskem, Suzano Holding, Usiminas e Banrisul). Com uma só linha "PN" na DRE: **uma**, a Usiminas. A CEB não traz linha preferencial na DRE, e a Sondotécnica traz PNA e PNE (FCA: PNA e PNB); as duas seguem sem mudança.
+  - Antes → depois:
+
+    | Ticker | LPA | Origem |
+    |---|---|---|
+    | USIM5 (PNA) | — → −2,50 | linha "PN" única, aplicada à classe PNA (ficha, 5.3: −2,50) |
+    | USIM6 (PNB) | — → −2,50 | linha "PN" única, aplicada à classe PNB |
+    | USIM3 (ON) | −2,50 → −2,50 | divulgado ON, sem mudança |
+
+    VPA (16,91) e P/VP não mudam. O "CVM sem LPA: mais de uma classe preferencial…" saiu dos riscos da USIM5 e da USIM6.
+- **Testes:** 1422 passed, 1 skipped, 18 xfailed → 1430 passed, 1 skipped, 18 xfailed (+8: 2 da cascata, 5 de unidade e 1 caso no parser). Golden sem diferença; `tests/test_financeiro_pre_refactor.py` sem mudança. `ruff format` nos módulos de `sentinela/data/` alterados e no arquivo de teste; `ruff check sentinela/data/` verde.
+- **Mutação** (meta ≥ 80% nos módulos de `sentinela/data/` alterados): primeira rodada, `sentinela.data.acoes_cvm` 419/452 (92,7%) e `sentinela.data.referencia.montagem` 625/677 (92,3%), com 16 sobreviventes no código novo (`especie_da_classe` e o desvio da linha "PN" em `_lpa_da_classe`) e um no parser. Com cinco testes de unidade em `tests/test_acoes_cvm.py` (espécie da classe; a linha "PN" com a marca, com e sem a nota do sinal; linha "PN" incoerente ou ausente e a precedência da linha da classe; a chave "PN" de índice antigo; o componente PNA da unit com várias e com uma classe preferencial) e um caso no parser ("1 ON + 2 PNA + 1 PNA" soma na mesma classe), e sem a condição `classe != "PN"`, que era redundante (a chave "PN" já é achada no laço da classe): `acoes_cvm` 432/448 (96,4%), `montagem` 626/677 (92,5%). O sobrevivente que resta em `_lpa_da_classe` é do código anterior (`classe or especie` no recalculado).
+- **Resíduos:** nenhum no repositório; `outputs/f2b12_*` fora do git.
+- **Decisões que ficaram para o Marcos:** nenhuma deste item. Duas ressalvas da revisão do F2B-11, registradas aqui porque o commit dele saiu como revisado:
+  - "sem linha de LPA por espécie" é lido como "sem linha por espécie diferente de zero": `cvm_provider.lpa_basico_por_classe` descarta os zeros, então uma companhia de espécie única com a 3.99.01.01 ON zerada e a 3.99.01 diferente de zero recebe a 3.99.01, sem a conferência pelo recalculado. Nenhum caso na DFP 2025 (os dois só com linha agregada são o Banco do Brasil e o Pine), mas a ficha fala em linha ausente; separar "ausente" de "zerada" muda a regra e precisa da decisão;
+  - a espécie única vem do índice (papéis com código de negociação), sem conferência pela Composição do Capital do mesmo documento; uma salvaguarda possível é recusar a linha agregada quando a Composição traz ações da outra espécie, o que também é regra nova.
+- **Para o Marcos revisar:** com a marca, a USIM5 e a USIM6 recebem o mesmo LPA, embora o CPC 41 peça o número por classe quando os direitos diferem; a ficha (7.9) declara isso como aproximação.

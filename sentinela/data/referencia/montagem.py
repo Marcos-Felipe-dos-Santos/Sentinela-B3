@@ -39,8 +39,15 @@ def normalizar_codigo(valor) -> str:
     return str(valor).strip().upper()
 
 
+_CLASSE_PREFERENCIAL_NO_TEXTO = re.compile(r"^PN([A-H])$")
+
+
 def _especie_do_texto(texto: str) -> str | None:
     limpo = texto.strip().upper()
+    # F2B-12 (ficha 1.1, 7.9): a composição guarda a sigla da classe ("2 PNA" → PNA).
+    classe = _CLASSE_PREFERENCIAL_NO_TEXTO.match(limpo)
+    if classe:
+        return limpo
     for padrao, especie in _ESPECIE_NO_TEXTO:
         if padrao.match(limpo):
             return especie

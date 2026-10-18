@@ -287,6 +287,18 @@ def divulgado_da_escala(
     return None
 
 
+def nota_linha_pn_unica(classe: str) -> str:
+    """Marca do LPA da linha "PN" única atribuída a uma classe preferencial (ficha 1.1, 7.9)."""
+    return f"LPA da linha PN única, aplicado à classe {classe}"
+
+
+def especie_da_classe(classe: str | None) -> str | None:
+    """Espécie de uma classe da composição ou do FCA: ON fica ON; PN, PNA, PNB… viram PN."""
+    if classe is None:
+        return None
+    return "PN" if classe.startswith("PN") else classe
+
+
 def _lpa_da_classe(
     classe: str | None,
     especie: str | None,
@@ -304,6 +316,18 @@ def _lpa_da_classe(
             nota = [achado.nota] if achado.nota else []
             return achado.valor, {"origem": "divulgado", "classe": chave, "notas": nota}
     preferencial = especie != "ON"
+    if varias_preferenciais and preferencial and "PN" in divulgados:
+        # F2B-12 (ficha 1.1, 7.9): sem a linha da classe, a linha "PN" única da DRE é
+        # atribuída a ela; incoerente, a classe se abstém. O recalculado segue proibido.
+        achado = divulgados["PN"]
+        if isinstance(achado, Abstencao):
+            return achado
+        notas = [achado.nota] if achado.nota else []
+        return achado.valor, {
+            "origem": "divulgado",
+            "classe": classe,
+            "notas": [*notas, nota_linha_pn_unica(classe)],
+        }
     if varias_preferenciais and preferencial:
         return Abstencao(MOTIVO_CLASSES_PREFERENCIAIS)
     if recalculado is None:
@@ -340,7 +364,9 @@ def lpa_dos_metodos(
         return Abstencao(MOTIVO_UNIT)
     total, componentes, notas = 0.0, {}, []
     for componente, quantidade in acoes_por_unit.items():
-        achado = _lpa_da_classe(componente, componente, divulgados, recalculado, varias)
+        achado = _lpa_da_classe(
+            componente, especie_da_classe(componente), divulgados, recalculado, varias
+        )
         if isinstance(achado, Abstencao):
             return Abstencao(f"{achado.motivo} ({componente} da unit)")
         valor, detalhe = achado

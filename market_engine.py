@@ -509,7 +509,11 @@ class MarketEngine:
                 especie
                 for r in indice.registros.values()
                 if r.cnpj and r.cnpj == registro.cnpj
-                for especie in ([r.especie] if r.especie else list(r.acoes_por_unit or ()))
+                for especie in (
+                    [r.especie]
+                    if r.especie
+                    else [acoes_cvm.especie_da_classe(c) for c in r.acoes_por_unit or ()]
+                )
             }
         )
         dados['referencia_oficial'] = {

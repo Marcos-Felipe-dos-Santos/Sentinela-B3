@@ -248,7 +248,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: BBAS3 e Pine com LPA, VPA e P/VP antes → depois, e quantas companhias da DFP 2025 trazem só a linha agregada, por número de espécies e por linha usada (3.99.01 ou 3.99);
   - gate da fase.
 
-- [ ] **F2B-12** · fix · `fix: apply one preferred-class rule to units and standalone shares` · **[FICHA 1.1]**
+- [x] **F2B-12** · fix · `fix: apply one preferred-class rule to units and standalone shares` · **[FICHA 1.1]**
   Ponto (c) da ficha 1.1 (decisão 7.9, adotada em 18/10/2026, opção (i)). A USIM5 (PNA e PNB no FCA, uma linha "PN" na DRE) se abstém pela regra 3; numa unit da mesma companhia, a linha "PN" entraria no componente PN (revisão do F2A-36, registrada no diário do F2A-37). Pela decisão 7.9:
   - a linha básica "PN" única vale como LPA divulgado de cada classe preferencial quando a DRE não as separa, e a USIM5 ganha LPA, com a marca "LPA da linha PN única, aplicado à classe <classe>"; o recalculado comum continua proibido para essas classes (regra 3);
   - a ação avulsa e o componente da unit seguem a mesma ordem: a linha da classe (PNA) e, sem ela, a linha "PN" única;

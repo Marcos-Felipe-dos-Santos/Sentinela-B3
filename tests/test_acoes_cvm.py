@@ -32,9 +32,11 @@ from sentinela.data.acoes_cvm import (
     divergencia_acoes,
     divulgado_da_escala,
     divulgados_coerentes,
+    especie_da_classe,
     inferir_escala,
     linhas_da_especie_unica,
     lpa_dos_metodos,
+    nota_linha_pn_unica,
     roe_dos_controladores,
 )
 from sentinela.domain.units import Escala
@@ -510,3 +512,93 @@ def test_linha_agregada_registra_a_conta_e_a_especie():
 def test_linha_399_sem_escala_nao_vale():
     # Lucro dos controladores ausente: sem recalculado, a 3.99 não é conferida e não entra.
     assert _agregada(agregado={"3.99.01": None, "3.99": 2.0}, lucro=None) == ({}, None)
+
+
+# ── linha "PN" única com mais de uma classe preferencial (F2B-12; ficha 1.1, 7.9) ─
+
+
+def test_especie_da_classe():
+    assert [especie_da_classe(c) for c in (None, "ON", "PN", "PNA", "PNB")] == [
+        None,
+        "ON",
+        "PN",
+        "PN",
+        "PN",
+    ]
+
+
+def test_linha_pn_unica_vale_para_a_classe_com_a_marca_e_a_nota_do_sinal():
+    divulgados = {"PN": LpaDivulgado(2.5, NOTA_SINAL_CONSOLIDADO)}
+    valor, detalhe = _metodos(
+        classe="PNB", classes_preferenciais=["PNA", "PNB"], divulgados=divulgados
+    )
+    assert (valor, detalhe) == (
+        2.5,
+        {
+            "origem": "divulgado",
+            "classe": "PNB",
+            "notas": [NOTA_SINAL_CONSOLIDADO, nota_linha_pn_unica("PNB")],
+        },
+    )
+    assert nota_linha_pn_unica("PNB") == "LPA da linha PN única, aplicado à classe PNB"
+    sem_nota = _metodos(
+        classe="PNA",
+        classes_preferenciais=["PNA", "PNB"],
+        divulgados={"PN": LpaDivulgado(2.5)},
+    )
+    assert sem_nota[1]["notas"] == [nota_linha_pn_unica("PNA")]
+
+
+def test_linha_pn_unica_incoerente_ou_ausente_mantem_a_abstencao():
+    varias = {"classe": "PNA", "classes_preferenciais": ["PNA", "PNB"]}
+    incoerente = {"PN": Abstencao(MOTIVO_LINHAS_CONFLITANTES)}
+    assert _metodos(**varias, divulgados=incoerente) == Abstencao(
+        MOTIVO_LINHAS_CONFLITANTES
+    )
+    assert _metodos(**varias) == Abstencao(MOTIVO_CLASSES_PREFERENCIAIS)
+    # A linha da classe, quando existe, vem antes da "PN" única.
+    assert (
+        _metodos(
+            **varias, divulgados={"PNA": LpaDivulgado(3.0), "PN": LpaDivulgado(2.5)}
+        )[0]
+        == 3.0
+    )
+
+
+def test_classe_pn_sem_sigla_com_varias_classes_nao_usa_o_desvio():
+    # Componente "PN" de um índice antigo: a chave já é a linha "PN", sem a marca.
+    valor, detalhe = _metodos(
+        classe="PN",
+        classes_preferenciais=["PNA", "PNB"],
+        divulgados={"PN": LpaDivulgado(2.5)},
+    )
+    assert (valor, detalhe["notas"]) == (2.5, [])
+    assert _metodos(classe="PN", classes_preferenciais=["PNA", "PNB"]) == Abstencao(
+        MOTIVO_CLASSES_PREFERENCIAIS
+    )
+
+
+def test_unit_com_componente_da_classe_usa_a_especie_para_a_linha_pn():
+    valor, detalhe = _metodos(
+        eh_unit=True,
+        acoes_por_unit={"ON": 1, "PNA": 2},
+        classes_preferenciais=["PNA", "PNB"],
+        divulgados={"ON": LpaDivulgado(1.0), "PN": LpaDivulgado(2.0)},
+    )
+    assert valor == pytest.approx(1.0 + 2 * 2.0)
+    assert detalhe["componentes"]["PNA"]["classe"] == "PNA"
+    # Com uma só classe preferencial, o componente PNA cai na linha da espécie (PN), sem marca.
+    valor, detalhe = _metodos(
+        eh_unit=True,
+        acoes_por_unit={"ON": 1, "PNA": 2},
+        classes_preferenciais=["PNA"],
+        divulgados={"ON": LpaDivulgado(1.0), "PN": LpaDivulgado(2.0)},
+    )
+    assert valor == pytest.approx(5.0)
+    assert detalhe["componentes"]["PNA"] == {
+        "quantidade": 2,
+        "lpa": 2.0,
+        "origem": "divulgado",
+        "classe": "PN",
+        "notas": [],
+    }
