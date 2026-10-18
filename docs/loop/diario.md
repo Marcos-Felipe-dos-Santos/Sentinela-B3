@@ -104,3 +104,50 @@
   - O motor de ações ainda soma "Dados incompletos" e −10 de confiança quando `pl <= 0 or pvp <= 0` (`valuation_engine.py:269-271`). Com o P/L negativo da CVM chegando ao motor, a empresa com prejuízo continua com esse risco, o que contradiz "prejuízo é dado". O ajuste muda o golden e é do motor, fora deste item; candidato ao F2C-3 (insumo ausente que o motor converte em 0 e penaliza).
   - A média de P/L dos pares (`peers_engine.py:86-93`, "P/L médio peers" na tela) passa a receber P/L negativo da CVM, e média aritmética com P/L negativo não tem sentido econômico. `peers_engine.py` é arquivo do ticket C-C do Jules; fica para a 2C.
   - Zero em `pl` e `pvp` passou a contar como dado, mas com preço > 0 não pode ser real (é marcador de ausência). A brapi o barra na fronteira; o `priceToBook` do yfinance entra sem filtro, e um zero dele agora impede a consulta ao cache. É a decisão literal ("só None ou não finito"); se o Marcos quiser, o zero de P/L e P/VP volta a ser ausente na fronteira do provedor, num item à parte.
+
+### F2B-10 — fix: infer share scale from consolidated earnings when controlling earnings abstain
+- **Executor:** claude-code (claude-opus-5-5)
+- **Status:** sucesso
+- **O que foi feito:** ficha por ação 1.1, decisão 7.7 (ficha aprovada em 18/10/2026).
+  - `sentinela/data/acoes_cvm.py`: `confirmar_escala` (Q_CVM, as ações em circulação da Composição do Capital na escala escolhida, ÷ ações por unit na unit; Q_yf, a `sharesOutstanding`; confirmada só com `0,1 < Q_CVM ÷ Q_yf < 10`, desigualdades estritas, e não confirmada com Q_yf ausente, ≤ 0 ou não finito), `FAIXA_DA_CONFIRMACAO`, `NOTA_ESCALA_PELO_CONSOLIDADO` (o texto da ficha) e `MOTIVO_ESCALA_NAO_CONFIRMADA`. `derivar_por_acao` ganhou `lucro_consolidado` e `shares_outstanding`, opcionais: com o lucro dos controladores `None` e o consolidado informado, a escala sai de `inferir_escala` pelo consolidado (mesma faixa [0,1; 10] da 7.1, contra o LPA divulgado coerente pela 7.6) e só vale confirmada; sem confirmação, abstém-se com o motivo e o registro da consulta. O LPA recalculado continua `None` (sem lucro dos controladores), e o consolidado não entra no LPA nem no ROE. `PorAcao` e `Abstencao` ganharam o campo `escala_pelo_consolidado` (o registro da consulta).
+  - `market_engine._por_acao_cvm` passa o lucro consolidado (`lucro_liquido`) e a `_shares_outstanding` do yfinance, e grava o registro em `dados['escala_pelo_consolidado']`, inclusive quando a confirmação falha (D16). Na proveniência do VPA da CVM, a chave `escala` traz o mesmo registro.
+  - `sentinela/data/series_cvm.py` não mudou: não passa o consolidado nem o yfinance, e a série de cinco anos segue com a escala indeterminada nesses casos (D17).
+  - `ai_core.py`: `escala_pelo_consolidado` na lista `excluir` de `_formatar_dados` (bloco estruturado novo em `dados`).
+- **Testes novos** (os seis do aceite em `tests/test_market_engine_acoes_cvm.py`, com xfail estrito, falharam com `--runxfail` e deram XPASS(strict) com a correção; a marca saiu):
+  - `test_escala_pelo_consolidado_quando_controladores_se_abstem` (VPA 10, P/VP 2, escala UNIDADE, razão 2.500 ÷ 1.000 ÷ 2,1);
+  - `test_consolidado_nao_entra_no_lpa_nem_no_roe` (ticker ON do índice falso: recalculado `None`, LPA = divulgado 2,1, ROE ausente);
+  - `test_escala_pelo_consolidado_na_proveniencia` (nota, Q_CVM 1.000, Q_yf 400, razão 2,5, confirmada; o mesmo registro na proveniência do VPA e em `dados`);
+  - `test_escala_pelo_consolidado_exige_a_confirmacao_do_yfinance`, parametrizado nos casos sintéticos da ficha (5.3): razão 1,0226 aceita; 1.000, 0,1, 10 e 0,0999 recusam;
+  - `test_sem_yfinance_a_abstencao_continua`, com `sharesOutstanding` `None`, 0 e −1 (sem VPA, registro não confirmado com razão `None`, motivo em `riscos_dados`);
+  - `test_exemplo_da_ficha_klbn11` (D28): 6.135.427.665 ações, razão 1,1965352, VPA da unit 6,4265659 (tolerância 1e−6), LPA recalculado `None`.
+  - `tests/test_cvm_series.py::test_serie_nao_usa_a_confirmacao_do_yfinance`: sem xfail, porque já passa e deve continuar passando (a série não tem a `sharesOutstanding`): com o lucro dos controladores `None`, ações e VPA ausentes, motivo `MOTIVO_ESCALA`.
+- **Dificuldades:** duas montagens erradas na primeira versão. Sem espécie no índice falso, o LPA dos métodos é o recalculado, que se abstém, e o teste esperava o divulgado; e a proveniência do VPA só é gravada quando o `ind` traz `proveniencia`, que o `_ind` dos testes não traz.
+- **Como resolvi:** o teste do LPA usa um ticker ON do índice falso (`FakeReferencia`), e o da proveniência passa um `proveniencia` no `ind`. Como os dois mudaram depois da correção, rodei os testes novos contra o código do `HEAD` numa worktree destacada no scratchpad (removida depois): os 12 casos falham lá (`KeyError: 'vpa'`, `KeyError: 'acoes_cvm'`, `AttributeError` de `confirmar_escala`, `KeyError: 'escala_pelo_consolidado'`, `TypeError` de `lucro_consolidado`).
+- **Medição** (`outputs/f2b10_cascata.py`, fora do git; DFP 2025 local; cascata real com rede só de leitura, sem cache SQLite; "antes" com o código do `HEAD` numa worktree). As nove companhias da 7.7:
+
+  | Companhia | Ticker | Razão (consolidado) | Q_CVM ÷ Q_yf | Confirmação | Escala | VPA antes → depois |
+  |---|---|---|---|---|---|---|
+  | Klabin | KLBN11 | 1,1965352 | 1.227.085.533 ÷ 1.214.936.096 = 1,0100 | sim | UNIDADE | — → 6,4265659 (P/VP 2,35 do yfinance → 2,82 da CVM) |
+  | Cambuci | CAMB3 | 0,9999981 | 41.839.573 ÷ 41.830.573 = 1,0002 | sim | UNIDADE | — → 7,3033 (P/VP 1,14 → 1,19) |
+  | Mundial | MNDL3 | 0,9999999 | 9.917.976 ÷ 9.917.976 = 1,0000 | sim | UNIDADE | — → 13,5594 (P/VP 1,64 → 1,32) |
+  | Sul 116 | OPTS3 | 0,532 (ficha) | — | sem yfinance | — | — → — (o yfinance não tem preço; a cascata para antes da CVM) |
+  | Lifemed, Cantu e VLI | sem ticker no índice | 0,162; 0,972; 2,067 (ficha) | — | — | — | sem cotação, não passam pela cascata |
+  | Aliperti | APTI3, APTI4 | — | — | — | — | — → — (sem preço no yfinance; e, pela ficha, linhas ON e PN zeradas) |
+  | Cataguases | sem ticker no índice | — | — | — | — | sem LPA por espécie (ficha); fica em abstenção |
+
+  Os três casos confirmados ficam com razão perto de 1, longe dos limites; nenhum caso medido foi recusado pela confirmação.
+- **Testes:** 1385 passed, 1 skipped, 18 xfailed → 1409 passed, 1 skipped, 18 xfailed (+24: os 6 do aceite, com 5 e 3 casos nos parametrizados, o da série e os 6 de unidade, dois deles parametrizados com 5 e 2 casos). Golden sem diferença; `tests/test_financeiro_pre_refactor.py` sem mudança. `ruff format` em `sentinela/data/acoes_cvm.py` e nos três arquivos de teste; `ruff check sentinela/data/` verde.
+- **Mutação** (`python -m mutmut run "sentinela.data.acoes_cvm*"`, meta ≥ 80%): 344/371 (92,7%) na primeira rodada, com seis sobreviventes em `confirmar_escala` e três na passagem do consolidado em `derivar_por_acao`; com cinco testes de unidade novos em `tests/test_acoes_cvm.py` (divisão pelas ações por unit só na unit, Q_yf ausente, zero, negativo e não finito, Q_yf fracionário positivo, motivo da escala quando o consolidado não a infere, unit confirmada pelas units), 353/371 (95,1%). Seguem quatro sobreviventes em `derivar_por_acao` (8, 10, 86 e 87).
+- **Resíduos:** nenhum no repositório; `outputs/f2b10_*` fora do git.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:**
+  - Na KLBN11, o yfinance conta as units (1.214.936.096), e a CVM, ÷ 5 ações por unit, dá 1.227.085.533: a hipótese da ficha (os dois medem a mesma coisa) vale aqui.
+  - Quando a confirmação vale, o P/VP da CVM passa a sobrescrever o do yfinance (KLBN11 2,35 → 2,82), pela ordem da cascata (CVM > yfinance).
+  - O `market_engine.py` ficou com as mudanças deste item fora do stage enquanto o F2B-8 era commitado (`44d0666`): o commit do F2B-8 levou só o stage revisado dele.
+- **Revisão:** 1ª rodada aprovada com médios. Corrigido antes do commit: o registro da consulta gravava a nota da ficha ("… e confirmada pela quantidade do yfinance") também quando a confirmação falhava; agora a nota é a da ficha só com a escala confirmada, e, sem confirmação, o `MOTIVO_ESCALA_NAO_CONFIRMADA` (dois asserts novos em `tests/test_acoes_cvm.py`). Ficam registrados:
+  - `dados['acoes_cvm']['razao_lpa_calculado_sobre_divulgado']`, nesses casos, é a razão pelo lucro consolidado; a origem está no registro ao lado (`dados['escala_pelo_consolidado']` e `proveniencia['vpa']['escala']`), não no `acoes_cvm`;
+  - o registro guarda Q_yf só com o valor; a fonte e a data da `sharesOutstanding` são as do yfinance na proveniência da cascata (seção 2 da ficha), sem cópia no registro;
+  - na cascata, `sharesOutstanding` 0 e −1 já chegam como `None` (`market_engine.py` só grava `_shares_outstanding` positivo); o caminho ≤ 0 da função é coberto pelos testes de unidade.
+- **Revisão, 2ª rodada:** reprovada porque o stage tinha a versão de `tests/test_acoes_cvm.py` com o import fora de ordem (I001); o arquivo corrigido no disco não tinha ido para o stage. Corrigido e refeito o stage; `ruff check` passou a rodar também nos arquivos de teste do item e no `market_engine.py` (os três erros que restam em `tests/test_acoes_cvm.py` são do `HEAD`, sem correção segura). Também nesta rodada: o teste dos limites ganhou um caso com razões 0,1 e 10 exatas (`test_confirmacao_recusa_os_limites_exatos`), porque o caso da ficha com `6.135.427.665 ÷ 0,1` depende do arredondamento. Ficam registrados:
+  - nesses casos, a `divergencia_acoes` compara com a mesma `sharesOutstanding` que confirmou a escala, então não é conferência independente (mesma família da armadilha 2);
+  - a proveniência do VPA recebe a chave `escala` pela existência do registro, não pela confirmação; hoje é equivalente (sem confirmação, o VPA da CVM não é gravado), mas depende da ordem da cascata.

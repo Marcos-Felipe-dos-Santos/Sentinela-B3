@@ -6,6 +6,7 @@ from sentinela.data.acoes_cvm import (
     FAIXA_DA_ESCALA,
     MOTIVO_CLASSES_PREFERENCIAIS,
     MOTIVO_ESCALA,
+    MOTIVO_ESCALA_NAO_CONFIRMADA,
     MOTIVO_LINHAS_CONFLITANTES,
     MOTIVO_LUCRO_ZERO,
     MOTIVO_ROE_PL,
@@ -18,6 +19,7 @@ from sentinela.data.acoes_cvm import (
     MOTIVO_SINAL_NAO_CONFERIVEL,
     MOTIVO_TOTAL,
     MOTIVO_UNIT,
+    NOTA_ESCALA_PELO_CONSOLIDADO,
     NOTA_FIM_DO_PERIODO,
     NOTA_RECALCULADO,
     NOTA_SINAL_CONSOLIDADO,
@@ -25,6 +27,7 @@ from sentinela.data.acoes_cvm import (
     Composicao,
     LpaDivulgado,
     PorAcao,
+    confirmar_escala,
     derivar_por_acao,
     divergencia_acoes,
     divulgado_da_escala,
@@ -387,3 +390,75 @@ def test_unit_soma_componentes_e_junta_as_notas():
     assert _metodos(eh_unit=True, acoes_por_unit=None) == Abstencao(MOTIVO_UNIT)
     sem_recalculado = _metodos(eh_unit=True, acoes_por_unit={"ON": 1}, recalculado=None)
     assert sem_recalculado.motivo.endswith("(ON da unit)")
+
+
+# ── escala pelo lucro consolidado (F2B-10; ficha 1.1, 7.7) ──────────────────
+
+
+def _confirmar(shares, *, eh_unit=False, acoes_por_unit=None):
+    return confirmar_escala(
+        _cc(),
+        Escala.UNIDADE,
+        eh_unit=eh_unit,
+        acoes_por_unit=acoes_por_unit,
+        shares_outstanding=shares,
+    )
+
+
+def test_confirmacao_divide_pelas_acoes_por_unit_so_na_unit():
+    # 1.000 ações ÷ 5 por unit = 200 units: com 40 units no yfinance, razão 25 sem a divisão
+    # (recusa) e 5 com ela (confirma).
+    unit = _confirmar(40.0, eh_unit=True, acoes_por_unit={"ON": 1, "PN": 4})
+    assert unit["acoes_cvm"] == pytest.approx(200.0)
+    assert unit["confirmada"] is True
+    avulsa = _confirmar(40.0, acoes_por_unit={"ON": 1, "PN": 4})
+    assert avulsa["acoes_cvm"] == pytest.approx(1_000.0)
+    assert avulsa["confirmada"] is False
+    assert unit["escala"] == "UNIDADE"
+    assert unit["nota"] == NOTA_ESCALA_PELO_CONSOLIDADO
+
+
+@pytest.mark.parametrize("shares", [None, 0.0, -5.0, float("nan"), float("inf")])
+def test_confirmacao_sem_quantidade_valida_do_yfinance(shares):
+    registro = _confirmar(shares)
+    assert registro["acoes_yfinance"] is None
+    assert registro["razao"] is None
+    assert registro["confirmada"] is False
+    assert registro["nota"] == MOTIVO_ESCALA_NAO_CONFIRMADA
+
+
+@pytest.mark.parametrize("shares", [10_000.0, 100.0])
+def test_confirmacao_recusa_os_limites_exatos(shares):
+    # 1.000 ações da CVM: razões 0,1 e 10 exatas, fora pela desigualdade estrita (ficha, 7.7).
+    registro = _confirmar(shares)
+    assert registro["razao"] in (0.1, 10.0)
+    assert registro["confirmada"] is False
+
+
+def test_confirmacao_aceita_quantidade_fracionaria_positiva():
+    registro = _confirmar(500.0)
+    assert registro["acoes_yfinance"] == 500.0
+    assert registro["razao"] == pytest.approx(2.0)
+    assert _confirmar(0.5)["razao"] == pytest.approx(2_000.0)
+
+
+def test_consolidado_sem_escala_abstem_se_pelo_motivo_da_escala():
+    # Consolidado com sinal oposto ao LPA divulgado: a escala não é inferida.
+    resultado = _derivar(
+        lucro_controladores=None, lucro_consolidado=-2_000.0, shares_outstanding=1_000.0
+    )
+    assert resultado == Abstencao(MOTIVO_ESCALA)
+
+
+def test_unit_pelo_consolidado_confirma_pelas_units():
+    # 200 units contra 40 do yfinance: confirma só dividindo pelas ações por unit.
+    resultado = _derivar(
+        lucro_controladores=None,
+        lucro_consolidado=2_000.0,
+        shares_outstanding=40.0,
+        eh_unit=True,
+        acoes_por_unit={"ON": 1, "PN": 4},
+    )
+    assert isinstance(resultado, PorAcao)
+    assert resultado.escala_pelo_consolidado["acoes_cvm"] == pytest.approx(200.0)
+    assert resultado.vpa == pytest.approx(10.0 * 5)

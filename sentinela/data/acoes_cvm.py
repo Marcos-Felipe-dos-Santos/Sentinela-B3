@@ -26,12 +26,15 @@ from dataclasses import dataclass
 from sentinela.domain.units import Escala, QuantidadeAcoes
 
 FAIXA_DA_ESCALA = (0.1, 10.0)
+# Ficha 1.1, 7.7: Q_CVM ÷ Q_yf, com as duas desigualdades estritas.
+FAIXA_DA_CONFIRMACAO = (0.1, 10.0)
 
 MOTIVO_SEM_COMPOSICAO = "sem Composição do Capital no documento do lucro"
 MOTIVO_DOCUMENTO_DIFERENTE = (
     "Composição do Capital de documento diferente do lucro (outra data ou versão)"
 )
 MOTIVO_ESCALA = "escala das ações indeterminada"
+MOTIVO_ESCALA_NAO_CONFIRMADA = "escala inferida pelo lucro consolidado sem a confirmação da quantidade do yfinance (7.7)"
 MOTIVO_TOTAL = "total de ações da Composição do Capital ≤ 0"
 MOTIVO_UNIT = "unit sem composição oficial (ações por unit)"
 MOTIVO_ROE_PL = "PL dos controladores ≤ 0"
@@ -58,6 +61,10 @@ NOTA_SINAL_CONSOLIDADO = (
     "sinal conferido pelo lucro consolidado: lucro dos controladores indisponível"
 )
 NOTA_RECALCULADO = "ações do fim do período, não média ponderada"
+NOTA_ESCALA_PELO_CONSOLIDADO = (
+    "escala inferida pelo lucro consolidado e confirmada pela quantidade do yfinance: lucro "
+    "dos controladores indisponível (7.2)"
+)
 ORDEM_DA_ESCALA = ("ON", "PN")
 NOTA_FIM_DO_PERIODO = (
     "ações do fim do período (Composição do Capital); o LPA divulgado usa a média "
@@ -91,6 +98,7 @@ class PorAcao:
     vpa: float | None
     pl: float | None
     pvp: float | None
+    escala_pelo_consolidado: dict | None = None
 
     def detalhe(self, documento: dict) -> dict:
         return {
@@ -105,6 +113,7 @@ class PorAcao:
 @dataclass(frozen=True)
 class Abstencao:
     motivo: str
+    escala_pelo_consolidado: dict | None = None
 
 
 def inferir_escala(
@@ -126,6 +135,45 @@ def inferir_escala(
     if not FAIXA_DA_ESCALA[0] <= razao <= FAIXA_DA_ESCALA[1]:
         return None
     return melhor, razao
+
+
+def confirmar_escala(
+    composicao: Composicao,
+    escala: Escala,
+    *,
+    eh_unit: bool,
+    acoes_por_unit: dict | None,
+    shares_outstanding: float | None,
+) -> dict:
+    """Confirmação da escala inferida pelo consolidado (ficha 1.1, 7.7), para a proveniência.
+
+    Q_CVM: ações em circulação da Composição do Capital na escala escolhida (para unit, ÷ ações
+    por unit); Q_yf: `sharesOutstanding` do yfinance. Confirmada só com 0,1 < Q_CVM ÷ Q_yf < 10;
+    Q_yf ausente, ≤ 0 ou não finito não confirma. O yfinance nunca entra no cálculo.
+    """
+    acoes = QuantidadeAcoes(composicao.total, escala).em_unidades().valor
+    if eh_unit and acoes_por_unit:
+        acoes /= sum(acoes_por_unit.values())
+    valido = (
+        shares_outstanding is not None
+        and math.isfinite(shares_outstanding)
+        and shares_outstanding > 0
+    )
+    razao = acoes / shares_outstanding if valido else None
+    confirmada = (
+        razao is not None and FAIXA_DA_CONFIRMACAO[0] < razao < FAIXA_DA_CONFIRMACAO[1]
+    )
+    return {
+        # A nota da ficha só vale para a escala confirmada; sem confirmação, o motivo é outro.
+        "nota": NOTA_ESCALA_PELO_CONSOLIDADO
+        if confirmada
+        else MOTIVO_ESCALA_NAO_CONFIRMADA,
+        "escala": escala.name,
+        "acoes_cvm": acoes,
+        "acoes_yfinance": shares_outstanding if valido else None,
+        "razao": razao,
+        "confirmada": confirmada,
+    }
 
 
 @dataclass(frozen=True)
@@ -272,15 +320,38 @@ def derivar_por_acao(
     preco: float | None,
     eh_unit: bool,
     acoes_por_unit: dict | None,
+    lucro_consolidado: float | None = None,
+    shares_outstanding: float | None = None,
 ) -> PorAcao | Abstencao:
-    """LPA, VPA, P/L e P/VP da CVM; abstém-se só quando a própria CVM falha."""
+    """LPA, VPA, P/L e P/VP da CVM; abstém-se só quando a própria CVM falha.
+
+    Com o lucro dos controladores abstido (7.2) e `lucro_consolidado` informado, a escala é
+    inferida pelo consolidado e só vale confirmada pela `sharesOutstanding` (ficha 1.1, 7.7). O
+    consolidado serve só à escala: o LPA recalculado continua abstido. Só o documento mais
+    recente passa o consolidado; a série de cinco anos não (D17).
+    """
     if composicao is None:
         return Abstencao(motivo_composicao or MOTIVO_SEM_COMPOSICAO)
     if eh_unit and not acoes_por_unit:
         return Abstencao(MOTIVO_UNIT)
     if composicao.total <= 0:
         return Abstencao(MOTIVO_TOTAL)
-    inferida = inferir_escala(lucro_controladores, composicao.total, lpa_divulgado)
+    confirmacao = None
+    if lucro_controladores is None and lucro_consolidado is not None:
+        inferida = inferir_escala(lucro_consolidado, composicao.total, lpa_divulgado)
+        if inferida is None:
+            return Abstencao(MOTIVO_ESCALA)
+        confirmacao = confirmar_escala(
+            composicao,
+            inferida[0],
+            eh_unit=eh_unit,
+            acoes_por_unit=acoes_por_unit,
+            shares_outstanding=shares_outstanding,
+        )
+        if not confirmacao["confirmada"]:
+            return Abstencao(MOTIVO_ESCALA_NAO_CONFIRMADA, confirmacao)
+    else:
+        inferida = inferir_escala(lucro_controladores, composicao.total, lpa_divulgado)
     if inferida is None:
         return Abstencao(MOTIVO_ESCALA)
     escala, razao = inferida
@@ -299,6 +370,7 @@ def derivar_por_acao(
         vpa=vpa,
         pl=_dividir(preco_valido, lpa),
         pvp=_dividir(preco_valido, vpa),
+        escala_pelo_consolidado=confirmacao,
     )
 
 

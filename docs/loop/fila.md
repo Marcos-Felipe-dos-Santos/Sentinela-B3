@@ -217,7 +217,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: nas ações atuais do universo inicial, as que têm prejuízo ou PL negativo na DFP 2025, com `pl`, `lpa`, `roe`, `vpa` e `fundamentos_incompletos` antes → depois;
   - gate da fase.
 
-- [ ] **F2B-10** · fix · `fix: infer share scale from consolidated earnings when controlling earnings abstain` · **[FICHA 1.1]**
+- [x] **F2B-10** · fix · `fix: infer share scale from consolidated earnings when controlling earnings abstain` · **[FICHA 1.1]**
   Ponto (a) da ficha 1.1 (decisão 7.7, adotada em 18/10/2026). Com o lucro dos controladores abstido (D20, decisão 7.2), a escala das ações fica indeterminada, e o VPA e a capitalização se abstêm, mesmo com o PL dos controladores lido: 9 companhias, a KLBN11 entre elas (diário do F2A-36); 7 têm razão calculável (ficha, 7.7). Pela decisão 7.7:
   - a escala (unidade ou mil) é inferida pelo lucro consolidado (3.11) ÷ ações contra o LPA divulgado coerente do mesmo documento, na faixa [0,1; 10] (ficha, 7.1), em `market_engine._por_acao_cvm` (as séries ficam como estão; abaixo);
   - o lucro consolidado serve só à escala; nunca entra no LPA nem no ROE, e o recalculado continua abstido (sem lucro dos controladores);

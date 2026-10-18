@@ -831,6 +831,12 @@ class MarketEngine:
                                 **registro,
                                 'reservas': [*registro.get('reservas', []), reservas[origem]],
                             }
+                if 'vpa' in dados['proveniencia'] and dados.get('escala_pelo_consolidado'):
+                    # F2B-10 (D16): a escala do VPA veio do consolidado, com a confirmação.
+                    dados['proveniencia']['vpa'] = {
+                        **dados['proveniencia']['vpa'],
+                        'escala': dados['escala_pelo_consolidado'],
+                    }
                 if 'lpa' in dados['proveniencia'] and dados.get('lpa_cvm'):
                     # F2A-36 (D16): origem do LPA, com a marca do recalculado ou do sinal.
                     dados['proveniencia']['lpa'] = {
@@ -945,7 +951,12 @@ class MarketEngine:
             preco=_as_float(dados.get('preco_atual')),
             eh_unit=eh_unit,
             acoes_por_unit=acoes_por_unit,
+            # F2B-10 (ficha 1.1, 7.7): escala pelo consolidado, confirmada pelo yfinance.
+            lucro_consolidado=ind.get('lucro_liquido'),
+            shares_outstanding=_as_float(dados.get('_shares_outstanding')),
         )
+        if resultado.escala_pelo_consolidado is not None:
+            dados['escala_pelo_consolidado'] = resultado.escala_pelo_consolidado
         fator = sum(acoes_por_unit.values()) if eh_unit and acoes_por_unit else 1
         por_acao = resultado if isinstance(resultado, acoes_cvm.PorAcao) else None
         recalculado = por_acao.lpa / fator if por_acao and por_acao.lpa is not None else None

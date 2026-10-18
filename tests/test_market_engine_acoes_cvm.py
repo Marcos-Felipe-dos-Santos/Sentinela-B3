@@ -12,6 +12,7 @@ import pandas as pd
 import pytest
 
 from cvm_provider import CVMProvider
+from sentinela.data import acoes_cvm
 from sentinela.data.acoes_cvm import (
     MOTIVO_CLASSES_PREFERENCIAIS,
     MOTIVO_DOCUMENTO_DIFERENTE,
@@ -857,3 +858,110 @@ def test_pl_do_divulgado_nao_declara_as_acoes_do_fim_do_periodo(monkeypatch):
         "shares_end_of_period"
         in unit["field_provenance"]["pl"]["provenance"]["warnings"]
     )
+
+
+# ── escala pelo lucro consolidado (F2B-10; ficha 1.1, decisão 7.7) ───────────
+
+# Lucro dos controladores abstido (decisão 7.2); PL dos controladores lido. Consolidado 2.500 ÷
+# 1.000 ações ÷ LPA divulgado 2,1 → razão 1,19 na unidade.
+SEM_CONTROLADORES = {"lucro_controladores": None, "roe": None}
+
+
+def test_escala_pelo_consolidado_quando_controladores_se_abstem(monkeypatch):
+    dados = _motor(monkeypatch, _ind(**SEM_CONTROLADORES)).buscar_dados_ticker("PETR4")
+    assert dados["vpa"] == pytest.approx(10.0)
+    assert dados["pvp"] == pytest.approx(PRECO / 10.0)
+    assert dados["acoes_cvm"]["escala"] == "UNIDADE"
+    assert dados["acoes_cvm"]["razao_lpa_calculado_sobre_divulgado"] == pytest.approx(
+        2_500.0 / 1_000.0 / 2.1
+    )
+
+
+def test_consolidado_nao_entra_no_lpa_nem_no_roe(monkeypatch):
+    # Ticker ON do índice: o LPA dos métodos é o divulgado da espécie (D19).
+    referencia = FakeReferencia(_indice(_registro("TSTA3", cnpj=CNPJ)))
+    dados = _motor(monkeypatch, _ind(**SEM_CONTROLADORES), referencia=referencia)
+    dados = dados.buscar_dados_ticker("TSTA3")
+    assert dados["acoes_cvm"]["lpa_recalculado"] is None
+    assert dados["lpa"] == pytest.approx(2.1)  # o divulgado, nunca 2.500 ÷ 1.000
+    assert dados["lpa_cvm"]["origem"] == "divulgado"
+    assert dados.get("roe") is None
+
+
+def test_escala_pelo_consolidado_na_proveniencia(monkeypatch):
+    proveniencia = {"documento": "DFP", "periodo_referencia": "2025-12-31"}
+    ind = _ind(**SEM_CONTROLADORES, proveniencia=proveniencia)
+    dados = _motor(monkeypatch, ind, shares=400.0).buscar_dados_ticker("PETR4")
+    assert dados["proveniencia"]["vpa"]["documento"] == "DFP"
+    escala = dados["proveniencia"]["vpa"]["escala"]
+    assert escala["nota"] == acoes_cvm.NOTA_ESCALA_PELO_CONSOLIDADO
+    assert escala["acoes_cvm"] == pytest.approx(1_000.0)
+    assert escala["acoes_yfinance"] == pytest.approx(400.0)
+    assert escala["razao"] == pytest.approx(2.5)
+    assert escala["confirmada"] is True
+    assert dados["escala_pelo_consolidado"] == escala
+
+
+@pytest.mark.parametrize(
+    ("acoes_yfinance", "confirmada"),
+    [
+        (6_000_000_000.0, True),  # razão 1,0226 (ficha, 5.3)
+        (6_135_428.0, False),  # razão 1.000: escala errada
+        (6_135_427_665.0 / 0.1, False),  # razão 0,1 (desigualdade estrita)
+        (6_135_427_665.0 / 10, False),  # razão 10
+        (6_135_427_665.0 / 0.0999, False),  # razão 0,0999
+    ],
+)
+def test_escala_pelo_consolidado_exige_a_confirmacao_do_yfinance(
+    acoes_yfinance, confirmada
+):
+    composicao = _composicao(
+        on=6_241_478_850.0, pn=0.0, tes_on=106_051_185.0, tes_pn=0.0
+    )
+    registro = acoes_cvm.confirmar_escala(
+        composicao,
+        acoes_cvm.Escala.UNIDADE,
+        eh_unit=False,
+        acoes_por_unit=None,
+        shares_outstanding=acoes_yfinance,
+    )
+    assert registro["acoes_cvm"] == pytest.approx(6_135_427_665.0)
+    assert registro["razao"] == pytest.approx(6_135_427_665.0 / acoes_yfinance)
+    assert registro["confirmada"] is confirmada
+
+
+@pytest.mark.parametrize("shares", [None, 0.0, -1.0])
+def test_sem_yfinance_a_abstencao_continua(monkeypatch, shares):
+    info_extra = {"sharesOutstanding": shares}
+    dados = _motor(monkeypatch, _ind(**SEM_CONTROLADORES), info_extra=info_extra)
+    dados = dados.buscar_dados_ticker("PETR4")
+    assert dados.get("vpa") is None
+    assert dados["escala_pelo_consolidado"]["confirmada"] is False
+    assert dados["escala_pelo_consolidado"]["razao"] is None
+    assert any(
+        acoes_cvm.MOTIVO_ESCALA_NAO_CONFIRMADA in r for r in dados["riscos_dados"]
+    )
+
+
+def test_exemplo_da_ficha_klbn11():
+    # Ficha 1.1, seção 5.3 (D28): contas refeitas pela auditoria externa sobre a DFP 2025.
+    composicao = _composicao(
+        on=6_241_478_850.0, pn=0.0, tes_on=106_051_185.0, tes_pn=0.0
+    )
+    resultado = acoes_cvm.derivar_por_acao(
+        lucro_controladores=None,
+        pl_controladores=(14_401_101.0 - 6_515_155.0) * 1_000,
+        composicao=composicao,
+        motivo_composicao=None,
+        lpa_divulgado=0.2286,
+        preco=None,
+        eh_unit=True,
+        acoes_por_unit={"ON": 1, "PN": 4},
+        lucro_consolidado=1_678_211_000.0,
+        shares_outstanding=1_200_000_000.0,
+    )
+    assert resultado.acoes.valor == pytest.approx(6_135_427_665.0)
+    assert resultado.escala is acoes_cvm.Escala.UNIDADE
+    assert resultado.razao_lpa == pytest.approx(1.1965352, abs=1e-6)
+    assert resultado.vpa == pytest.approx(6.4265659, abs=1e-6)
+    assert resultado.lpa is None

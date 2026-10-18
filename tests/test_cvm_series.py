@@ -317,6 +317,25 @@ def test_lpa_incoerente_se_abstem_no_exercicio():
     assert "sinal oposto" in exercicio["motivos"]["lpa"]
 
 
+def test_serie_nao_usa_a_confirmacao_do_yfinance():
+    # Ficha 1.1, 7.7: a `sharesOutstanding` é de hoje e não confirma exercícios passados; sem
+    # o lucro dos controladores, a escala da série segue indeterminada (D17).
+    composicao = Composicao(
+        on=1_000.0, pn=0.0, tesouraria_on=0.0, tesouraria_pn=0.0,
+        tesouraria_total=0.0, dt_refer="2025-12-31", versao="1",
+    )  # fmt: skip
+    ind = {
+        **_ind(2025),
+        "lucro_controladores": None,
+        "composicao_capital": composicao,
+        "composicao_motivo": None,
+    }
+    exercicio = series_cvm.serie_anual({2025: ind}, 2025, especie="ON")[0]
+    assert exercicio["acoes"] is None
+    assert exercicio["vpa"] is None
+    assert exercicio["motivos"]["vpa"] == acoes_cvm.MOTIVO_ESCALA
+
+
 # ── provedor: DVA e ITR sintéticos ───────────────────────────────────────────
 
 COLUNAS = [
