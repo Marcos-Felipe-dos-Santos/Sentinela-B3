@@ -327,3 +327,20 @@
   - um FII com CNPJ cujo Informe vem vazio segue sem aviso; um ticker fora do índice que o classificador trata como FII recebe os dois avisos (fora da referência e fora do Informe);
   - a evidência do BUG-2A-13 no registro ainda aponta `market_engine.py:748`; o trecho está perto da linha 775.
 - **Para o Marcos revisar:** o ROE dos controladores da CVM pode ficar abaixo de −2 (por exemplo, PL pequeno com prejuízo grande); o piso não o alcança, pela decisão.
+
+### F2B-20 — fix: refuse non-positive prices in both engines
+- **Executor:** claude-code (claude-opus-5-5)
+- **Status:** sucesso
+- **O que foi feito:** corrige o BUG-2A-22 (ressalva da auditoria do Gemini ao F2A-25). O motor de ações (`valuation_engine.processar`) recusava só o preço zero (pelo `not dados.get('preco_atual')`) e o não finito; o de FII (`fii_engine.analisar`), só `p == 0` e o não finito. Os dois passam a devolver `None` com preço ≤ 0, como com o zero (F2A-24).
+- **Golden** (regra da 2A): regenerado com `GERAR_GOLDEN=1 python -m pytest tests/test_equivalencia_motores.py::test_gerar_golden`; `python scripts/golden_diff.py --onde "(entrada.get('preco_atual') or 0) < 0"` sai com 0: 2 alterados (`acoes/preco-negativo`, que saía com Graham de R$ 12,25 e Bazin de R$ −5,52, e `fii/preco-negativo`, com Bazin FII de R$ −8,11), agora `None`; 0 incluídos, 0 removidos, 0 fora do predicado. Arquivo com 926.957 bytes.
+- **Testes:**
+  - `tests/regressao/test_bug_2a_22_preco_negativo_nos_motores.py` (BUG-2A-22, os dois motores): marca retirada, em PASS; registro em "corrigido".
+  - `tests/test_saidas_finitas.py::test_preco_negativo_nao_e_analisado`, parametrizado com −10 e −0,01, nos dois motores: xfail estrito, falhou com `--runxfail` pelo sintoma (o resultado com Graham de R$ 12,25), XPASS(strict) com a correção, marca retirada.
+  - Seções A, B e C intactas: `git diff v2-fase-2a -- tests/test_financeiro_pre_refactor.py` mostra só a mudança do F2B-7; `-m preservar` com 12 passed.
+- **Dificuldades:** o F2B-20 foi começado com o F2B-17 em revisão e guardado num stash nomeado para não quebrar o gate dele. Criado com o F2B-17 em stage, o stash guardou também aquele índice; no `git stash pop`, depois dos commits do F2B-17 e do F2B-18, o diário entrou em conflito.
+- **Como resolvi:** o lado do stash no conflito estava vazio (o índice guardado era o do F2B-17, já commitado), e `fila.md`, `market_engine.py` e o registro saíram do `pop` iguais ao `HEAD` (`git diff HEAD` vazio). Restaurei o diário pelo `HEAD`, tirei do stage os três arquivos do item e, conferido o diff deles, apaguei o stash (`git stash drop`). Nenhum conteúdo se perdeu.
+- **Testes:** 1455 passed, 1 skipped, 14 xfailed → 1459 passed, 1 skipped, 12 xfailed (+2 casos novos; os 2 casos do BUG-2A-22 passaram de xfailed a passed). `ruff format` nos dois arquivos de teste; nos motores, a mesma contagem do `ruff check` do `HEAD` (2 e 2).
+- **Mutação** (módulos V1 tocados, sem meta): `valuation_engine` 646/721 (89,6%; no F2B-7, 645/718) e `fii_engine` 247/274 (90,1%, igual ao F2B-7).
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** a docstring de `tests/test_roe_fronteira.py` e a regra do ROE em "Regras econômicas vigentes" do `CLAUDE.md` ainda não citam o piso de −2 do F2B-18 (ressalva da revisão do F2B-18); o `CLAUDE.md` é do F2B-33, que sincroniza as instruções no fim da fase.

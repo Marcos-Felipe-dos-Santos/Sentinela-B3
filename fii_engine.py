@@ -58,8 +58,8 @@ class FIIEngine:
             return None
 
         p = float(dados.get("preco_atual", 0) or 0)
-        if p == 0 or not math.isfinite(p):
-            # F2A-24: preço não finito, como preço zero, não é analisado.
+        if p <= 0 or not math.isfinite(p):
+            # F2A-24 e F2B-20: preço não finito ou negativo, como preço zero, não é analisado.
             return None
 
         ticker = dados.get("ticker", "")

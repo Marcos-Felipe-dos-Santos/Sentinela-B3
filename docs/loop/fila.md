@@ -326,7 +326,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden inalterado;
   - gate da fase.
 
-- [ ] **F2B-20** · fix · `fix: refuse non-positive prices in both engines` · **[AUDITORIA]** **[golden]**
+- [x] **F2B-20** · fix · `fix: refuse non-positive prices in both engines` · **[AUDITORIA]** **[golden]**
   Ressalva da auditoria do Gemini ao F2A-25; revisão do F2A-25 (registrada no diário do F2A-12). O motor de ações recusa só o preço zero e o não finito (`valuation_engine.py:113` e `:118`); o de FII, só `p == 0` e o não finito. Preço negativo passa: no golden, `acoes/preco-negativo` sai com Graham de R$ 12,25 e Bazin de R$ −5,52. Preço ≤ 0 passa a devolver `None`, como o zero (F2A-24).
 
   **Golden.** Só mudam `acoes/preco-negativo` e `fii/preco-negativo`, para `None`: `--onde "(entrada.get('preco_atual') or 0) < 0"`.

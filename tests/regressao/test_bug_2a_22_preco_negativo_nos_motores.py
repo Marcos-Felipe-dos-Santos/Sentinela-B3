@@ -15,10 +15,6 @@ from tests.test_saidas_finitas import ACAO, FII
 from valuation_engine import ValuationEngine
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG-2A-22 · preço negativo aceito nos dois motores · corrige: F2B-20",
-)
 @pytest.mark.parametrize("motor", ["acoes", "fii"])
 def test_preco_negativo_devolve_none(motor):
     if motor == "acoes":
