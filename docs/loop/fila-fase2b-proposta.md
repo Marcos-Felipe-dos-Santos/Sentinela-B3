@@ -8,9 +8,9 @@ Auditoria: `docs/auditoria/2026-09-red-team.md` (F-4, F-5, F-6, F-9 e F-11) · D
 
 **Condições de ativação** (todas, antes do `git mv`; ciclo em `docs/loop/ciclo-de-fase.md`):
 1. Fase 2A integrada na `main` com a tag `v2-fase-2a` (feito em 15/10/2026) e os restos do [DECISÃO] dela: limpeza do cache (passo 4) e caches apagados à mão (passo 9). A limpeza pode ser da tabela inteira, sem lista de tickers (`python -c "import sqlite3; c = sqlite3.connect('sentinela_v6.db'); c.execute('DELETE FROM fundamentals_cache'); c.commit()"`), ou por ticker com `python scripts/invalidar_cache_cvm.py TICKER...` (primeiro sem `--aplicar`, que só lista; depois com ele).
-2. Ficha por ação na versão 1.1 (pontos da **[FICHA 1.1]**, decididos em 18/10/2026; seções 7.7 a 7.10, revistas depois da primeira auditoria), auditada em modo FICHA até "pode seguir" (`python scripts/auditar.py codex ficha --fase 2b --arquivo docs/metodologia/por-acao.md --foco "a versão 1.1: seções 7.7 a 7.10 e as mudanças nas seções 2 e 4; refaça por conta própria as contas que elas citam"`) e marcada "aprovada" pelo Marcos.
+2. **(Cumprida em 18/10/2026.)** Ficha por ação na versão 1.1 (pontos da **[FICHA 1.1]**, decididos em 18/10/2026; seções 7.7 a 7.10, revistas depois da primeira auditoria), auditada em modo FICHA até "pode seguir" (`python scripts/auditar.py codex ficha --fase 2b --arquivo docs/metodologia/por-acao.md --foco "a versão 1.1: seções 7.7 a 7.10 e as mudanças nas seções 2 e 4; refaça por conta própria as contas que elas citam"`) e marcada "aprovada" pelo Marcos.
 3. Decisões de ativação respondidas pelo Marcos em 18/10/2026 (última seção): **[SEÇÃO A]** em (c), **[LIQUIDEZ]**, **[FICHA 1.1]** e **[AUDITORIA]**.
-4. Auditoria externa desta proposta em modo DOCUMENTO (`python scripts/auditar.py codex documento --fase 2b --arquivo docs/loop/fila-fase2b-proposta.md`), com "pode seguir" ou "pode seguir com ressalvas", e as correções que o Marcos aceitar feitas por commit dele.
+4. **(Cumprida em 18/10/2026: três rodadas, a última "pode seguir com ressalvas", fechadas.)** Auditoria externa desta proposta em modo DOCUMENTO (`python scripts/auditar.py codex documento --fase 2b --arquivo docs/loop/fila-fase2b-proposta.md`), com "pode seguir" ou "pode seguir com ressalvas", e as correções que o Marcos aceitar feitas por commit dele.
 5. Ativação (ciclo, etapa 3): `git switch -c v2/fase-2b main`, `git mv -f docs/loop/fila-fase2b-proposta.md docs/loop/fila.md` e `git commit -m "chore: activate phase 2B queue"`.
 6. O Marcos troca a seção "Fase atual" do `AGENTS.md` pelo texto abaixo. O loop nunca toca nessa seção.
 
@@ -180,7 +180,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:**
   - `python -m pytest tests/regressao -q --runxfail` mostra cada teste novo falhando pelo sintoma descrito; sem `--runxfail`, verde;
-  - registro com as duas linhas novas e os destinos trocados;
+  - registro com as cinco linhas novas (BUG-2A-19 a 23; menos as que o diário mostrar "não reproduzido") e os destinos trocados;
   - nenhum código de produção muda; golden inalterado;
   - gate da fase.
 
@@ -767,7 +767,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   **Aceite:** arquivo no formato desta fila; todo item com aceite verificável; nenhuma decisão do Marcos tomada pelo texto.
 
 - [ ] **F2B-45** · fix · `fix: stop parsing Portuguese debt text in the stock engine` · **[golden]**
-  Saiu do F2B-5: limpeza não muda golden (auditoria externa da 2A, correção 4). PLANO, seção 10 (texto de dívida). No motor de ações (`valuation_engine.py:278-291`), a conversão de `divida_liq_ebitda` em texto pt-BR ("1.234,56") não tem fonte desde o F2A-22. Sai a conversão; valor que não é número finito segue "alavancagem não avaliada", sem penalidade, como hoje o texto inválido.
+  Saiu do F2B-5: limpeza não muda golden (auditoria externa da 2A, correção 4). PLANO, seção 10 (texto de dívida). No motor de ações (`valuation_engine.py:278-291`), a conversão de `divida_liq_ebitda` em texto pt-BR ("1.234,56") não tem fonte desde o F2A-22. Sai a conversão. Hoje o texto inválido vira `0.0`, sem penalidade e sem aviso; depois do item, valor que não é número finito (texto inclusive) segue sem penalidade **e** com o aviso "alavancagem não avaliada". O teste cobre as duas partes: a ausência da penalidade, que já existe, e o aviso, que é novo.
 
   **Testes que mudam:** `tests/test_valuation_engine.py::test_divida_liq_ebitda_brazilian_format` e os outros que passam dívida em texto. A auditoria da 2A apontou que eles só conferiam `0 <= score_final <= 100`; passam a afirmar "alavancagem não avaliada" e a ausência da penalidade.
 
