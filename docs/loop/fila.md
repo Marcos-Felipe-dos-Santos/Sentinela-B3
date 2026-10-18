@@ -262,7 +262,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: a USIM5 e as companhias da DFP 2025 com mais de uma classe preferencial no FCA e uma só linha "PN" na DRE, antes → depois;
   - gate da fase.
 
-- [ ] **F2B-13** · fix · `fix: correct share species through the source corrections table` · **[FICHA 1.1]** **[CORREÇÕES]**
+- [x] **F2B-13** · fix · `fix: correct share species through the source corrections table` · **[FICHA 1.1]** **[CORREÇÕES]**
   Ponto (d) da ficha 1.1 (decisão 7.10, adotada em 18/10/2026). O FCA 2026 (versão 1) classifica a MGLU3 como "Ações Preferenciais", e a DRE e a Composição do Capital só trazem ON; o LPA usa o recalculado com marca (diário do F2A-36). Pela decisão 7.10:
   - a tabela de correções do F2A-19 ganha a correção de espécie (colunas do campo corrigido e do valor), com a mesma regra de evidência: arquivo oficial, coluna e data. A correção exige as duas evidências do mesmo documento, a Composição do Capital e a DRE; com uma só, é rejeitada. Caso a caso, nunca automática;
   - a correção aparece na proveniência e no relatório do F1-12, como a do código.

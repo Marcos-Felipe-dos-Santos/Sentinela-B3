@@ -302,7 +302,15 @@ def _texto_referencia(referencia: dict[str, Any]) -> str:
     """Regra do índice oficial (F2A-19); com correção, o código veio da tabela, não da fonte."""
     texto = f"{referencia.get('regra')} (índice de {referencia.get('gerado_em')})"
     correcao = referencia.get("correcao")
-    if correcao:
+    if correcao and correcao.get("campo") == "especie":
+        # F2B-13: a correção de espécie mantém o código e troca a espécie do FCA.
+        texto += (
+            f"; espécie da tabela de correções, não do arquivo da fonte: "
+            f"{correcao.get('valor')} para {correcao.get('ticker')} "
+            f"(evidência: {correcao.get('arquivo')}, {correcao.get('coluna')}, "
+            f"{correcao.get('data')})"
+        )
+    elif correcao:
         texto += (
             f"; código da tabela de correções, não do arquivo da fonte: "
             f"{correcao.get('codigo_na_fonte')} → {correcao.get('ticker')} "

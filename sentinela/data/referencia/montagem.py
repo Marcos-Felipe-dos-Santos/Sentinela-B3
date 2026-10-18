@@ -192,7 +192,11 @@ def montar_companhias(
             linha["Nome_Empresarial"] if pd.notna(linha["Nome_Empresarial"]) else None
         )
         correcao = correcoes.get((cnpj, codigo))
-        if correcao is not None:
+        especie_corrigida = None
+        if correcao is not None and correcao.campo == "especie":
+            # F2B-13 (ficha 1.1, 7.10): a espécie vem da tabela, com a evidência do documento.
+            especie_corrigida = correcao.valor
+        elif correcao is not None:
             codigo = correcao.ticker
         if not codigo:
             excecoes.append(Excecao(codigo, "sem código de negociação", cnpj, nome))
@@ -213,7 +217,7 @@ def montar_companhias(
                 fonte=fonte_por_ano[str(linha["_ano"])],
                 especie=None
                 if eh_unit
-                else _ESPECIE_DO_VALOR[linha["Valor_Mobiliario"]],
+                else especie_corrigida or _ESPECIE_DO_VALOR[linha["Valor_Mobiliario"]],
                 cnpj=cnpj,
                 cd_cvm=cd_cvm,
                 nome=nome_cadastro or nome,
@@ -224,7 +228,7 @@ def montar_companhias(
                 controle_acionario=controle,
                 correcao=correcao.para_dict() if correcao else None,
                 classe_preferencial=None
-                if eh_unit
+                if eh_unit or especie_corrigida == "ON"
                 else _texto(linha.get("Sigla_Classe_Acao_Preferencial")),
                 classes_preferenciais=classes.get(cnpj),
             )

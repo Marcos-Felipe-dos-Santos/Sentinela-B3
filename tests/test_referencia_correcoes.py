@@ -199,3 +199,82 @@ def test_tabela_versionada_e_valida_e_traz_evidencia():
     assert por_ticker["CSNA3"].coluna == "Codigo_Negociacao"
     assert por_ticker["TRXF11"].cnpj == "28.548.288/0001-52"
     assert por_ticker["TRXF11"].codigo_na_fonte == "BRTRXFCTF003"
+
+
+# ── correção de espécie (F2B-13; ficha 1.1, decisão 7.10) ─────────────────────
+
+# Como a MGLU3: o FCA diz "Ações Preferenciais" (PNA); a Composição do Capital e a DRE do
+# mesmo documento só trazem ON.
+EVIDENCIA_ESPECIE = {
+    "ticker": "TSTM3",
+    "codigo_na_fonte": "TSTM3",
+    "motivo": "o FCA classifica a ação como preferencial, e o documento só traz ON",
+    "arquivo": (
+        "fca_cia_aberta_valor_mobiliario_2026.csv (FCA, versão 1) + "
+        "dfp_cia_aberta_composicao_capital_2025.csv e dfp_cia_aberta_DRE_con_2025.csv "
+        "(DFP 2025, versão 1)"
+    ),
+    "coluna": (
+        "Valor_Mobiliario (FCA) + QT_ACAO_PREF_CAP_INTEGR = 0 (Composição) + "
+        "3.99.01.01 ON (DRE)"
+    ),
+    "data": "2026-01-01",
+    "campo": "especie",
+    "valor": "ON",
+}
+
+
+def _fca_preferencial():
+    fca = _fca(
+        {
+            "Codigo_Negociacao": "TSTM3",
+            "Valor_Mobiliario": "Ações Preferenciais",
+            "Sigla_Classe_Acao_Preferencial": "PNA",
+        }
+    )
+    fca["Sigla_Classe_Acao_Preferencial"] = ["PNA"]
+    return fca
+
+
+def test_correcao_de_especie_com_evidencia():
+    indice = _montar(
+        fca=_fca_preferencial(), correcoes=[_correcao(**EVIDENCIA_ESPECIE)]
+    )
+    registro = indice.registros["TSTM3"]
+    assert (registro.especie, registro.classe_preferencial) == ("ON", None)
+    assert registro.regra == "correcao"
+    sem_correcao = _montar(fca=_fca_preferencial()).registros["TSTM3"]
+    assert (sem_correcao.especie, sem_correcao.classe_preferencial) == ("PN", "PNA")
+
+
+@pytest.mark.parametrize(
+    "arquivo",
+    [
+        "dfp_cia_aberta_composicao_capital_2025.csv (DFP 2025, versão 1)",
+        "dfp_cia_aberta_DRE_con_2025.csv (DFP 2025, versão 1)",
+    ],
+)
+def test_correcao_de_especie_sem_evidencia_e_rejeitada(tmp_path, arquivo):
+    with pytest.raises(CorrecaoInvalida, match="Composição do Capital e DRE"):
+        validar_correcoes([_correcao(**{**EVIDENCIA_ESPECIE, "arquivo": arquivo})])
+    with pytest.raises(CorrecaoInvalida, match="campo"):
+        validar_correcoes([_correcao(**{**EVIDENCIA_ESPECIE, "campo": "setor"})])
+    with pytest.raises(CorrecaoInvalida, match="valor"):
+        validar_correcoes([_correcao(**{**EVIDENCIA_ESPECIE, "valor": "UNIT"})])
+
+
+def test_correcao_de_especie_na_proveniencia(tmp_path):
+    from sentinela.reports.rastreabilidade import _texto_referencia
+
+    valores = {**EVIDENCIA_ESPECIE, "cnpj": CNPJ_A}
+    linha = ";".join(valores[c] for c in (*CABECALHO.split(";"), "campo", "valor"))
+    correcoes = ler_correcoes(
+        _tabela(tmp_path, linha, cabecalho=CABECALHO + ";campo;valor")
+    )
+    registro = _montar(fca=_fca_preferencial(), correcoes=correcoes).registros["TSTM3"]
+    assert registro.correcao["campo"] == "especie"
+    assert registro.correcao["valor"] == "ON"
+    texto = _texto_referencia({"regra": registro.regra, "gerado_em": "2026-10-08",
+                               "correcao": registro.correcao})  # fmt: skip
+    assert "espécie da tabela de correções, não do arquivo da fonte: ON" in texto
+    assert "código da tabela" not in texto
