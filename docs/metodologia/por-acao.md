@@ -1,7 +1,7 @@
-# Números por ação (LPA, VPA, ações, classes, units e escala) — versão 1.0
+# Números por ação (LPA, VPA, ações, classes, units e escala) — versão 1.1
 
-**Status:** aprovada pelo Marcos em 13/10/2026, depois da terceira auditoria externa em modo FICHA ("pode seguir para aprovação da ficha"). As versões 0.1 e 0.2 tiveram dois bloqueios cada, fechados com as decisões da seção 7. Relatórios em `docs/loop/historico/fase-2a/auditoria-ficha-por-acao.md`. Mudança posterior exige nova versão, aprovação e auditoria (D21).
-**Itens que dependem:** F2A-36 (LPA divulgado por espécie, classes e units), F2A-37 (reservas dos controladores)
+**Status:** versão 1.1 em revisão: decisões do Marcos de 18/10/2026 (seções 7.7 a 7.10), aguardando a auditoria externa em modo FICHA e a aprovação (D21). A versão 1.0 foi aprovada pelo Marcos em 13/10/2026, depois da terceira auditoria externa em modo FICHA ("pode seguir para aprovação da ficha"); as versões 0.1 e 0.2 tiveram dois bloqueios cada, fechados com as decisões 7.1 a 7.6. Relatórios em `docs/loop/historico/fase-2a/auditoria-ficha-por-acao.md`. Mudança posterior exige nova versão, aprovação e auditoria (D21).
+**Itens que dependem:** F2A-36 (LPA divulgado por espécie, classes e units), F2A-37 (reservas dos controladores); versão 1.1: F2B-10 (7.7), F2B-11 (7.8), F2B-12 (7.9) e F2B-13 (7.10)
 **Origem no código:** F2A-3 (derivação por ação) e F2A-5 (alertas), já entregues
 **Decisões de origem:** ADR-0003, D19, D20 e D21; checkpoint da Fase 0, seção 4, item 1 (revisado pela D19)
 
@@ -33,7 +33,9 @@ Consequência: o LPA divulgado já é o número da norma (controladora, média p
 | Lucro dos controladores | par (código, descrição) "Atribuído a (aos) Sócios da Empresa Controladora" (3.11.01 ou 3.09.01, conforme a estrutura da DRE, em empresas e bancos; 3.11.01 ou 3.13.01 no modelo de seguradora), pela tabela `sentinela/data/referencia/contas_cvm.csv` | DFP/ITR | R$ × `ESCALA_MOEDA` (MIL → × 1.000) | `DT_REFER` |
 | PL consolidado e não controladores | "Patrimônio Líquido Consolidado" (2.03) e "Participação dos Acionistas Não Controladores" (2.03.09) | DFP/ITR, BPP consolidado | R$ × `ESCALA_MOEDA` | `DT_REFER` |
 | Ações por espécie e tesouraria | `QT_ACAO_ORDIN_CAP_INTEGR`, `QT_ACAO_PREF_CAP_INTEGR`, `QT_ACAO_ORDIN_TESOURO`, `QT_ACAO_PREF_TESOURO`, `QT_ACAO_TOTAL_TESOURO` | DFP/ITR, `composicao_capital` | **sem coluna de escala**: unidade ou milhar, conforme o documento (armadilha 10) | `DT_REFER`, mesma `VERSAO` |
-| Espécie do ticker | `Valor_Mobiliario` e `Sigla_Classe_Acao_Preferencial` | FCA, `valor_mobiliario` | — | `Data_Referencia` do FCA |
+| Lucro consolidado | campo `lucro_liquido` da tabela de contas: o par (código, descrição) de cada modelo, por exemplo 3.11 "Lucro/Prejuízo Consolidado do Período" nas empresas e 3.09 no ITUB4 | DFP/ITR | R$ × `ESCALA_MOEDA` | `DT_REFER` |
+| LPA básico agregado | linha 3.99.01 sem espécie na descrição, quando a DRE não traz as linhas por espécie | DFP/ITR, `dfp_cia_aberta_DRE_con_<ano>.csv` | R$ por ação, como o LPA por espécie | `DT_REFER` |
+| Espécie do ticker | `Valor_Mobiliario` e `Sigla_Classe_Acao_Preferencial`; corrigida só pela tabela de correções, com evidência do próprio documento (7.10) | FCA, `valor_mobiliario` | — | `Data_Referencia` do FCA |
 | Composição da unit | `Composicao_BDR_Unit` (por exemplo, "1 ON / 2 PN") | FCA | quantidade por unit | `Data_Referencia` do FCA |
 | Preço | fechamento D-1 | yfinance (fluxo da V1; o COTAHIST do F2A-18 é a série oficial disponível) | R$ por ação, bruto | pregão anterior |
 
@@ -48,8 +50,8 @@ Consequência: o LPA divulgado já é o número da norma (controladora, média p
 Abstenções (D19 e D20; textos que o código usa ou passará a usar):
 
 1. **Composição do Capital ausente ou de outro documento:** sem ações, não há VPA nem LPA recalculado ("sem Composição do Capital no documento do lucro"; total de ações ≤ 0: "total de ações da Composição do Capital ≤ 0").
-2. **Escala indeterminada:** sem LPA divulgado coerente de nenhuma espécie do mesmo documento para inferir a escala das ações, ou com a razão fora da faixa, a escala é indeterminada ("escala das ações indeterminada"; D19, regra 5). Abstêm-se só os números que dependem da quantidade de ações: LPA recalculado, VPA e capitalização. O **LPA divulgado não se abstém** por isso, porque já vem em R$ por ação (decisão 7.1).
-3. **Mais de uma classe preferencial com direitos distintos** (PNA, PNB…; `Sigla_Classe_Acao_Preferencial` do FCA): o recalculado comum se abstém para as preferenciais; vale só o divulgado da classe e, sem ele, o LPA da classe se abstém (D19, regra 3).
+2. **Escala indeterminada:** sem LPA divulgado coerente de nenhuma espécie do mesmo documento para inferir a escala das ações, ou com a razão fora da faixa, a escala é indeterminada ("escala das ações indeterminada"; D19, regra 5). Abstêm-se só os números que dependem da quantidade de ações: LPA recalculado, VPA e capitalização. O **LPA divulgado não se abstém** por isso, porque já vem em R$ por ação (decisão 7.1). Duas fontes a mais para a escala, na versão 1.1: o lucro consolidado, quando o dos controladores se abstém (decisão 7.7), e a linha de LPA básico agregada, em companhia de espécie única (decisão 7.8).
+3. **Mais de uma classe preferencial com direitos distintos** (PNA, PNB…; `Sigla_Classe_Acao_Preferencial` do FCA): o recalculado comum se abstém para as preferenciais; vale o divulgado da classe ou, quando a DRE traz uma só linha preferencial sem a sigla da classe, essa linha (decisão 7.9); sem nenhum dos dois, o LPA da classe se abstém (D19, regra 3).
 
    **Regras 2 e 5 juntas (decisão 7.4).** A regra 2 (divulgado ausente → recalculado como aproximação declarada) só se aplica quando outra espécie do **mesmo documento** traz LPA divulgado coerente que determina a escala. Sem nenhum divulgado coerente no documento, a escala é indeterminada (abstenção 2) e o recalculado se abstém. A escala nunca vem de outro documento.
 4. **Unit com espécie componente sem LPA divulgado:** aplica-se a regra 2 com a marca; se a regra 3 proíbe o recalculado da espécie, a unit inteira se abstém (D19, regra 4). Composição não reconhecida: abstém-se ("unit sem composição oficial (ações por unit)").
@@ -70,7 +72,7 @@ Reservas permitidas (D20, política aprovada com o ADR, e decisão 7.2):
 **Onde a reserva seria usada** (levantamento só de leitura na DFP 2025 consolidada, última versão de cada companhia; script e saída em `outputs/f2a34_reservas.py` e `outputs/f2a34_reservas.json`, fora do git):
 - 439 companhias com DRE e BPP consolidados (a mesma contagem para DRE ou BPP). As listas "nas 45" casam a companhia pelo código CVM do mapa, e não pelo ticker do índice: AZUL4, GOLL4 e PETZ3 estão nas 45 com código, mas fora do índice com esse ticker.
 - **Lucro dos controladores ausente:** 0 (todas trazem a linha "Atribuído a Sócios da Empresa Controladora").
-- **Lucro dos controladores zerado com o dos não controladores zerado ou ausente:** 105. Hoje o F2A-3 usa o lucro total em todos; pela decisão 7.2, o F2A-37 o mantém só onde o balanço não mostra minoritários. Nas 45 ações do mapa: KLBN11, LWSA3, PETZ3, SBSP3 e TIMS3 (o diário do F2A-3 citou KLBN11, SBSP3, PETZ3 e LWSA3; a TIMS3 também está no caso, mas não teve LPA derivado). Na KLBN11 a participação dos não controladores no balanço é de R$ 6,5 bilhões (2.03.09): há minoritários, e o lucro total pode incluir a parte deles, que o documento não informa. Pela decisão 7.2, o lucro dos controladores da KLBN11 se abstém (e com ele o ROE e o LPA recalculado). O LPA divulgado segue nos métodos, com o sinal conferido contra o lucro consolidado (R$ 1.678.211.000, positivo; decisão 7.6): 0,2286 para ON e para PN, e para a unit KLBN11 = 1 × 0,2286 + 4 × 0,2286 = **1,1430** (FCA 2026, documento 155729: 1 KLBN3 + 4 KLBN4). O F2A-37 conta no diário quantas das 105 caem em cada lado.
+- **Lucro dos controladores zerado com o dos não controladores zerado ou ausente:** 105. Hoje o F2A-3 usa o lucro total em todos; pela decisão 7.2, o F2A-37 o mantém só onde o balanço não mostra minoritários. Nas 45 ações do mapa: KLBN11, LWSA3, PETZ3, SBSP3 e TIMS3 (o diário do F2A-3 citou KLBN11, SBSP3, PETZ3 e LWSA3; a TIMS3 também está no caso, mas não teve LPA derivado). Na KLBN11 a participação dos não controladores no balanço é de R$ 6,5 bilhões (2.03.09): há minoritários, e o lucro total pode incluir a parte deles, que o documento não informa. Pela decisão 7.2, o lucro dos controladores da KLBN11 se abstém (e com ele o ROE e o LPA recalculado); pela decisão 7.7, a escala das ações passa a vir do lucro consolidado, e o VPA volta. O LPA divulgado segue nos métodos, com o sinal conferido contra o lucro consolidado (R$ 1.678.211.000, positivo; decisão 7.6): 0,2286 para ON e para PN, e para a unit KLBN11 = 1 × 0,2286 + 4 × 0,2286 = **1,1430** (FCA 2026, documento 155729: 1 KLBN3 + 4 KLBN4). O F2A-37 conta no diário quantas das 105 caem em cada lado.
 - **PL total como PL dos controladores** (2.03.09 ausente ou zerada e lucro dos não controladores ausente ou zerado): 171 companhias fora do setor "Bancos", mais 2 bancos (BEES3 e um sem ticker no índice), em que a reserva não seria usada porque o PL do banco se abstém até o F2A-9. Nas 45 ações: AZUL4, GOLL4, LREN3, LWSA3, MGLU3, PETZ3, RECV3, SBSP3 e TIMS3.
 - **PL com reserva bloqueada** (2.03.09 ausente ou zerada, mas lucro dos não controladores diferente de zero): 8; com ticker no índice: SEQL3, SBFG3, INEP3, POSI3 e MWET3/MWET4. Pela D20, o PL dos controladores se abstém nesses casos.
 
@@ -190,3 +192,48 @@ A versão 0.1 tratava divulgado incoerente como ausente (regra 2), o que a D19 n
 A decisão 7.2 faz o lucro dos controladores se abster em casos como a KLBN11, mas a coerência do divulgado (7.1 e 7.5) confere o sinal contra esse lucro (bloqueio da segunda auditoria). Opções apresentadas: conferir o sinal contra o lucro consolidado (3.11); ou abster também o divulgado.
 
 **Decisão:** conferir contra o lucro consolidado (3.11, par código e descrição pela tabela do F2A-33). A proveniência do campo registra "sinal conferido pelo lucro consolidado: lucro dos controladores indisponível". Sem lucro consolidado válido, o divulgado se abstém (seção 4, abstenção 9). O sinal do consolidado pode diferir do dos controladores quando os minoritários têm resultado de sinal oposto e maior; é limitação aceita e declarada.
+
+### 7.7 Escala pelo lucro consolidado quando o lucro dos controladores se abstém — **decidido pelo Marcos em 18/10/2026**
+
+Pela decisão 7.2, o lucro dos controladores se abstém em 9 companhias da DFP 2025, a KLBN11 entre elas (diário do F2A-36). Sem ele, a razão da 7.1 não tem numerador: a escala fica indeterminada, e o VPA e a capitalização se abstêm, mesmo com o PL dos controladores lido. Opções apresentadas: manter a abstenção; ou inferir a escala pelo lucro consolidado (3.11).
+
+**Decisão:** inferir pelo lucro consolidado, só para a escala.
+- A escala só escolhe entre unidade e milhar (fator 1.000). Com o consolidado igual a f vezes o lucro dos controladores, a razão na escala certa vale cerca de f; a escolha só erraria com f acima de 31,6 (a raiz de 1.000) ou abaixo de 1/31,6, e a faixa [0,1; 10] da 7.1 já recusa fora de [0,1; 10] (escala indeterminada). Na KLBN11, a razão com o lucro total é 1,197 (seção 7.1).
+- O lucro consolidado nunca entra no LPA, no ROE nem no recalculado, que continua abstido sem o lucro dos controladores.
+- O LPA divulgado usado na razão é o coerente pela 7.6 (sinal conferido contra o consolidado).
+- A proveniência do VPA registra "escala inferida pelo lucro consolidado: lucro dos controladores indisponível (7.2)".
+
+Efeito: VPA e capitalização de volta nas 9 companhias; o F2B-10 mede antes → depois.
+
+### 7.8 Linha agregada de LPA em companhia de espécie única — **decidido pelo Marcos em 18/10/2026**
+
+O BBAS3 e o Banco Pine (62.144.175/0001-20) trazem na DRE consolidada só as linhas agregadas (3.99 e 3.99.01), sem a espécie na descrição. Pela 7.4, a escala fica indeterminada, e LPA, VPA e P/VP se abstêm (diário do F2A-36). Pelo CPC 41 (§66), o LPA é apresentado por classe de ação ordinária; numa companhia com uma só espécie, o LPA básico da companhia é o dessa espécie. Opções apresentadas: manter a abstenção; ou tratar a linha básica agregada como o LPA divulgado da espécie única.
+
+**Decisão:** em companhia com uma só espécie no FCA (o BBAS3, só ON), a linha de LPA básico agregada (3.99.01) é o LPA divulgado dessa espécie.
+- Passa pela mesma coerência das espécies (7.5 e 7.6: sinal e linha única) e serve à escala.
+- Com mais de uma espécie no FCA (o Pine), a abstenção continua: a linha agregada não diz de qual classe é.
+- A proveniência registra "LPA da linha agregada: companhia de espécie única no FCA".
+
+Efeito: o BBAS3 ganha LPA divulgado, escala e VPA; o F2B-11 conta quantas companhias da DFP 2025 trazem só a linha agregada, por número de espécies.
+
+### 7.9 Linha "PN" única com mais de uma classe preferencial — **decidido pelo Marcos em 18/10/2026**
+
+A USIM5 tem PNA e PNB no FCA, e a DRE consolidada traz uma só linha básica "PN". Pela regra 3 (seção 4, abstenção 3), a PNA se abstém; numa unit da mesma companhia, o componente PN usaria a linha "PN" (revisão do F2A-36). As duas leituras do mesmo documento divergem. Opções apresentadas: (i) a linha "PN" única vale para todas as classes preferenciais quando a DRE não as separa; (ii) a unit também se abstém nesse caso; (iii) manter a assimetria.
+
+**Decisão: (i).**
+- Quando a DRE traz uma só linha básica preferencial, sem a sigla da classe, e o FCA mostra mais de uma classe preferencial, essa linha é o LPA divulgado de cada classe preferencial. É o número que a companhia divulgou para as preferenciais.
+- A regra 3 continua proibindo o recalculado comum para essas classes.
+- A ação avulsa e o componente da unit seguem a mesma ordem: a linha da classe (por exemplo, "PNA") e, sem ela, a linha "PN" única. A composição da unit guarda a sigla da classe ("2 PNA").
+- A proveniência registra "LPA da linha PN única, aplicado à classe <classe>".
+
+Efeito: a USIM5 ganha LPA; o F2B-12 conta as companhias da DFP 2025 com mais de uma classe preferencial no FCA e uma só linha "PN" na DRE.
+
+### 7.10 Espécie do FCA contradita pelo próprio documento — **decidido pelo Marcos em 18/10/2026**
+
+O FCA 2026 (versão 1) classifica a MGLU3 como "Ações Preferenciais", e a DRE e a Composição do Capital do documento só trazem ON; o LPA usa o recalculado com marca (diário do F2A-36). Opções apresentadas: manter; ou corrigir a espécie pela tabela de correções do F2A-19.
+
+**Decisão:** corrigir pela tabela de correções, com a regra aprovada em 5/10/2026 (evidência oficial em cada linha; correção visível na proveniência e no relatório do F1-12).
+- A correção de espécie exige duas evidências do mesmo documento: a Composição do Capital (quantidade da espécie do FCA igual a zero, e a da espécie corrigida diferente de zero) e a DRE (linha de LPA só da espécie corrigida). Com uma só, a linha é rejeitada.
+- Correção caso a caso, com arquivo, coluna e data; nunca automática.
+
+Efeito: a MGLU3 passa a usar o LPA divulgado da ON; o F2B-13 registra o antes → depois e a cobertura do índice.

@@ -137,7 +137,7 @@ As datas ficam no `docs/PLANO.md`, seção 12. Esta tabela traz o que cada fase 
 
 | Fase | Entrega | Decisões suas | Duração estimada |
 |---|---|---|---|
-| **2B** | taxa real (NTN-B + prêmio); Gordon, Bazin e FII no mesmo regime; lente de bancos; `applies_to`; liquidez; BTG; os bugs abertos da 2A | para ativar: [SEÇÃO A], [LIQUIDEZ], [FICHA 1.1], [AUDITORIA] e o g real do Gordon. No meio: [TAXA], [BAZIN], [FII], [BANCOS], [FINANCEIRAS], [BTG], [CACHE] | 2 a 3 semanas |
+| **2B** | taxa real (NTN-B + prêmio); Gordon, Bazin e FII no mesmo regime; lente de bancos; `applies_to`; liquidez; BTG; os bugs abertos da 2A | para ativar: [SEÇÃO A], [LIQUIDEZ], [FICHA 1.1] e [AUDITORIA] (decididas em 18/10/2026). No meio: [TAXA] (com o g real do Gordon e dos bancos), [BAZIN], [FII], [BANCOS], [FINANCEIRAS], [BTG], [CACHE] e o destino dos bugs do levantamento | 2 a 3 semanas |
 | **2C** | fundamentos normalizados, lente de qualidade, histerese, vocabulário, lentes no lugar de "valor justo", setores, fim do Markowitz | janelas por método (D25); decisões A a D da auditoria da 2A; histerese | 2 a 3 semanas |
 | **3** | tempo como entrada: `as_of`, SQLite único com migrações, ponto no tempo, universo com deslistadas, backtest real | universo, profundidade, reapresentações, histórico estrito (D17, D32); backup restaurável antes da primeira migração (D29) | 3 a 4 semanas |
 | **4** | operação diária: CLI, job de fechamento, agendamento, rastreabilidade v1, backup, camada de risco | canal do resumo diário, limites de concentração | 2 semanas de código e **14 dias corridos** sem falha silenciosa (gate) |
@@ -150,12 +150,12 @@ Somando as durações a partir de hoje, o núcleo (até a Fase 6) fecha entre o 
 
 ## 8. Próximos passos (Fase 2B)
 
-1. **Restos do `[DECISÃO]` da 2A:** `python scripts/invalidar_cache_cvm.py <tickers>` (primeiro sem `--aplicar`), apagar à mão os caches listados no F2A-13, apagar `outputs/f2a41_*.json` e trocar a "Fase atual" do `AGENTS.md` (2A concluída; 2B em revisão).
-2. **Revisão 1.1 da ficha por ação** (passo 6 do `[DECISÃO]` da 2A): escala pelo lucro consolidado, linha agregada de LPA, USIM5 e MGLU3.
-3. **Revisão da proposta da 2B** (etapa 2), com as correções que a auditoria da 2A já listou (`docs/loop/historico/fase-2a/auditoria-externa.md`):
-   - tirar o que o fechamento da 2A já corrigiu (BUG-2A-02 a 09) e dar item a cada BUG-2A aberto;
-   - transformar o g real do Gordon em `[DECISÃO]` e pôr o F2B-27 depois da decisão de que depende;
-   - corrigir os aceites do F2B-4, F2B-5 e F2B-9;
-   - abrir a 2B com um item `docs:` para os ajustes pequenos: a seção de testes do `CLAUDE.md` (PASS da D27 e a regra de regressão), a referência ambígua ao F2A-11 na armadilha 2 e a frase repetida do PLANO depois da tabela da 2A;
-   - responder [SEÇÃO A], [LIQUIDEZ], [FICHA 1.1] e [AUDITORIA].
+As decisões de ativação foram tomadas em 18/10/2026, e a proposta foi revisada com a auditoria da 2A (`docs/loop/fila-fase2b-proposta.md`). Falta:
+1. **Restos do `[DECISÃO]` da 2A:** `python scripts/invalidar_cache_cvm.py <tickers>` (primeiro sem `--aplicar`), apagar à mão os caches listados no F2A-13 e os `outputs/f2a41_*.json`, e trocar a "Fase atual" do `AGENTS.md` (2A concluída; 2B em revisão).
+2. **Auditorias da revisão** (etapas 2 e 5):
+   ```bash
+   python scripts/auditar.py codex ficha --fase 2b --arquivo docs/metodologia/por-acao.md --foco "a versão 1.1: seções 7.7 a 7.10 e as mudanças nas seções 2 e 4; refaça por conta própria as contas que elas citam"
+   python scripts/auditar.py codex documento --fase 2b --arquivo docs/loop/fila-fase2b-proposta.md
+   ```
+3. **Correções** que você aceitar dos dois relatórios (o Claude no chat consolida) e a ficha marcada "aprovada" na versão 1.1.
 4. **Ativar** (etapa 3) e rodar.
