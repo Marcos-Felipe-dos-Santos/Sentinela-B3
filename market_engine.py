@@ -751,7 +751,9 @@ class MarketEngine:
         vai para `riscos_dados` e para `dados['proveniencia']['roe_descartes']`, sem tocar no
         registro da fonte que preencheu o campo.
         """
-        roe, motivo = normalizacao.guardar_roe(valor)
+        # F2B-18: o piso vale só nas fontes de mercado; o ROE dos controladores da CVM não
+        # passa por ele (decisão C da [AUDITORIA], 18/10/2026).
+        roe, motivo = normalizacao.guardar_roe(valor, com_piso=fonte != 'cvm')
         if motivo:
             dados.setdefault('riscos_dados', []).append(f"ROE descartado ({fonte}): {motivo}")
             dados.setdefault('proveniencia', {}).setdefault('roe_descartes', []).append(

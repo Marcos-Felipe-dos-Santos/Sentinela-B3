@@ -305,3 +305,25 @@
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** motores montados sem o índice nos testes (`_engine` sem `referencia`) passam a ter o aviso de referência em `riscos_dados`; nenhum teste fixava a lista vazia nesse caso. Na aplicação, a referência é sempre injetada (`MarketEngine.__init__`), e o aviso só aparece quando o índice está indisponível.
+
+### F2B-18 — fix: discard implausible negative ROE at the provider boundary
+- **Executor:** claude-code (claude-opus-5-5)
+- **Status:** sucesso
+- **O que foi feito:** corrige o BUG-2A-21 (decisão C da auditoria do Gemini; pendência do F2A-30). Decisão do Marcos de 18/10/2026, [AUDITORIA] em (a): piso de −2, simétrico ao teto de 2, só nas fontes de mercado.
+  - `sentinela/data/normalizacao.py`: `ROE_MIN = -2.0` e `MOTIVO_ROE_ABAIXO` ("ROE abaixo de −2 (−200%) depois da conversão: descartado"); `guardar_roe` ganhou `com_piso` (padrão verdadeiro): abaixo do piso, ausente com o motivo, como acima do teto. A docstring do módulo diz onde o piso vale.
+  - `market_engine._roe_guardado`: passa `com_piso=False` para a CVM, então o ROE dos controladores não passa pelo piso; yfinance e brapi passam.
+- **Testes:**
+  - `tests/regressao/test_bug_2a_21_roe_sem_piso.py` (BUG-2A-21): marca retirada, em PASS; registro em "corrigido".
+  - `tests/test_roe_fronteira.py::test_roe_abaixo_do_piso_vira_ausente_com_motivo`: xfail estrito, falhou com `--runxfail` (a constante do piso não existia), XPASS(strict) com a correção, marca retirada. Confere −2,0 aceito, −2,0001 descartado e o cenário da auditoria na cascata (yfinance com −21: ROE ausente e "ROE descartado (yfinance): …").
+  - `::test_roe_negativo_acima_do_piso_passa` (−1,5 na guarda; −0,9 da brapi na cascata) e `::test_roe_dos_controladores_da_cvm_nao_passa_pelo_piso` (ROE −3,0 da CVM fica): sem marca, porque já passavam e devem continuar. O da CVM falhou no meio da correção, com o piso aplicado a toda fonte, até a chamada da CVM passar `com_piso=False`.
+- **Dificuldades:** o F2B-18 foi começado com o F2B-17 ainda em revisão, e o teste da CVM quebraria o gate do commit dele.
+- **Como resolvi:** guardei o trabalho parcial num stash nomeado ("wip F2B-18 claude-code…"), commitei o F2B-17 com a árvore dele e restaurei o stash (`git stash pop`); só depois mexi no `market_engine.py`.
+- **Testes:** 1451 passed, 1 skipped, 15 xfailed → 1455 passed, 1 skipped, 14 xfailed (+3 novos; o BUG-2A-21 passou de xfailed a passed). Golden sem diferença (o score não mudava: todo ROE abaixo de `ROE_PENALIDADE_MAX` leva a mesma penalidade); `tests/test_financeiro_pre_refactor.py` sem mudança. `ruff format` em `normalizacao.py` e nos dois testes; `market_engine.py` com a mesma contagem do `ruff check` do `HEAD` (11).
+- **Mutação:** `sentinela.data.normalizacao` 64/64 (100%, meta ≥ 80%); `market_engine` (V1, sem meta) 1.607/2.232 (72,0%), sem sobrevivente na linha nova (os dois de `_roe_guardado` são do `setdefault` de `riscos_dados`, que sempre existe).
+- **Resíduos:** nenhum. O stash foi restaurado e apagado pelo próprio `pop`; resta o do F2B-20, que volta no item seguinte.
+- **Decisões que ficaram para o Marcos:** nenhuma deste item. Ressalvas da revisão do F2B-17, registradas aqui porque o commit dele saiu como revisado:
+  - em `test_fii_sem_cnpj_tem_o_aviso_do_informe`, a asserção sobre "ticker fora da cobertura da CVM" passa sempre (o motor do teste não tem a CVM injetada); o ramo corrigido é coberto por `test_fii_nao_recebe_o_aviso_de_cobertura_das_companhias`;
+  - nenhum teste confere que, sem índice, o FII não recebe "FII fora da cobertura do Informe Mensal" (a guarda por `_sem_referencia` em `_buscar_cvm_fii`);
+  - um FII com CNPJ cujo Informe vem vazio segue sem aviso; um ticker fora do índice que o classificador trata como FII recebe os dois avisos (fora da referência e fora do Informe);
+  - a evidência do BUG-2A-13 no registro ainda aponta `market_engine.py:748`; o trecho está perto da linha 775.
+- **Para o Marcos revisar:** o ROE dos controladores da CVM pode ficar abaixo de −2 (por exemplo, PL pequeno com prejuízo grande); o piso não o alcança, pela decisão.

@@ -313,7 +313,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden inalterado;
   - gate da fase.
 
-- [ ] **F2B-18** · fix · `fix: discard implausible negative ROE at the provider boundary` · **[AUDITORIA]**
+- [x] **F2B-18** · fix · `fix: discard implausible negative ROE at the provider boundary` · **[AUDITORIA]**
   Decisão C da auditoria do Gemini; pendência do F2A-30. `guardar_roe` (`sentinela/data/normalizacao.py`) corta ROE acima de 2, mas não tem piso: um −21,0 do yfinance (declarado em razão) entra como −2.100%. Sem efeito no score (todo ROE abaixo de `ROE_PENALIDADE_MAX` leva a mesma penalidade); o número sai errado no relatório, no cache e nos mínimos de ROE do Gordon e da lente de bancos.
 
   **Decisão do Marcos (18/10/2026, [AUDITORIA]):** piso de −2, simétrico ao teto de 2. ROE abaixo do piso vira ausente, com o motivo, como o acima do teto. Vale só na fronteira das fontes de mercado (yfinance e brapi); o ROE dos controladores da CVM não passa por ela.

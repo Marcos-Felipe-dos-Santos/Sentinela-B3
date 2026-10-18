@@ -3,7 +3,8 @@
 Um só lugar converte o DY e o ROE de cada provedor para razão (0,0674 = 6,74%), pela
 representação declarada dele, via `Percent` e `Ratio` (`sentinela.domain.units`). A conversão
 não valida: o invariante do DY fica nos motores (`config._normalizar_dy`), e o ROE tem a guarda
-`guardar_roe`, aplicada pela cascata a toda fonte, inclusive ao ROE derivado da CVM.
+`guardar_roe`, aplicada pela cascata a toda fonte, inclusive ao ROE derivado da CVM; o piso
+(F2B-18) vale só nas fontes de mercado.
 
 Representação por provedor (F2A-16, `docs/decisoes/fontes-fase2a.md`, seção 8):
 - **yfinance:** `dividendYield` em percentual (PETR4: 6,74; os proventos de 12 meses ÷ preço
@@ -47,6 +48,10 @@ REPRESENTACAO_ROE: dict[str, Representacao] = {
 ROE_MAX = 2.0  # o limite da V1 (`brapi_provider`), agora para todas as fontes
 MOTIVO_ROE_NAO_FINITO = "ROE não finito: descartado"
 MOTIVO_ROE_ACIMA = "ROE acima de 2 (200%) depois da conversão: descartado"
+# F2B-18 (decisão C da [AUDITORIA], 18/10/2026): piso simétrico ao teto, só nas fontes de
+# mercado (yfinance e brapi); o ROE dos controladores da CVM não passa por ele.
+ROE_MIN = -2.0
+MOTIVO_ROE_ABAIXO = "ROE abaixo de −2 (−200%) depois da conversão: descartado"
 
 
 @dataclass(frozen=True)
@@ -109,10 +114,13 @@ def roe_na_fronteira(bruto: object, provedor: str) -> Normalizado:
     return Normalizado(converter(bruto, representacao, por_modulo=True), representacao)
 
 
-def guardar_roe(valor: float | None) -> tuple[float | None, str | None]:
-    """(ROE, None) se finito e até `ROE_MAX`; (None, motivo) se não. ROE negativo é válido.
+def guardar_roe(
+    valor: float | None, *, com_piso: bool = True
+) -> tuple[float | None, str | None]:
+    """(ROE, None) se finito, até `ROE_MAX` e, com piso, a partir de `ROE_MIN`; (None, motivo) se não.
 
-    `None` na entrada é ausência, sem motivo.
+    `None` na entrada é ausência, sem motivo. ROE negativo é válido; o piso (fontes de
+    mercado) só descarta o implausível. A cascata passa `com_piso=False` para a CVM.
     """
     if valor is None:
         return None, None
@@ -120,6 +128,8 @@ def guardar_roe(valor: float | None) -> tuple[float | None, str | None]:
         return None, MOTIVO_ROE_NAO_FINITO
     if valor > ROE_MAX:
         return None, MOTIVO_ROE_ACIMA
+    if com_piso and valor < ROE_MIN:
+        return None, MOTIVO_ROE_ABAIXO
     return valor, None
 
 

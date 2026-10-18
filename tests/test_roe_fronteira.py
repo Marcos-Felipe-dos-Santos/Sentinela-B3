@@ -210,3 +210,51 @@ def test_regra_por_modulo_vale_so_para_o_roe():
     # O DY segue a regra da V1 do F2A-4, sem o módulo.
     assert normalizacao.dy_na_fronteira(-5.0, "brapi").valor == -5.0
     assert normalizacao.converter(-5.0, normalizacao.Representacao.INFERIDA_V1) == -5.0
+
+
+# ── piso do ROE nas fontes de mercado (F2B-18; BUG-2A-21; decisão C da [AUDITORIA]) ──
+
+
+def test_roe_abaixo_do_piso_vira_ausente_com_motivo(monkeypatch):
+    from sentinela.data import normalizacao
+
+    assert normalizacao.ROE_MIN == -2.0  # simétrico ao teto (decisão de 18/10/2026)
+    assert normalizacao.guardar_roe(-2.0) == (-2.0, None)
+    assert normalizacao.guardar_roe(-2.0001) == (None, normalizacao.MOTIVO_ROE_ABAIXO)
+    # O cenário da auditoria: −21 do yfinance (declarado em razão) seria −2.100%.
+    engine = _engine(
+        monkeypatch, info={**INFO, "returnOnEquity": -21.0}, historico=_historico(20.0)
+    )
+    dados = engine.buscar_dados_ticker("TSTE3")
+    assert dados.get("roe") is None
+    assert (
+        f"ROE descartado (yfinance): {normalizacao.MOTIVO_ROE_ABAIXO}"
+        in dados["riscos_dados"]
+    )
+
+
+def test_roe_negativo_acima_do_piso_passa(monkeypatch):
+    from sentinela.data import normalizacao
+
+    assert normalizacao.guardar_roe(-1.5) == (-1.5, None)
+    engine = _engine(
+        monkeypatch,
+        info=INFO,
+        historico=_historico(20.0),
+        brapi=FakeBrapi({"roe": -0.9, "pl": 8.0}),
+    )
+    dados = engine.buscar_dados_ticker("TSTE3")
+    assert dados["roe"] == pytest.approx(-0.9)
+    assert not any("ROE descartado" in r for r in dados["riscos_dados"])
+
+
+def test_roe_dos_controladores_da_cvm_nao_passa_pelo_piso(monkeypatch):
+    # O piso vale só na fronteira das fontes de mercado (decisão de 18/10/2026).
+    class _CVM:
+        def calcular_indicadores(self, cd_cvm, anos=1, **kwargs):
+            return {2025: {"roe": -3.0, "lucro_liquido": -30.0}}
+
+    engine = _engine(monkeypatch, info=INFO, historico=_historico(20.0), cvm=_CVM())
+    dados = engine.buscar_dados_ticker("PETR4")
+    assert dados["roe"] == pytest.approx(-3.0)
+    assert not any("ROE descartado" in r for r in dados["riscos_dados"])
