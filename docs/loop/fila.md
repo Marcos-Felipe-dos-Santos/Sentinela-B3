@@ -286,7 +286,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: os tickers do universo inicial cujo alerta muda (QUAL3 e os de sinal oposto);
   - gate da fase.
 
-- [ ] **F2B-16** · fix · `fix: record FII figures per source for the cross-checks` · **[AUDITORIA]**
+- [x] **F2B-16** · fix · `fix: record FII figures per source for the cross-checks` · **[AUDITORIA]**
   Corrige o BUG-2A-12. Achado 7; pendência do F2A-11; armadilha 2, no trecho que ainda vale para FII. `_buscar_cvm_fii` não grava `valores_por_fonte['CVM']`: o check 3 da validação cruzada compara o P/VP da CVM com preço ÷ VPA da própria CVM e nunca alerta. Pela regra do F2A-5, identidade é pulada.
   - A etapa grava em `valores_por_fonte['CVM']` o que o Informe entregou.
   - Alerta P/VP da CVM × P/VP da fonte de mercado (yfinance ou brapi) acima de 10%, o limiar dos checks 2 e 3 da V1 (decisão do Marcos de 18/10/2026, [AUDITORIA]).

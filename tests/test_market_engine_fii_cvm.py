@@ -96,3 +96,14 @@ def test_cnpj_do_indice_tem_prioridade(monkeypatch):
     }
     assert engine._buscar_cvm_fii("HGLG11", dados) is True
     assert informe.cnpjs == ["99.999.999/0001-99"]
+
+
+def test_informe_grava_valores_por_fonte(monkeypatch):
+    # F2B-16 (BUG-2A-12): o que o Informe entregou fica em `valores_por_fonte['CVM']`.
+    dados = _cascata(monkeypatch, _InformeFalso(INFORME))
+    assert dados["valores_por_fonte"]["CVM"] == {
+        "vpa": 100.0,
+        "pvp": pytest.approx(0.9),
+        "patrimonio_liquido": 5_000_000_000.0,
+    }
+    assert dados["valores_por_fonte"]["yfinance"]["pvp"] == pytest.approx(1.5)

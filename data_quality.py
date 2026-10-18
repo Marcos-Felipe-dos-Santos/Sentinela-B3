@@ -109,6 +109,8 @@ def _is_present(v) -> bool:
 
 _LIMIAR_ACOES = 0.05  # checkpoint da Fase 0, seção 4, item 1
 _LIMIAR_LPA = 0.10  # o mesmo dos checks 2 e 3
+_LIMIAR_PVP_FII = 0.10  # F2B-16: o mesmo dos checks 2 e 3 ([AUDITORIA], 18/10/2026)
+_FONTES_DE_MERCADO = ("yfinance", "brapi")
 _FOLGA = 1e-9
 
 
@@ -243,6 +245,7 @@ class DataQualityReport:
                 )
 
         alertas += self._alertas_fontes_independentes(lpa)
+        alertas += self._alertas_pvp_do_fii()
         return alertas
 
     def _mesma_fonte(self, multiplo: str, por_acao: str) -> bool:
@@ -261,6 +264,29 @@ class DataQualityReport:
         entregue = (d.get("valores_por_fonte") or {}).get(fonte_multiplo) or {}
         do_mesmo = _safe_float(entregue.get(por_acao))
         return do_mesmo is not None and abs(do_mesmo - valor) <= _FOLGA * max(1.0, abs(valor))
+
+    def _alertas_pvp_do_fii(self) -> list[str]:
+        """P/VP do Informe Mensal (CVM) × P/VP de cada fonte de mercado (F2B-16; BUG-2A-12).
+
+        O P/VP da CVM é preço ÷ VPA do próprio Informe, e a checagem 3 é identidade; a
+        conferência independente é contra o P/VP que o yfinance ou a brapi entregaram.
+        """
+        por_fonte = self.dados.get("valores_por_fonte") or {}
+        cvm = _safe_float((por_fonte.get("CVM") or {}).get("pvp"))
+        if not self.dados.get("cvm_fii_dt_referencia") or not cvm or cvm <= 0:
+            return []
+        alertas: list[str] = []
+        for fonte in _FONTES_DE_MERCADO:
+            mercado = _safe_float((por_fonte.get(fonte) or {}).get("pvp"))
+            if mercado is None or mercado <= 0:
+                continue
+            divergencia = abs(mercado - cvm) / cvm
+            if divergencia > _LIMIAR_PVP_FII + _FOLGA:
+                alertas.append(
+                    f"P/VP da CVM {_numero_br(cvm)} × P/VP do {fonte} {_numero_br(mercado)}: "
+                    f"divergência {divergencia:.0%}"
+                )
+        return alertas
 
     def _alertas_fontes_independentes(self, lpa: float | None) -> list[str]:
         """Ações da CVM × yfinance e LPA recalculado × LPA básico divulgado (F2A-5, E-2)."""

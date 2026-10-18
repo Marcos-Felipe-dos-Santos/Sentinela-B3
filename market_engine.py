@@ -716,6 +716,8 @@ class MarketEngine:
         preco = _as_float(dados.get('preco_atual'))
         if preco and preco > 0:
             campos['pvp'] = preco / vpa
+        # F2B-16 (BUG-2A-12): o que o Informe entregou, para a validação cruzada (F2A-5).
+        _guardar_por_fonte(dados, 'CVM', campos)
         preenchidos = merge_if_valid(
             dados, campos, overwrite=True, allowed_keys=set(FUNDAMENTAL_KEYS)
         )

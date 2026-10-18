@@ -269,3 +269,22 @@
   - correção de espécie em linha de unit ou em chave de FII é aceita sem efeito (ou com o efeito da correção de código, no FII); a validação não restringe a correção de espécie às ações avulsas;
   - `cobertura["correcoes"]` passou a misturar correção de código e de espécie; a docstring de `cobertura.py` fala em tickers "ligados" pela tabela.
 - **Para o Marcos revisar:** o comparado do BBAS3 passa a aparecer na conferência; antes, o banco não tinha nenhuma conferência de LPA.
+
+### F2B-16 — fix: record FII figures per source for the cross-checks
+- **Executor:** claude-code (claude-opus-5-5)
+- **Status:** sucesso
+- **O que foi feito:** corrige o BUG-2A-12 (achado 7; pendência do F2A-11; armadilha 2, no trecho de FII).
+  - `market_engine._buscar_cvm_fii`: antes do merge, `_guardar_por_fonte(dados, 'CVM', campos)` grava em `valores_por_fonte['CVM']` o que o Informe Mensal entregou (VPA, PL e o P/VP pelo preço). Com isso, a checagem 3 da validação cruzada passa a reconhecer a identidade (P/VP e VPA da mesma fonte) e é pulada, pela regra do F2A-5.
+  - `data_quality._alertas_pvp_do_fii`: P/VP da CVM × P/VP de cada fonte de mercado que o entregou (yfinance e brapi, em `valores_por_fonte`), com alerta acima de 10% (`_LIMIAR_PVP_FII`, o limiar dos checks 2 e 3; decisão do Marcos de 18/10/2026, [AUDITORIA]), medido sobre o P/VP da CVM. Só para o FII com o Informe aplicado (`cvm_fii_dt_referencia`); fonte sem P/VP, ou com P/VP ≤ 0, não é comparada.
+- **Testes:**
+  - `tests/regressao/test_bug_2a_12_fii_sem_valores_por_fonte.py` (BUG-2A-12): marca retirada, em PASS; registro em "corrigido".
+  - Com xfail estrito → falharam com `--runxfail` pelo sintoma → XPASS(strict) → marca retirada: `tests/test_market_engine_fii_cvm.py::test_informe_grava_valores_por_fonte` (`KeyError: 'CVM'`; agora VPA 100, P/VP 0,9 e PL do Informe, e o P/VP 1,5 do yfinance ao lado), `tests/test_data_quality_fontes.py::test_identidade_do_fii_e_reconhecida` (`_mesma_fonte("pvp", "vpa")` False → True) e os três casos com alerta de `::test_pvp_do_fii_divergente_da_fonte_de_mercado_gera_alerta` (P/VP do yfinance 1,5, 0,999 e 0,8 contra 0,90 da CVM: 66,7%, 11,0% e 11,1%).
+  - Sem marca, porque já passam e devem continuar: os dois casos sem alerta do mesmo teste (0,99, exatos 10%, e 0,95, 5,6%).
+- **Testes:** 1437 passed, 1 skipped, 17 xfailed → 1447 passed, 1 skipped, 16 xfailed (+9 novos: 1 + 1 + 5 casos do aceite e 2 de unidade da mutação; o BUG-2A-12 passou de xfailed a passed). Golden sem diferença; `tests/test_financeiro_pre_refactor.py` sem mudança. `ruff format` nos três arquivos de teste; em `data_quality.py` e `market_engine.py`, a mesma contagem do `ruff check` do `HEAD` (1 e 11).
+- **Mutação** (módulo V1 tocado, sem meta): `data_quality` 385/477 (80,7%) na primeira rodada, com seis sobreviventes em `_alertas_pvp_do_fii`; com dois testes de unidade diretos em `tests/test_data_quality_fontes.py` (`test_alerta_do_pvp_do_fii_so_com_o_informe_e_valores_validos` e `test_alerta_do_pvp_do_fii_confere_cada_fonte_de_mercado`: sem o Informe, P/VP da CVM ≤ 0, P/VP de mercado zero, só a brapi e as duas fontes), 388/477 (81,3%). Os três que restam no código novo são equivalentes: com o P/VP da CVM negativo, a divergência sai negativa e não alerta; o zero já cai em `not cvm`; e `>=` contra `>` só difere na folga de 1e−9.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma deste item. Ressalvas da revisão do F2B-14, registradas aqui porque o commit dele saiu como revisado:
+  - quando o LPA do banco vem da linha 3.99 (F2B-11; o BBAS3 é esse caso: 3.99.01 zerada, razão 0,9998), ela só é aceita com o recalculado a até 10%, e o alerta do F2A-5 dispara acima dos mesmos 10%: a conferência nunca alerta nesse caminho (família da armadilha 2). Com a 3.99.01, a conferência vale. Tirar a conferência da 3.99 ou marcá-la como não independente é item novo;
+  - a ordem da escala em `_lpa_divulgado_comparado` repete a de `acoes_cvm.divulgado_da_escala`; juntar as duas é refactor, em commit à parte;
+  - o comparado não leva a nota do divulgado (por exemplo, o sinal conferido pelo consolidado).
+- **Para o Marcos revisar:** o alerta compara com cada fonte de mercado que entregou P/VP, então um FII pode ganhar dois alertas (yfinance e brapi). O yfinance e a brapi calculam o P/VP com o VPA deles, de data diferente da do Informe; parte da divergência é defasagem, não erro.

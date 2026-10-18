@@ -10,13 +10,6 @@ import pytest
 from tests.test_market_engine_fii_cvm import INFORME, _cascata, _InformeFalso
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG-2A-12 · FII da CVM sem valores_por_fonte['CVM']: checagem cruzada do P/VP "
-        "vira identidade · corrige: F2B-16"
-    ),
-)
 def test_informe_mensal_fica_registrado_por_fonte(monkeypatch):
     dados = _cascata(monkeypatch, _InformeFalso(INFORME))
     cvm = dados.get("valores_por_fonte", {}).get("CVM", {})
