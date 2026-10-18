@@ -7,7 +7,7 @@ import pandas as pd
 import yfinance as yf
 
 from brapi_provider import BrapiProvider
-from config import FII_MANUAL_FALLBACK
+from config import FII_MANUAL_FALLBACK, _normalizar_dy
 from cvm_fii_provider import CVMFIIProvider
 from cvm_provider import CVMProvider
 from database import DatabaseManager
@@ -83,6 +83,7 @@ RISCO_FORA_DA_REFERENCIA = 'ticker fora da referência oficial'
 RISCO_FORA_DA_CVM = 'ticker fora da cobertura da CVM'
 RISCO_SEM_REFERENCIA = 'referência oficial indisponível: dados da CVM não consultados'
 RISCO_FII_FORA_DO_INFORME = 'FII fora da cobertura do Informe Mensal'
+MOTIVO_DY_FORA_DA_FAIXA = 'DY fora de 0–25% (invariante dos motores): descartado no merge'
 AVISO_CODIGO_DA_TABELA = 'cvm_code_from_correction_table'
 AVISO_ACOES_FIM_DO_PERIODO = 'shares_end_of_period'
 RISCO_SEM_POR_ACAO_CVM = 'CVM não derivou LPA, VPA, P/L e P/VP'
@@ -628,6 +629,8 @@ class MarketEngine:
             }
             if 'roe' in fundamentos:
                 fundamentos['roe'] = self._roe_guardado(dados, 'brapi', fundamentos['roe'])
+            if 'dy' in fundamentos:
+                fundamentos['dy'] = self._dy_guardado(dados, 'brapi', fundamentos['dy'])
             _guardar_por_fonte(
                 dados, 'brapi', {**fundamentos, 'preco_atual': brapi_data.get('preco_atual')}
             )
@@ -760,6 +763,27 @@ class MarketEngine:
                 {**normalizacao.proveniencia_roe(fonte), 'motivo': motivo}
             )
         return roe
+
+    @staticmethod
+    def _dy_guardado(dados: dict[str, Any], fonte: str, valor: Any) -> float | None:
+        """DY de fonte posterior pelo invariante dos motores (F2B-39; BUG-2A-15, armadilha 4).
+
+        Finito e fora de 0–25%, não entra no merge: o válido anterior fica, e o descarte vai
+        para `riscos_dados` e `dados['proveniencia']['dy_descartes']`. Nenhuma conversão aqui:
+        a da fronteira (`normalizacao`) continua a única. Ausente ou não finito, segue `None`.
+        """
+        numero = _as_float(valor)
+        if numero is None:
+            return None
+        if _normalizar_dy(numero)[1]:
+            return numero
+        dados.setdefault('riscos_dados', []).append(
+            f"DY descartado ({fonte}): {MOTIVO_DY_FORA_DA_FAIXA}"
+        )
+        dados.setdefault('proveniencia', {}).setdefault('dy_descartes', []).append(
+            {'fonte': fonte, 'valor': numero, 'motivo': MOTIVO_DY_FORA_DA_FAIXA}
+        )
+        return None
 
     def _buscar_cvm(self, ticker: str, dados: dict[str, Any]) -> bool:
         """Preenche fundamentos a partir das DFPs oficiais da CVM.

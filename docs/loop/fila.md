@@ -358,7 +358,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden inalterado;
   - gate da fase.
 
-- [ ] **F2B-39** · fix · `fix: keep a valid dividend yield over an out-of-range later source`
+- [x] **F2B-39** · fix · `fix: keep a valid dividend yield over an out-of-range later source`
   Corrige o BUG-2A-15. No merge da cascata, um DY finito mas fora de 0–25% vindo de fonte posterior (brapi) sobrescreve o DY válido de fonte anterior. Passa a valer o invariante dos motores (`config._normalizar_dy`, armadilha 4) também no merge: DY fora da faixa não entra, com o motivo na proveniência, e o válido anterior fica. Nenhuma conversão nova de percentual: a da fronteira continua a única.
 
   **Aceite:**

@@ -389,3 +389,18 @@
   - balanço ilegível, ou documento sem linha de balanço com o mesmo `DT_REFER` e `VERSAO`, é tratado como "sem não controladores", e a reserva da 7.2 libera o lucro total; a série anual faz o mesmo com o balanço vazio, então não é regressão, mas a falta do balanço não prova a ausência de minoritários. Distinguir "balanço ausente" de "2.03.09 ausente" muda a regra e cabe ao F2C-1, quando o TTM for consumido;
   - `test_ttm_abstem_quando_um_documento_se_abstem` confere o motivo do documento por `in`, não pela igualdade com o prefixo genérico; é o sobrevivente que restou em `series_cvm.ttm`.
 - **Para o Marcos revisar:** nada além do acima.
+
+### F2B-39 — fix: keep a valid dividend yield over an out-of-range later source
+- **Executor:** claude-code (claude-opus-5-5)
+- **Status:** sucesso
+- **O que foi feito:** corrige o BUG-2A-15. No merge da brapi (`overwrite=True`), qualquer DY finito sobrescrevia o anterior; um 0,40 apagava o 0,06 válido do yfinance, e o invariante dos motores só o zerava depois. `market_engine._dy_guardado` aplica `config._normalizar_dy` (o invariante, armadilha 4) ao DY da brapi antes do merge: fora de 0–25%, o DY não entra, o válido anterior fica, e o descarte vai para `riscos_dados` ("DY descartado (brapi): …") e para `dados['proveniencia']['dy_descartes']` (fonte, valor e `MOTIVO_DY_FORA_DA_FAIXA`), no mesmo molde do `_roe_guardado`. Nenhuma conversão de percentual nova: a da fronteira continua a única. DY zero ("sem proventos") é dado e entra.
+- **Testes:**
+  - `tests/regressao/test_bug_2a_15_dy_invalido_sobrescreve_valido.py` (BUG-2A-15): marca retirada, em PASS; registro em "corrigido".
+  - `tests/test_dy_fronteira.py::test_dy_fora_da_faixa_nao_entra_no_merge`: xfail estrito, falhou com `--runxfail` (a constante do motivo não existia), XPASS(strict) com a correção, marca retirada. Confere o 0,06 do yfinance que fica, o P/L da brapi que entra, o risco e o registro do descarte, e que DY 0 e 0,12 da brapi entram sem descarte.
+- **Suíte:** 1465 passed, 1 skipped, 10 xfailed → 1467 passed, 1 skipped, 9 xfailed (+1 novo; o BUG-2A-15 passou de xfailed a passed). Golden sem diferença; `tests/test_financeiro_pre_refactor.py` sem mudança. `ruff format` nos dois arquivos de teste; `market_engine.py` com a mesma contagem do `ruff check` do `HEAD` (11).
+- **Mutação** (módulo V1 tocado, sem meta): `market_engine` 1.650/2.279 (72,4%; no F2B-18, 1.607/2.232). Os quatro sobreviventes de `_dy_guardado` trocam o padrão do `setdefault` de `riscos_dados` e de `proveniencia`, chaves que já existem nesse ponto da cascata: equivalentes na prática.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:**
+  - O guarda vale para o DY da brapi, a única fonte posterior que sobrescreve o DY na cascata (a CVM e o Informe Mensal não entregam DY; o cache de fundamentos só preenche o que falta, e grava o que já passou pela cascata). O yfinance, primeira fonte, segue sem ele: o motor aplica o invariante na entrada.
+  - Como no ROE, o DY descartado também sai de `valores_por_fonte['brapi']` (a guarda vem antes do registro por fonte).
