@@ -184,7 +184,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - nenhum código de produção muda; golden inalterado;
   - gate da fase.
 
-- [ ] **F2B-7** · test · `test: move rate-dependent section A checks to section B` · **[SEÇÃO A]**
+- [x] **F2B-7** · test · `test: move rate-dependent section A checks to section B` · **[SEÇÃO A]**
   **[SEÇÃO A]** em (c), decidida pelo Marcos em 18/10/2026. Quatro testes da seção A fixam números que dependem da Selic como taxa: `test_a_fair_value_com_tres_metodos_e_a_mediana_nao_a_media` (`:71`), `test_a_fair_value_com_dois_metodos_e_a_media_inclusive_com_divergencia` (`:81`), `test_a_bazin_nao_dispara_abaixo_de_5_por_cento` (`:92`) e `test_a_fii_compara_dy_com_a_selic_liquida_de_ir` (`:100`).
   - **Seção A.** Fica a propriedade que não depende da taxa (mediana e não média; gate de 5% do Bazin), com a taxa injetada pelo próprio teste.
   - **Seção B.** Os números que dependem da Selic vão para testes com `quebra_esperada` e a marca do achado (F-4, F-5 ou F-9; `f5_bazin_selic` registrada no `pytest.ini`), citando o checkpoint (seção 4, itens 2 e 3). O item de taxa de cada achado os vira: F-4 no F2B-1, F-5 no F2B-31 (ou ficam, se a [BAZIN] ficar em (a) ou (d)) e F-9 no F2B-2.

@@ -67,47 +67,90 @@ def _metodos(resultado):
 # ══════════════════════════════════════════════════════════════════════════════
 
 
+# Taxas injetadas pelos testes da seção A: as propriedades valem para qualquer uma delas.
+# Os números que dependem da Selic como taxa estão na seção B (F2B-7, [SEÇÃO A] em (c)).
+TAXAS = (0.06, 0.10, 0.1475, 0.20)
+
+
 @pytest.mark.preservar
-def test_a_fair_value_com_tres_metodos_e_a_mediana_nao_a_media():
-    # Graham 150,00 · Bazin 60,00 · Gordon 51,54 → mediana 60,00; a média seria 87,18.
-    r = _processar(_acao())
+@pytest.mark.parametrize("selic", TAXAS)
+def test_a_fair_value_com_tres_metodos_e_a_mediana_nao_a_media(selic):
+    r = _processar(_acao(), selic=selic)
     metodos = _metodos(r)
     assert set(metodos) == {"Graham", "Bazin", "Gordon"}
-    assert r["fair_value"] == pytest.approx(60.0, abs=0.01)
-    assert r["fair_value"] != pytest.approx(sum(metodos.values()) / 3, abs=1)
+    valores = sorted(metodos.values())
+    assert len(set(valores)) == 3
+    assert r["fair_value"] == pytest.approx(valores[1], abs=0.01)
+    assert r["fair_value"] != pytest.approx(sum(valores) / 3, abs=1)
 
 
 @pytest.mark.preservar
-def test_a_fair_value_com_dois_metodos_e_a_media_inclusive_com_divergencia():
+@pytest.mark.parametrize("selic", TAXAS)
+def test_a_fair_value_com_dois_metodos_e_a_media_inclusive_com_divergencia(selic):
     # Com dois métodos, `statistics.median` devolve a média. É comportamento atual que
-    # ninguém decidiu; a decisão é do F2C-5. Graham 150,00 · Bazin 60,00 → 105,00,
-    # e a flag max/min > 2 dispara mesmo assim.
+    # ninguém decidiu; a decisão é do F2C-5.
+    r = _processar(_acao(roe=0.08), selic=selic)
+    metodos = _metodos(r)
+    assert set(metodos) == {"Graham", "Bazin"}
+    assert r["fair_value"] == pytest.approx(sum(metodos.values()) / 2, abs=0.01)
+
+
+@pytest.mark.preservar
+@pytest.mark.parametrize("selic", TAXAS)
+def test_a_bazin_nao_dispara_abaixo_de_5_por_cento(selic):
+    abaixo = _processar(_acao(roe=0.08, dy=0.049), selic=selic)
+    no_limite = _processar(_acao(roe=0.08, dy=0.05), selic=selic)
+    assert "Bazin" not in _metodos(abaixo)
+    assert "Bazin" in _metodos(no_limite)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SEÇÃO B — deve mudar (caracteriza o estado atual)
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.quebra_esperada
+@pytest.mark.f4_gordon_nominal
+@pytest.mark.f5_bazin_selic
+def test_b_mediana_de_tres_metodos_pela_selic():
+    # QUEBRA ESPERADA: F-4 e F-5 — veio da seção A (F2B-7). Selic 10%: Graham 150,00 ·
+    # Bazin 60,00 (DY ÷ Selic) · Gordon 51,54 (Selic + prêmio) → mediana 60,00; a média
+    # seria 87,18. Muda com a taxa real (F2B-1, Gordon; checkpoint da Fase 0, seção 4,
+    # item 2) e com a taxa do Bazin (F2B-31).
+    r = _processar(_acao())
+    assert set(_metodos(r)) == {"Graham", "Bazin", "Gordon"}
+    assert r["fair_value"] == pytest.approx(60.0, abs=0.01)
+
+
+@pytest.mark.quebra_esperada
+@pytest.mark.f5_bazin_selic
+def test_b_media_de_dois_metodos_pela_selic():
+    # QUEBRA ESPERADA: F-5 — veio da seção A (F2B-7). Selic 10%: Graham 150,00 ·
+    # Bazin 60,00 → 105,00, e a flag max/min > 2 dispara. Muda com o F2B-31.
     r = _processar(_acao(roe=0.08))
     assert set(_metodos(r)) == {"Graham", "Bazin"}
     assert r["fair_value"] == pytest.approx(105.0, abs=0.01)
     assert "Métodos divergentes" in r["riscos"]
 
 
-@pytest.mark.preservar
-def test_a_bazin_nao_dispara_abaixo_de_5_por_cento():
-    abaixo = _processar(_acao(roe=0.08, dy=0.049))
+@pytest.mark.quebra_esperada
+@pytest.mark.f5_bazin_selic
+def test_b_bazin_no_limite_de_5_por_cento_pela_selic():
+    # QUEBRA ESPERADA: F-5 — veio da seção A (F2B-7). DY 5% ÷ Selic 10% → 50,00.
+    # Muda com o F2B-31.
     no_limite = _processar(_acao(roe=0.08, dy=0.05))
-    assert "Bazin" not in _metodos(abaixo)
     assert _metodos(no_limite)["Bazin"] == pytest.approx(50.0, abs=0.01)
 
 
-@pytest.mark.preservar
-def test_a_fii_compara_dy_com_a_selic_liquida_de_ir():
-    # Selic 10% → líquida 8,5%. DY 9,35% / 8,5% = 1,10 → preço justo 110,00.
-    # Com a Selic bruta o resultado seria 93,50.
+@pytest.mark.quebra_esperada
+@pytest.mark.f9_fii_selic
+def test_b_fii_compara_dy_com_a_selic_liquida_de_ir():
+    # QUEBRA ESPERADA: F-9 — veio da seção A (F2B-7); contraria o checkpoint da Fase 0
+    # (seção 4, item 3). Selic 10% → líquida 8,5%. DY 9,35% / 8,5% = 1,10 → preço justo
+    # 110,00. Com a Selic bruta o resultado seria 93,50. Muda com o F2B-2.
     r = _fii()
     assert r["fair_value"] == pytest.approx(110.0, abs=0.01)
     assert r["upside"] == pytest.approx(10.0, abs=0.1)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# SEÇÃO B — deve mudar (caracteriza o estado atual)
-# ══════════════════════════════════════════════════════════════════════════════
 
 
 @pytest.mark.quebra_esperada
