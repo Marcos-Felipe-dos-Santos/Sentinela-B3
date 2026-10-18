@@ -350,7 +350,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: nas ações atuais do universo inicial, o lucro dos controladores do TTM antes → depois;
   - gate da fase.
 
-- [ ] **F2B-38** · fix · `fix: pick the latest version of a restated FII monthly report`
+- [x] **F2B-38** · fix · `fix: pick the latest version of a restated FII monthly report`
   Corrige o BUG-2A-14. `cvm_fii_provider.obter_dados_fii` escolhe entre linhas do mesmo fundo e da mesma data de referência sem desempate pela maior `Versao`: o Informe reapresentado pode perder para o original. Passa a valer a maior `Versao` (a regra que o F2B-28 usa nos 12 meses).
 
   **Aceite:**

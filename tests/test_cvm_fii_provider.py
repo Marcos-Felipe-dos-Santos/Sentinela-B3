@@ -11,6 +11,7 @@ from cvm_fii_provider import CVMFIIProvider
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_inf_zip(dest: Path, ano: int, rows: list[dict]) -> Path:
     """Cria ZIP com CSV fake do informe mensal FII complemento."""
     df = pd.DataFrame(rows)
@@ -23,24 +24,25 @@ def _make_inf_zip(dest: Path, ano: int, rows: list[dict]) -> Path:
 _CNPJ_HGLG = "11.728.688/0001-47"
 
 _ROW_BASE = {
-    "CNPJ_Fundo_Classe":            _CNPJ_HGLG,
-    "Data_Referencia":              "2024-11-01",
-    "Versao":                       "1",
-    "Total_Numero_Cotistas":        "85000",
-    "Valor_Ativo":                  "2000000000",
-    "Patrimonio_Liquido":           "1800000000",
-    "Cotas_Emitidas":               "10000000",
-    "Valor_Patrimonial_Cotas":      "180.0",
+    "CNPJ_Fundo_Classe": _CNPJ_HGLG,
+    "Data_Referencia": "2024-11-01",
+    "Versao": "1",
+    "Total_Numero_Cotistas": "85000",
+    "Valor_Ativo": "2000000000",
+    "Patrimonio_Liquido": "1800000000",
+    "Cotas_Emitidas": "10000000",
+    "Valor_Patrimonial_Cotas": "180.0",
     "Percentual_Despesas_Taxa_Administracao": "0.000196",
-    "Percentual_Rentabilidade_Efetiva_Mes":   "0.002166",
-    "Percentual_Dividend_Yield_Mes":          "0.005723",
-    "Percentual_Amortizacao_Cotas_Mes":       "0",
+    "Percentual_Rentabilidade_Efetiva_Mes": "0.002166",
+    "Percentual_Dividend_Yield_Mes": "0.005723",
+    "Percentual_Amortizacao_Cotas_Mes": "0",
 }
 
 
 # ---------------------------------------------------------------------------
 # cvm_fii_map
 # ---------------------------------------------------------------------------
+
 
 def test_mapa_cobre_30_fiis():
     assert len(FII_CNPJ_MAP) == 30
@@ -49,6 +51,7 @@ def test_mapa_cobre_30_fiis():
 # ---------------------------------------------------------------------------
 # CVMFIIProvider — parse e obter_dados_fii
 # ---------------------------------------------------------------------------
+
 
 def test_parsear_complemento_formato(tmp_path):
     """DataFrame interno deve ter as colunas reais do informe mensal."""
@@ -94,9 +97,21 @@ def test_obter_dados_fii_retorna_mais_recente(tmp_path, monkeypatch):
     """Deve retornar o registro com Data_Referencia mais recente."""
     provider = CVMFIIProvider(cache_dir=str(tmp_path / "cache"))
     rows = [
-        {**_ROW_BASE, "Data_Referencia": "2024-01-01", "Valor_Patrimonial_Cotas": "170.0"},
-        {**_ROW_BASE, "Data_Referencia": "2024-11-01", "Valor_Patrimonial_Cotas": "180.0"},
-        {**_ROW_BASE, "Data_Referencia": "2024-06-01", "Valor_Patrimonial_Cotas": "175.0"},
+        {
+            **_ROW_BASE,
+            "Data_Referencia": "2024-01-01",
+            "Valor_Patrimonial_Cotas": "170.0",
+        },
+        {
+            **_ROW_BASE,
+            "Data_Referencia": "2024-11-01",
+            "Valor_Patrimonial_Cotas": "180.0",
+        },
+        {
+            **_ROW_BASE,
+            "Data_Referencia": "2024-06-01",
+            "Valor_Patrimonial_Cotas": "175.0",
+        },
     ]
     zip_path = _make_inf_zip(tmp_path / "inf_2024.zip", 2024, rows)
     monkeypatch.setattr(provider, "baixar_informe", lambda ano: zip_path)
@@ -111,17 +126,52 @@ def test_cache_nao_rebaixa_fii(tmp_path, monkeypatch):
     call_count = {"n": 0}
 
     class FakeResp:
-        content = b'PK\x03\x04\x14\x00\x00\x00\x00\x00c\x9cF]\xbb\xfa\xbc\x14\n\x00\x00\x00\n\x00\x00\x00\x08\x00\x00\x00test.csvvalid dataPK\x01\x02\x14\x03\x14\x00\x00\x00\x00\x00c\x9cF]\xbb\xfa\xbc\x14\n\x00\x00\x00\n\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x01\x00\x00\x00\x00test.csvPK\x05\x06\x00\x00\x00\x00\x01\x00\x01\x006\x00\x00\x000\x00\x00\x00\x00\x00'
-        def raise_for_status(self): pass
-        def __enter__(self): return self
-        def __exit__(self, *args): pass
-        def iter_content(self, chunk_size=8192): yield self.content
+        content = b"PK\x03\x04\x14\x00\x00\x00\x00\x00c\x9cF]\xbb\xfa\xbc\x14\n\x00\x00\x00\n\x00\x00\x00\x08\x00\x00\x00test.csvvalid dataPK\x01\x02\x14\x03\x14\x00\x00\x00\x00\x00c\x9cF]\xbb\xfa\xbc\x14\n\x00\x00\x00\n\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x01\x00\x00\x00\x00test.csvPK\x05\x06\x00\x00\x00\x00\x01\x00\x01\x006\x00\x00\x000\x00\x00\x00\x00\x00"
 
-    monkeypatch.setattr("cvm_download.requests.get",
-                        lambda *a, **kw: (call_count.__setitem__("n", call_count["n"] + 1) or FakeResp()))
+        def raise_for_status(self):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def iter_content(self, chunk_size=8192):
+            yield self.content
+
+    monkeypatch.setattr(
+        "cvm_download.requests.get",
+        lambda *a, **kw: call_count.__setitem__("n", call_count["n"] + 1) or FakeResp(),
+    )
 
     p1 = provider.baixar_informe(2024)
     p2 = provider.baixar_informe(2024)
 
     assert p1 == p2
     assert call_count["n"] == 1
+
+
+def test_versao_ilegivel_nao_impede_o_desempate(tmp_path, monkeypatch):
+    # F2B-38: a versão é lida como número; uma versão malformada não derruba a leitura e fica
+    # atrás da reapresentação.
+    provider = CVMFIIProvider(cache_dir=str(tmp_path / "cache"))
+    rows = [
+        {**_ROW_BASE, "Versao": "1a", "Valor_Patrimonial_Cotas": "170.0"},
+        {**_ROW_BASE, "Versao": "2", "Valor_Patrimonial_Cotas": "190.0"},
+    ]
+    zip_path = _make_inf_zip(tmp_path / "inf_2024.zip", 2024, rows)
+    monkeypatch.setattr(provider, "baixar_informe", lambda ano: zip_path)
+    assert provider.obter_dados_fii(_CNPJ_HGLG)["valor_cota"] == pytest.approx(190.0)
+
+
+def test_versao_e_comparada_como_numero(tmp_path, monkeypatch):
+    # F2B-38: como texto, "9" ficaria na frente de "10"; como número, vale a 10.
+    provider = CVMFIIProvider(cache_dir=str(tmp_path / "cache"))
+    rows = [
+        {**_ROW_BASE, "Versao": "10", "Valor_Patrimonial_Cotas": "190.0"},
+        {**_ROW_BASE, "Versao": "9", "Valor_Patrimonial_Cotas": "170.0"},
+    ]
+    zip_path = _make_inf_zip(tmp_path / "inf_2024.zip", 2024, rows)
+    monkeypatch.setattr(provider, "baixar_informe", lambda ano: zip_path)
+    assert provider.obter_dados_fii(_CNPJ_HGLG)["valor_cota"] == pytest.approx(190.0)

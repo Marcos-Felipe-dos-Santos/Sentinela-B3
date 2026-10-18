@@ -373,3 +373,19 @@
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Revisão:** 1ª rodada aprovada com médios. Corrigido antes do commit: no teste do balanço, a versão 1 de março tinha não controladores e a versão 2 não; sem o filtro por `VERSAO`, as duas linhas divergentes também dariam abstenção, e o teste não provava o filtro. Os valores foram invertidos (versão 1 sem, versão 2 com), e o mesmo teste agora falha sem o filtro. Ficam registrados: `zipfile.BadZipFile` fora do `except` da leitura do balanço (a DRE do mesmo ZIP já foi lida antes); o filtro por `DT_REFER` e `VERSAO` fora do `try`; e, para o F2C-1, que um trimestre isolado pode subtrair documentos de escopos diferentes (um pela reserva, outro com a 3.11.01 preenchida), com erro limitado, porque a reserva só vale sem não controladores no balanço daquela data. A docstring de `_acumulados_do_arquivo` ainda não cita o `BPP_con` nem os motivos.
 - **Para o Marcos revisar:** o TTM da KLBN11 e da SBSP3 passa a se abster do lucro dos controladores, com o motivo em `dados['ttm_cvm']['motivos']`; o relatório do F1-12 (`rastreabilidade.py:518`) mostra só o período do TTM ou a abstenção inteira, não o motivo por campo. O lucro líquido do TTM segue disponível.
+
+### F2B-38 — fix: pick the latest version of a restated FII monthly report
+- **Executor:** claude-code (claude-opus-5-5)
+- **Status:** sucesso
+- **O que foi feito:** corrige o BUG-2A-14. `cvm_fii_provider.CVMFIIProvider.obter_dados_fii` ordenava as linhas do fundo só por `Data_Referencia`; com duas versões da mesma data, ficava a primeira do arquivo. Agora ordena por `Data_Referencia` e pela `Versao` lida como número (`pd.to_numeric(..., errors="coerce")`), as duas em ordem decrescente: na mesma data, vale a reapresentação (maior `Versao`), a regra que o F2B-28 usa nos 12 meses. Versão ilegível vira NaN e fica atrás (o `sort_values` põe NaN no fim).
+- **Testes:**
+  - `tests/regressao/test_bug_2a_14_informe_sem_desempate_por_versao.py` (BUG-2A-14): a marca saiu e ele passa; registro em "corrigido".
+  - `tests/test_cvm_fii_provider.py::test_versao_ilegivel_nao_impede_o_desempate` (versão "1a" contra a 2: vale a 2, sem erro), acrescentado pela mutação. Com versão vazia, o teste não discriminava: o leitor do CSV já a lê como NaN.
+  - `::test_versao_e_comparada_como_numero` (versão "10" contra "9": vale a 10), acrescentado na revisão: os outros dois passariam com a `Versao` ordenada como texto. Conferido numa worktree com a conversão retirada: falha com `170.0 == 190.0`.
+- **Suíte:** 1462 passed, 1 skipped, 11 xfailed → 1465 passed, 1 skipped, 10 xfailed (+2 novos; o BUG-2A-14 passou de xfailed a passed). Golden sem diferença. `ruff format` nos dois arquivos de teste; `cvm_fii_provider.py` com a mesma contagem do `ruff check` do `HEAD` (2).
+- **Mutação** (módulo V1 tocado, sem meta): `cvm_fii_provider` 227/285 (79,6%; no fim da 2A, 208/266), sem sobrevivente na linha nova.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma deste item. Ressalvas da 2ª revisão do F2B-37, registradas aqui porque o commit dele saiu como revisado:
+  - balanço ilegível, ou documento sem linha de balanço com o mesmo `DT_REFER` e `VERSAO`, é tratado como "sem não controladores", e a reserva da 7.2 libera o lucro total; a série anual faz o mesmo com o balanço vazio, então não é regressão, mas a falta do balanço não prova a ausência de minoritários. Distinguir "balanço ausente" de "2.03.09 ausente" muda a regra e cabe ao F2C-1, quando o TTM for consumido;
+  - `test_ttm_abstem_quando_um_documento_se_abstem` confere o motivo do documento por `in`, não pela igualdade com o prefixo genérico; é o sobrevivente que restou em `series_cvm.ttm`.
+- **Para o Marcos revisar:** nada além do acima.

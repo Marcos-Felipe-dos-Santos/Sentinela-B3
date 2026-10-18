@@ -148,9 +148,15 @@ class CVMFIIProvider:
                 if fundo_df.empty:
                     continue
 
-                # Registro mais recente
+                # Registro mais recente; na mesma data, a reapresentação (maior `Versao`, F2B-38).
                 if "Data_Referencia" in fundo_df.columns:
-                    fundo_df = fundo_df.sort_values("Data_Referencia", ascending=False)
+                    chaves = ["Data_Referencia"]
+                    if "Versao" in fundo_df.columns:
+                        fundo_df = fundo_df.assign(
+                            _versao=pd.to_numeric(fundo_df["Versao"], errors="coerce")
+                        )
+                        chaves.append("_versao")
+                    fundo_df = fundo_df.sort_values(chaves, ascending=False)
                 row = fundo_df.iloc[0]
 
                 pl = _to_float(row.get("Patrimonio_Liquido"))
