@@ -288,3 +288,20 @@
   - a ordem da escala em `_lpa_divulgado_comparado` repete a de `acoes_cvm.divulgado_da_escala`; juntar as duas é refactor, em commit à parte;
   - o comparado não leva a nota do divulgado (por exemplo, o sinal conferido pelo consolidado).
 - **Para o Marcos revisar:** o alerta compara com cada fonte de mercado que entregou P/VP, então um FII pode ganhar dois alertas (yfinance e brapi). O yfinance e a brapi calculam o P/VP com o VPA deles, de data diferente da do Informe; parte da divergência é defasagem, não erro.
+
+### F2B-17 — fix: stop flagging FIIs as outside CVM company coverage
+- **Executor:** claude-code (claude-opus-5-5)
+- **Status:** sucesso
+- **O que foi feito:** corrige o BUG-2A-13 (achado 8; pendências do F2A-11 e da revisão do F2A-31). Em `market_engine.py`:
+  - `buscar_dados_ticker`: sem índice, "referência oficial indisponível: dados da CVM não consultados" é gravado logo depois da etapa da referência, para qualquer classe e uma só vez, sem depender de a CVM estar injetada.
+  - `_buscar_cvm`: sem CD_CVM, o aviso "ticker fora da cobertura da CVM" sai só para quem não é FII e com o índice disponível (o FII é coberto pelo Informe Mensal, não pelas DFPs).
+  - `_buscar_cvm_fii`: FII sem CNPJ no índice (com o índice disponível) recebe `RISCO_FII_FORA_DO_INFORME`, "FII fora da cobertura do Informe Mensal".
+- **Testes:**
+  - `tests/regressao/test_bug_2a_13_fii_risco_fora_da_cvm.py` (BUG-2A-13): marca retirada, em PASS; registro em "corrigido".
+  - Com xfail estrito → falharam com `--runxfail` pelo sintoma → XPASS(strict) → marca retirada, em `tests/test_market_engine_fii_cvm.py`: `test_fii_nao_recebe_o_aviso_de_cobertura_das_companhias` (`'ticker fora da cobertura da CVM' not in [...]`), `test_fii_sem_indice_tem_o_aviso_de_referencia` (`assert 0 == 1`: sem a CVM injetada, o aviso não saía) e `test_fii_sem_cnpj_tem_o_aviso_do_informe` (a constante não existia).
+  - **Testes que mudam:** nenhum. Nenhum teste existente afirmava o aviso de cobertura das companhias para FII; os que o afirmam para ação (`tests/test_market_engine_referencia.py`, linhas 95, 168 e 186) e os do aviso de referência (195 e 405) seguem verdes sem mudança.
+- **Testes:** 1447 passed, 1 skipped, 16 xfailed → 1451 passed, 1 skipped, 15 xfailed (+3 novos; o BUG-2A-13 passou de xfailed a passed). Golden sem diferença; `tests/test_financeiro_pre_refactor.py` sem mudança. `ruff format` nos dois arquivos de teste; `market_engine.py` com a mesma contagem do `ruff check` do `HEAD` (11).
+- **Mutação** (módulo V1 tocado, sem meta): `market_engine` 1.601/2.226 (71,9%; no F2B-14, 1.575/2.196).
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** motores montados sem o índice nos testes (`_engine` sem `referencia`) passam a ter o aviso de referência em `riscos_dados`; nenhum teste fixava a lista vazia nesse caso. Na aplicação, a referência é sempre injetada (`MarketEngine.__init__`), e o aviso só aparece quando o índice está indisponível.

@@ -6,20 +6,11 @@ sai com um diagnóstico falso. Origem: auditoria externa da Fase 2A (Gemini e Co
 15/10/2026).
 """
 
-import pytest
-
 from market_engine import RISCO_FORA_DA_CVM
 from tests.test_market_engine import FakeCVM, _engine, _historico
 from tests.test_market_engine_fii_cvm import INFO, INFORME, _InformeFalso
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG-2A-13 · FII sem cd_cvm recebe o risco de fora da cobertura da CVM antes do "
-        "Informe · corrige: F2B-17"
-    ),
-)
 def test_fii_coberto_pelo_informe_nao_ganha_risco_de_fora_da_cvm(monkeypatch):
     # FakeCVM injeta o índice dos mapas públicos: HGLG11 tem CNPJ e não tem CD_CVM.
     engine = _engine(monkeypatch, info=INFO, historico=_historico(90.0), cvm=FakeCVM())

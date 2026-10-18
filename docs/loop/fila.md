@@ -298,7 +298,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden inalterado;
   - gate da fase.
 
-- [ ] **F2B-17** · fix · `fix: stop flagging FIIs as outside CVM company coverage` · **[AUDITORIA]**
+- [x] **F2B-17** · fix · `fix: stop flagging FIIs as outside CVM company coverage` · **[AUDITORIA]**
   Corrige o BUG-2A-13. Achado 8; pendências do F2A-11 e da revisão do F2A-31 (registrada no diário do F2A-27). `_buscar_cvm` roda para todo ticker e, no FII (sem `cd_cvm`), grava "ticker fora da cobertura da CVM", mesmo quando o Informe Mensal preenche os dados em seguida. E o FII sem índice só recebe "referência oficial indisponível" por efeito colateral dessa chamada.
   - Para FII, `_buscar_cvm` não grava o aviso de cobertura das companhias.
   - "referência oficial indisponível: dados da CVM não consultados" passa a ser gravado sem depender do `_buscar_cvm`, para qualquer classe.

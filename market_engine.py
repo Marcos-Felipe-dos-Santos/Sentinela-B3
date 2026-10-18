@@ -82,6 +82,7 @@ _CAMPOS_DA_REFERENCIA = {
 RISCO_FORA_DA_REFERENCIA = 'ticker fora da referência oficial'
 RISCO_FORA_DA_CVM = 'ticker fora da cobertura da CVM'
 RISCO_SEM_REFERENCIA = 'referência oficial indisponível: dados da CVM não consultados'
+RISCO_FII_FORA_DO_INFORME = 'FII fora da cobertura do Informe Mensal'
 AVISO_CODIGO_DA_TABELA = 'cvm_code_from_correction_table'
 AVISO_ACOES_FIM_DO_PERIODO = 'shares_end_of_period'
 RISCO_SEM_POR_ACAO_CVM = 'CVM não derivou LPA, VPA, P/L e P/VP'
@@ -449,6 +450,9 @@ class MarketEngine:
 
         # 0. Índice oficial: classe, CNPJ, CD_CVM e atributos do ticker.
         self._aplicar_referencia(ticker, dados)
+        if dados.get('_sem_referencia'):
+            # F2B-17: o aviso vale para qualquer classe, sem depender da etapa da CVM.
+            dados['riscos_dados'].append(RISCO_SEM_REFERENCIA)
         if 'classe_ativo' not in dados:
             # F2A-43: fora do índice (ou sem ele), a classe é a do classificador (final 11 sem
             # dado oficial vira UNKNOWN), para a guarda de escopo do motor de ações valer.
@@ -695,6 +699,8 @@ class MarketEngine:
             return False
         cnpj = dados.get('cnpj')  # F2A-31: só do índice oficial
         if not cnpj:
+            if not dados.get('_sem_referencia'):
+                dados.setdefault('riscos_dados', []).append(RISCO_FII_FORA_DO_INFORME)
             return False
         try:
             informe = provedor.obter_dados_fii(cnpj)
@@ -769,9 +775,10 @@ class MarketEngine:
         cd_cvm = dados.get('cd_cvm')
         if cd_cvm is None:
             dados['cvm_disponivel'] = False
-            dados.setdefault('riscos_dados', []).append(
-                RISCO_SEM_REFERENCIA if dados.get('_sem_referencia') else RISCO_FORA_DA_CVM
-            )
+            # F2B-17 (BUG-2A-13): o FII é coberto pelo Informe Mensal, não pelas DFPs; sem
+            # índice, o aviso já foi gravado na etapa da referência.
+            if not dados.get('_sem_referencia') and not self._is_fii_ticker(ticker, dados):
+                dados.setdefault('riscos_dados', []).append(RISCO_FORA_DA_CVM)
             return False
 
         try:
