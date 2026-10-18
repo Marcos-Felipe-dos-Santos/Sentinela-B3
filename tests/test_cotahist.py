@@ -341,3 +341,34 @@ def test_excecao_inesperada_devolve_a_copia_antiga(tmp_path, monkeypatch):
     with pytest.raises(ValueError):
         cot.baixar_mes(2026, 1, AGORA, tmp_path)
     assert [p.name for p in tmp_path.iterdir()] == ["COTAHIST_M012026.ZIP"]
+
+
+def test_zip_vazio_nao_conta_como_completo(tmp_path, baixador):
+    # F2B-40 (BUG-2A-16): um ZIP sem arquivo, mesmo de mês fechado baixado depois da folga,
+    # não é a cópia definitiva: segue o caminho do arquivo corrompido e é baixado de novo.
+    existente = tmp_path / "COTAHIST_M122025.ZIP"
+    with zipfile.ZipFile(existente, "w"):
+        pass
+    _envelhecer(
+        existente, 2
+    )  # baixado em 13/01/2026, depois do fim de dezembro e da folga
+    assert cot.baixar_mes(2025, 12, AGORA, tmp_path) == existente
+    assert len(baixador) == 1
+    with pytest.raises(zipfile.BadZipFile):
+        vazio = tmp_path / "vazio.zip"
+        with zipfile.ZipFile(vazio, "w"):
+            pass
+        cot.ler_zip(vazio)
+
+
+def test_so_zip_que_abre_e_traz_arquivo_conta_como_completo(tmp_path):
+    # F2B-40: o fechamento do mês só vale para a cópia legível com o arquivo do mês.
+    baixado_depois = datetime(2026, 1, 13, 12, tzinfo=UTC)
+    com_arquivo = tmp_path / "COTAHIST_M122025.ZIP"
+    _zip_vazio(com_arquivo)  # traz "a.txt"
+    _baixado_em(com_arquivo, baixado_depois)
+    assert cot._completo(com_arquivo, 2025, 12) is True
+    corrompido = tmp_path / "COTAHIST_M112025.ZIP"
+    corrompido.write_bytes(b"isto nao e um zip")
+    _baixado_em(corrompido, baixado_depois)
+    assert cot._completo(corrompido, 2025, 11) is False

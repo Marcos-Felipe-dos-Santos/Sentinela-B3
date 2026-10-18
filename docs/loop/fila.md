@@ -367,7 +367,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden inalterado;
   - gate da fase.
 
-- [ ] **F2B-40** · fix · `fix: treat an empty COTAHIST archive as a failed download`
+- [x] **F2B-40** · fix · `fix: treat an empty COTAHIST archive as a failed download`
   Corrige o BUG-2A-16. `b3_cotahist.ler_zip` faz `namelist()[0]` sem tratar ZIP vazio, e o `IndexError` escapa das exceções que `HistoricoRecente.coletar` trata. ZIP vazio passa a seguir o caminho do arquivo corrompido: o mês fica ausente, com o motivo, e o arquivo não conta como completo no cache.
 
   **Aceite:**

@@ -9,18 +9,9 @@ mês como ausente. Origem: auditoria externa da Fase 2A (Gemini 2ª passada e Co
 import zipfile
 from datetime import UTC, datetime
 
-import pytest
-
 from sentinela.data.providers import b3_cotahist
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG-2A-16 · ZIP vazio do COTAHIST levanta IndexError fora das exceções tratadas "
-        "· corrige: F2B-40"
-    ),
-)
 def test_zip_vazio_vira_mes_ausente(tmp_path, monkeypatch):
     vazio = tmp_path / "COTAHIST_M092026.ZIP"
     with zipfile.ZipFile(vazio, "w"):

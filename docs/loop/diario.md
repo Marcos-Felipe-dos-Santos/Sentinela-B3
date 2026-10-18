@@ -404,3 +404,21 @@
 - **Para o Marcos revisar:**
   - O guarda vale para o DY da brapi, a única fonte posterior que sobrescreve o DY na cascata (a CVM e o Informe Mensal não entregam DY; o cache de fundamentos só preenche o que falta, e grava o que já passou pela cascata). O yfinance, primeira fonte, segue sem ele: o motor aplica o invariante na entrada.
   - Como no ROE, o DY descartado também sai de `valores_por_fonte['brapi']` (a guarda vem antes do registro por fonte).
+- **Ressalvas da revisão, realocadas nesta retomada:** o texto de `MOTIVO_DY_FORA_DA_FAIXA` fixa "0–25%", e o limite real é `MACRO.DY_SANIDADE_MAX`; `market_engine` passou a importar `config._normalizar_dy`, função privada; e não há teste do DY negativo da brapi, das bordas 0,25 e 0,2500001 no merge, nem do DY descartado sem DY anterior (o campo fica ausente).
+
+### F2B-40 — fix: treat an empty COTAHIST archive as a failed download
+- **Executor:** claude-code (claude-opus-5-5); conclusão e validação: codex
+- **Status:** sucesso
+- **O que foi feito:** corrige o BUG-2A-16. Em `sentinela/data/providers/b3_cotahist.py`:
+  - `ler_zip`: ZIP sem arquivo levanta `zipfile.BadZipFile` ("ZIP sem arquivo"), o caminho do arquivo corrompido; `HistoricoRecente.coletar` já trata essa exceção, então o mês fica em `meses_ausentes`, com o aviso no log, em vez de o `IndexError` derrubar a coleta inteira.
+  - `_completo`: além de baixado depois do fim do mês (mais a folga), o ZIP precisa abrir e trazer ao menos um arquivo (`_tem_arquivo`); o vazio ou corrompido não é a cópia definitiva e expira como a do mês corrente.
+- **Testes:**
+  - `tests/regressao/test_bug_2a_16_cotahist_zip_vazio.py` (BUG-2A-16): marca retirada, em PASS; registro em "corrigido".
+  - `tests/test_cotahist.py::test_zip_vazio_nao_conta_como_completo`: xfail estrito, falhou com `--runxfail` pelo sintoma (`assert 0 == 1`: o ZIP vazio de dezembro, baixado em 13/01/2026, era aceito sem novo download), XPASS(strict) com a correção, marca retirada. Confere também o `BadZipFile` de `ler_zip`.
+  - `::test_so_zip_que_abre_e_traz_arquivo_conta_como_completo` (ZIP com arquivo conta; arquivo corrompido não), acrescentado pela mutação.
+- **Suíte:** HEAD: 1467 passed, 1 skipped, 9 xfailed → 1470 passed, 1 skipped, 8 xfailed (+2 testes novos; o BUG-2A-16 passou de xfailed a passed). A execução intermediária com 10 xfailed incluía o teste do aceite fora do stage, ainda marcado; não é a base commitada. Golden sem diferença. `ruff format` no módulo (só as linhas do item) e nos testes; `ruff check sentinela/data/` verde.
+- **Mutação** (`sentinela.data.providers.b3_cotahist*`, meta ≥ 80%): 272/306 (88,9%) na primeira rodada; com o teste de `_completo`, 274/306 (89,5%). Sobreviventes nas linhas novas, equivalentes: a mensagem do `BadZipFile` (`None` no lugar do texto) e `>` contra `>=` na comparação do instante, que já existia.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** nada além do acima.
+- **Retomada pelo Codex:** suíte e gates de Ruff conferidos novamente; golden inalterado; metadados existentes do mutmut confirmam 274/306 (89,5%). Primeira revisão pediu correção da base da suíte e realocação das ressalvas do F2B-39 para sua própria seção; corrigido antes da segunda revisão.

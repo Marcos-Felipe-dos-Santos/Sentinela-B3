@@ -92,9 +92,12 @@ def parsear_linhas(
 def ler_zip(
     zip_path: Path, mercados: tuple[str, ...] = (MERCADO_A_VISTA,)
 ) -> list[Cotacao]:
-    """Lê o primeiro arquivo do ZIP mensal da B3."""
+    """Lê o primeiro arquivo do ZIP mensal da B3. ZIP sem arquivo é ZIP corrompido (F2B-40)."""
     with zipfile.ZipFile(zip_path) as zf:
-        nome = zf.namelist()[0]
+        nomes = zf.namelist()
+        if not nomes:
+            raise zipfile.BadZipFile(f"{zip_path}: ZIP sem arquivo")
+        nome = nomes[0]
         with zf.open(nome) as f:
             texto = (linha.decode("latin-1") for linha in f)
             return list(parsear_linhas(texto, mercados))
@@ -118,11 +121,22 @@ def data_de_geracao(zip_path: Path) -> str | None:
         return None
 
 
+def _tem_arquivo(destino: Path) -> bool:
+    """O ZIP abre e traz ao menos um arquivo (F2B-40: o vazio não é a cópia definitiva)."""
+    try:
+        with zipfile.ZipFile(destino) as zf:
+            return bool(zf.namelist())
+    except (OSError, zipfile.BadZipFile):
+        return False
+
+
 def _completo(destino: Path, ano: int, mes: int) -> bool:
-    """O ZIP foi baixado depois do fim do mês (mais a folga): não muda mais."""
+    """O ZIP foi baixado depois do fim do mês (mais a folga) e traz o arquivo: não muda mais."""
     proximo = date(ano + (mes == 12), mes % 12 + 1, 1)
     fim = datetime(proximo.year, proximo.month, 1, tzinfo=_FUSO_B3).timestamp()
-    return destino.stat().st_mtime >= fim + _MARGEM_FECHAMENTO_S
+    return destino.stat().st_mtime >= fim + _MARGEM_FECHAMENTO_S and _tem_arquivo(
+        destino
+    )
 
 
 def baixar_mes(
