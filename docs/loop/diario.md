@@ -65,3 +65,42 @@
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** a docstring do módulo ainda diz "Na Fase 2 só a B muda"; ficou como estava, porque o aceite pede o diff só com a mudança de seção. Marcas na seção B: F-4 em `test_b_mediana_de_tres_metodos_pela_selic` (além dos dois do F-4 que já existiam); F-5 nos três testes novos de ação; F-9 no novo do FII (além do `test_b_fii_nao_considera_o_patrimonio_no_fair_value`). A mediana de três tem duas marcas.
 - **Revisão:** 1ª rodada aprovada com médios. Corrigido antes do commit: o comentário de `test_b_mediana_de_tres_metodos_pela_selic` passou a citar o checkpoint da Fase 0, seção 4, item 2 (o teste do FII já citava o item 3). Ficam registrados para o F2B-1: os testes da seção A injetam só a Selic (`valuation_engine.get_selic_atual`); quando o Gordon ler a taxa real por outra via, o F2B-1 precisa injetá-la neles também, senão o Gordon se abstém (ou tenta rede) e um teste `preservar` quebra pela correção. O nome `test_a_fair_value_com_dois_metodos_e_a_media_inclusive_com_divergencia` ficou, embora a flag de divergência tenha ido para a B (o aceite pede só a mudança de seção). A remoção do `mutants/` (acima, em "Resíduos") é desvio de processo, declarado.
+
+### F2B-8 — fix: keep non-positive CVM figures over stale positive values
+- **Executor:** claude-code (claude-opus-5-5); começado e retomado na mesma sessão, depois de uma pausa por limite de uso (passagem em `outputs/passagem.md`).
+- **Status:** sucesso
+- **O que foi feito:** [AUDITORIA] em (a), decisão do Marcos de 18/10/2026. Em `market_engine._is_field_missing`, nos campos `pl`, `pvp`, `roe`, `lpa` e `vpa`, ausente passou a ser só `None` ou não finito (o `is_missing` do início da função). O valor ≤ 0 deixou de ser ausente: o merge com `overwrite` da CVM grava o prejuízo e o PL negativo sobre o yfinance e a brapi, o cache não é consultado por eles, e eles não contam em `list_missing_required_fields`. Ficou a regra do `pl_confiavel is False` (P/L que o yfinance marcou como não confiável, negativo ou acima de 80), que é de confiabilidade da fonte, não do sinal do número.
+- **Testes novos:** `tests/test_market_engine_valores_negativos.py`, com cascata falsa (yfinance com `trailingPE` 8, ROE 10% e DY; CVM com lucro dos controladores −2.000 e LPA divulgado −2,1):
+  - `test_prejuizo_da_cvm_nao_e_trocado_por_valor_positivo` (LPA −2,0, P/L −10, ROE −0,2);
+  - `test_cache_nao_repoe_valor_que_a_cvm_entregou` (cache com valores positivos não entra);
+  - `test_lpa_cvm_e_valor_final_concordam` (`lpa_cvm` e `valores_por_fonte['CVM']` iguais ao valor final);
+  - `test_prejuizo_nao_conta_como_campo_faltando` (sem P/L e ROE no yfinance: `fundamentos_incompletos` False e `campos_faltantes` vazio; P/L, P/VP e ROE negativos fora de `list_missing_required_fields`).
+  Os quatro entraram com xfail estrito e falharam com `--runxfail` pelo sintoma (`KeyError: 'lpa'`, `assert 8.0 == -10.0`, `KeyError: 'lpa'`, `assert True is False`); depois da correção deram XPASS(strict), e a marca saiu. O BUG-2A-01 (`tests/regressao/test_bug_2a_01_cvm_nao_positivo_descartado.py`, três testes, sete casos) teve a marca retirada e está em PASS; o registro diz "corrigido".
+- **Testes que mudaram** (fixavam ≤ 0 como ausente; o item manda o primeiro e lista os demais aqui), em `tests/test_market_engine.py`:
+  - `test_quality_helpers_respect_zero_dy_but_not_zero_price`: P/L e ROE zero deixaram de ser faltantes (`== []`); a parte do preço zero passou a ser conferida em `list_missing_market_fields` (`["preco_atual", "historico"]`), importado no teste;
+  - `test_brapi_does_not_overwrite_valid_fields_with_missing_values`: o dublê da brapi mandava `pvp: 0` e `roe: 0` como "ausentes"; passou a mandar `None` e `nan` (o teste continua provando que ausente não sobrescreve). O provedor real da brapi já descarta P/L, P/VP, LPA e VPA ≤ 0 na fronteira (`brapi_provider._positive_float`), então os zeros só existiam no dublê;
+  - `test_merge_if_valid_only_fills_missing_fields`: a base trazia `pvp: 0` como ausente; passou a `None`.
+- **Medição** (`outputs/f2b8_candidatos.py` e `outputs/f2b8_cascata.py`, fora do git; DFP 2025 local; cascata real com rede só de leitura, sem cache SQLite e sem liquidez). Das 38 ações atuais do universo inicial, cinco têm prejuízo na DFP 2025 (nenhuma tem PL negativo). Antes → depois:
+
+  | Ticker | P/L | LPA | ROE | VPA | `fundamentos_incompletos` |
+  |---|---|---|---|---|---|
+  | CSAN3 | — → −1,26 | — → −3,89 | −0,272 (yfinance) → −1,833 (CVM) | 1,34 → 1,34 | True → False |
+  | HAPV3 | — → −29,61 | — → −0,28 | −0,0036 (yfinance) → −0,0029 (CVM) | 101,63 → 101,63 | True → False |
+  | LWSA3 | — → −12,68 | — → −0,41 | −0,078 (yfinance) → −0,091 (CVM) | 4,48 → 4,48 | True → False |
+  | MRVE3 | — → −3,90 | — → −1,85 | −0,100 (yfinance) → −0,196 (CVM) | 9,47 → 9,47 | True → False |
+  | USIM5 | — → — | — → — | −0,081 (yfinance) → −0,148 (CVM) | 16,91 → 16,91 | True → True |
+
+  Antes, o ROE negativo da CVM era descartado e ficava o do yfinance, também negativo, mas de outro período e sem a regra dos controladores. A USIM5 segue sem P/L e LPA porque o LPA da CVM se abstém (linha "PN" única com classes PNA e PNB; regra 3, ponto (c) da ficha 1.1, F2B-12), e o P/L negativo do yfinance é descartado com `pl_confiavel` False; por isso segue com `fundamentos_incompletos`.
+- **Dificuldades:** a primeira versão de `test_prejuizo_nao_conta_como_campo_faltando` passava sem a correção na primeira asserção: o yfinance falso preenchia P/L e ROE positivos.
+- **Como resolvi:** o teste usa uma cascata em que o yfinance só traz o DY, e P/L e ROE vêm só da CVM.
+- **Testes:** 1374 passed, 1 skipped, 25 xfailed → 1385 passed, 1 skipped, 18 xfailed (+4 novos; os sete casos do BUG-2A-01 passaram de xfailed a passed). Golden sem diferença (`git diff --exit-code HEAD -- tests/fixtures/golden_motores.jsonl`); `tests/test_financeiro_pre_refactor.py` sem mudança neste item. `ruff format` nos dois arquivos de teste novos ou reescritos; o import de `tests/test_market_engine.py` reordenado pelo ruff (I001).
+- **Mutação** (módulo V1 tocado, sem meta): `market_engine` 1.487/2.099 (70,8%); no fim da 2A, 1.472/2.093 (70,3%). Em `_is_field_missing`, 33 mortos e 15 sobreviventes.
+- **Resíduos:** nenhum no repositório. `outputs/f2b8_*.py` e `.json` ficam fora do git.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:**
+  - A brapi real deixa passar ROE zero (`roe_na_fronteira` não descarta zero). Com a correção, um ROE zero da brapi passa a sobrescrever o do yfinance; antes era tratado como ausente.
+  - A regra do `pl_confiavel is False` ficou de propósito: ela não depende do sinal do número, e a decisão (a) trata de ≤ 0.
+  - O motor de ações recebe agora LPA e P/L negativos; cada método se abstém pela própria regra (golden inalterado, porque a mudança é da cascata).
+  - O motor de ações ainda soma "Dados incompletos" e −10 de confiança quando `pl <= 0 or pvp <= 0` (`valuation_engine.py:269-271`). Com o P/L negativo da CVM chegando ao motor, a empresa com prejuízo continua com esse risco, o que contradiz "prejuízo é dado". O ajuste muda o golden e é do motor, fora deste item; candidato ao F2C-3 (insumo ausente que o motor converte em 0 e penaliza).
+  - A média de P/L dos pares (`peers_engine.py:86-93`, "P/L médio peers" na tela) passa a receber P/L negativo da CVM, e média aritmética com P/L negativo não tem sentido econômico. `peers_engine.py` é arquivo do ticket C-C do Jules; fica para a 2C.
+  - Zero em `pl` e `pvp` passou a contar como dado, mas com preço > 0 não pode ser real (é marcador de ausência). A brapi o barra na fronteira; o `priceToBook` do yfinance entra sem filtro, e um zero dele agora impede a consulta ao cache. É a decisão literal ("só None ou não finito"); se o Marcos quiser, o zero de P/L e P/VP volta a ser ausente na fronteira do provedor, num item à parte.

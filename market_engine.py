@@ -128,9 +128,9 @@ def _is_field_missing(field: str, value: Any, dados: dict[str, Any] | None = Non
     if field == 'historico':
         return value is None or getattr(value, 'empty', True)
     if field in {'pl', 'pvp', 'roe', 'lpa', 'vpa'}:
-        if dados and field == 'pl' and dados.get('pl_confiavel') is False:
-            return True
-        return numero is not None and numero <= 0
+        # F2B-8: ausente é só None ou não finito; prejuízo e PL negativo são dado, e cada
+        # método se abstém pela própria regra.
+        return bool(dados and field == 'pl' and dados.get('pl_confiavel') is False)
 
     # DY zero can be a valid "no dividends" signal.
     return False

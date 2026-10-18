@@ -199,7 +199,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - score de mutação de `valuation_engine*` e `fii_engine*` antes → depois no diário, sem queda;
   - gate da fase.
 
-- [ ] **F2B-8** · fix · `fix: keep non-positive CVM figures over stale positive values` · **[AUDITORIA]**
+- [x] **F2B-8** · fix · `fix: keep non-positive CVM figures over stale positive values` · **[AUDITORIA]**
   Corrige o BUG-2A-01. Achado 1 da auditoria do Gemini, confirmado no código em 14/10/2026 e já anotado nos diários do F2A-22 e do F2A-30. `_is_field_missing` (`market_engine.py`) trata como ausente qualquer `pl`, `pvp`, `roe`, `lpa` ou `vpa` ≤ 0:
   - `merge_if_valid` descarta o prejuízo e o PL negativo que a CVM apurou e mantém o valor positivo do yfinance, da brapi ou do cache de 7 dias. O motor de ações deriva o LPA do P/L (`valuation_engine.py:175`), então o Gordon e o Graham calculam com o número velho;
   - `list_missing_required_fields` conta prejuízo como campo faltando: `fundamentos_incompletos` (−30 de confiança e "Dados fundamentais obrigatórios ausentes") e consulta ao cache;

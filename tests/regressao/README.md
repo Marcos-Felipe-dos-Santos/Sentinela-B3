@@ -32,7 +32,7 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026).
 
 | ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
 |---|---|---|---|---|---|---|
-| BUG-2A-01 | LPA, VPA, ROE, P/L ou P/VP ≤ 0 da CVM descartados no merge; o valor positivo anterior ou do cache fica; prejuízo conta como dado ausente | `market_engine.py:133` (`_is_field_missing`), `:158` (`merge_if_valid`) | Gemini 1ª (14/10), Codex (15/10) | `test_bug_2a_01_cvm_nao_positivo_descartado.py` | F2B-8 | aberto |
+| BUG-2A-01 | LPA, VPA, ROE, P/L ou P/VP ≤ 0 da CVM descartados no merge; o valor positivo anterior ou do cache fica; prejuízo conta como dado ausente | `market_engine.py:133` (`_is_field_missing`), `:158` (`merge_if_valid`) | Gemini 1ª (14/10), Codex (15/10) | `test_bug_2a_01_cvm_nao_positivo_descartado.py` | F2B-8 | corrigido |
 | BUG-2A-02 | reserva dos controladores liberada quando a conta existe com outra descrição (`MOTIVO_SEM_CORRESPONDENCIA`), contra a D20 | `sentinela/data/controladores.py:44` (`_AUSENTE`) | Gemini 1ª (14/10) e 2ª (15/10), Codex (15/10) | `test_bug_2a_02_controladores_sem_correspondencia.py` | F2A-41 | corrigido |
 | BUG-2A-03 | linha dos controladores ausente devolve o lucro consolidado mesmo com minoritários no balanço (2.03.09 ≠ 0) | `sentinela/data/controladores.py:88` (`lucro_dos_controladores`) | Codex (15/10), Gemini 2ª (15/10) | `test_bug_2a_03_controladores_ausente_com_minoritarios.py` | F2A-41 | corrigido |
 | BUG-2A-04 | minoritários do balanço lidos só no modelo do setor, enquanto as outras leituras da reserva usam todos os modelos | `cvm_provider.py:124` (`lucro_controladores_com_reserva`) | Gemini 1ª (14/10), Codex (15/10) | `test_bug_2a_04_minoritarios_so_no_modelo_do_setor.py` | F2A-41 | corrigido |
