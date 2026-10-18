@@ -185,3 +185,4 @@ verificá-lo. Reporte a divergência; não a "conserte".
 - Quem executou cada item fica no diário (`**Executor:**`) e no corpo do commit (`Executor: <ferramenta>`).
 - Auditoria externa sempre por família de modelo diferente da do executor (ADR-0003, D30, revisão de 14/10/2026).
 - Workflow completo: `docs/loop/workflow-multiagente.md`.
+- Ordem das etapas de uma fase e comandos de auditoria: `docs/loop/ciclo-de-fase.md`.

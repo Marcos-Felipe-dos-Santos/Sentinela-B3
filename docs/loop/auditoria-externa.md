@@ -1,6 +1,6 @@
 # Auditoria externa
 
-> Prompt versionado para o **auditor externo**: um modelo diferente do que escreveu o código (hoje, o ChatGPT/Codex). Quem constrói é o loop do Claude Code; quem audita é outro modelo, para que os pontos cegos não coincidam. Decisão: ADR-0003, D30.
+> Prompt versionado para o **auditor externo**: um modelo diferente do que escreveu o código (hoje, o Codex; na auditoria da fase, também o Gemini 4 Argon, no app, pelo pacote de texto). Quem constrói é o loop do Claude Code; quem audita é outro modelo, para que os pontos cegos não coincidam. Decisão: ADR-0003, D30.
 
 ## Papel
 
@@ -23,7 +23,9 @@ Diga qual modo está usando no início da resposta.
 - **FASE**: o branch da fase (`v2/fase-N`) contra a tag da fase anterior (`git diff v2-fase-<N-1>...HEAD`), commit por commit.
 - **PR**: um PR do Jules ou de outra origem, contra a `main`.
 - **DOCUMENTO**: um ADR, uma proposta de fila ou um dossiê. Confira coerência com o PLANO e com os ADRs anteriores, contradições internas e decisões tomadas pelo texto que deveriam ser do Marcos.
-- **FICHA**: uma ficha metodológica (ADR-0003, D20). Refaça o exemplo numérico **por conta própria**, a partir da fórmula e da referência citadas, e compare. Não copie o número da ficha.
+- **FICHA**: uma ficha metodológica (ADR-0003, D21). Refaça o exemplo numérico **por conta própria**, a partir da fórmula e da referência citadas, e compare. Não copie o número da ficha.
+
+Prompts prontos para cada modo, inclusive a auditoria rápida de fechamento (modo FASE restrito aos commits da fila de fechamento): `docs/loop/prompts/`, preenchidos por `scripts/auditar.py`. Veja `docs/loop/ciclo-de-fase.md`.
 
 ## Checklist
 

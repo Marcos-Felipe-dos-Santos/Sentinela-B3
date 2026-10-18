@@ -360,31 +360,16 @@ Mantenedor e loop; nunca o Jules.
 
 ## 7. Ciclo de uma fase
 
-1. **Planejar.** No fim da fase anterior, o fable-architect propõe a fila em `docs/loop/fila-faseN-proposta.md`; o senior-reviewer revisa o plano; o Marcos aprova.
-2. **Decidir.** Item que depende de decisão recebe a decisão escrita antes de entrar na fila.
-3. **Ativar.** No branch novo `v2/fase-N`, criado a partir da `main`:
+O ciclo completo, com os comandos, está em `docs/loop/ciclo-de-fase.md` (desde 18/10/2026). Em resumo:
 
-   ```bash
-   git mv -f docs/loop/fila-faseN-proposta.md docs/loop/fila.md
-   git commit -m "chore: activate phase N queue"
-   ```
-
-4. **Executar.** No WSL2, dentro do tmux:
-
-   ```bash
-   cd ~/projetos/Sentinela_B3 && source venv/bin/activate
-   claude --permission-mode auto
-   ```
-
-   Na sessão, `/model sonnet` e depois:
-
-   ```text
-   /goal Todos os itens de docs/loop/fila.md antes da linha [DECISÃO] estão marcados [x], ou algum item está [!] com o motivo registrado em docs/loop/diario.md. Leia e siga docs/loop/protocolo.md à risca. Nunca faça git push nem abra PR. Ao fechar cada item, rode cat docs/loop/fila.md e git log --oneline -3.
-   ```
-
-5. **Revisar.** No `[DECISÃO]`, o Marcos lê o resumo em `docs/loop/historico/fase-N/` e revisa os commits.
-6. **Publicar.** Push do branch `v2/fase-N`; PR da fase opcional, com o resumo como corpo. O CI roda; o Jules revisa.
-7. **Integrar.** Merge na `main`; apagar o branch da fase (local e remoto) e marcar a tag `v2-fase-N`; atualizar a seção "Fase atual" do `AGENTS.md`.
+1. **Proposta.** O item `levantamento` do fim da fase anterior escreve `docs/loop/fila-faseN-proposta.md`.
+2. **Revisão.** Auditoria externa em modo DOCUMENTO; o Marcos responde por escrito as `[DECISÃO]` de ativação.
+3. **Ativação.** Branch `v2/fase-N` a partir da `main`, `git mv` da proposta para `docs/loop/fila.md` e a "Fase atual" do `AGENTS.md`.
+4. **Execução.** O loop no tmux, pelo `/goal`; o Codex executa quando a cota do Claude acaba (`docs/loop/workflow-multiagente.md`).
+5. **Fichas.** Lente nova só com ficha aprovada e auditada em modo FICHA (D21).
+6. **Auditoria da fase.** Push do branch, CI e auditoria em modo FASE por duas famílias de modelo; todo bug confirmado vira teste de regressão (`tests/regressao/`).
+7. **Fechamento.** Fila de fechamento, se houver, e auditoria rápida; PR com CI verde, merge commit, tag `v2-fase-N` e branch apagado.
+8. **Retro.** O que travou vira mudança numa skill, no protocolo ou no ciclo.
 
 ## 8. Divisão de trabalho
 

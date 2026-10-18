@@ -1,6 +1,6 @@
 # Workflow multiagente: Claude Code, Codex e Gemini
 
-**Status:** proposto em 14/10/2026. Vale quando o Marcos fizer o commit deste arquivo junto com a revisão da D30 (ADR-0003, "Revisões").
+**Status:** em vigor desde 18/10/2026 (commit `debc7ed`). A ordem das etapas de uma fase e os comandos de auditoria estão em `docs/loop/ciclo-de-fase.md`.
 **Inspiração:** o fluxo de Fabio Akita (Akita's AI Lair, `ai-memory`, `my-skills`), adaptado às regras do Sentinela: fila única, rito `fix` com PASS, golden, fichas metodológicas e auditoria externa.
 
 ## 1. Princípios
@@ -170,7 +170,7 @@ cp ~/auditoria-agy.txt /mnt/c/Users/marcos/Downloads/
 ```
 A cópia não tem `data/` (fora do git). Se a auditoria precisar recalcular com os arquivos da CVM, copie só os arquivos necessários para dentro dela.
 
-**App do Gemini (Argon):** não acessa o repositório. Anexe os arquivos (a ficha, o trecho do diário, o CSV recortado) e faça uma pergunta específica. A resposta entra no histórico como "segunda opinião (Gemini 4 Argon, app)", nunca direto numa decisão.
+**App do Gemini (Argon):** não acessa o repositório. Anexe os arquivos (a ficha, o trecho do diário, o CSV recortado) e faça uma pergunta específica. Para auditar uma fase ou uma ficha, gere o pacote com `python scripts/auditar.py gemini <modo> --fase N`: texto com linhas numeradas, em partes de até 350 KB (o app corta anexos maiores e não lê o zip do GitHub). A resposta entra no histórico como "segunda opinião (Gemini 4 Argon, app)", nunca direto numa decisão.
 
 ### Etapa 5 (opcional). Painel de cotas: ai-usagebar
 
@@ -248,16 +248,17 @@ Formato de `outputs/passagem.md` (a skill `passagem` escreve; a `retomar` lê):
 
 - O diário registra `**Executor:**` em cada item, e o commit leva `Executor: <ferramenta>` no corpo. É assim que o checkpoint sabe quem audita o quê.
 - Fichas metodológicas: auditoria FICHA pelo Codex (ou pelo Claude, se o Codex escreveu a ficha). Se o auditor e o autor divergirem num ponto de método, o Gemini 4 Argon dá a segunda opinião no app, sobre a divergência concreta, não sobre a ficha inteira.
+- Checkpoint da fase: além do auditor da tabela, o Gemini 4 Argon audita a fase inteira, no app, pelo pacote de texto. Na 2A, dos 18 bugs registrados, 5 só o Gemini achou e 2 só o Codex.
 
 ## 8. Piloto
 
-Duas semanas, ou até o checkpoint da 2A, o que vier primeiro. Anote em `outputs/piloto-multiagente.md` (fora do git), a cada troca de executor:
+Até o checkpoint da 2B (começou no fim da 2A). Anote em `outputs/piloto-multiagente.md` (fora do git), a cada troca de executor:
 - quanto tempo até o novo agente fazer a primeira ação útil;
 - quantas vezes você precisou recontar contexto;
 - se o bloco "Retomada" acertou o item e o estado;
 - divergências entre memória e git.
 
-No checkpoint da 2A, decida: manter o `ai-memory`, manter só a passagem por arquivo, ou ajustar as skills.
+No checkpoint da 2B, decida: manter o `ai-memory`, manter só a passagem por arquivo, ou ajustar as skills.
 
 ## 9. O que não fazer
 

@@ -338,4 +338,4 @@ Arquivos travados por fase: `docs/PLANO.md`, seção 8.
 <!-- multiagente 14/10/2026 -->
 ## Multiagente
 
-Ver a seção "Multiagente" do `AGENTS.md` e `docs/loop/workflow-multiagente.md`. Ao retomar trabalho começado por outro agente ou noutra sessão, use a skill `retomar` antes de editar. Ao parar com item pela metade, use `passagem`.
+Ver a seção "Multiagente" do `AGENTS.md` e `docs/loop/workflow-multiagente.md`. Ao retomar trabalho começado por outro agente ou noutra sessão, use a skill `retomar` antes de editar. Ao parar com item pela metade, use `passagem`. A ordem das etapas de uma fase e os comandos de auditoria estão em `docs/loop/ciclo-de-fase.md`.
