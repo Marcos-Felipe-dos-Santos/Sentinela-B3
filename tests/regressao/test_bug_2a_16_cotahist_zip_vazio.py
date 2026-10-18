@@ -18,7 +18,7 @@ from sentinela.data.providers import b3_cotahist
     strict=True,
     reason=(
         "BUG-2A-16 · ZIP vazio do COTAHIST levanta IndexError fora das exceções tratadas "
-        "· corrige: proposta da 2B"
+        "· corrige: F2B-40"
     ),
 )
 def test_zip_vazio_vira_mes_ausente(tmp_path, monkeypatch):

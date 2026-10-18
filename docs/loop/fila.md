@@ -165,7 +165,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - `CLAUDE.md` e `AGENTS.md` sem contradição entre si;
   - golden inalterado; nenhum código muda.
 
-- [ ] **F2B-36** · test · `test: register the IF.data audit bugs and point open bugs to their items`
+- [x] **F2B-36** · test · `test: register the IF.data audit bugs and point open bugs to their items`
   Achados da 2ª passada do Gemini (15/10/2026; auditoria externa da 2A, correção 7), conferidos pelo Claude no código em 18/10/2026 (`sentinela/data/providers/ifdata.py`, `IFDataProvider._buscar`):
   - **BUG-2A-19:** os arquivos do IF.data em `data/ifdata/` não registram a proveniência da D16 (data da coleta, hash, arquivo lateral `.proveniencia.json`), e o `Capital` devolvido não a carrega;
   - **BUG-2A-20:** a validade do cache é medida pelo relógio (`time.time()`), não pelo instante de referência recebido, e a resposta vazia (`value: []`, data-base ainda não publicada pelo BCB) é gravada e reaproveitada por até 7 dias.

@@ -14,7 +14,7 @@ from tests.test_market_engine import FakeBrapi, _engine, _historico
     strict=True,
     reason=(
         "BUG-2A-15 · DY fora de 0–25% de fonte posterior sobrescreve DY válido · corrige: "
-        "proposta da 2B"
+        "F2B-39"
     ),
 )
 def test_dy_fora_da_faixa_da_brapi_nao_apaga_o_do_yfinance(monkeypatch):

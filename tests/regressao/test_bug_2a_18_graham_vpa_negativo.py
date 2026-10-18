@@ -25,7 +25,7 @@ PARAMS = GrahamParams(
     strict=True,
     reason=(
         "BUG-2A-18 · Graham com VPA < 0 calcula raiz de negativo em vez de se abster · "
-        "corrige: proposta da 2B"
+        "corrige: F2B-42"
     ),
 )
 def test_vpa_negativo_se_abstem():

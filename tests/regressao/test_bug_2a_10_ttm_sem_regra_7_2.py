@@ -19,7 +19,7 @@ CONSOLIDADO = "Lucro/Prejuízo Consolidado do Período"
     strict=True,
     reason=(
         "BUG-2A-10 · TTM lê o lucro dos controladores zerado sem a regra 7.2 · corrige: "
-        "proposta da 2B (antes do F2C-1)"
+        "F2B-37"
     ),
 )
 def test_controladora_zerada_nao_entra_como_zero_no_acumulado(tmp_path):

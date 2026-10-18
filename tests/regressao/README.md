@@ -26,8 +26,9 @@ a falha de cada um: `python -m pytest tests/regressao -q --runxfail`.
 A evidência aponta o código no momento do registro; depois da correção a linha pode não existir.
 
 Origem: auditoria externa da Fase 2A (`docs/loop/historico/fase-2a/auditoria-externa.md`):
-Codex, modo FASE, e Gemini 4 Argon em duas passadas (1ª e 2ª). "proposta da 2B" = item a
-definir na revisão da proposta da Fase 2B.
+Codex, modo FASE, e Gemini 4 Argon em duas passadas (1ª e 2ª). Os destinos que eram
+"proposta da 2B" passaram, no F2B-36, ao item da fila da Fase 2B que corrige cada bug.
+BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026).
 
 | ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
 |---|---|---|---|---|---|---|
@@ -40,12 +41,17 @@ definir na revisão da proposta da Fase 2B.
 | BUG-2A-07 | ativo fora do índice oficial (ex.: BPAC11) recebe métodos de ação: `classe_ativo` não é preenchido e a guarda do F2A-29 não dispara | `market_engine.py:494` (`_aplicar_referencia`), `valuation_engine.py:125` | Gemini 1ª (14/10) e 2ª (15/10), Codex (15/10) | `test_bug_2a_07_fora_do_indice_recebe_metodos.py` | F2A-43 | corrigido |
 | BUG-2A-08 | relatório de rastreabilidade diz que o FII sem P/VP usa 1,0 | `sentinela/reports/rastreabilidade.py:394` | Gemini 2ª (15/10) | `test_bug_2a_08_rastreabilidade_pvp_um.py` | F2A-44 | corrigido |
 | BUG-2A-09 | relatório de rastreabilidade diz que o LPA da CVM é lucro ÷ ações, quando desde o F2A-36 é o LPA divulgado da espécie | `sentinela/reports/rastreabilidade.py:67` (`LIMITES`), `:233` (`_proveniencia_derivada`) | Gemini 2ª (15/10) | `test_bug_2a_09_rastreabilidade_lpa_recalculado.py` | F2A-44 | corrigido |
-| BUG-2A-10 | TTM lê o lucro dos controladores sem a regra 7.2 da ficha | `cvm_provider.py:739` (`_acumulados_do_arquivo`) | Gemini 1ª (14/10), Codex (15/10) | `test_bug_2a_10_ttm_sem_regra_7_2.py` | proposta da 2B (antes do F2C-1) | aberto |
-| BUG-2A-11 | alerta do F2A-5 compara com o LPA divulgado antes do filtro de coerência | `market_engine.py:227` (`_lpa_divulgado_comparado`) | Gemini 1ª (14/10), Codex (15/10) | `test_bug_2a_11_alerta_lpa_antes_da_coerencia.py` | proposta da 2B | aberto |
-| BUG-2A-12 | FII da CVM não registra `valores_por_fonte['CVM']`: checagem cruzada do P/VP vira identidade | `market_engine.py:696` (`_buscar_cvm_fii`) | Gemini 1ª (14/10), Codex (15/10) | `test_bug_2a_12_fii_sem_valores_por_fonte.py` | proposta da 2B | aberto |
-| BUG-2A-13 | FII sem `cd_cvm` recebe o risco "ticker fora da cobertura da CVM" antes da busca do Informe | `market_engine.py:748` (`_buscar_cvm`) | Gemini 1ª (14/10), Codex (15/10) | `test_bug_2a_13_fii_risco_fora_da_cvm.py` | proposta da 2B | aberto |
-| BUG-2A-14 | Informe Mensal reapresentado na mesma data escolhido sem desempate pela maior `Versao` | `cvm_fii_provider.py:153` (`obter_dados_fii`) | Codex (15/10) | `test_bug_2a_14_informe_sem_desempate_por_versao.py` | proposta da 2B | aberto |
-| BUG-2A-15 | DY finito mas fora de 0–25% de uma fonte posterior sobrescreve DY válido anterior | `market_engine.py:607` (merge da brapi) | Codex (15/10) | `test_bug_2a_15_dy_invalido_sobrescreve_valido.py` | proposta da 2B | aberto |
-| BUG-2A-16 | ZIP vazio do COTAHIST levanta `IndexError` fora das exceções tratadas | `sentinela/data/providers/b3_cotahist.py:97` (`ler_zip`) | Gemini 2ª (15/10), Codex (15/10) | `test_bug_2a_16_cotahist_zip_vazio.py` | proposta da 2B | aberto |
-| BUG-2A-17 | método `FiiNav` classifica P/VP ≤ 0 como desconto | `sentinela/methods/fii_nav.py:45` | Gemini 2ª (15/10) | `test_bug_2a_17_fii_nav_pvp_nao_positivo.py` | proposta da 2B | aberto |
-| BUG-2A-18 | método `Graham` com VPA < 0 calcula raiz de negativo (número complexo) em vez de se abster | `sentinela/methods/graham.py:71` | Gemini 2ª (15/10) | `test_bug_2a_18_graham_vpa_negativo.py` | proposta da 2B | aberto |
+| BUG-2A-10 | TTM lê o lucro dos controladores sem a regra 7.2 da ficha | `cvm_provider.py:739` (`_acumulados_do_arquivo`) | Gemini 1ª (14/10), Codex (15/10) | `test_bug_2a_10_ttm_sem_regra_7_2.py` | F2B-37 | aberto |
+| BUG-2A-11 | alerta do F2A-5 compara com o LPA divulgado antes do filtro de coerência | `market_engine.py:227` (`_lpa_divulgado_comparado`) | Gemini 1ª (14/10), Codex (15/10) | `test_bug_2a_11_alerta_lpa_antes_da_coerencia.py` | F2B-14 | aberto |
+| BUG-2A-12 | FII da CVM não registra `valores_por_fonte['CVM']`: checagem cruzada do P/VP vira identidade | `market_engine.py:696` (`_buscar_cvm_fii`) | Gemini 1ª (14/10), Codex (15/10) | `test_bug_2a_12_fii_sem_valores_por_fonte.py` | F2B-16 | aberto |
+| BUG-2A-13 | FII sem `cd_cvm` recebe o risco "ticker fora da cobertura da CVM" antes da busca do Informe | `market_engine.py:748` (`_buscar_cvm`) | Gemini 1ª (14/10), Codex (15/10) | `test_bug_2a_13_fii_risco_fora_da_cvm.py` | F2B-17 | aberto |
+| BUG-2A-14 | Informe Mensal reapresentado na mesma data escolhido sem desempate pela maior `Versao` | `cvm_fii_provider.py:153` (`obter_dados_fii`) | Codex (15/10) | `test_bug_2a_14_informe_sem_desempate_por_versao.py` | F2B-38 | aberto |
+| BUG-2A-15 | DY finito mas fora de 0–25% de uma fonte posterior sobrescreve DY válido anterior | `market_engine.py:607` (merge da brapi) | Codex (15/10) | `test_bug_2a_15_dy_invalido_sobrescreve_valido.py` | F2B-39 | aberto |
+| BUG-2A-16 | ZIP vazio do COTAHIST levanta `IndexError` fora das exceções tratadas | `sentinela/data/providers/b3_cotahist.py:97` (`ler_zip`) | Gemini 2ª (15/10), Codex (15/10) | `test_bug_2a_16_cotahist_zip_vazio.py` | F2B-40 | aberto |
+| BUG-2A-17 | método `FiiNav` classifica P/VP ≤ 0 como desconto | `sentinela/methods/fii_nav.py:45` | Gemini 2ª (15/10) | `test_bug_2a_17_fii_nav_pvp_nao_positivo.py` | F2B-41 | aberto |
+| BUG-2A-18 | método `Graham` com VPA < 0 calcula raiz de negativo (número complexo) em vez de se abster | `sentinela/methods/graham.py:71` | Gemini 2ª (15/10) | `test_bug_2a_18_graham_vpa_negativo.py` | F2B-42 | aberto |
+| BUG-2A-19 | arquivos do IF.data sem a proveniência da D16 (sem o `.proveniencia.json` lateral, data da coleta e hash), e o `Capital` sem ela | `sentinela/data/providers/ifdata.py:152` (`IFDataProvider._buscar`) | Gemini 2ª (15/10), conferido pelo Claude (18/10) | `test_bug_2a_19_ifdata_sem_proveniencia.py` | F2B-44 | aberto |
+| BUG-2A-20 | validade do cache do IF.data medida pelo relógio (`time.time()`), não pelo instante de referência; resposta vazia (`value: []`) gravada e reaproveitada por até 7 dias | `sentinela/data/providers/ifdata.py:159` (`IFDataProvider._buscar`) | Gemini 2ª (15/10), conferido pelo Claude (18/10) | `test_bug_2a_20_ifdata_cache_pelo_relogio.py` | F2B-44 | aberto |
+| BUG-2A-21 | ROE de fonte de mercado sem piso: −21 entra como −2.100% | `sentinela/data/normalizacao.py:112` (`guardar_roe`) | Gemini 1ª (14/10), decisão C | `test_bug_2a_21_roe_sem_piso.py` | F2B-18 | aberto |
+| BUG-2A-22 | preço negativo aceito nos dois motores (`acoes/preco-negativo` sai com Graham de R$ 12,25) | `valuation_engine.py:113` e `:118` (`processar`), `fii_engine.py:61` (`analisar`) | Gemini 1ª (14/10), ressalva ao F2A-25 | `test_bug_2a_22_preco_negativo_nos_motores.py` | F2B-20 | aberto |
+| BUG-2A-23 | motor de ações converte `divida_liq_ebitda` em texto pt-BR, que nenhuma fonte entrega desde o F2A-22; os testes desse caminho só conferem `0 <= score_final <= 100` | `valuation_engine.py:278` (`processar`) | Gemini 2ª (15/10) | `test_bug_2a_23_divida_em_texto_avaliada.py` | F2B-45 | aberto |

@@ -16,7 +16,7 @@ from tests.test_market_engine_referencia import FakeReferencia, _indice, _regist
     strict=True,
     reason=(
         "BUG-2A-11 · alerta do F2A-5 compara com o LPA divulgado rejeitado pela coerência "
-        "· corrige: proposta da 2B"
+        "· corrige: F2B-14"
     ),
 )
 def test_divulgado_de_sinal_oposto_nao_e_a_referencia_da_conferencia(monkeypatch):

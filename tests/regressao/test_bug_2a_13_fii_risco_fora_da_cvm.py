@@ -17,7 +17,7 @@ from tests.test_market_engine_fii_cvm import INFO, INFORME, _InformeFalso
     strict=True,
     reason=(
         "BUG-2A-13 · FII sem cd_cvm recebe o risco de fora da cobertura da CVM antes do "
-        "Informe · corrige: proposta da 2B"
+        "Informe · corrige: F2B-17"
     ),
 )
 def test_fii_coberto_pelo_informe_nao_ganha_risco_de_fora_da_cvm(monkeypatch):
