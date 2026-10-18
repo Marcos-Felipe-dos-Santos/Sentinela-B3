@@ -338,7 +338,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden pela regra;
   - gate da fase.
 
-- [ ] **F2B-37** · fix · `fix: apply the controlling-interest rule to the trailing twelve months`
+- [x] **F2B-37** · fix · `fix: apply the controlling-interest rule to the trailing twelve months`
   Corrige o BUG-2A-10 (achado 5 do Gemini; destino "antes do F2C-1" no registro). `cvm_provider._acumulados_do_arquivo` lê o lucro dos controladores do TTM direto da conta, sem a decisão 7.2 da ficha nem a D20: com a 3.11.01 zerada (105 companhias na DFP 2025), o TTM soma 0 como lucro dos controladores.
   - Cada documento do TTM passa pela mesma leitura com reservas da série anual (`lucro_controladores_com_reserva`, com o balanço do mesmo documento). Abstenção num documento abstém o TTM do campo, com o motivo.
   - O consumidor de hoje é só informativo (o TTM no relatório); o F2C-1 vai consumi-lo.

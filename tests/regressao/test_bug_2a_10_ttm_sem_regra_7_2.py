@@ -7,21 +7,12 @@ balanço, ou abster; zero nunca. Origem: auditoria externa da Fase 2A (Gemini e 
 15/10/2026).
 """
 
-import pytest
-
 from cvm_provider import CVMProvider
 from tests.test_cvm_series import CD_CVM, _zip
 
 CONSOLIDADO = "Lucro/Prejuízo Consolidado do Período"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG-2A-10 · TTM lê o lucro dos controladores zerado sem a regra 7.2 · corrige: "
-        "F2B-37"
-    ),
-)
 def test_controladora_zerada_nao_entra_como_zero_no_acumulado(tmp_path):
     provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
     dt, ini = "2025-03-31", "2025-01-01"

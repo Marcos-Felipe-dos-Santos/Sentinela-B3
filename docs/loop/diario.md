@@ -344,3 +344,32 @@
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** a docstring de `tests/test_roe_fronteira.py` e a regra do ROE em "Regras econômicas vigentes" do `CLAUDE.md` ainda não citam o piso de −2 do F2B-18 (ressalva da revisão do F2B-18); o `CLAUDE.md` é do F2B-33, que sincroniza as instruções no fim da fase.
+
+### F2B-37 — fix: apply the controlling-interest rule to the trailing twelve months
+- **Executor:** claude-code (claude-opus-5-5)
+- **Status:** sucesso
+- **O que foi feito:** corrige o BUG-2A-10 (achado 5 do Gemini). `cvm_provider.CVMProvider._acumulados_do_arquivo` lia o lucro dos controladores de cada documento do TTM direto da conta, e a 3.11.01 zerada entrava como zero.
+  - Cada documento do TTM passa por `lucro_controladores_com_reserva` (D20 e decisão 7.2, a mesma leitura da série anual), com o balanço consolidado (`BPP_con`) do mesmo documento (`DT_REFER` e `VERSAO`). Arquivo sem `BPP_con` lido: a leitura segue com o balanço vazio (2.03.09 ausente).
+  - `series_cvm.Acumulado` ganhou `motivos` (por campo, opcional), e o provedor grava nele o motivo da abstenção do lucro dos controladores do documento.
+  - `series_cvm.ttm`: com o campo abstido em algum documento dos quatro trimestres, o motivo do TTM é o genérico seguido do motivo do documento ("campo ausente em ao menos um dos documentos dos quatro trimestres: lucro dos controladores não separado no documento, com não controladores no balanço"); sem motivo no documento, segue o genérico.
+- **Testes:**
+  - `tests/regressao/test_bug_2a_10_ttm_sem_regra_7_2.py` (BUG-2A-10): marca retirada, em PASS; registro em "corrigido".
+  - `tests/test_cvm_series.py::test_ttm_abstem_quando_um_documento_se_abstem`: xfail estrito, falhou com `--runxfail` (`Acumulado` sem `motivos`), XPASS(strict) com a correção, marca retirada. O `import pytest` que eu tinha acrescentado só para a marca saiu com ela.
+- **Dificuldades:** o arquivo sintético do teste de regressão não traz `BPP_con`, e a primeira versão deixava o `FileNotFoundError` escapar.
+- **Como resolvi:** a leitura do balanço trata `OSError` (do qual `FileNotFoundError` é subclasse), `KeyError` e `ValueError` como balanço vazio.
+- **Medição** (`outputs/f2b37_ttm.py`, fora do git; as 38 ações atuais do universo inicial; ITR de 2024 a 2026 e DFPs já em `data/cvm/`; cascata real com rede só de leitura, sem cache SQLite; "antes" com o código do `HEAD` numa worktree): 34 iguais, quatro mudam. Lucro dos controladores do TTM, antes → depois (lucro líquido do TTM igual nos dois):
+
+  | Ticker | Antes | Depois | Leitura |
+  |---|---|---|---|
+  | KLBN11 | −973.308.000 | — (abstenção) | 3.11.01 zerada com não controladores no balanço (7.2); lucro líquido do TTM 535.987.000 |
+  | SBSP3 | 3.196.215.000 | — (abstenção) | o mesmo motivo; lucro líquido 8.057.470.000 |
+  | LWSA3 | 25.225.000 | −200.225.000 | trimestres com a 3.11.01 zerada, sem não controladores: a reserva dá o lucro total, igual ao lucro líquido |
+  | RECV3 | 638.352.000 | 499.164.000 | o mesmo; igual ao lucro líquido |
+
+  Antes, os trimestres zerados entravam como zero e misturavam escopos: a KLBN11 chegava a um lucro dos controladores negativo com o lucro líquido positivo.
+- **Testes:** 1459 passed, 1 skipped, 12 xfailed → 1462 passed, 1 skipped, 11 xfailed (+2 novos, o do aceite e o do balanço; o BUG-2A-10 passou de xfailed a passed). Golden sem diferença (o TTM é informativo, só no relatório; o F2C-1 vai consumi-lo); `tests/test_financeiro_pre_refactor.py` sem mudança. `ruff format` nos arquivos alterados de `sentinela/data/` e de teste.
+- **Mutação:** `sentinela.data.series_cvm` 350/363 (96,4%, meta ≥ 80%; um sobrevivente em `ttm`). `cvm_provider` (V1, sem meta): 1.264/1.430 (88,4%) na primeira rodada, com 35 sobreviventes em `_acumulados_do_arquivo` (o ramo do balanço não tinha teste de provedor); com `tests/test_cvm_series.py::test_ttm_le_o_balanco_do_mesmo_documento_para_a_reserva` (ITR sintético com `BPP_con`: março, versão 1, sem não controladores, leva a reserva, 100.000, e a versão 2 do balanço, com eles, não vale para a 1; junho, com não controladores, se abstém, com o motivo), 1.289/1.430 (90,1%), com 10 sobreviventes no ramo.
+- **Resíduos:** nenhum no repositório; `outputs/f2b37_*` fora do git.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Revisão:** 1ª rodada aprovada com médios. Corrigido antes do commit: no teste do balanço, a versão 1 de março tinha não controladores e a versão 2 não; sem o filtro por `VERSAO`, as duas linhas divergentes também dariam abstenção, e o teste não provava o filtro. Os valores foram invertidos (versão 1 sem, versão 2 com), e o mesmo teste agora falha sem o filtro. Ficam registrados: `zipfile.BadZipFile` fora do `except` da leitura do balanço (a DRE do mesmo ZIP já foi lida antes); o filtro por `DT_REFER` e `VERSAO` fora do `try`; e, para o F2C-1, que um trimestre isolado pode subtrair documentos de escopos diferentes (um pela reserva, outro com a 3.11.01 preenchida), com erro limitado, porque a reserva só vale sem não controladores no balanço daquela data. A docstring de `_acumulados_do_arquivo` ainda não cita o `BPP_con` nem os motivos.
+- **Para o Marcos revisar:** o TTM da KLBN11 e da SBSP3 passa a se abster do lucro dos controladores, com o motivo em `dados['ttm_cvm']['motivos']`; o relatório do F1-12 (`rastreabilidade.py:518`) mostra só o período do TTM ou a abstenção inteira, não o motivo por campo. O lucro líquido do TTM segue disponível.

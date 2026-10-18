@@ -65,6 +65,8 @@ class Acumulado:
     inicio: date
     fim: date
     valores: Mapping[str, float | None] = field(default_factory=dict)
+    # F2B-37: o motivo de cada campo abstido no documento (por exemplo, a decisão 7.2).
+    motivos: Mapping[str, str] = field(default_factory=dict)
 
     def origem(self) -> dict:
         return {
@@ -277,7 +279,17 @@ def ttm(acumulados: Iterable[Acumulado], data_referencia: date) -> dict | Absten
         parcelas = [t.valores.get(campo) for t in ultimos]
         if any(p is None for p in parcelas):
             valores[campo] = None
-            motivos[campo] = MOTIVO_CAMPO_AUSENTE
+            do_documento = [
+                d.motivos[campo]
+                for t in ultimos
+                for d in t.documentos
+                if campo in d.motivos
+            ]
+            motivos[campo] = (
+                f"{MOTIVO_CAMPO_AUSENTE}: {do_documento[0]}"
+                if do_documento
+                else MOTIVO_CAMPO_AUSENTE
+            )
         else:
             valores[campo] = sum(parcelas)
     valores["proventos"] = proventos(valores["dividendos"], valores["jcp"])

@@ -743,15 +743,33 @@ class CVMProvider:
         linhas = pd.concat(partes, ignore_index=True)
         if linhas.empty:
             return []
+        # F2B-37 (BUG-2A-10): o balanço do mesmo documento, para a reserva da decisão 7.2.
+        try:
+            bpp = self.parsear_demonstrativo(
+                zip_path, "BPP_con", include_cd_cvm=True, include_versao=True
+            )
+            bpp = bpp[bpp["CD_CVM"] == cd_cvm]
+        except (OSError, KeyError, ValueError):
+            bpp = pd.DataFrame(columns=["DT_REFER", "VERSAO", "CD_CONTA", "DS_CONTA", "VL_CONTA"])
         acumulados = []
         for (dt_refer, versao), doc in linhas.groupby(["DT_REFER", "VERSAO"]):
             inicio = doc["DT_INI_EXERC"].min()
             doc = doc[doc["DT_INI_EXERC"] == inicio]
             fim = doc["DT_FIM_EXERC"].max()
-            valores = {}
+            valores, motivos = {}, {}
             for campo in series_cvm.CAMPOS_TTM:
                 leitura = _ler(doc, campo, modelo)
                 valores[campo] = leitura.valor if isinstance(leitura, contas_cvm.Leitura) else None
+            # F2B-37: o lucro dos controladores pela mesma leitura com reservas da série anual
+            # (D20 e decisão 7.2), com o balanço do mesmo documento.
+            bpp_doc = bpp[
+                (bpp["DT_REFER"].astype(str) == str(dt_refer))
+                & (bpp["VERSAO"].astype(str) == str(versao))
+            ]
+            controladores_doc = lucro_controladores_com_reserva(doc, bpp_doc)
+            valores["lucro_controladores"] = controladores_doc.valor
+            if controladores_doc.valor is None and controladores_doc.motivo:
+                motivos["lucro_controladores"] = controladores_doc.motivo
             acumulados.append(
                 series_cvm.Acumulado(
                     documento=documento,
@@ -760,6 +778,7 @@ class CVMProvider:
                     inicio=date.fromisoformat(str(inicio)),
                     fim=date.fromisoformat(str(fim)),
                     valores=valores,
+                    motivos=motivos,
                 )
             )
         return acumulados
