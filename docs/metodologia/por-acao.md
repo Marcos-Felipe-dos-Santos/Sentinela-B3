@@ -1,6 +1,6 @@
 # Números por ação (LPA, VPA, ações, classes, units e escala) — versão 1.1
 
-**Status:** versão 1.1 em revisão. Decisões do Marcos de 18/10/2026 nas seções 7.7 a 7.10, revistas no mesmo dia depois da primeira auditoria FICHA desta versão (três bloqueios: a garantia da faixa na 7.7, as companhias recuperáveis na 7.7 e a linha do BBAS3 na 7.8; mais as regras de domínio da seção 4). Aguarda a segunda auditoria e a aprovação (D21). A versão 1.0 foi aprovada pelo Marcos em 13/10/2026, depois da terceira auditoria externa em modo FICHA ("pode seguir para aprovação da ficha"); as versões 0.1 e 0.2 tiveram dois bloqueios cada, fechados com as decisões 7.1 a 7.6. Relatórios em `docs/loop/historico/fase-2a/auditoria-ficha-por-acao.md`. Mudança posterior exige nova versão, aprovação e auditoria (D21).
+**Status:** versão 1.1 em revisão. Decisões do Marcos de 18/10/2026 nas seções 7.7 a 7.10, revistas no mesmo dia depois da primeira auditoria FICHA desta versão (três bloqueios: a garantia da faixa na 7.7, as companhias recuperáveis na 7.7 e a linha do BBAS3 na 7.8; mais as regras de domínio da seção 4). A segunda auditoria confirmou os três fechamentos e pediu a desigualdade exata da confirmação da 7.7, a reserva do lucro ausente alinhada ao F2A-41 e regras de domínio completas, feitos aqui. Aguarda a terceira auditoria e a aprovação (D21). A versão 1.0 foi aprovada pelo Marcos em 13/10/2026, depois da terceira auditoria externa em modo FICHA ("pode seguir para aprovação da ficha"); as versões 0.1 e 0.2 tiveram dois bloqueios cada, fechados com as decisões 7.1 a 7.6. Relatórios em `docs/loop/historico/fase-2a/auditoria-ficha-por-acao.md`. Mudança posterior exige nova versão, aprovação e auditoria (D21).
 **Itens que dependem:** F2A-36 (LPA divulgado por espécie, classes e units), F2A-37 (reservas dos controladores); versão 1.1: F2B-10 (7.7), F2B-11 (7.8), F2B-12 (7.9) e F2B-13 (7.10)
 **Origem no código:** F2A-3 (derivação por ação) e F2A-5 (alertas), já entregues
 **Decisões de origem:** ADR-0003, D19, D20 e D21; checkpoint da Fase 0, seção 4, item 1 (revisado pela D19)
@@ -31,13 +31,13 @@ A versão 1.1 acrescenta duas atribuições que **não** são a definição da n
 
 | Insumo | Definição exata | Fonte | Unidade e escala | Data de referência |
 |---|---|---|---|---|
-| LPA básico por espécie | linhas 3.99.01.01, 3.99.01.02… da DRE consolidada; a espécie vem da **descrição** (ON, PN, PNA…), não do código | DFP/ITR, `dfp_cia_aberta_DRE_con_<ano>.csv` e `itr_cia_aberta_DRE_con_<ano>.csv` | R$ por ação; **não** passa pela `ESCALA_MOEDA` (a linha vem marcada MIL, mas o valor já é por ação) | `DT_REFER` do documento; no ITR, o período pelo `DT_INI_EXERC` e o `DT_FIM_EXERC`, com `ORDEM_EXERC` = ÚLTIMO |
+| LPA básico por espécie | linhas 3.99.01.01, 3.99.01.02… da DRE consolidada; a espécie vem da **descrição** (ON, PN, PNA…), não do código | DFP/ITR, `dfp_cia_aberta_DRE_con_<ano>.csv` e `itr_cia_aberta_DRE_con_<ano>.csv` | R$ por ação; **não** passa pela `ESCALA_MOEDA` (a linha vem marcada MIL, mas o valor já é por ação) | `DT_REFER` do documento; no ITR, o período pelo `DT_INI_EXERC` e o `DT_FIM_EXERC`, com `ORDEM_EXERC` = ÚLTIMO. Lucro e LPA comparados na escala têm exatamente o mesmo intervalo; com trimestre e acumulado no documento, vale o acumulado do ano, o mesmo intervalo da DFP |
 | Lucro dos controladores | par (código, descrição) "Atribuído a (aos) Sócios da Empresa Controladora" (3.11.01 ou 3.09.01, conforme a estrutura da DRE, em empresas e bancos; 3.11.01 ou 3.13.01 no modelo de seguradora), pela tabela `sentinela/data/referencia/contas_cvm.csv` | DFP/ITR | R$ × `ESCALA_MOEDA` (MIL → × 1.000) | `DT_REFER` |
 | PL consolidado e não controladores | campos `pl_total` e `pl_nao_controladores` da tabela de contas, por modelo: 2.03 e 2.03.09 nas empresas e seguradoras; 2.07 ou 2.08, e 2.07.02 ou 2.08.09, nos bancos | DFP/ITR, BPP consolidado | R$ × `ESCALA_MOEDA` | `DT_REFER` |
 | Ações por espécie e tesouraria | `QT_ACAO_ORDIN_CAP_INTEGR`, `QT_ACAO_PREF_CAP_INTEGR`, `QT_ACAO_ORDIN_TESOURO`, `QT_ACAO_PREF_TESOURO`, `QT_ACAO_TOTAL_TESOURO` | DFP/ITR, `composicao_capital` | **sem coluna de escala**: unidade ou milhar, conforme o documento (armadilha 10) | `DT_REFER`, mesma `VERSAO` |
 | Lucro consolidado | campo `lucro_liquido` da tabela de contas: o par (código, descrição) de cada modelo, por exemplo 3.11 "Lucro/Prejuízo Consolidado do Período" nas empresas e 3.09 no ITUB4 | DFP/ITR | R$ × `ESCALA_MOEDA` | `DT_REFER` |
 | LPA básico agregado | linha 3.99.01 sem espécie na descrição, quando a DRE não traz as linhas por espécie; zerada ou ausente, a 3.99, só com a conferência da 7.8 | DFP/ITR, `dfp_cia_aberta_DRE_con_<ano>.csv` | R$ por ação, como o LPA por espécie | `DT_REFER` |
-| Ações em circulação no yfinance | `sharesOutstanding` do ticker | yfinance | ações | data da consulta |
+| Ações em circulação no yfinance | `sharesOutstanding` do ticker; só confirma a escala na 7.7 e alimenta o alerta da 7.3 | yfinance | ações | data da consulta, com o valor, a fonte e o resultado da consulta (inclusive a falha) registrados na proveniência (D16) |
 | Espécie do ticker | `Valor_Mobiliario` e `Sigla_Classe_Acao_Preferencial`; corrigida só pela tabela de correções, com evidência do próprio documento (7.10) | FCA, `valor_mobiliario` | — | `Data_Referencia` do FCA |
 | Composição da unit | `Composicao_BDR_Unit` (por exemplo, "1 ON / 2 PN") | FCA | quantidade por unit | `Data_Referencia` do FCA |
 | Preço | fechamento D-1 | yfinance (fluxo da V1; o COTAHIST do F2A-18 é a série oficial disponível) | R$ por ação, bruto | pregão anterior |
@@ -65,15 +65,17 @@ Abstenções (D19 e D20; textos que o código usa ou passará a usar):
 8. **LPA divulgado incoerente (decisão 7.5):** o LPA da espécie se abstém, com alerta no relatório de qualidade, e o recalculado **não** entra no lugar. Incoerente é: (a) sinal oposto ao do lucro dos controladores ou, quando este se abstém, ao do lucro consolidado (3.11; decisão 7.6); ou (b) mais de uma linha de LPA básico para a mesma espécie com valores diferentes. Linhas repetidas com o mesmo valor contam como uma. Caso real: a QUAL3 traz na DRE consolidada duas linhas básicas "ON", −0,00895 e +0,04662, com lucro dos controladores positivo (R$ 10.665.000): é conflito de linhas (b), e uma delas também tem sinal oposto (a). Textos: "LPA divulgado com sinal oposto ao lucro dos controladores" (ou "ao lucro consolidado") e "LPA divulgado com linhas conflitantes para a espécie".
 9. **Sinal não conferível (decisão 7.6):** sem lucro dos controladores e sem lucro consolidado válido no documento, o LPA divulgado se abstém ("sinal do LPA divulgado não conferível: lucro não identificado no documento").
 10. **Insumo inválido (versão 1.1):** valor não numérico, NaN ou infinito em qualquer insumo desta ficha nunca vira zero, valor de outra fonte nem reserva; o número que depende dele se abstém, com o motivo. Em particular:
-    - linha de LPA não finita é descartada; sem outra linha válida da espécie, o LPA dela se abstém;
-    - quantidade de ações negativa ou não finita em qualquer coluna da Composição do Capital, ou tesouraria maior que o capital da espécie, invalida a Composição ("Composição do Capital inválida"), como o total ≤ 0 da abstenção 1;
+    - linha de LPA não finita faz a espécie se abster, mesmo com outra linha válida: é dado com problema, como as linhas conflitantes da 7.5 ("LPA divulgado inválido para a espécie");
+    - quantidade de ações negativa, não finita, fracionária ou com a coluna ausente, em qualquer coluna da Composição do Capital, ou tesouraria maior que o capital da espécie, invalida a Composição ("Composição do Capital inválida"), como o total ≤ 0 da abstenção 1;
+    - tesouraria total diferente da soma das espécies: vale a regra atual (o total; a soma só quando o total falta) até o levantamento da 2B conferir os casos (F2B-21, pergunta 8);
+    - `sharesOutstanding` do yfinance ausente, ≤ 0 ou não finito: a confirmação da 7.7 falha, e a abstenção continua;
     - composição de unit com quantidade não inteira ou ≤ 0 é composição não reconhecida (abstenção 4).
 11. **Zero (versão 1.1):** linha de LPA igual a zero conta como não informada, porque o arquivo da CVM usa zero na linha sem valor (COGN3, RECV3, VIVT3 e TIMS3 trazem todas as linhas 3.99 zeradas). Lucro, PL e VPA iguais a zero são dados.
 12. **Prejuízo e PL negativo são dados (versão 1.1):** LPA negativo, prejuízo, PL e VPA negativos entram como estão (decisão do Marcos de 18/10/2026 sobre o achado 1 da auditoria da 2A). O ROE se abstém com PL ≤ 0 (abstenção 5), e cada método decide a própria aplicabilidade (o Graham com VPA ≤ 0, por exemplo).
 13. **Fora do escopo:** FIIs. O VPA e o P/VP da cota vêm do Informe Mensal (F2A-11) e ficam com a ficha do FII (F2B-25).
 
 Reservas permitidas (D20, política aprovada com o ADR, e decisão 7.2):
-- **Lucro dos controladores ausente:** vale o lucro total só se a linha dos não controladores estiver ausente ou zerada.
+- **Lucro dos controladores ausente:** vale o lucro total só se não houver minoritários nem na DRE nem no balanço: a linha dos não controladores ausente ou zerada **e** a participação dos não controladores no balanço (2.03.09, ou o par do modelo) ausente ou zerada. É o que o código faz desde o F2A-41 (BUG-2A-03); a versão 1.0 deste texto pedia só a DRE.
 - **Lucro dos controladores zerado com o dos não controladores zerado ou ausente, e lucro consolidado diferente de zero:** o documento não separou o lucro. Vale o lucro total só se o balanço também não mostrar minoritários (2.03.09 ausente ou zerada). Com 2.03.09 diferente de zero, o lucro dos controladores se abstém ("lucro dos controladores não separado no documento, com não controladores no balanço").
 - **PL dos controladores:** vale o PL total só se a participação dos não controladores no balanço estiver ausente ou zerada **e** o lucro dos não controladores também.
 - **Valor inválido** (não numérico, NaN, infinito) nunca autoriza reserva: o campo se abstém.
@@ -140,14 +142,16 @@ Esses dois casos viram teste no F2A-36.
 
 ### 5.3 Casos da versão 1.1
 
-Contas refeitas de forma independente pela auditoria externa (Codex, modo FICHA, 18/10/2026), só com a biblioteca padrão sobre os CSVs da DFP 2025 e do FCA 2026, sem o código do projeto. Viram teste nos itens indicados; tolerância de 1e−6 nas contas, e os divulgados como publicados.
+Contas refeitas de forma independente pela auditoria externa (Codex, modo FICHA, 18/10/2026, primeira e segunda rodadas; os casos sintéticos só testam a regra), só com a biblioteca padrão sobre os CSVs da DFP 2025 e do FCA 2026, sem o código do projeto. Viram teste nos itens indicados; tolerância de 1e−6 nas contas, e os divulgados como publicados.
 
 | Decisão | Caso | Conta | Resultado | Item |
 |---|---|---|---|---|
 | 7.7 | KLBN11 | ações: 6.241.478.850 − 106.051.185 (tesouraria) | 6.135.427.665 | F2B-10 |
 | 7.7 | KLBN11 | razão: 1.678.211.000 (lucro consolidado) ÷ 6.135.427.665 ÷ 0,2286 | 1,1965352 (escala: unidade) | F2B-10 |
 | 7.7 | KLBN11 | VPA da unit: (14.401.101 − 6.515.155) mil ÷ 6.135.427.665 × 5 | 6,4265659 | F2B-10 |
-| 7.8 | BBAS3 | 3.99.01 = 0; 3.99 = 2,40; razão do recalculado na unidade = 1,000 (F2A-3) | LPA 2,40 | F2B-11 |
+| 7.8 | BBAS3 | 3.99.01 = 0; 3.99 = 2,40; recalculado na unidade: 13.698.124.000 ÷ (5.730.834.040 − 22.370.399) = 2,3996166; razão 0,9998402 (a até 10%) | LPA 2,40 | F2B-11 |
+| 7.7 | sintético (confirmação) | ações da CVM 6.135.427.665 contra `sharesOutstanding` de 6.000.000.000 (razão 1,0226) e de 6.135.428 (razão 1.000) | aceita; recusa (abstém) | F2B-10 |
+| 7.7 | sintético (limites) | razões 0,1, 10 e 0,0999 | as três recusam (desigualdade estrita) | F2B-10 |
 | 7.9 | USIM5 | linha básica "PN" atribuída à PNA | −2,50 | F2B-12 |
 | 7.10 | MGLU3 | recalculado: 204.603.000 ÷ (775.945.010 − 1.343.449) | 0,2641397, contra o divulgado ON 0,264 | F2B-13 |
 
@@ -160,7 +164,7 @@ Contas refeitas de forma independente pela auditoria externa (Codex, modo FICHA,
 | PL dos controladores × consolidado | usar o consolidado | PETR: VPA +0,4% | F2A-3 (consolidado → controladores): CSAN3 VPA 7,86 → 1,34 e ROE −0,329 → −1,833; BEEF3 VPA 1,91 → 1,33 e ROE 0,448 → 0,619; EQTL3 ROE 0,088 → 0,065; ENEV3 0,079 → 0,058; VALE3 0,063 → 0,075; SLCE3 0,100 → 0,110 |
 | Ações do fim do período × média ponderada | recalculado no lugar do divulgado | PETR: +0,05% | razão recalculado ÷ divulgado nas 38 ações do mapa com razão: mediana 1,000, 4º menor 0,631, máximo 1,199 (F2A-3). A razão não isola este efeito: mistura também o lucro total usado com minoritários (KLBN11) e o arredondamento do divulgado (GOLL4, −0,001) |
 | Composição da unit | dividir o PL consolidado pelo número de units (V1) | — | KLBN11: VPA da unit 11,85 → 6,43 na troca da V1 para o F2A-3; a queda mistura a composição da unit com a saída dos R$ 6,5 bi de não controladores do PL |
-| Escala pelo lucro consolidado (7.7) | escala errada | VPA e capitalização × ou ÷ 1.000 | sem confirmação, a faixa aceitaria a escala errada com o consolidado entre 100 e 10.000 vezes o dos controladores; com a confirmação pelo yfinance, o caso se abstém |
+| Escala pelo lucro consolidado (7.7) | escala errada, nos dois sentidos | VPA e capitalização × ou ÷ 1.000 | sem confirmação, a faixa aceitaria a escala errada com o consolidado entre 100 e 10.000 vezes o dos controladores (ou entre 1/10.000 e 1/100); com a confirmação, o erro de 1.000 vezes se abstém **se** a quantidade do yfinance estiver certa e for comparável (mesma data aproximada, sem evento societário entre as duas); com o yfinance errado por fator parecido, o erro passa, e é o risco aceito |
 | Linha "PN" única (7.9) | LPA próprio de cada classe preferencial | desconhecido sem a nota de resultado por ação da companhia | USIM5: −2,50 na PNA e na PNB |
 
 ## 7. Parâmetros e justificativa
@@ -227,7 +231,12 @@ Pela decisão 7.2, o lucro dos controladores se abstém em 9 companhias da DFP 2
 
 **Decisão:** inferir pelo lucro consolidado, só para a escala, com confirmação independente.
 - **A faixa não garante a escala.** A escala só escolhe entre unidade e milhar (fator 1.000). Numa hipótese simplificada (ações do fim do período iguais à média ponderada, uma só classe), a razão na escala certa vale f = lucro consolidado ÷ lucro dos controladores, que o documento não informa quando a 7.2 se aplica. A escolha erra se f passar de 31,6 (a raiz de 1.000) ou ficar abaixo de 1/31,6. A faixa [0,1; 10] da 7.1 recusa f entre 10 e 100 (e entre 1/100 e 1/10), mas **aceita a escala errada com f entre 100 e 10.000** (ou entre 1/10.000 e 1/100), porque a razão errada cai dentro dela. A primeira auditoria FICHA da 1.1 mostrou o contraexemplo; a versão anterior deste texto dizia o contrário.
-- **Confirmação (decisão de 18/10/2026, depois da auditoria):** o VPA e a capitalização só voltam se a quantidade de ações da CVM na escala escolhida ficar a menos de 10 vezes da `sharesOutstanding` do yfinance para o mesmo ticker (a mesma medida da divergência de ações, 7.3). Um erro de escala é de 1.000 vezes; diferenças de espécie ou de unit ficam abaixo de 10. Sem o yfinance, a abstenção continua. O yfinance só confirma; nunca entra no cálculo.
+- **Confirmação (decisão de 18/10/2026, depois da auditoria):** o VPA e a capitalização só voltam se, na escala escolhida, valer **0,1 < Q_CVM ÷ Q_yf < 10**, com as duas desigualdades estritas, em que:
+  - Q_CVM é o total de ações em circulação da Composição do Capital (ON + PN − tesouraria); para unit, esse total dividido pelo número de ações por unit;
+  - Q_yf é a `sharesOutstanding` do yfinance para o mesmo ticker, com a proveniência da seção 2.
+
+  Um erro de escala põe a razão perto de 1.000 ou de 0,001, fora do intervalo. Os dois lados nem sempre medem a mesma coisa (o yfinance pode contar só uma espécie, ou units): é hipótese aceita, não propriedade demonstrada. Quando a razão sai do intervalo por isso, o caso se abstém, que é o lado seguro. Q_yf ausente, ≤ 0 ou não finito: a abstenção continua. O yfinance só confirma; nunca entra no cálculo. A diferença para o alerta da 7.3 (`Q_yf ÷ Q_CVM − 1` acima de 5%) é de papel: o alerta continua só alerta, e a confirmação só decide se a escala inferida pelo consolidado pode ser usada (revisão da D19 de 18/10/2026).
+- **Só o documento mais recente.** A `sharesOutstanding` é de hoje e não confirma exercícios passados: nas séries de cinco anos (`series_cvm`), esses casos seguem com a escala indeterminada (histórico estrito, D17).
 - O lucro consolidado nunca entra no LPA, no ROE nem no recalculado, que continua abstido sem o lucro dos controladores.
 - O LPA divulgado usado na razão é o coerente pela 7.6 (sinal conferido contra o consolidado).
 - A proveniência do VPA registra "escala inferida pelo lucro consolidado e confirmada pela quantidade do yfinance: lucro dos controladores indisponível (7.2)".

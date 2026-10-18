@@ -1,6 +1,6 @@
 # Fila do loop — Fase 2B (Taxa real, bancos e escopo)
 
-> **Proposta, não ativa.** Escrita no F2A-28 pelo `fable-architect` e revisada em 18/10/2026, em duas rodadas: a primeira com a auditoria externa da 2A (`docs/loop/historico/fase-2a/auditoria-externa.md`, seção "Correções da proposta da 2B") e as decisões de ativação do Marcos (última seção); a segunda com a primeira auditoria DOCUMENTO desta proposta e a primeira auditoria FICHA da ficha por ação 1.1 (três bloqueios em cada uma, corrigidos com decisões do Marcos do mesmo dia). Quem a coloca em `docs/loop/fila.md` é o Marcos, depois de cumprir as condições de ativação.
+> **Proposta, não ativa.** Escrita no F2A-28 pelo `fable-architect` e revisada em 18/10/2026, em duas rodadas: a primeira com a auditoria externa da 2A (`docs/loop/historico/fase-2a/auditoria-externa.md`, seção "Correções da proposta da 2B") e as decisões de ativação do Marcos (última seção); a segunda com a primeira auditoria DOCUMENTO desta proposta e a primeira auditoria FICHA da ficha por ação 1.1 (três bloqueios em cada uma, corrigidos com decisões do Marcos do mesmo dia); e uma terceira, com as segundas auditorias (a identificação da regressão em todo `fix:` de bug, e ajustes de aceite). Quem a coloca em `docs/loop/fila.md` é o Marcos, depois de cumprir as condições de ativação.
 
 Branch: `v2/fase-2b` · Protocolo: `docs/loop/protocolo.md` · Diário: `docs/loop/diario.md`
 Plano: `docs/PLANO.md` (seção 6, "Fase 2B"; seções 8, 10, 11, 13 e 15) · Decisões: `docs/decisoes/checkpoint-fase0.md` (seção 4, itens 2, 3 e 5) e `docs/adr/0002-loop-tempo-dados.md` (D7, D11 e D15) · Validade: `docs/adr/0003-validade-dados-metodo-auditoria.md` (D16, D19 a D23, D27, D28 e D30) · Auditoria externa: `docs/loop/auditoria-externa.md`
@@ -77,7 +77,7 @@ do C-C). B2, C-D e C-E não têm mais janela.
   - `sentinela/methods/`: F2B-41 (`fii_nav.py`) e F2B-42 (`graham.py`), F2B-29 e F2B-4 (`base.py`), F2B-4 também nos módulos dos seis métodos (versão menor e escopo declarado em cada um), F2B-1 (Gordon), F2B-31 (Bazin), F2B-2 (rendimento do FII), F2B-3 (`bancos.py`), o `registry.py` em cada um deles, e F2B-5 (remoções). O contrato de pureza do F1-10 vale para tudo;
   - `config.py`: F2B-30, F2B-1, F2B-31, F2B-2, F2B-32, F2A-10 e F2B-5;
   - `tests/conftest.py`: F2B-30 (semente da taxa real); `pytest.ini`: F2B-7;
-  - `tests/regressao/`: F2B-36 e F2B-43 (registro); qualquer item que confirmar um bug novo, que grava o teste xfail estrito e a linha do registro antes da correção (`BUG-2B-NN`); e o item que corrige cada bug (marca retirada e registro). Os testes de comportamento que os itens nomeiam fora desse diretório (F2B-18, F2B-20, F2B-45 e outros) seguem o rito da D27 no próprio arquivo.
+  - `tests/regressao/`: F2B-36 e F2B-43 (registro); qualquer item que confirmar um bug novo, que grava o teste xfail estrito e a linha do registro antes da correção (`BUG-2B-NN`); e o item que corrige cada bug (marca retirada e registro). Todo `fix:` que corrige um bug registrado nomeia, no aceite, o teste de `tests/regressao/`, o ID e a atualização do registro (`docs/loop/protocolo.md`, "Bugs e regressão"). Os `fix:` que mudam comportamento por decisão, sem bug (F2B-10 a F2B-13, F2B-1, F2B-31, F2B-2, F2B-4, F2B-32 e F2A-10), seguem o rito da D27 nos testes que nomeiam.
 - Os singletons dos motores (`_GRAHAM`, `_BAZIN`, `_LYNCH`, `_GORDON`, `_FII_YIELD`, `_FII_NAV` e o novo dos bancos): nenhum item os renomeia sem atualizar `sentinela/reports/rastreabilidade.py` no mesmo commit.
 - Arquivos dos tickets do Jules com janela nesta fase: `peers_engine.py` e `tests/test_peers_engine.py` (C-C), `technical_engine.py` (B1), `database.py` (B3), `README.md` (C-A) e `.env.example` (C-B). Nenhum item os toca.
 - Teste existente só muda onde o item manda; a lista está em cada item, e a justificativa, no diário.
@@ -170,7 +170,11 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - **BUG-2A-19:** os arquivos do IF.data em `data/ifdata/` não registram a proveniência da D16 (data da coleta, hash, arquivo lateral `.proveniencia.json`), e o `Capital` devolvido não a carrega;
   - **BUG-2A-20:** a validade do cache é medida pelo relógio (`time.time()`), não pelo instante de referência recebido, e a resposta vazia (`value: []`, data-base ainda não publicada pelo BCB) é gravada e reaproveitada por até 7 dias.
 
-  Um teste por bug em `tests/regressao/`, xfail estrito com `corrige: F2B-44`, e as linhas no registro. Bug que não reproduzir não entra como xfail: vai para o diário com a evidência ("não reproduzido"), como manda o `tests/regressao/README.md`.
+  Um teste por bug em `tests/regressao/`, xfail estrito com `corrige: F2B-44`, e as linhas no registro. No mesmo item, também os achados de auditoria da 2A que a fila corrige e que ainda não têm teste (segunda auditoria DOCUMENTO desta proposta):
+  - **BUG-2A-21:** ROE de fonte de mercado sem piso (−21 entra como −2.100%; `sentinela/data/normalizacao.guardar_roe`; decisão C) → `corrige: F2B-18`;
+  - **BUG-2A-22:** preço negativo aceito nos dois motores (`acoes/preco-negativo` sai com Graham de R$ 12,25; ressalva ao F2A-25) → `corrige: F2B-20`;
+  - **BUG-2A-23:** o motor de ações ainda converte `divida_liq_ebitda` em texto pt-BR, que nenhuma fonte entrega desde o F2A-22, e os testes desse caminho só conferem `0 <= score_final <= 100` (2ª passada do Gemini) → `corrige: F2B-45`.
+ Bug que não reproduzir não entra como xfail: vai para o diário com a evidência ("não reproduzido"), como manda o `tests/regressao/README.md`.
 
   No mesmo item, o destino dos bugs abertos da 2A passa de "proposta da 2B" para o item que os corrige, no registro e no `reason` de cada teste: BUG-2A-10 → F2B-37; 11 → F2B-14; 12 → F2B-16; 13 → F2B-17; 14 → F2B-38; 15 → F2B-39; 16 → F2B-40; 17 → F2B-41; 18 → F2B-42.
 
@@ -185,6 +189,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - **Seção A.** Fica a propriedade que não depende da taxa (mediana e não média; gate de 5% do Bazin), com a taxa injetada pelo próprio teste.
   - **Seção B.** Os números que dependem da Selic vão para testes com `quebra_esperada` e a marca do achado (F-4, F-5 ou F-9; `f5_bazin_selic` registrada no `pytest.ini`), citando o checkpoint (seção 4, itens 2 e 3). O item de taxa de cada achado os vira: F-4 no F2B-1, F-5 no F2B-31 (ou ficam, se a [BAZIN] ficar em (a) ou (d)) e F-9 no F2B-2.
   - Nenhuma asserção é enfraquecida: cada número sai de um teste e entra noutro.
+  - Na seção A ficam testes que provam, com a taxa injetada pelo próprio teste e para qualquer taxa: a mediana de três resultados distintos (e não a média); a média de dois; e o Bazin presente no limite de 5% e ausente abaixo dele. O diário lista quais testes da seção B recebem a marca do F-4, do F-5, do F-9, ou mais de uma.
 
   **Aceite:**
   - `python -m pytest -m preservar` e `python -m pytest -m quebra_esperada` verdes;
@@ -214,14 +219,16 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
 - [ ] **F2B-10** · fix · `fix: infer share scale from consolidated earnings when controlling earnings abstain` · **[FICHA 1.1]**
   Ponto (a) da ficha 1.1 (decisão 7.7, adotada em 18/10/2026). Com o lucro dos controladores abstido (D20, decisão 7.2), a escala das ações fica indeterminada, e o VPA e a capitalização se abstêm, mesmo com o PL dos controladores lido: 9 companhias, a KLBN11 entre elas (diário do F2A-36); 7 têm razão calculável (ficha, 7.7). Pela decisão 7.7:
-  - a escala (unidade ou mil) é inferida pelo lucro consolidado (3.11) ÷ ações contra o LPA divulgado coerente do mesmo documento, na faixa [0,1; 10] (ficha, 7.1), nos dois chamadores (`market_engine._por_acao_cvm` e `series_cvm`);
+  - a escala (unidade ou mil) é inferida pelo lucro consolidado (3.11) ÷ ações contra o LPA divulgado coerente do mesmo documento, na faixa [0,1; 10] (ficha, 7.1), em `market_engine._por_acao_cvm` (as séries ficam como estão; abaixo);
   - o lucro consolidado serve só à escala; nunca entra no LPA nem no ROE, e o recalculado continua abstido (sem lucro dos controladores);
   - a faixa não garante a escala (ficha, 7.7): o VPA e a capitalização só voltam se a quantidade de ações da CVM na escala escolhida ficar a menos de 10 vezes da `sharesOutstanding` do yfinance para o mesmo ticker (a medida da divergência de ações); sem o yfinance, a abstenção continua, e o yfinance nunca entra no cálculo;
-  - a proveniência do VPA registra "escala inferida pelo lucro consolidado e confirmada pela quantidade do yfinance".
+  - a confirmação é `0,1 < Q_CVM ÷ Q_yf < 10`, com a definição de Q_CVM e Q_yf da ficha (7.7), e a consulta ao yfinance fica na proveniência (D16), inclusive quando falha;
+  - só o documento mais recente: nas séries de cinco anos (`series_cvm`), esses casos seguem com a escala indeterminada, porque a quantidade do yfinance é de hoje (ficha, 7.7; D17);
+  - a proveniência do VPA registra "escala inferida pelo lucro consolidado e confirmada pela quantidade do yfinance". A exceção à D19 (o yfinance condicionando uma escala inferida) está nas Revisões do ADR-0003, de 18/10/2026.
 
   **Aceite:**
   - `tests/test_market_engine_acoes_cvm.py::test_escala_pelo_consolidado_quando_controladores_se_abstem` passa por xfail estrito → correção → marca retirada → PASS;
-  - `::test_consolidado_nao_entra_no_lpa_nem_no_roe`, `::test_escala_pelo_consolidado_na_proveniencia`, `::test_escala_pelo_consolidado_exige_a_confirmacao_do_yfinance` (com divergência de 1.000 vezes, abstém) e `::test_sem_yfinance_a_abstencao_continua`;
+  - `::test_consolidado_nao_entra_no_lpa_nem_no_roe`, `::test_escala_pelo_consolidado_na_proveniencia`, `::test_escala_pelo_consolidado_exige_a_confirmacao_do_yfinance` (os casos sintéticos da ficha, seção 5.3: razão 1,0226 aceita; 1.000, 0,1, 10 e 0,0999 recusam), `::test_sem_yfinance_a_abstencao_continua` e `tests/test_cvm_series.py::test_serie_nao_usa_a_confirmacao_do_yfinance`;
   - `::test_exemplo_da_ficha_klbn11` com os valores da ficha (seção 5.3: 6.135.427.665 ações, razão 1,1965352, VPA da unit 6,4265659; D28);
   - mutation ≥ 80% em `sentinela.data.acoes_cvm*`;
   - golden inalterado;
@@ -312,6 +319,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   **Decisão do Marcos (18/10/2026, [AUDITORIA]):** piso de −2, simétrico ao teto de 2. ROE abaixo do piso vira ausente, com o motivo, como o acima do teto. Vale só na fronteira das fontes de mercado (yfinance e brapi); o ROE dos controladores da CVM não passa por ela.
 
   **Aceite:**
+  - `tests/regressao/test_bug_2a_21_*` (BUG-2A-21) com a marca retirada, em PASS, e o registro atualizado;
   - `tests/test_roe_fronteira.py::test_roe_abaixo_do_piso_vira_ausente_com_motivo` passa por xfail estrito → correção → marca retirada → PASS;
   - `::test_roe_negativo_acima_do_piso_passa`;
   - mutation ≥ 80% em `sentinela.data.normalizacao*` (hoje 100%);
@@ -324,6 +332,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   **Golden.** Só mudam `acoes/preco-negativo` e `fii/preco-negativo`, para `None`: `--onde "(entrada.get('preco_atual') or 0) < 0"`.
 
   **Aceite:**
+  - `tests/regressao/test_bug_2a_22_*` (BUG-2A-22) com a marca retirada, em PASS, e o registro atualizado;
   - `tests/test_saidas_finitas.py::test_preco_negativo_nao_e_analisado`, nos dois motores, passa por xfail estrito → correção → marca retirada → PASS;
   - seções A, B e C intactas;
   - golden pela regra;
@@ -418,7 +427,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   5. **Bancos e financeiras (F2B-3, F2B-4).**
      - inadimplência: a hipótese do F2A-16 (IF.data, relatório 16, Resolução CMN 4.966), com chamada de controle (BB). Sem medida de inadimplência: "não determinado", e a limitação continua;
      - os setores financeiros do índice (Bancos, Intermediação Financeira, Crédito Imobiliário, Seguradoras e Corretoras, e as variantes "Emp. Adm. Part. - …"): tickers, modelo da demonstração (2.03, ou 2.07 e 2.08) e tipo de negócio, insumo da [FINANCEIRAS];
-     - o P/VP justificado dos bancos do universo inicial, com ROE e VPA do F2A-9 e do F2A-36: k com prêmio de 4%, 5% e 7% sobre a NTN-B da pergunta 1; g candidatos (ROE × retenção, com o payout pela DVA do F2A-7; inflação + 0, 1 e 2 pontos); nos regimes real e nominal, conferindo que dão o mesmo valor; contra o P/VP de mercado. Banco sem VPA (BBAS3) marcado.
+     - o P/VP justificado dos bancos do universo inicial, com ROE e VPA do F2A-9 e do F2A-36: k com prêmio de 4%, 5% e 7% sobre a NTN-B da pergunta 1; g candidatos (ROE × retenção, com o payout pela DVA do F2A-7; inflação + 0, 1 e 2 pontos); nos regimes real e nominal, conferindo que dão o mesmo valor; contra o P/VP de mercado. Medido depois do F2B-11: só os bancos que seguirem sem VPA ficam marcados.
   6. **BTG (F2A-39).** Uma fonte oficial da B3 que traga ISIN e CNPJ juntos: o serviço de empresas listadas (detalhe da companhia pelo código CVM, com códigos de negociação e ISIN) e o cadastro de instrumentos. Por fonte: URL, status, o registro do BTG (30.306.294/0001-45) e o do ISIN `BRBPACUNT006`, e a data. Nada é aceito pelo texto.
   7. **Pontos "não conferidos" da 1ª passada do Gemini** (`docs/loop/historico/fase-2a/auditoria-gemini-completa.md`): regex das descrições do LPA; coluna `MOEDA`; DVA sem `try` no TTM; cache duplicado entre série e TTM; nova tentativa em HTTP 404 do COTAHIST. (O Informe reapresentado e o DY da brapi viraram o BUG-2A-14 e o BUG-2A-15, corrigidos no F2B-38 e no F2B-39.)
   8. **Ressalvas da auditoria externa da 2A sem destino** (`docs/loop/historico/fase-2a/auditoria-externa.md`, correção 6 e relatório da 2ª passada do Gemini). No código e, quando a evidência depender deles, nos arquivos da CVM e do índice:
@@ -648,7 +657,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   PLANO, F2B-4; P7; armadilha 17; `sentinela/methods/registry.py` ("Aplicar e estreitar é o F2B-4").
   - **Contrato.** `MethodInputs` ganha a classe do ativo e o modelo da demonstração (enum novo em `sentinela/domain/enums.py`: empresa, banco, seguradora). `ValuationMethod.calcular` confere o escopo declarado e se abstém com o motivo ("classe <classe> fora do escopo do método", "modelo <modelo> fora do escopo do método"). Sem classe nem modelo nos insumos (chamadas antigas), nada muda.
   - **Escopo.** Graham, Bazin, Lynch e Gordon: STOCK e UNIT, modelo empresa. Rendimento e P/VP do FII: FII. Cada método ganha versão menor no changelog. Sem ficha, pela dispensa do Marcos de 18/10/2026, limitada à aplicação do escopo (gate da fase): o diff de cada método só declara e aplica o escopo; mudança de fórmula, insumo, regime ou parâmetro no mesmo item reprova a revisão.
-  - **Modelo** pelo setor do índice (F2A-2), pela regra da [FINANCEIRAS]. Sem setor (fora do índice): empresa, com a limitação gravada pela cascata em `dados['riscos_dados']` (diário do F2A-9), nunca pelo motor: por isso nenhum caso existente do golden muda (auditoria externa da 2A, correção 5).
+  - **Modelo** pela regra da [FINANCEIRAS]: pelo setor do índice (F2A-2) nas opções (a) e (b); pelo modelo da demonstração medido na opção (c), e então o texto abaixo sobre "sem setor" se ajusta no marcador, antes de o loop retomar este item. Sem setor (fora do índice): empresa, com a limitação gravada pela cascata em `dados['riscos_dados']` (diário do F2A-9), nunca pelo motor: por isso nenhum caso existente do golden muda (auditoria externa da 2A, correção 5).
   - **Motor.** Todos os métodos abstidos por escopo: a abstenção no formato do F2A-29 (sem `fair_value`, `upside` nem `score_final`), com o motivo. A guarda do F2A-29 passa a tirar espaços da classe (" ETF" passava; revisão do F2A-29). Seguradoras ficam em abstenção até lente própria (PLANO, seção 14); bancos, até o F2B-32.
   - **Relatório do F1-12.** O escopo de cada método e o motivo; o cabeçalho deixa de dizer "ação" para classe fora do escopo (revisão do F2A-29).
   - **Golden.** Só inclusões: casos com setor de banco, de seguradora e das variantes da [FINANCEIRAS], com controle de setor não financeiro. Nenhum caso existente tem setor: `--onde "False"`.
@@ -719,6 +728,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:**
   - `tests/test_liquidez_gate.py::test_abaixo_do_limiar_se_abstem` (ações e FII) passa por xfail estrito → correção → marca retirada → PASS;
+  - `tests/test_market_engine.py::test_falha_do_coletor_de_liquidez_chega_como_aviso` (integrado: o coletor do COTAHIST levanta exceção, e a cascata grava em `dados['liquidez']` o bloco de falha de coleta, em vez de retornar sem a chave como hoje em `_buscar_liquidez`; o aviso chega à saída do motor);
   - `::test_sem_chave_nada_muda`, `::test_falha_de_coleta_segue_com_aviso`, `::test_sem_negocio_na_janela_se_abstem`, `::test_recem_listado_com_presenca_baixa_se_abstem`, `::test_limiar_por_classe` e `::test_abstencao_sem_numero`;
   - mutation ≥ 80% em `sentinela.data.liquidez*`;
   - golden pela regra;
@@ -762,6 +772,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   **Testes que mudam:** `tests/test_valuation_engine.py::test_divida_liq_ebitda_brazilian_format` e os outros que passam dívida em texto. A auditoria da 2A apontou que eles só conferiam `0 <= score_final <= 100`; passam a afirmar "alavancagem não avaliada" e a ausência da penalidade.
 
   **Aceite:**
+  - `tests/regressao/test_bug_2a_23_*` (BUG-2A-23) com a marca retirada, em PASS, e o registro atualizado;
   - `tests/test_valuation_engine.py::test_divida_em_texto_nao_e_avaliada` passa por xfail estrito → correção → marca retirada → PASS;
   - diário: `git grep` confirma que nenhuma fonte da cascata entrega texto nesse campo;
   - golden: só mudam casos com dívida em texto, `--onde "isinstance(entrada.get('divida_liq_ebitda'), str)"`;
@@ -856,6 +867,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
     | BUG-2A-13 (achado 8) | FII com o aviso de cobertura das companhias | F2B-17 |
     | BUG-2A-14 a 18 | Informe sem desempate por versão; DY inválido sobrescrevendo válido; ZIP vazio do COTAHIST; `FiiNav` com P/VP ≤ 0; `Graham` com VPA < 0 | F2B-38 a F2B-42 |
     | BUG-2A-19 e 20 (2ª passada; conferidos pelo Claude em 18/10/2026) | IF.data sem a proveniência da D16; cache pelo relógio e resposta vazia guardada por 7 dias | registro no F2B-36; correção no F2B-44 |
+    | BUG-2A-21 a 23 (registrados na revisão de 18/10/2026) | ROE sem piso; preço negativo nos motores; texto de dívida em pt-BR sem fonte | registro no F2B-36; correção no F2B-18, no F2B-20 e no F2B-45 |
     | decisão A | dívida positiva com EBITDA ≤ 0 escapa da penalidade | F2C-2 |
     | decisão B | holdings financeiras no modelo de empresa | [FINANCEIRAS], no marcador (F2B-4 e F2B-32) |
     | decisão C | ROE sem piso | F2B-18, piso de −2 |

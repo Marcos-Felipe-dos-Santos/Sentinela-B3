@@ -140,6 +140,13 @@ O resultado vai para `docs/loop/historico/fase-N/auditoria-externa.md`. Achado *
 - O executor de cada item fica no diário e no commit (`docs/loop/protocolo.md`, "Troca de executor").
 - Workflow: `docs/loop/workflow-multiagente.md`.
 
+**18/10/2026 — ficha por ação 1.1 e fila da 2B.** Decididas pelo Marcos depois das auditorias externas da ficha 1.1 (modo FICHA) e da proposta da 2B (modo DOCUMENTO). Valem com a aprovação da ficha 1.1:
+- **D19, escala pelo lucro consolidado** (ficha, 7.7). Com o lucro dos controladores abstido pela D20, a escala das ações pode vir do lucro consolidado, só com a confirmação `0,1 < Q_CVM ÷ Q_yf < 10` contra a `sharesOutstanding` do yfinance, e só no documento mais recente. Exceção limitada à regra "divergência com o yfinance é alerta, nunca motivo de abstenção": sem a confirmação, quem se abstém é a escala inferida, não um número da CVM já determinado. O yfinance nunca entra no cálculo.
+- **D19, regra 1** (ficha, 7.8). Em companhia de espécie única, a linha agregada (3.99.01, ou a 3.99 conferida pelo recalculado a até 10%) vale como LPA divulgado da espécie, como aproximação declarada.
+- **D19, regra 3** (ficha, 7.9). A linha "PN" única é atribuída a cada classe preferencial quando a DRE não as separa, como aproximação declarada; a linha da classe tem precedência, e a linha da classe incoerente abstém a classe.
+- **D19, espécie** (ficha, 7.10). Espécie do FCA contradita pelo próprio documento é corrigida pela tabela de correções, com a Composição do Capital e a DRE como evidências.
+- **D21** (fila da 2B). Entram sem ficha, com versão menor: as guardas de validade de insumo do F2B-41 e do F2B-42, e a aplicação do escopo declarado nos seis métodos, no F2B-4, sem mudar fórmula, insumo, regime nem parâmetro.
+
 ## Transição: o que já foi entregue
 
 Estado em 13/10/2026: F2A-15, 17, 18, 16, 1, 2, 19, 20, 3, 6 e 5 commitados (`b83dde1`).
