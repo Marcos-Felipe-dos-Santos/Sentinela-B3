@@ -1,111 +1,206 @@
-# Lente de bancos (P/VP justificado) — versão 0.1
+# Lente de bancos — versão 0.2
 
-**Status:** rascunho (19/10/2026, escrito pelo loop no F2B-26). O loop nunca marca ficha como aprovada; a aprovação, depois da auditoria externa em modo FICHA (D30), é do Marcos no marcador "Fichas da 2B, taxa e fontes".
-**Itens que dependem:** F2B-3 (o método, `sentinela/methods/bancos.py`), F2B-32 (a ligação no motor), F2B-4 (escopo: os métodos de empresa se abstêm em banco).
-**Decisões de origem:** checkpoint da Fase 0, seção 4, item 5 (lente própria com P/VP justificado pelo ROE; Basileia e inadimplência opcionais, com a limitação declarada); ADR-0003, D22 ("a lente de bancos tem derivação explícita na ficha") e D21 a D23; armadilha 17.
-**Depende de:** `docs/metodologia/taxa-real.md` (F2B-22), para k real e a inflação; `docs/metodologia/gordon.md` (F2B-23), para a definição do g real; `docs/metodologia/por-acao.md`, para o VPA.
-**Levantamento:** `docs/decisoes/fontes-fase2b.md` (F2B-21), pergunta 5.
+**Status:** rascunho revisto em 19/10/2026; aguarda auditoria FICHA pelo Claude
+(D30) e aprovação do Marcos. **Decisões:** [marcador](../decisoes/marcador-2b.md).
+**Implementação futura:** F2B-3 (método), F2B-32 (motor), F2B-4 (modelo/escopo).
 
-Esta ficha apresenta definições, dados e opções. Nenhum parâmetro é decidido pelo texto: os da seção 7 estão marcados **[DECISÃO]**.
+## 1. Fórmula, derivação e referência
 
-## 1. Fórmula e referência
+`P0/B0 = (ROE − g)/(k − g)`; valor por título = múltiplo × VPA0.
+A derivação começa **no nominal**: B0 é patrimônio na data-base de projeção;
+`L1 = ROE_N × B0`, `D1_N = L1 × p`,
+`B1 = B0 + L1 − D1_N`, portanto `g_N = ROE_N × (1−p)`.
+Gordon dá `P0/B0 = ROE_N × p/(k_N−g_N) = (ROE_N−g_N)/(k_N−g_N)`.
+ROE histórico é lucro anual / **PL dos controladores do início do exercício**;
+usá-lo como retorno futuro sobre B0 atual é hipótese de persistência, não
+igualdade entre lucro passado e futuro. VPA0 usa PL final e ações finais.
 
-**P/VP justificado = (ROE − g) ÷ (k − g); valor = P/VP justificado × VPA.**
+Fisher para **as três taxas**:
+`ROE_r=(1+ROE_N)/(1+π)−1`, idem para k e g.
+`ROE_N−g_N=(1+π)(ROE_r−g_r)` e
+`k_N−g_N=(1+π)(k_r−g_r)`: o múltiplo é igual nos dois regimes.
+O fluxo real é `D1_r=D1_N/(1+π)`, na moeda de B0; nos períodos seguintes,
+`D_t_N=D_t_r(1+π)^t`. Não usar simplesmente ROE_r × (1−p) como g real:
+a retenção é identidade contábil nominal; a correção monetária do patrimônio
+não é lucro nominal distribuível.
 
-**Derivação.** Com crescimento estável g e o ROE medido sobre o patrimônio do **começo** do período (ROE = lucro1 ÷ VPA0, a convenção da referência), o lucro do próximo ano é ROE × VPA0; o dividendo é D1 = ROE × VPA0 × (1 − b), com b a retenção; e o patrimônio cresce pelo lucro retido, g = ROE × b (crescimento fundamental). O Gordon dá P0 = D1 ÷ (k − g) = VPA0 × (ROE − ROE × b) ÷ (k − g) = VPA0 × (ROE − g) ÷ (k − g), e **P0 ÷ VPA0 = (ROE − g) ÷ (k − g)**. Com o ROE do último exercício (lucro0 ÷ VPA0, lucro e patrimônio da mesma data), a forma equivalente é P0 ÷ VPA0 = ROE × (1 − b) × (1 + g) ÷ (k − g); as duas coincidem só pela hipótese de ROE constante (seção 4 e ponto 7.6). Referência: Damodaran, *Investment Valuation*, 3ª ed., Wiley, 2012, cap. 18, "Book Value Multiples" (P/VP justificado de empresa em crescimento estável) e cap. 21 (instituições financeiras); capítulos citados de memória, a conferir.
+**Teto e coerência do payout.** Calcular g_N_bruto com p observado da DVA;
+converter a real e só depois limitar ao PIB Focus, como Gordon.
+Se o teto não atuar, a inversa recupera exatamente g_N_bruto e o payout observado.
+Se atuar, `g_N_efetivo=(1+g_r_limitado)(1+π)−1` e a identidade exige
+`b_implícito=g_N_efetivo/ROE_N`, `p_implícito=1−b_implícito`.
+Assim, o teto implica **menor retenção e maior distribuição projetada**, mantendo
+o ROE; p observado e p implícito devem aparecer separados. Não afirmar que o
+payout histórico ficou igual quando g mudou. A expressão (ROE−g)/(k−g) só
+é aplicável com esse dividendo projetado compatível; se o p implícito sair de
+(0,1], abster por payout projetado incompatível, sem truncar. Essa ponte é
+consequência algébrica do teto e da fórmula, a conferir explicitamente na auditoria.
 
-**Regime e equivalência.** As três taxas (ROE, g e k) têm de estar no mesmo regime, convertidas pela mesma inflação π. O ROE contábil é **nominal**; no regime real, ROE real = (1 + ROE) ÷ (1 + π) − 1. Prova: com k_N = (1 + k)(1 + π) − 1, g_N = (1 + g)(1 + π) − 1 e ROE_N = (1 + ROE_r)(1 + π) − 1:
-- ROE_N − g_N = (1 + π)(ROE_r − g) e k_N − g_N = (1 + π)(k − g);
-- logo (ROE_N − g_N) ÷ (k_N − g_N) = (ROE_r − g) ÷ (k − g): **o mesmo P/VP nos dois regimes**.
-
-Convertendo só k e g, e deixando o ROE nominal, os regimes divergem: no exemplo da seção 5, 1,92 contra 1,45. A conversão do ROE e a definição de g seguem a decisão do g real da [TAXA], a mesma do Gordon (ficha do F2B-23, 7.1). O teste `::test_real_e_nominal_dao_o_mesmo_pvp` do F2B-3 compara duas contas independentes (a real e a nominal), não a fórmula consigo mesma.
+Fonte consultada: Damodaran, *Investment Valuation*, **2ª ed.**, Wiley, 2002,
+[cap. 19, “Book Value Multiples”, seção “Price to Book Value Ratios”,
+“Analysis”, pp. 6–7 do PDF](https://pages.stern.nyu.edu/~adamodar/pdfiles/valn2ed/ch19.pdf),
+que distingue lucro sobre patrimônio inicial e contemporâneo. Correspondência
+na **3ª ed., 2012, cap. 19**, e cap. 21 sobre financeiras, **a conferir pelo
+auditor**. Não citar cap. 18 como “Book Value Multiples”. A hipótese local de
+persistência e a fonte Focus do teto são adaptações, não prescrições do livro.
 
 ## 2. Insumos
 
-| Insumo | Definição exata | Fonte | Unidade e escala | Data de referência |
-|---|---|---|---|---|
-| ROE | lucro ÷ PL dos controladores, pelo modelo de instituição financeira (F2A-9; contas 3.09.01 ou 3.11.01, e 2.07 ou 2.08 menos 2.07.02 ou 2.08.09, pela tabela `contas_cvm.csv`) | DFP/ITR da CVM pela cascata | razão, nominal | `DT_REFER` |
-| VPA | PL dos controladores ÷ ações do mesmo documento (F2A-36; ficha por ação 1.1) | DFP/ITR da CVM | R$ por ação | `DT_REFER` |
-| Payout | dividendos e JCP do exercício na DVA ÷ lucro dos controladores (F2A-7), ou o DY da cascata × preço ÷ LPA (opção 7.2) | DVA da CVM; cascata | razão | `DT_REFER` |
-| k real | NTN-B + prêmio | ficha da taxa real | razão, real | data-base |
-| Inflação | a da conversão | ficha da taxa real | razão | a da série |
-| Basileia | índice de Basileia do conglomerado prudencial | IF.data (BCB), relatório 5 (F2A-9) | razão | última data-base do IF.data |
-| Inadimplência | candidata: "carteira ativa inadimplida arrastada" ÷ total, relatório 16 do IF.data (F2B-21, pergunta 5; conceito a conferir) | IF.data | razão | data-base do IF.data |
+| Insumo | Fonte, janela, perímetro e unidade |
+|---|---|
+| L0 | DRE consolidada anual, lucro dos controladores, códigos 3.09.01/3.11.01 mais descrição, conforme tabela de contas CVM; R$ |
+| PL_inicial | Comparativo do BPP consolidado da mesma DFP/versão, imediatamente antes do início do exercício; PL controladores = 2.07−2.07.02 ou 2.08−2.08.09, com descrição compatível |
+| PL_final | Mesmo BPP e perímetro, fim do exercício; não trocar o PL inicial por este no ROE |
+| ROE_N | L0 / PL_inicial; razão anual; numerador de um exercício, denominador estoque de abertura desse exercício |
+| p observado | Dividendos + JCP bruto da DVA anual dos controladores / L0; no Itaú, 7.09.04.02 e 7.09.04.01, com descrição; não aplicar esses códigos a todo banco sem conferir modelo |
+| VPA0 | PL_final dos controladores / ações finais da mesma DFP; R$/ação, ou soma ponderada por componentes oficiais para R$/unit |
+| k_r, π e teto PIB | taxa-real 0.2 e Gordon 0.2; IPCA do mesmo exercício anual; Focus PIB mediana, baseCalculo 0, maior ano da última pesquisa publicada |
+| Preço | Só P/VP de mercado, por mesma ação/unit, não forma múltiplo justificado |
+| Inadimplência | IF.data relatório 16, apenas contexto: carteira ativa inadimplida arrastada (148834) / Total Geral (24454), mesmo conglomerado, data e perímetro |
+
+Uma linha de JCP/dividendo explicitamente zero é válida; linha ausente não vira
+zero automaticamente. Com apenas um provento, aceitar soma só após comprovar
+não ocorrência do outro; do contrário, abster por DVA incompleta. Excluir
+participações de terceiros; se a DVA consolidada não demonstrar o perímetro,
+exigir reconciliação com nota/individual do mesmo exercício, ou abster. Payout
+por DY da cascata não é alternativa. VPA só CVM, escala de ações conforme
+por-acao 1.1, sem reserva por fonte de mercado. Unit sem composição abstém.
 
 ## 3. Regime, janela e data
 
-- **Regime real** (D22), com a conversão das três taxas pela mesma inflação (seção 1).
-- **Janela:** o último documento (ROE e VPA do exercício; o TTM é do F2C-1).
-- **Datas:** a Basileia é a da última data-base do IF.data, e o balanço é o da DFP; podem diferir (diário do F2A-9): ficam declaradas na proveniência. O `divida_pl` não entra (diário do F2A-9).
+Só **DFP anual completa**. Último ITR não substitui o lucro anual nem altera a
+janela; nenhuma anualização parcial ou TTM na 2B. DRE e DVA cobrem o mesmo
+início/fim; BPP inicial é abertura desse intervalo, PL final e ações são fechamento.
+Dados selecionados por entrega até as_of; idade máxima da DFP = último exercício
+exigível no calendário oficial, regra e controles de publicação do registro §2.
+NTN-B até 5 dias úteis; cobertura IPCA até 2 meses; PIB última edição devida.
+Preço corrente último pregão; exemplos usam 30/09 por comparação solicitada.
 
-## 4. Hipóteses e inaplicabilidade
+Inadimplência: última data-base **publicada** até as_of, conforme calendário de
+publicação do IF.data; idade máxima = última data-base devida nesse calendário,
+sem preencher por relógio ou trocar de conglomerado. Sem calendário/valor válido,
+mostrar "inadimplência IF.data não informada: <motivo>"; não bloquear a lente.
+Conceito é o nome da conta do relatório 16, não afirmar equivalência automática
+a atraso >90 dias nem a “Ativos problemáticos” (148833). **Basileia fora da 2B**.
 
-Abstenções (textos propostos):
-- "ROE não maior que g" (ROE ≤ g): o P/VP justificado seria zero ou negativo, sem sentido econômico (o banco destrói valor com o crescimento);
-- "k não maior que g" (k ≤ g): sem valor finito;
-- "VPA ausente ou não positivo";
-- "insumo ausente: taxa real" e "insumo ausente: inflação", sem contingência.
+Mudança estrutural, emissão, desdobramento ou direito de classe entre a DFP e
+preço: exigir reconciliação da base por título; sem ela, abster por base não
+comparável. Persistência de ROE é projeção, não reconciliação das movimentações
+patrimoniais reais. Não transformar diferenças históricas em lucro retido implícito.
 
-Limitação de sensibilidade: com k − g pequeno, o P/VP cresce sem limite antes de chegar à abstenção (BMEB4, ROE de 27%: com prêmio de 7% e g = ROE × retenção, P/VP de 50,7; F2B-21, pergunta 5); o que contém esse caso é um teto para g ou um piso para k − g (ponto 7.1).
+## 4. Escopo e matriz de validade
 
-Limitações: banco fora do índice oficial é lido como empresa (diário do F2A-9); holdings de banco ("Emp. Adm. Part. - Bancos") seguem a [FINANCEIRAS]. Hipótese: o ROE do último exercício representa o de longo prazo (ROE constante), o que torna o lucro0 ÷ VPA0 do documento igual ao lucro1 ÷ VPA0 da fórmula.
+STOCK/UNIT com **modelo banco**, determinado pelas contas-raiz do **BPP
+consolidado**: PL em 2.07/2.08, identificado por descrição e tabela do modelo.
+A 2.03 isolada em banco pode ser outra rubrica: não basta encontrar seu código.
+Sem BPP consolidado, sem correspondência ou contas conflitantes: abstenção,
+nunca padrão empresa por setor ausente. PL em 2.03 com estrutura de empresa
+vai a empresa, inclusive holding; estrutura de seguradora vai a seguradora,
+sem lente nesta fase. Setor “Bancos” não substitui a demonstração.
 
-**Qualidade, fora do valor** (checkpoint, item 5): a Basileia e a inadimplência são exibidas, sem entrar no P/VP justificado.
+ITUB4/BBAS3 só entram com modelo e insumos válidos. SANB11 exige composição;
+BRSR5/BRSR6 exigem direito específico, sem ratear total PN como se classes
+fossem iguais. Holdings CSAN3/GOAU4 e seguradoras/corretoras não são bancos por
+nome: vale o BPP; sem classificação inequívoca, abster. Não chamar QUAL3 de
+seguradora por aproximação de setor. USIM5 com prejuízo não ganha lente bancária.
+KNCR11/HGLG11 e demais FIIs, ETF/BDR/UNKNOWN: classe fora do escopo.
 
-## 5. Exemplo calculado de forma independente
+Cada linha tem os motivos separados de ausente/não numérico/NaN/infinito do
+registro §2.1, **antes** de Fisher, produto ou teto.
 
-**ITUB4 (Itaú Unibanco Holding S.A., CNPJ 60.872.504/0001-23)**, conta à mão, sem o código do projeto:
+| Insumo | Zero | Negativo | Fora de faixa / motivo |
+|---|---|---|---|
+| PL inicial, PL final, VPA e ações | abstém: não positivo | abstém | escala, quantidade não inteira ou base incompatível: insumo inválido |
+| Lucro e ROE_N | abstém: lucro não positivo | abstém: prejuízo | ausência de controladores/perímetro: atribuição não demonstrada |
+| Dividendos/JCP | válido se informado | abstém | linha ausente sem prova: DVA incompleta |
+| p observado e p implícito | abstém | abstém | >1: payout fora de (0,1]; sem corte em 95% |
+| π | válido | válido se >−1 | ≤−1: Fisher indefinido; janela divergente: inflação incompatível |
+| g e teto PIB | válidos se guardas cumpridas | válidos se >−1 | g≥ROE_r ou g≥k_r: abstenção; g≤−1 inválido |
+| ROE_r e k_r | exigir ROE_r>g, k_r>g | mesma guarda, com fatores >0 | não finito ou fator≤0: taxa inválida; prejuízo nominal sempre abstém |
+| Preço de comparação | sem P/VP de mercado, motivo preço não positivo | idem | inválido: sem comparação; o núcleo do múltiplo não depende do preço |
+| Inadimplência contextual | válido, não ausente | não informada: fora do domínio | numerador>denominador, denominador≤0 ou razão>1: não informada, não altera valor |
+| Resultado/intermediário | abstém: valor não positivo | abstém | não finito: resultado não finito |
 
-- **DFP 2025** (CVM, `dfp_cia_aberta_2025.zip`, `DT_REFER` 2025-12-31, `VERSAO` 2, escala MIL):
-  - DRE consolidada: 3.09.01 "Atribuído a Sócios da Empresa Controladora" = 44.857.000 mil; 3.99.01.01 ON e 3.99.01.02 PN = 4,05;
-  - BPP consolidado: 2.08 "Patrimônio Líquido Consolidado" = 215.076.000 mil; 2.08.09 "Participação dos Acionistas Não Controladores" = 10.575.000 mil; PL dos controladores = 204.501.000 mil;
-  - DVA consolidada: 7.09.04.02 "Dividendos" = 33.704.000 mil; 7.09.04.01 "Juros sobre o Capital Próprio" = 0 (conferido no arquivo, versão 2);
-  - Composição do Capital: 5.617.743 ON + 5.409.126 PN − 345 em tesouraria = 11.026.524 mil ações.
-- **Preço:** COTAHIST de setembro de 2026 (`COTAHIST_M092026.ZIP`), último pregão do arquivo, 25/09/2026 (não o último dia útil do mês), ITUB4, mercado à vista: **R$ 42,13**. Só entra no P/VP de mercado, para comparação: o P/VP justificado não usa o preço.
-- **Taxa:** k real = 6,8818% + 5% = **11,8818%** (NTN-B de 15/10/2026; ficha da taxa real); π = **4,4009%** (Focus 12 meses, 09/10/2026). As datas não coincidem: balanço de 31/12/2025, preço de 25/09/2026, NTN-B de 15/10/2026 e Focus de 09/10/2026; num cálculo de produção, todas ficam na proveniência.
+ROE_r−g zero não prova destruição de valor: pode ser distribuição nula.
+Não produzir valor positivo para prejuízo aproveitando dois sinais negativos.
+Não impor piso não aprovado para k−g; a aproximação da singularidade deve ser
+exibida como sensibilidade, mesmo com teto econômico.
 
-Conta:
-1. ROE = 44.857.000 ÷ 204.501.000 = **21,9349%** (nominal; lucro e PL de 2025, a mesma data, lido como lucro1 ÷ VPA0 pela hipótese de ROE constante); ROE real = 1,219349 ÷ 1,044009 − 1 = **16,7949%**.
-2. VPA = 204.501.000 ÷ 11.026.524 = **R$ 18,5463**; P/VP de mercado = 42,13 ÷ 18,5463 = 2,2716.
-3. payout (DVA) = 33.704.000 ÷ 44.857.000 = **75,1365%**; retenção b = **24,8635%**.
-4. g real, definição (i) da ficha do Gordon: (1 + 0,219349 × 0,248635) ÷ 1,044009 − 1 = **1,0085%**.
-5. P/VP justificado (real) = (0,167949 − 0,010085) ÷ (0,118818 − 0,010085) = **1,4518**; valor = 1,4518 × 18,5463 = **R$ 26,93**.
-6. Conferência nominal: k_N = 16,8056%, g_N = (1,010085 × 1,044009) − 1 = 5,4537%; (0,219349 − 0,054537) ÷ (0,168056 − 0,054537) = **1,4518**, igual.
-7. Só k e g convertidos, ROE nominal (o erro que a ficha evita): (0,219349 − 0,010085) ÷ (0,118818 − 0,010085) = **1,9246**.
+## 5. Exemplo independente — ITUB4 recalculado
 
-O F2B-3 transforma este exemplo em teste (D28), com a definição de g que o Marcos escolher.
+CNPJ 60.872.504/0001-23, DFP 2025 **v2**, entregue **12/02/2026**,
+as_of 19/10/2026 17:10 Brasília. Janela **01/01–31/12/2025**; moeda-base de
+projeção **R$ de 31/12/2025**. Hashes, arquivos e tolerância no registro §2.3.
+Valores monetários em milhares de R$:
+
+- Lucro controladores (3.09.01): **44.857.000**.
+- PL inicial, comparativo 31/12/2024: **221.284.000−10.194.000=211.090.000**.
+- PL final: **215.076.000−10.575.000=204.501.000**.
+- DVA dividendos **33.704.000**, JCP **0 informado**; p=**75,136545020844%**.
+- Ações finais: **5.617.743+5.409.126−345=11.026.524 milhares**;
+  escala conferida com LPA divulgado ON/PN de 4,05 R$/ação (lucro/ações≈4,0681).
+- ROE_N inicial = 44.857.000/211.090.000 = **21,250177649344%**;
+  ROE_r com IPCA 2025 de 4,26% = **16,295969354828%**.
+- VPA final = 204.501.000/11.026.524 = **R$ 18,546279861178**.
+- g_N_bruto = ROE_N × (1−p) = **5,283528352835%**;
+  g_r=**0,981707608704%**, abaixo do teto PIB de **2%** (pesquisa 16/10,
+  ano 2030, mediana base 0 disponível antes de as_of). p implícito=p observado.
+- y_r=74,38/1100, k_r=**11,761818181818%**, k_N=**16,522871636364%**.
+- P/VP justificado = **1,420603401260**, real e nominal;
+  valor = **R$ 26,346908251509** por ação.
+- Fechamento COTAHIST **30/09/2026 R$ 44,28**, mercado 010;
+  P/VP de mercado = **2,387540807722**. Comparação nominal de outra data,
+  cenário ilustrativo, não análise histórica estrita em setembro.
+
+A projeção nominal usa L1=ROE_N×PL_final; D1_N=L1×p. Dividindo por ações
+finais e por 1+π obtém D1 real. Descontar esse fluxo reproduz R$ 26,34690825;
+não usar o dividendo passado por ação como se já fosse D1.
+
+Reconciliação histórica: PL final−inicial=**−6.589.000 mil**, mas lucro−DVA=
+**11.153.000 mil**; diferença **−17.742.000 mil** em outras movimentações.
+Portanto crescimento de PL observado não é ROE×retenção nesta DFP. O exemplo
+projeta persistência, sem afirmar clean surplus histórico. A conta é esperado
+aritmético; elegibilidade operacional exige comprovar atribuição da DVA e direitos
+da classe. Não afirmar que PINE4 ou SANB11 falham especificamente por VPA:
+o levantamento só registra falta agregada de ROE, VPA positivo ou payout.
 
 ## 6. Sensibilidade
 
-ITUB4, P/VP justificado (real = nominal, com as três taxas convertidas) por prêmio e definição de g (π = 4,4009%, NTN-B de 6,8818%). Nas colunas "inflação + x", o g nominal é π + x e o g real, (1 + π + x) ÷ (1 + π) − 1 (0; 0,9578%; 1,9157%):
+| Prêmio, mesmo ROE inicial/payout/IPCA | P/VP | Valor por ação (R$) |
+|---|---|---|
+| 4% | 1,565858 | 29,040836 |
+| 5% | 1,420603 | 26,346908 |
+| 7% | 1,198289 | 22,223797 |
 
-| Prêmio | (i) | (ii) | inflação + 0 | inflação + 1 ponto | inflação + 2 pontos |
-|---|---|---|---|---|---|
-| 4% | 1,60 | 1,88 | 1,54 | 1,60 | 1,66 |
-| 5% | 1,45 | 1,64 | 1,41 | 1,45 | 1,49 |
-| 7% | 1,23 | 1,30 | 1,21 | 1,23 | 1,24 |
+| Denominador histórico do ROE, controle não adotado | ROE_N | P/VP | Valor (R$) |
+|---|---|---|---|
+| PL inicial, escolhido | 21,250178% | 1,420603 | 26,346908 |
+| PL final, hipótese de retorno contemporâneo | 21,934856% | 1,488927 | 27,614054 |
+| PL médio, hipótese de retorno médio | 21,587089% | 1,453963 | 26,965603 |
 
-P/VP de mercado: 2,27 (preço de 25/09/2026; o levantamento traz 2,38, pelo preço do retrato do yfinance). Na pergunta 5 do F2B-21, com NTN-B de 6,88% e prêmio de 5% (g = ROE × retenção convertido / g = inflação + 1 ponto): BBAS3 0,22 / 0,16, BBDC4 0,70 / 0,69, ITUB4 1,45 / 1,45; a fórmula degenera quando ROE ≈ k (BMEB4: sem valor, k ≤ g, com prêmio de 5%; 50,7 com 7%) e com payout zero (BMGB4: g = ROE e P/VP zero pela definição ROE × b).
+Cada linha recalcula g pela mesma retenção, converte todas as taxas e explicita
+uma hipótese diferente; não são convenções equivalentes. Com teto real hipotético
+0,5%, p projetado sobe para **77,499952805582%** e valor=**R$ 26,013247914640**;
+com teto 0%, p=**79,953108767862%**, valor=**25,695823859191**. O teto
+escolhido de 2% não atua neste caso. Manter p observado enquanto se elimina g
+da derivação produziria outro fluxo; não rotular como a mesma fórmula.
+
+Fronteira sintética: ROE_r=15%, k_r=10%; g=9%, 9,9%, 9,99% dá P/VP=6,
+51, 501, e g=10% abstém. O teto Focus normalmente afasta esse cenário, mas
+não dispensa as guardas k>g e ROE>g, nem autoriza arredondar antes de compará-las.
 
 ## 7. Parâmetros e justificativa
 
-### 7.1 Definição de g — [DECISÃO]
-ROE × retenção, convertido pela definição do g real da ficha do Gordon (7.1: (i), (ii) ou (iii)), ou inflação + x pontos. A mesma escolha do Gordon (F2B-23). O teto da (iii), ou um piso para k − g, é o que contém a singularidade perto de k = g (seção 4, BMEB4); sem ele, só a abstenção em k ≤ g.
-
-### 7.2 Payout — [DECISÃO]
-Pela DVA (F2A-7, dividendos e JCP do exercício ÷ lucro dos controladores) ou pelo DY da cascata × preço ÷ LPA. Nos bancos, o DY do yfinance diverge do declarado (F2A-16, pergunta 8).
-
-### 7.3 VPA — [DECISÃO]
-Só o da CVM (banco sem VPA se abstém; hoje PINE4 e SANB11, F2B-21) ou o de outras fontes como reserva.
-
-### 7.4 Basileia — [DECISÃO]
-Só exibida, ou alerta abaixo do mínimo regulatório, com a norma citada.
-
-### 7.5 Inadimplência — [DECISÃO]
-Pela candidata do relatório 16 do IF.data (F2B-21, pergunta 5; o conceito e o denominador a conferir), ou a limitação declarada.
-
-### 7.6 ROE da fórmula — [DECISÃO]
-O do último exercício (lucro ÷ PL do fim do período, a mesma data) lido como lucro1 ÷ VPA0, pela hipótese de ROE constante; o lucro sobre o PL do começo do exercício; ou sobre o PL médio. Muda o número: no ITUB4, o PL dos controladores de 31/12/2024 (DFP 2025, coluna do exercício anterior: 221.284.000 − 10.194.000 = 211.090.000 mil) é maior que o de 31/12/2025, e o ROE cai de 21,9349% (PL do fim) para 21,2502% (do começo) ou 21,5871% (médio).
-
-### 7.7 Holdings de banco
-Fora desta fila; se o Marcos as quiser na 2B, item novo, com ficha própria ([BANCOS]).
+**[DECISÃO] 7.1 decidida pelo Marcos em 19/10/2026:** g opção (i), depois teto
+real PIB Focus, mesma fonte/base do Gordon; sem piso arbitrário de k−g.
+**7.2 decidida:** payout DVA, JCP bruto, controladores, só anual, em (0,1].
+**7.3 decidida:** VPA só CVM, por ação ou unit com composição.
+**7.4 decidida:** Basileia fora da 2B.
+**7.5 decidida:** inadimplência do IF.data apenas para leitura, conta e denominador
+declarados, sem efeito no valor e sem confundir conceitos.
+**7.6 decidida:** ROE sobre PL inicial; as demais convenções não são equivalentes.
+**7.7/[FINANCEIRAS] decidida:** modelo pelas contas-raiz do BPP consolidado,
+inclusive holdings; sem BPP consolidado, abstenção. Exigir lucro positivo,
+payout em (0,1], k>g e g<ROE. A ponte do payout sob teto é exposta na seção 1
+para conferência da auditoria, não premissa escondida. Referências não acessíveis
+continuam marcadas; nenhuma destas decisões aprova automaticamente a ficha.

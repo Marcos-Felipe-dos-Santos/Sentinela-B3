@@ -1,105 +1,133 @@
-# Taxa de desconto real (custo do capital próprio) — versão 0.1
+# Taxa de desconto real — versão 0.2
 
-**Status:** rascunho (19/10/2026, escrito pelo loop no F2B-22). O loop nunca marca ficha como aprovada; a aprovação, depois da auditoria externa em modo FICHA (D30), é do Marcos no marcador "Fichas da 2B, taxa e fontes".
-**Itens que dependem:** F2B-27 (provedor do Tesouro), F2B-29 (insumos reais e Fisher no contrato), F2B-30 (taxa real com proveniência), F2B-1 (Gordon), F2B-3 e F2B-32 (lente de bancos), F2B-31 (Bazin, se a [BAZIN] ficar em (c)), F2B-2 (vértice da NTN-B do FII, se a [FII] usar o mesmo).
-**Decisões de origem:** checkpoint da Fase 0 (`docs/decisoes/checkpoint-fase0.md`), seção 4, item 2; ADR-0002, D15; ADR-0003, D16, D21, D22 e D23.
-**Levantamento:** `docs/decisoes/fontes-fase2b.md` (F2B-21), perguntas 1, 2 e 3.
-
-Esta ficha apresenta definições, dados e opções. Nenhum parâmetro é decidido pelo texto: cada um está na seção 7, marcado **[DECISÃO]**, com as opções e o efeito.
+**Status:** rascunho revisto em 19/10/2026 após auditoria FICHA da 0.1.
+**Decisões:** Marcos, 19/10/2026; [registro do marcador](../decisoes/marcador-2b.md).
+**Dependências:** F2B-27, F2B-29, F2B-30, F2B-1, F2B-2, F2B-3 e F2B-32.
+Aguarda nova auditoria pelo Claude (D30) e aprovação do Marcos; não implementado.
 
 ## 1. Fórmula e referência
 
-| Grandeza | Fórmula |
-|---|---|
-| **Custo do capital próprio real** | k_real = y_real + prêmio, com y_real a taxa da NTN-B do vértice escolhido (% a.a., real) |
-| **Conversão real ↔ nominal (Fisher exato)** | (1 + k_nominal) = (1 + k_real) × (1 + π), com π a inflação da conversão; de volta, k_real = (1 + k_nominal) ÷ (1 + π) − 1 |
+`y_real = soma(taxa_aplicacao dos títulos elegíveis) / quantidade de títulos`.
+`k_real = y_real + 0,05`, para ações elegíveis. A NTN-B integral contém risco
+Brasil; os 5 pontos são prêmio das ações sobre o título, sem spread soberano
+separado. É benchmark composto, não título único nem taxa soberana sem risco.
 
-- **Taxa livre de risco real mais prêmio.** A taxa de um título público indexado à inflação é a taxa livre de risco real da moeda local, e o custo do capital próprio é ela somada a um prêmio de risco (Damodaran, *Investment Valuation*, 3ª ed., Wiley, 2012, cap. 7, "Riskless Rates and Risk Premiums": taxa livre de risco real a partir de títulos indexados e prêmio de risco do capital próprio). A forma aditiva com um prêmio único é a do checkpoint da Fase 0 (seção 4, item 2) e da `MacroContext.cost_of_equity_real` de hoje (`config.py:234`).
-- **Fisher exato.** Irving Fisher, *The Theory of Interest* (1930), cap. II, "Money Interest and Real Interest": a taxa nominal compõe a real e a variação de preços multiplicativamente. A ficha usa a forma exata, nunca a aproximação aditiva (nominal ≈ real + π).
-- **Consequência do regime (dossiê da Fase 2, seção 3; armadilha 1).** Com k e g convertidos pela mesma inflação, o valor de um fluxo crescente é o mesmo no regime real e no nominal (kN − gN = (1 + π)(k_real − g_real)). O que não pode é misturar: k real com g nominal superavalia (no levantamento, de 1,5 a 3,3 vezes; F2B-21, pergunta 3).
+Fisher exato: `1 + k_N = (1 + k_r)(1 + π)` e
+`k_r = (1 + k_N)/(1 + π) − 1`. A identidade usa uma mesma inflação constante
+do cenário. Com moeda-base em t=0,
+`CF_N,t = CF_r,t × (1 + π)^t`, logo
+`CF_N,t/(1 + k_N)^t = CF_r,t/(1 + k_r)^t`.
+Somar os dois lados demonstra igualdade dos valores presentes. Converter só
+k e g, mantendo artificialmente iguais os primeiros fluxos, não a demonstra.
+
+Referências: Fisher, *The Theory of Interest*, Macmillan, 1930, cap. II,
+“Money Interest and Real Interest”: localização na edição e passagem **a conferir
+pelo auditor**. Damodaran, *Investment Valuation*, 3ª ed., Wiley, 2012,
+cap. 7, “Riskless Rates and Risk Premiums”, seção sobre taxas reais e risco
+soberano **a conferir pelo auditor**. A composição brasileira é decisão do
+Marcos, não consequência atribuída aos livros. D22 fundamenta a coerência de
+regimes exigida pelo projeto; a prova algébrica acima independe da edição.
 
 ## 2. Insumos
 
-| Insumo | Definição exata | Fonte | Unidade e escala | Data de referência |
-|---|---|---|---|---|
-| Taxa da NTN-B | taxa do título IPCA+ (NTN-B Principal, "Tesouro IPCA+", ou NTN-B, "Tesouro IPCA+ com Juros Semestrais") no vértice escolhido; colunas oficiais `Taxa Compra Manha` e `Taxa Venda Manha` | Tesouro Transparente, "Preço e taxa dos títulos ofertados pelo Tesouro Direto" (`precotaxatesourodireto.csv`, F2B-21, pergunta 1: status 200, de 2004-12-31 a 2026-10-15) | % a.a., real (sobre o IPCA); a ficha usa em razão (6,96% → 0,0696) | `Data Base` da linha (a mais recente: 15/10/2026 na coleta) |
-| API do Tesouro Direto da V1 | `treasureList.json`, lida hoje por `config._fetch_ntnb` | tesourodireto.com.br | — | **404** na coleta (403 no dossiê): não serve de fonte |
-| Inflação da conversão | uma de três definições (seção 7): IPCA de 12 meses realizado; expectativa do Focus (12 meses à frente, ou o ano mais longo); implícita no vértice | IPCA: IBGE SIDRA tabela 1737, variável 2265 (4,58% em set/2026); BCB SGS 433 sem resposta na coleta. Focus: BCB Olinda, `ExpectativasMercadoInflacao12Meses` (4,4009% em 09/10/2026) e `ExpectativasMercadoAnuais` (2030: 3,50%). Implícita: não determinada (F2B-21, pergunta 2) | razão | a da série (mês do IPCA; data do boletim Focus) |
-| Prêmio de risco | número único somado à taxa real | decisão do checkpoint: base de 5%, sensibilidade de 4% e 7% | razão | fixado por versão da ficha |
+| Insumo | Fonte e definição | Unidade |
+|---|---|---|
+| y_real | CSV Tesouro Transparente, fontes-fase2b §1; títulos com nome exato Tesouro IPCA+ ou Tesouro IPCA+ com Juros Semestrais e vencimento ≥ 01/01/2035 | Taxas do CSV em % a.a., dividir por 100 |
+| taxa_aplicacao | Coluna literal `Taxa Compra Manha`; única usada na média | razão real anual |
+| taxa_resgate | Coluna literal `Taxa Venda Manha`; proveniência/contexto, não média | razão real anual |
+| Prêmio | Constante versionada 0,05, só das ações; 0,04/0,07 apenas sensibilidade | razão anual |
+| π | IPCA SIDRA 1737 na janela contábil convertida; variável 2265 só para 12 meses completos, ou produto da 63/razão da 2266 | razão acumulada na janela anual |
+| Datas, nomes, vencimentos, calendário | Fonte oficial e metadados de publicação/coleta; contratos comuns do registro §2 | datas com fuso e versão |
+
+Selecionar a maior Data Base elegível ≤ as_of; reunir todos os títulos das duas
+famílias nessa data, um por tipo/vencimento. Peso igual, sem ponderação por
+prazo, estoque ou duration. Linha inválida não sai silenciosamente da média:
+abster o benchmark inteiro. Duplicata idêntica conta uma; conflitante abstém.
+A API do Tesouro Direto da V1 não é fonte alternativa. Falta de fonte não vira
+7% nem inflação de 5,5% de contingência.
 
 ## 3. Regime, janela e data
 
-- **Regime: real** (checkpoint, item 2; D22). Os métodos que descontam fluxos (Gordon, lente de bancos e, se a [BAZIN] ficar em (c), o Bazin) recebem k_real e devem expressar g e o ROE no mesmo regime (fichas do F2B-23 e do F2B-26). A conversão de Fisher só serve para exibir o equivalente nominal ou para converter um insumo nominal (o ROE contábil, o g nominal); não muda o valor quando aplicada dos dois lados.
-- **Janela:** a taxa é a da data-base mais recente do Tesouro, sem média temporal. A inflação é a da série escolhida, na data mais recente disponível.
-- **Data:** a análise registra a data-base da NTN-B, a da inflação e o vértice usados (proveniência, D16). A defasagem máxima entre a data de referência da análise e a data-base da NTN-B é parâmetro (seção 7).
+Regras de publicação e idade, incluindo calendário, no registro §2.2: NTN-B
+até 5 dias úteis; cobertura do IPCA até mês no máximo dois meses anterior a
+as_of; inflação calculada na mesma janela do fluxo/ROE convertido. Deflação
+é válida se π > −1. FII usa y_real com spread próprio, sem prêmio das ações.
+Bazin de 6% não depende desta taxa nem da Selic.
 
-## 4. Hipóteses e inaplicabilidade
+A taxa comum não autoriza método: STOCK/UNIT dependem de modelo, classe e
+controladores; ITUB4/BBAS3 vão à lente de bancos; SANB11/KLBN11 exigem composição;
+BRSR5/BRSR6/USIM5 exigem direitos; CSAN3/holdings e prejuízos seguem guardas da
+lente; seguradoras não ganham lente nesta fase. HGLG11/tijolo segue ficha FII;
+KNCR11/papel e fundos de fundos abstêm. A taxa em si não é por ação nem por cota.
 
-Abstenções (textos propostos):
-1. **NTN-B indisponível:** a fonte do Tesouro não respondeu e não há cópia em cache dentro da defasagem máxima → "taxa real indisponível: NTN-B sem dado do Tesouro dentro da defasagem". **A contingência de 7% (`config.py:122`, `NTNB_LONGA_FALLBACK`) não entra** no lugar do dado (ADR-0003; contrato de método: sem insumo, abstém-se).
-2. **NTN-B mais velha que a defasagem máxima** → "taxa real indisponível: NTN-B de <data-base>, além da defasagem de <N> dias úteis".
-3. **Inflação indisponível** (só quando a conversão é necessária, por exemplo para converter o ROE contábil): → "inflação da conversão indisponível"; o método que dependa dela se abstém. A contingência de 5,5% (`config.py:121`, `IPCA_12M_FALLBACK`) não entra.
-4. **Vértice ausente na data-base** (título do vértice não ofertado naquela data): → "vértice <x> sem taxa na data-base"; não se troca de vértice sem decisão.
+## 4. Matriz de validade e abstenção
 
-Hipóteses declaradas: o prêmio é o mesmo para todas as ações (sem beta nem prêmio por setor nesta versão). A taxa do título soberano em moeda local embute risco de crédito do emissor; usá-la inteira como "livre de risco" ou descontar dela um spread de crédito soberano é o ponto 7.7 (**[DECISÃO]**), não uma hipótese desta versão.
+Para **cada insumo abaixo**, ausência, não numérico, NaN e infinito têm os quatro
+motivos distintos do registro §2.1, antes de qualquer limite ou conta.
 
-## 5. Exemplo calculado de forma independente
+| Insumo | Zero | Negativo | Fora de faixa / outro impedimento |
+|---|---|---|---|
+| Cada taxa real do Tesouro | válido | válido se > −1 | ≤ −1: taxa real sem fator positivo; escala não comprovada: unidade inválida |
+| Prêmio das ações | finito matematicamente, mas não é parâmetro aprovado | inválido | Diferente de 0,05 em produção: parâmetro fora da versão; sensibilidade identificada à parte |
+| π | válido | deflação válida se > −1 | ≤ −1: Fisher indefinido; outra janela: inflação incompatível |
+| Quantidade de títulos | inválido: cesta vazia | inválido | não inteiro ou linhas conflitantes: cesta inválida |
+| Datas/publicação | não se aplica numericamente | não se aplica | futura, idade excedida ou disponibilidade não demonstrada: motivo temporal específico |
+| CF e moeda-base | zero válido | válido na identidade, consumidor define elegibilidade | sem moeda/data ou regimes diferentes: fluxo incompatível |
+| k_N, k_r e resultado | taxa zero válida na identidade | > −1 válido na identidade | fator ≤ 0 ou não finito: resultado inválido; consumidor exige taxa de desconto admissível |
 
-Valores do levantamento (F2B-21, perguntas 1 e 2), conta à mão, sem o código do projeto:
+A identidade não garante convergência de perpetuidade: cada consumidor valida
+k > g e seu próprio fluxo. Uma taxa real negativa admissível como observação
+não é substituída nem basta para dar valor ao método.
 
-- NTN-B: média das IPCA+ de 2035 em diante, taxa de venda, data-base 15/10/2026: (6,96 + 6,85 + 6,85 + 6,86 + 6,94 + 6,95 + 6,87 + 6,87 + 6,87 + 6,83 + 6,85) ÷ 11 = 75,70 ÷ 11 = **6,8818%**.
-- Prêmio: 5% (base do checkpoint).
-- k_real = 6,8818% + 5% = **11,8818%**.
-- Inflação (Focus 12 meses, 09/10/2026): π = 4,4009%.
-- k_nominal = 1,118818 × 1,044009 − 1 = **16,8056%**.
-- De volta: 1,168056 ÷ 1,044009 − 1 = 0,118818 = 11,8818% (ida e volta sem perda).
+## 5. Exemplo independente
 
-O mesmo k_real com o IPCA de 12 meses do IBGE (4,58%) dá k_nominal = 1,118818 × 1,0458 − 1 = **17,0060%**; com o Focus de 2030 (3,50%), **15,7977%**. Para comparação, a V1 desconta hoje a k = Selic + 7% = 21,75% (Selic de 14,75%, a semente dos testes), nominal.
+Snapshot, hashes e as_of no registro §2.3. Taxas de aplicação em 15/10/2026:
 
-O F2B-30 transforma este exemplo em teste (D28), com os valores tirados daqui.
+| Família | Vencimentos e respectivas taxas (% a.a.) |
+|---|---|
+| IPCA+ | 15/05/2035: 6,84; 15/08/2040: 6,73; 15/05/2045: 6,73; 15/08/2050: 6,74 |
+| IPCA+ com Juros Semestrais | 15/05/2035: 6,82; 15/05/2037: 6,83; 15/08/2040: 6,75; 15/05/2045: 6,75; 15/08/2050: 6,75; 15/05/2055: 6,71; 15/08/2060: 6,73 |
+
+Soma = 74,38%; média = **6,761818181818…%** (6,76% apenas na apresentação).
+k_real = **11,761818181818…%**. Para converter a DFP 01/01–31/12/2025,
+IPCA = 4,26%, publicado 09/01/2026:
+k_N = `(1 + 74,38/1100 + 0,05) × 1,0426 − 1`
+= **16,522871636364…%**. A inversa recupera k_real com precisão Decimal;
+usar o número impresso arredondado não é volta sem perda.
+
+Teste separado de fluxos, sintético: moeda-base em t=0, D0=1, k_r=10%,
+g_r=2%, π=4%. D1 real=1,02, D1 nominal=1,0608, k_N=14,4%, g_N=6,08%.
+`1,02/0,08 = 1,0608/0,0832 = 12,75`. Os próximos fluxos seguem a mesma
+conversão. Esta ficha não usa preço; as consumidoras usam fechamento de
+30/09/2026, com a distinção temporal do registro, não preço inventado para taxa.
 
 ## 6. Sensibilidade
 
-k_real (% a.a.) por vértice e prêmio, taxa de venda, data-base 15/10/2026:
+| Prêmio das ações | k_real sobre a média escolhida | k_N com IPCA 2025 |
+|---|---|---|
+| 4% | 10,76181818% | 15,48027164% |
+| 5% (base) | 11,76181818% | 16,52287164% |
+| 7% | 13,76181818% | 18,60807164% |
 
-| Vértice | Taxa | Prêmio 4% | Prêmio 5% | Prêmio 7% |
-|---|---|---|---|---|
-| Mais perto de 10 anos (2035, Tesouro IPCA+) | 6,96 | 10,96 | 11,96 | 13,96 |
-| Mais perto de 10 anos (2037, juros semestrais) | 6,95 | 10,95 | 11,95 | 13,95 |
-| 2045 (Tesouro IPCA+; 6,87 no de juros semestrais) | 6,85 | 10,85 | 11,85 | 13,85 |
-| Mais longo (2050, Tesouro IPCA+) | 6,86 | 10,86 | 11,86 | 13,86 |
-| Média de 2035 em diante (11 títulos) | 6,8818 | 10,8818 | 11,8818 | 13,8818 |
-| Média de 2035 em diante, taxa de compra | 6,7618 | 10,7618 | 11,7618 | 13,7618 |
-
-O vértice move o k em até 0,11 ponto entre as linhas da tabela (6,96 × 6,85); o tipo de taxa (compra ou venda), em 0,12 ponto; o prêmio, em 1 a 3 pontos. A inflação não move o k_real; move só o equivalente nominal (de 15,8% a 17,0% com prêmio de 5%).
-
-Efeito nos métodos, pela matriz do F2B-21 (pergunta 3; mediana do upside nas ações atuais do universo inicial, NTN-B de 6,8818%): o Gordon real vai de +27,1% a −39,7% conforme a definição de g real, o prêmio e a inflação, nas três inflações da seção 7.4 (tabela da pergunta 3 do levantamento; com as 12 inflações do `matriz_sensibilidade.csv` do cache, até −42,7%); a escolha de g é da ficha do F2B-23; o Bazin com k real sem crescimento, de −26,6% (prêmio 4%) a −42,5% (prêmio 7%), contra −20,2% a −46,8% da V1 com Selic de 10% a 15%.
+Usar taxa_resgate elevaria a média a 6,88181818%, diferença de 0,12 pp:
+comparação de fonte, não alternativa em produção. A composição por título varia
+com as ofertas; não afirmar duration constante. Para mesmo k_real de base,
+π=0%, 4,26% e −1% dão k_N=11,76181818%, 16,52287164% e 10,6442%,
+respectivamente. A inflação muda a representação nominal, não o k real.
 
 ## 7. Parâmetros e justificativa
 
-Nenhum valor abaixo está decidido: são as opções, com o efeito. A decisão é do Marcos no marcador.
+Todas as opções [DECISÃO] da 0.1 estão **decididas pelo Marcos em 19/10/2026**:
 
-### 7.1 Prêmio — [DECISÃO]
-- **Já decidido no checkpoint:** base de 5%, com 4% e 7% como sensibilidade; o valor só é fixado depois da coleta da NTN-B com o Tesouro respondendo.
-- **Estado da condição:** na coleta do F2B-21 (19/10/2026), a fonte histórica do Tesouro (Tesouro Transparente) respondeu; a API que a V1 lê, não. O marcador confirma se essa fonte satisfaz a condição.
-- **Observação:** a `cost_of_equity_real` de hoje soma `GORDON_PREMIO_RISCO` = 7% (`config.py:159` e `:236`), o prêmio da V1 sobre a Selic, não o de 5% do checkpoint; o F2B-30 traz o prêmio da ficha.
-- **Efeito:** cada ponto de prêmio move o k_real em 1 ponto (tabela da seção 6).
+| Opção da 0.1 | Decidida | Justificativa/efeito |
+|---|---|---|
+| 7.1 Prêmio | 5% das ações sobre NTN-B; 4%/7% sensibilidade | composição explícita, sem dupla contagem soberana |
+| 7.2 Vértice | média das duas famílias, vencimentos ≥ 2035 | benchmark composto reproduzível |
+| 7.3 Tipo e campos | taxa_aplicacao; taxa_resgate contextual | correspondência literal na seção 2 |
+| 7.4 Inflação | IPCA da janela contábil; Focus excluído | casar numerador, denominador e regime; deflação admitida |
+| 7.5 Defasagem | 5 dias úteis; cobertura IPCA até 2 meses | idade e disponibilidade são guardas diferentes |
+| 7.6 Fonte | CSV Tesouro Transparente | API V1 sai; sem contingência silenciosa |
+| 7.7 Risco soberano | já na NTN-B integral | nenhum spread soberano adicional |
 
-### 7.2 Vértice — [DECISÃO]
-Opções: o mais perto de 10 anos (2035 no Tesouro IPCA+; 2037 no de juros semestrais, na data-base de 15/10/2026), 2035, 2045, o mais longo, ou a média de 2035 em diante (o critério da `ntnb_longa` de hoje, `config.py:228`). Efeito: até 0,11 ponto no k entre os vértices da tabela (seção 6). A média muda de composição quando o Tesouro lança ou retira títulos; um vértice fixo muda de prazo com o tempo.
-
-### 7.3 Tipo de taxa — [DECISÃO]
-Opções: a taxa de compra (`Taxa Compra Manha`, a que o investidor obtém ao comprar) ou a de venda (`Taxa Venda Manha`, a da recompra pelo Tesouro). Efeito: 0,12 ponto (6,76% × 6,88% na média). Junto com esta decisão, o **nome dos campos no código** (exceção em aberto na fila, seção "Vocabulário"): nomes neutros (por exemplo, `taxa_investidor` e `taxa_resgate`), com o nome oficial na proveniência, ou exceção à regra de vocabulário só para o nome técnico do título público.
-
-### 7.4 Inflação da conversão — [DECISÃO]
-Opções: IPCA de 12 meses realizado (IBGE, 4,58%; o SGS 433 da V1 não respondeu na coleta), expectativa do Focus (12 meses à frente, 4,40%; ou o ano mais longo publicado, 2030: 3,50%) ou a implícita no vértice (não determinada no F2B-21). **Prazos:** a taxa é de um título de 9 anos ou mais; o IPCA realizado e o Focus de 12 meses medem um ano só, e o Focus de 2030 é o prazo mais longo que o Focus publica. Só a implícita casa o prazo com o do vértice. Efeito: não muda o k_real; muda o equivalente nominal (seção 5) e, nas fichas do Gordon e dos bancos, a conversão do g e do ROE contábil (na definição (i) do F2B-23, o g real cai cerca de 1 ponto por ponto de inflação: com g nominal de 4,8% e π de 4,4%, a derivada é −1,048 ÷ 1,044² ≈ −0,96).
-
-### 7.5 Defasagem máxima — [DECISÃO]
-Opções: só a última data-base publicada, ou até N dias úteis, com a data exibida. Além dela, abstenção (seção 4), sem contingência. O histórico do Tesouro é publicado com atraso de alguns dias (última data-base 15/10/2026 numa coleta de 19/10/2026).
-
-### 7.6 Fonte — [DECISÃO]
-Tesouro Nacional (oficial): o histórico do Tesouro Transparente, que respondeu na coleta, e a API do Tesouro Direto, se voltar a responder. Outra fonte (por exemplo, a ANBIMA) só por decisão.
-
-### 7.7 Risco de crédito soberano na taxa — [DECISÃO]
-Opções: usar a taxa da NTN-B inteira como livre de risco real (a forma da `cost_of_equity_real` de hoje e do checkpoint), ou descontar dela um spread de crédito soberano (o ajuste de risco-país que Damodaran discute para títulos em moeda local; capítulo citado de memória, a conferir). Efeito: o spread descontado reduz o k_real ponto a ponto; sem fonte de spread levantada no F2B-21, a segunda opção exige levantamento novo.
-
+Moeda-base e conversão dos fluxos completam D22. Pendência bibliográfica
+explicitamente marcada na seção 1; aprovação da ficha permanece pendente.

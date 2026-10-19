@@ -42,22 +42,24 @@ do C-C). B2, C-D e C-E não têm mais janela.
 **Comportamento.** Esta fase troca a taxa e o escopo dos métodos, então muda número e texto na saída.
 - Cada mudança tem um item `fix:` próprio, com teste xfail estrito antes (xfail estrito → correção → marca retirada → PASS; ADR-0003, D27), e nunca divide o commit com refactor. Nenhum item desta fila é `refactor:`.
 - Os itens `feat:` acrescentam dado, tipo ou método sem mudar a saída dos motores: F2B-27, F2B-28, F2B-29, F2B-30 e F2B-3.
-- Saída dos motores muda (e por isso o golden) só nos itens marcados **[golden]**: F2B-4 e F2A-10 (estes, só com inclusões), F2B-20, F2B-1, F2B-31, F2B-2, F2B-32 e F2B-45. Nenhum item `chore:` muda o golden (auditoria externa da 2A).
+- Saída dos motores muda (e por isso o golden) só nos itens marcados **[golden]**: F2B-4 (escopo/modelo, inclusive alterações de casos existentes) e F2A-10 (só inclusões), F2B-20, F2B-1, F2B-31, F2B-2, F2B-32 e F2B-45. Nenhum item `chore:` muda o golden (auditoria externa da 2A).
 - **Bugs e regressão** (`tests/regressao/README.md`; ciclo, seção 4). Cada item que corrige um BUG registrado retira a marca do teste de regressão dele, que passa a PASS, e atualiza o registro. Bug novo que o loop confirmar vira teste de regressão no item em que aparece, ou no F2B-43, antes de qualquer correção.
 - Os demais itens mudam a cascata (`dados`), o índice, o relatório de qualidade ou o relatório do F1-12.
 
-**IDs e ordem.** F2B-1 a F2B-6, F2A-10 e F2A-39 mantêm o significado da tabela do PLANO; o F2B-3 do PLANO se divide em F2B-3 (o método) e F2B-32 (a ligação no motor). F2B-7 a F2B-34 vêm da primeira versão desta proposta; F2B-35 a F2B-45, da revisão de 18/10/2026, numerados na ordem em que aparecem. Saíram na revisão, porque o fechamento da 2A os resolveu: F2B-9 (F2A-41), F2B-15 (F2A-43) e F2B-19 (F2A-42). A execução segue a ordem da lista, não a numérica:
+**IDs e ordem.** F2B-1 a F2B-6, F2A-10 e F2A-39 mantêm o significado da tabela do PLANO; o F2B-3 do PLANO se divide em F2B-3 (o método) e F2B-32 (a ligação no motor). F2B-7 a F2B-34 vêm da primeira versão desta proposta; F2B-35 a F2B-45, da revisão de 18/10/2026; F2B-46, da decisão de 19/10/2026, numerados na ordem em que aparecem. Saíram na revisão, porque o fechamento da 2A os resolveu: F2B-9 (F2A-41), F2B-15 (F2A-43) e F2B-19 (F2A-42). A execução segue a ordem da lista, não a numérica:
 1. abertura: instruções dos agentes, registro dos bugs do IF.data e seção A;
 2. correções de dados decididas na ativação: valores ≤ 0 da CVM, ficha por ação 1.1, FII na cascata e na qualidade, ROE, preço e os bugs abertos da 2A;
 3. levantamento das taxas e das fontes, e o registro dos bugs que ele confirmar;
 4. fichas: taxa real, Gordon, Bazin, FII e bancos;
 5. dado sem consumidor: rendimento do FII pelo Informe;
 6. marcador das fichas, da taxa e das fontes;
-7. Tesouro, contrato e taxa real;
+7. bugs de dados do F2B-46; depois Tesouro, contrato e taxa real;
 8. métodos: Gordon, Bazin e FII;
 9. escopo: BTG, `applies_to`, IF.data e bancos;
 10. liquidez;
 11. documentação, proposta da 2C, texto de dívida, limpeza e resumo.
+
+**Decisão do Marcos de 19/10/2026:** revisão documental das cinco fichas para 0.2, registro do marcador e ajustes desta fila, sem implementação. F2B-46 pode tocar seus arquivos previstos de dados/qualidade e regressões; F2B-4 pode tocar cascata e identificação do modelo no BPP para aplicar [FINANCEIRAS] (c), sem mudar fórmulas. Essas permissões específicas complementam a lista abaixo.
 
 **Intocáveis nesta fase:**
 - `tests/test_financeiro_pre_refactor.py`:
@@ -531,21 +533,40 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: DY do Informe × DY da cascata nos FIIs atuais do universo inicial;
   - gate da fase.
 
-- [DECISÃO] **Fichas da 2B, taxa e fontes.** O Marcos:
-  1. lê `docs/decisoes/fontes-fase2b.md`. Sem NTN-B de fonte do Tesouro, o prêmio não é fixado (checkpoint da Fase 0, seção 4, item 2): repete a coleta (`python scripts/levantamento_fase2b.py --secao 1`) até o Tesouro responder e registra o resultado no documento;
-  2. decide os pontos **[DECISÃO]** das fichas: [TAXA] (com o g real do Gordon e dos bancos e o nome dos campos do Tesouro), [BAZIN], [FII] e [BANCOS];
-  3. decide a [FINANCEIRAS] e a [BTG], e o destino de cada bug que o F2B-43 registrou (item novo nesta fila, com a decisão escrita, ou proposta da 2C);
-  4. roda a auditoria externa em modo FICHA (D30) em cada ficha (`python scripts/auditar.py codex ficha --fase 2b --arquivo docs/metodologia/<ficha>.md`; o Gemini desempata ponto de método em que o Codex e a ficha divergirem) e guarda os relatórios em `docs/loop/historico/fase-2b/auditoria-fichas.md`;
-  5. marca cada ficha como aprovada (versão 1.0, data e nome), ou pede correções;
-  6. se a [FII] tirar os pontos de P/VP do score, confirma que a asserção do score em `test_b_fii_nao_considera_o_patrimonio_no_fair_value` muda no F2B-2;
-  7. retira os itens que as decisões dispensaram: o F2B-31, se a [BAZIN] ficar em (a) ou (d); o F2A-39, se a [BTG] recusar a fonte;
-  8. troca este marcador por `[x]` e retoma o loop. Item de método com a ficha não aprovada fica `[!]`.
+- [DECISÃO] **Fichas da 2B, taxa e fontes.** Decisões tomadas pelo Marcos em **19/10/2026**, registradas em `docs/decisoes/marcador-2b.md` e na seção 7 das cinco fichas **0.2**, ainda em rascunho.
+  - [x] Decididos [TAXA], g real, Gordon, [BAZIN] (b), [FII], [BANCOS], [FINANCEIRAS] (c), [BTG] e destinos dos bugs. F2B-31 permanece para implantar 6% fixos; F2A-39 permanece com a evidência GetDetail CVM 22616.
+  - [ ] **Claude** audita as cinco fichas 0.2 em modo FICHA, por família diferente do executor desta revisão (Codex), conforme D30. Guardar relatórios em `docs/loop/historico/fase-2b/auditoria-fichas.md`; a revisão do commit não substitui essa auditoria.
+  - [ ] Marcos aprova cada ficha, promovendo a 1.0 com data/nome, ou pede correções. Bibliografia marcada "a conferir pelo auditor" precisa ser examinada; spread do FII é pendência expressa do F2B-2, sem adotar os antigos 2,65 pp.
+  - [ ] Só depois da auditoria e aprovação, Marcos troca **este marcador** por `[x]` e retoma o loop. Não atravessar o marcador neste commit documental; item de método sem ficha aprovada fica `[!]`.
+
+- [ ] **F2B-46** · fix · `fix: enforce CVM input domains and completeness by statement model`
+  **Decisão do Marcos de 19/10/2026**, marcador 2B. Antes do F2B-27, corrige os bugs confirmados do F2B-43 necessários às lentes da fase. Não troca fórmula de valuation.
+  - **BUG-2B-01:** ITR sem DVA preserva DRE no TTM; só os proventos ficam indisponíveis, com motivo.
+  - **Proventos com uma única rubrica:** só dividendos ou só JCP não descartam o provento informado; distinguir ausência de rubrica de insumo ilegível e confirmar não ocorrência antes de tratar a parcela ausente. Criar regressão própria nos dois casos **antes** da correção, com próximo ID livre no registro.
+  - **BUG-2B-04:** coluna de ações ausente não vira zero; ROE com insumo inválido abstém com motivo. Cumprir todo o domínio da ficha por-acao 1.1, inclusive preço não finito e quantidade fracionária de unit cobertos na regressão.
+  - **BUG-2B-06:** completude por classe/modelo; banco e FII não perdem pontos por campos que não se aplicam. Sem modelo demonstrado, não fingir cobertura completa; registrar a limitação. Não muda score de método.
+  - **BUG-2B-12:** validar_correcoes rejeita ticker inválido conforme formato da referência.
+  - **Arquivos previstos:** `cvm_provider.py`, `sentinela/data/series_cvm.py`, `sentinela/data/acoes_cvm.py`, `data_quality.py`, `sentinela/data/referencia/correcoes.py`, testes de regressão e seus testes diretos nomeados abaixo. Nenhum método, motor, golden ou cache privado muda.
+
+  **Testes que mudam:** regressões nomeadas abaixo (retirada de xfail e destino); `tests/regressao/README.md`; testes diretos em `tests/test_acoes_cvm.py`, `tests/test_contas_cvm*.py`, `tests/test_data_quality*.py`, `tests/test_referencia_correcoes.py` e `tests/test_series_cvm.py`, apenas asserções do comportamento corrigido, listadas no diário. Arquivo inexistente só é criado se necessário ao aceite.
+
+  **Aceite:**
+  - BUG-2B-01: `tests/regressao/test_bug_2b_01_ttm_sem_dva_perde_a_dre.py` em PASS;
+  - BUG-2B-04: `tests/regressao/test_bug_2b_04_insumo_invalido_sem_abstencao.py`, todos os casos em PASS;
+  - BUG-2B-06: `tests/regressao/test_bug_2b_06_completude_penaliza_banco_e_fii.py` em PASS;
+  - BUG-2B-12: `tests/regressao/test_bug_2b_12_ticker_invalido_na_correcao.py` em PASS;
+  - regressão nova de proventos com só dividendos/só JCP: xfail estrito → falha pelo sintoma → correção → marca retirada → PASS; próximo ID livre e nome efetivo no diário;
+  - para cada bug, destino F2B-46, registro atualizado para corrigido e retirada só de sua marca; demais xfails preservados;
+  - mutation ≥80% nos módulos puros alterados de `sentinela/data/`; golden inalterado; gate da fase.
 
 - [ ] **F2B-27** · feat · `feat: add Tesouro Nacional bond rates provider` · **[ADR-0003]**
   Cria `sentinela/data/providers/tesouro.py`. É aditivo: o consumidor é o F2B-30. Vem depois do marcador porque o nome dos campos de taxa do título é decidido na [TAXA] (vocabulário; auditoria externa da 2A, correção 2).
-  - **Fonte.** As do Tesouro Nacional que o F2B-21 confirmou (o dia e a série histórica). Sem fonte confirmada, `[!]`.
-  - **Parser puro.** Por título: nome, tipo (NTN-B, NTN-B Principal, prefixado), vencimento, data-base, as duas taxas do título em decimal, com os nomes da [TAXA], com o tipo do `units.py` pelo título (`RateReal` na NTN-B, `RateNominal` no prefixado). Não escolhe vértice.
+  - **Fonte.** CSV do Tesouro Transparente confirmado no F2B-21, seção 1. Sai a API da V1 como fonte. Campos `taxa_aplicacao` e `taxa_resgate`, com nomes literais das colunas na proveniência, conforme taxa-real 0.2. Sem fonte confirmada, `[!]`.
+  - **Parser puro.** Por título: nome, tipo (NTN-B, NTN-B Principal, prefixado), vencimento, data-base, as duas taxas do título em decimal, com os nomes neutros decididos na [TAXA], com o tipo do `units.py` pelo título (`RateReal` na NTN-B, `RateNominal` no prefixado). Não escolhe vértice.
   - **Download.** Cache em `data/tesouro/`, TTL de um dia para o arquivo do dia; rede fora, vale o cache, com aviso e data. Proveniência (D16) pelo `proveniencia.registrar_sem_falhar`. O instante entra como parâmetro.
+
+  - **Corte temporal:** parser rejeita referência futura e dados inválidos/conflitantes; metadados de publicação/coleta permitem selecionar somente dados disponíveis até as_of. Cache não dispensa o corte nem a idade de 5 dias úteis na seleção do F2B-30.
+  - **Aceite adicional:** testes de colunas neutras, escala %→razão, corte no as_of, conflito de linhas e referência futura; nenhuma leitura da API da V1.
 
   **Aceite:**
   - `tests/test_tesouro.py::test_titulo_segue_o_layout_oficial`, `::test_tipo_da_taxa_pelo_titulo`, `::test_vencimento_e_data_base` e `::test_rede_fora_usa_o_cache_com_aviso`, com arquivos sintéticos em `tmp_path`;
@@ -559,6 +580,8 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - **`sentinela/domain/units.py`.** O tipo da inflação (variação anual de preços, em decimal) e as conversões real ↔ nominal por Fisher exato, como a ficha da taxa real (seção 1). O docstring que dizia que a conversão não existia de propósito passa a citar a ficha.
   - **`sentinela/methods/base.py`.** `MethodInputs` ganha o custo de capital real (`RateReal`) e a inflação, opcionais. Checagem do contrato: custo de capital real só em método REAL, como a `selic` só em método NOMINAL.
 
+  - **Contrato adicional da 0.2:** π > −1, admitindo deflação; conversão dos fluxos e moeda-base documentadas. Testes sintéticos de fluxo real/nominal, π=0, deflação, −1, NaN e infinito, sem converter só as taxas.
+
   **Aceite:**
   - `tests/test_units.py::test_fisher_ida_e_volta` (valores do exemplo da ficha) e `::test_inflacao_nao_soma_com_taxa`;
   - `tests/test_methods_contrato.py::test_custo_de_capital_real_so_em_metodo_real`;
@@ -568,12 +591,15 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
 - [ ] **F2B-30** · feat · `feat: expose the real cost of equity with provenance` · **[TAXA]** **[ADR-0003]**
   A taxa real chega a quem a usa, com proveniência (D16). Nenhum motor a lê ainda: o consumidor é o F2B-1.
-  - **`sentinela/data/taxas.py` (puro).** Escolhe a NTN-B do vértice da ficha nos títulos do F2B-27, confere a defasagem máxima e calcula o custo de capital real (NTN-B + prêmio). Devolve o registro (taxa, vértice, data-base, fonte e proveniência) ou abstenção com motivo.
-  - **Inflação.** Pela fonte da [TAXA]. Fora do arquivo do F2B-27, um provedor em `sentinela/data/providers/`, com cache, TTL, proveniência e contrato (D18).
+  - **`sentinela/data/taxas.py` (puro).** Média de peso igual das duas famílias IPCA+, vencimentos ≥2035, taxa_aplicacao na última base elegível; idade até 5 dias úteis; não descartar linha inválida para alterar a cesta. Custo real = média + 5% das ações, risco Brasil já no título, sem spread soberano separado. Devolve o registro (taxa, vértice, data-base, fonte e proveniência) ou abstenção com motivo.
+  - **Inflação.** IPCA SIDRA 1737 acumulado na janela contábil convertida, cobertura da série até mês no máximo dois meses anterior a as_of; sem Focus para inflação. Registrar início/fim e publicação. Fora do arquivo do F2B-27, um provedor em `sentinela/data/providers/`, com cache, TTL, proveniência e contrato (D18).
   - **Ponto de entrada da V1 em `config.py`,** no padrão do `get_selic_atual`: cache por processo e TTL, sem rede no import e sem valor de contingência (rede fora e cache além da defasagem → `None`). Constantes novas no `MacroContext`: prêmio e regra do vértice.
   - **`tests/conftest.py`.** Semente da taxa real no carregamento, no mesmo contorno da Selic (E-6). Os valores são os das contingências antigas (`NTNB_LONGA_FALLBACK` e `IPCA_12M_FALLBACK`), escritos no arquivo só como semente de teste; a fixture de sessão confere que valem.
   - **Cascata.** `dados['taxa_real']` com o registro, fora do prompt.
   - **Relatório do F1-12.** Ganha a seção "Taxa real" (NTN-B, vértice, data-base, fonte, prêmio e inflação); a "Selic usada" fica enquanto algum método a usar.
+
+  - **PIB para os consumidores:** provedor de expectativas BCB Olinda, ExpectativasMercadoAnuais, PIB Total, mediana/baseCalculo 0, maior ano da última pesquisa publicada até as_of; corte e idade pelo calendário, conforme registro do marcador §2.2. O teto chega com fonte/data/ano e não substitui a inflação. Entradas necessárias ao contrato são opcionais e aditivas; não implementa crescimento de método aqui.
+  - **Aceite adicional:** janela do IPCA compatível, deflação, fonte desatualizada e publicação posterior ao as_of; PIB com bases 0/1, maior ano, ausência e conflito; no consumidor não há reserva silenciosa.
 
   **Aceite:**
   - `tests/test_taxas.py::test_vertice_pela_regra_da_ficha`, `::test_ntnb_alem_da_defasagem_abstem`, `::test_custo_de_capital_e_ntnb_mais_premio` e `::test_sem_valor_de_contingencia`;
@@ -586,9 +612,9 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
 - [ ] **F2B-1** · fix · `fix: discount Gordon at the real cost of equity` · **[golden]** **[TAXA]**
   Armadilha 1; F-4 e F-6; checkpoint, seção 4, item 2 (regime real); PLANO, F2B-1. Pré-condição: `docs/metodologia/taxa-real.md` e `docs/metodologia/gordon.md` aprovadas; sem isso, `[!]`.
-  - **Gordon 2.0.0.** Regime REAL. k = custo de capital real do F2B-30; g real pela definição aprovada na ficha (decisão do g real da [TAXA]); D1 = D0 × (1 + g real); teto e mínimos pela ficha. `requires` sem `selic`; sem a taxa, "insumo ausente". Changelog.
+  - **Gordon 2.0.0.** Regime REAL. k = custo de capital real do F2B-30; g nominal=ROE nominal×retenção DVA, Fisher com IPCA do exercício e depois teto PIB real Focus; sai teto nominal de 8%. D0 e payout DVA dos controladores, última DFP anual, mesma janela do LPA, JCP bruto; sem DY da cascata. D1 = D0 × (1 + g real); payout fora de (0,1] abstém, sem truncar a 95%; saem mínimos DY 4% e ROE 10%, ficam ROE>0 e k>g. `requires` sem `selic`; sem a taxa, "insumo ausente". Changelog.
   - **`cost_of_equity_real`** (`config.py:234-236`) passa a delegar ao F2B-30 (PLANO: "via `cost_of_equity_real`"). O `GordonParams` perde o prêmio, e `valuation_engine.py:106` deixa de ler `GORDON_PREMIO_RISCO`.
-  - **Motor.** Passa o k e a inflação ao Gordon; a Selic (`valuation_engine.py:177`) fica só para o Bazin, até o F2B-31.
+  - **Motor.** Passa k, inflação da janela, teto PIB e proventos anuais com perímetro comprovado ao Gordon; a Selic (`valuation_engine.py:177`) fica só para o Bazin, até o F2B-31. Não inferir DVA ou janela a partir do DY agregado.
   - **Regime (F-6).** Um teste calcula o mesmo cenário pelo método (real) e à mão no nominal (k por Fisher); os valores batem.
   - **Seção B.** `test_b_gordon_desconta_pela_selic_nominal_mais_premio` e `test_b_gordon_acompanha_a_selic_um_para_um` (`:115` e `:125`) são reescritos para afirmar a correção (k real; o Gordon não acompanha a Selic), primeiro como xfail estrito, depois sem a marca, em PASS, com o comentário "resolvida no F2B-1".
   - **Seção A.** Não muda: o F2B-7 já levou para a seção B os números que dependem da taxa. Os testes que ele marcou com o F-4 viram aqui, por xfail estrito → marca retirada → PASS, com o valor da conta à mão pela ficha (semente do F2B-30: NTN-B de 7%, inflação de 5,5%, prêmio-base).
@@ -596,6 +622,10 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - **Relatório do F1-12.** Gordon 2.0.0, k, g real e a fonte da taxa.
 
   **Testes que mudam:** em `tests/test_methods_gordon.py`, os que fixam k = Selic + prêmio, o regime nominal e a versão, e `::test_formula_igual_a_da_v1` e `::test_mesma_ordem_de_operacoes_da_v1`, que calculam o esperado com uma cópia da fórmula da V1 (auditoria externa da 2A, correção 7): saem, porque a fórmula da V1 deixa de valer, e o valor de referência passa a ser o exemplo da ficha (D28); `tests/test_registry.py` (versão e changelog); `tests/test_macro_context.py::test_cost_of_equity_real`; em `tests/test_valuation_engine.py` e `tests/test_valuation_engine_inputs_taxa.py`, os que fixam o Gordon pela Selic; em `tests/test_rastreabilidade.py`, o texto do Gordon. Lista e justificativa no diário.
+
+  - **Escopo e entradas:** STOCK/UNIT empresa; classes distintas abstêm na 2B; composição da unit e controle de ações/eventos conforme Gordon 0.2. Validar todos os domínios antes de Fisher/teto. Payout é DVA/lucro total, não D0/LPA com denominadores diferentes.
+  - **Golden e ids:** mínimos deixam de ser gates; conservar constantes de ids enquanto houver leitor do harness, sem renomear ids por remoção de guarda. Se houver renomeação necessária, declarar cada `--par` antes da regeneração. O predicado cobre todas as alterações da nova janela, payout e escopo do Gordon, inclusive abstenções.
+  - **Aceite adicional:** DFP anual versus ITR, payout 0/1/>1/NaN/infinito, ROE positivo abaixo de 10%, DY abaixo de 4% sem veto próprio, classe distinta/unit, versões entregues após as_of, teto aplicado depois de Fisher e fluxo nominal convertido. A tolerância vem do exemplo 0.2.
 
   **Aceite:**
   - `tests/test_methods_gordon.py::test_k_e_o_custo_de_capital_real` passa por xfail estrito → correção → marca retirada → PASS;
@@ -607,13 +637,16 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - gate da fase.
 
 - [ ] **F2B-31** · fix · `fix: take the Selic out of the Bazin rate` · **[golden]** **[BAZIN]**
-  F-5; armadilha 5. Pré-condição: `docs/metodologia/bazin.md` aprovada com a [BAZIN] em (b) ou (c); em (a) ou (d), o item sai no marcador.
-  - **Bazin 2.0.0.** Taxa pela opção: (b) taxa fixa da ficha, constante nova do `MacroContext`; (c) custo de capital real do F2B-30, regime REAL. `requires` sem `selic`; o `BazinParams` perde o piso da Selic. O gate de 5% e o alerta de armadilha ficam. Changelog.
+  F-5; armadilha 5. Pré-condição: `docs/metodologia/bazin.md` aprovada. **Mantido por decisão de 19/10/2026:** opção (b), ainda falta retirar a Selic da implementação; ausência futura de Selic não é motivo para retirar o item que faz a troca.
+  - **Bazin 2.0.0.** Taxa fixa de 6%, critério de rendimento mínimo nominal, não avaliação por desconto; constante versionada. JCP bruto e série de 12 meses por data ex comprovados; prejuízo com DY positivo elegível com aviso. Sem cobertura/bruto demonstrados, abstenção conforme ficha 0.2. `requires` sem `selic`; o `BazinParams` perde o piso da Selic. O gate de 5% e o alerta de armadilha ficam. Changelog.
   - **Seção A.** Não muda (F2B-7). Os testes que o F2B-7 marcou com o F-5 viram aqui, por xfail estrito → marca retirada → PASS.
   - **Golden.** Alterados só os casos de ações em que o Bazin calcula antes ou depois: `--onde "caso['motor'] == 'acoes' and 'Bazin: R$' in ((saida_antiga or {}).get('metodos_usados') or '') + ((saida_nova or {}).get('metodos_usados') or '')"`. Inclusões: grade da taxa do Bazin.
   - **Relatório do F1-12.** A taxa do Bazin e a fonte; a seção "Selic usada" sai se nenhum método de ação a usar mais.
 
   **Testes que mudam:** em `tests/test_methods_bazin.py`, os que fixam a taxa pela Selic e a versão; `tests/test_registry.py`; em `tests/test_valuation_engine.py`, os que fixam o Bazin pela Selic. Lista no diário.
+
+  - **Insumos:** comprovar janela, classe, JCP bruto e preço de referência; campo agregado da cascata sem essa evidência não basta. Testar seleção por data ex com fonte por evento e caso sintético independente; DVA anual é apenas controle aritmético, não substituto da janela. Aviso para histórico curto/mudança estrutural conforme ficha.
+  - **Aceite adicional:** taxa constante apesar de Selic/NTN-B, gate 5%/alerta 15%/teto DY 25% distintos; JCP bruto, prejuízo elegível com aviso, janela incompleta e bruto desconhecido. Teste F-5/F-4 da mediana de três métodos exige também Gordon do F2B-1; não atribuir sua correção só ao Bazin.
 
   **Aceite:**
   - `tests/test_methods_bazin.py::test_taxa_do_bazin_nao_e_a_selic` passa por xfail estrito → correção → marca retirada → PASS;
@@ -625,15 +658,17 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
 - [ ] **F2B-2** · fix · `fix: compare FII yield with NTN-B plus the historical spread` · **[golden]** **[FII]**
   PLANO, F2B-2; checkpoint, seção 4, item 3; F-9; pendência "DY do Informe Mensal de FII". Pré-condição: `docs/metodologia/fii.md` aprovada.
-  - **Rendimento do FII 2.0.0** (nome da lente pela ficha; o singleton `_FII_YIELD` fica). Preço justo = preço × DY ÷ (NTN-B do vértice + spread). Spread pela ficha, como constante do `MacroContext`, com a data e a janela de cálculo no comentário e na ficha; DY pela fonte da ficha (o Informe do F2B-28 ou o da cascata). `requires` sem `selic` (sai a conta de `sentinela/methods/fii_yield.py:53`).
-  - **Contexto.** Selic líquida e P/VP aparecem na saída e no relatório, sem formar o preço justo. O score segue a opção da [FII].
-  - **Vacância.** Sem fonte oficial (F2A-23); o risco "vacância não informada" só se a ficha o adotar.
+  - **Rendimento do FII 2.0.0** (nome da lente pela ficha; o singleton `_FII_YIELD` fica). Preço justo = preço × DY ÷ (NTN-B do vértice + spread). Spread recalibrado no próprio item: mediana mensal dos tijolos, depois mediana dos 60 meses contíguos, contra taxa_aplicacao e rendimento do Informe/COTAHIST; aplicar corte por publicação, classificação temporal e exclusão de eventos. Registrar amostra, coberturas, exclusões e efeito na mediana, conforme ficha 0.2. Os antigos 2,65 pp não valem como constante. Rendimento só do Informe do F2B-28, maior versão entregue até as_of; 12 meses/13 VPs, idade até 3 meses, evento/salto de cota abstém. Sem spread validado, abstenção. `requires` sem `selic` (sai a conta de `sentinela/methods/fii_yield.py:53`).
+  - **Contexto.** Selic líquida e P/VP aparecem na saída e no relatório, sem formar o preço justo. Score e pontos de P/VP inalterados na 2B, por decisão de 19/10/2026; exceção temporária ao princípio 9 do PLANO para o score. Fórmula de rendimento é real com crescimento zero, spread bruto sobre bruto, sem fator tributário adicional.
+  - **Vacância.** Sem fonte oficial (F2A-23); manter o tratamento atual, sem ajuste ou pontos novos.
   - **Seção A.** Não muda (F2B-7). Os testes que o F2B-7 marcou com o F-9 (o antigo A4, `:100`) viram aqui, por xfail estrito → marca retirada → PASS.
-  - **Seção B.** `test_b_fii_nao_considera_o_patrimonio_no_fair_value` (`:135`) troca o número do benchmark e continua caracterizando o F-9 (o preço justo igual para P/VP 0,5 e 2,0). Se a [FII] tirar os pontos de P/VP do score, a asserção do score (`barato['score_final'] > caro['score_final']`, `:141`) muda neste item, com a justificativa no diário; a do preço justo fica.
+  - **Seção B.** `test_b_fii_nao_considera_o_patrimonio_no_fair_value` (`:135`) troca o número do benchmark e continua caracterizando o F-9 (o preço justo igual para P/VP 0,5 e 2,0). A asserção do score (`barato['score_final'] > caro['score_final']`, `:141`) fica inalterada; só muda o número do benchmark do rendimento.
   - **Golden.** Alterados só casos de FII: `--onde "caso['motor'] == 'fii'"`. Inclusões: grade da NTN-B e do spread.
   - **Relatório do F1-12.** A taxa da lente e a fonte (PLANO: "cada método documenta a taxa que usa").
 
   **Testes que mudam:** `tests/test_methods_fii_yield.py` (fórmula pela Selic líquida, nome e versão); em `tests/test_fii_engine*.py`, os que fixam o preço justo ou o score pela Selic líquida; `tests/test_registry.py`; `tests/test_rastreabilidade.py`. Lista no diário.
+
+  - **Aceite adicional:** só tijolo pelo Informe ativo_passivo (mesma regra do universo inicial); papel, fundos de fundos CPTS11/HFOF11 e desconhecido abstêm; meses não consecutivos, VP ausente, entrega futura, idade >3 meses, emissão/salto de cota (XPML11 e também o HGLG11 do exemplo) abstêm. Os R$ 151,116233758550 do cenário condicional da ficha só testam aritmética com spread hipotético, não elegibilidade do HGLG11 nem constante calibrada. Confrontar reconstrução com avisos oficiais antes de validá-la economicamente.
 
   **Aceite:**
   - `tests/test_methods_fii_yield.py::test_preco_justo_pela_ntnb_mais_spread` passa por xfail estrito → correção → marca retirada → PASS;
@@ -644,7 +679,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - gate da fase.
 
 - [ ] **F2A-39** · fix · `fix: map BTG Pactual unit through the source corrections table` · **[BTG]** **[CORREÇÕES]**
-  Veio da 2A (decisão do Marcos de 13/10/2026). O COTAHIST liga o BPAC11 ao ISIN `BRBPACUNT006`, e o FCA traz a unit do BTG com o código `000000`. Pré-condição: a [BTG] aceitou a fonte da B3 da pergunta 6 do F2B-21; recusada, o item sai no marcador, e o BTG segue em exclusão provisória.
+  Veio da 2A (decisão do Marcos de 13/10/2026). O COTAHIST liga o BPAC11 ao ISIN `BRBPACUNT006`, e o FCA traz a unit do BTG com o código `000000`. Pré-condição cumprida pela decisão do Marcos de 19/10/2026: aceito GetDetail da B3, código CVM 22616, CNPJ e ISIN BRBPACUNT006 no mesmo registro (fontes-fase2b, seção 6).
   - **Tabela de correções.** Linha do BPAC11: CNPJ 30.306.294/0001-45, código na fonte `000000`, a evidência do defeito (FCA 2025 e 2026, `valor_mobiliario`) e a da ligação (fonte da B3, campo e data). Se a tabela não tiver onde citar a evidência da ligação, o item a acrescenta: obrigatória quando a ligação não vem do próprio arquivo do defeito, e linha sem ela é rejeitada.
   - **Unit.** Composição "1 ON E 2 PNA". O diário registra `acoes_por_unit`, a classe PNA e o LPA da unit (nota do F2A-36: componente de classe única cai no recalculado com marca); composição não reconhecida, o motivo.
 
@@ -658,25 +693,28 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
 - [ ] **F2B-4** · fix · `fix: enforce method scope by asset class and statement model` · **[golden]** **[FINANCEIRAS]**
   PLANO, F2B-4; P7; armadilha 17; `sentinela/methods/registry.py` ("Aplicar e estreitar é o F2B-4").
-  - **Contrato.** `MethodInputs` ganha a classe do ativo e o modelo da demonstração (enum novo em `sentinela/domain/enums.py`: empresa, banco, seguradora). `ValuationMethod.calcular` confere o escopo declarado e se abstém com o motivo ("classe <classe> fora do escopo do método", "modelo <modelo> fora do escopo do método"). Sem classe nem modelo nos insumos (chamadas antigas), nada muda.
+  - **Contrato.** `MethodInputs` ganha a classe do ativo e o modelo da demonstração (enum novo em `sentinela/domain/enums.py`: empresa, banco, seguradora). `ValuationMethod.calcular` confere o escopo declarado e se abstém com o motivo ("classe <classe> fora do escopo do método", "modelo <modelo> fora do escopo do método"). Classe oficial é exigida para todos. **Modelo por BPP é exigido só para STOCK/UNIT**: sem modelo demonstrado, abstenção com motivo, sem presumir empresa em chamadas antigas. FII usa sua classe oficial e não exige BPP de companhia nem enum empresa/banco/seguradora; mantém os métodos de FII. A exceção antiga para ações sem modelo é substituída pela decisão do Marcos de 19/10/2026.
   - **Escopo.** Graham, Bazin, Lynch e Gordon: STOCK e UNIT, modelo empresa. Rendimento e P/VP do FII: FII. Cada método ganha versão menor no changelog. Sem ficha, pela dispensa do Marcos de 18/10/2026, limitada à aplicação do escopo (gate da fase): o diff de cada método só declara e aplica o escopo; mudança de fórmula, insumo, regime ou parâmetro no mesmo item reprova a revisão.
-  - **Modelo** pela regra da [FINANCEIRAS]: pelo setor do índice (F2A-2) nas opções (a) e (b); pelo modelo da demonstração medido na opção (c), e então o texto abaixo sobre "sem setor" se ajusta no marcador, antes de o loop retomar este item. Sem setor (fora do índice): empresa, com a limitação gravada pela cascata em `dados['riscos_dados']` (diário do F2A-9), nunca pelo motor: por isso nenhum caso existente do golden muda (auditoria externa da 2A, correção 5).
+  - **Modelo — [FINANCEIRAS] (c), decidida em 19/10/2026:** contas-raiz e descrições do **BPP consolidado**, não setor. PL em 2.07/2.08 → banco; estrutura de empresa com PL em 2.03 → empresa; estrutura de seguradora → seguradora. Sem BPP consolidado, sem correspondência ou modelo conflitante: abstenção. A presença isolada de 2.03 em banco não prova PL de empresa. Não há padrão empresa por ausência de setor. Cascata passa modelo/evidência ao contrato; raízes/códigos sem descrição não bastam.
   - **Motor.** Todos os métodos abstidos por escopo: a abstenção no formato do F2A-29 (sem `fair_value`, `upside` nem `score_final`), com o motivo. A guarda do F2A-29 passa a tirar espaços da classe (" ETF" passava; revisão do F2A-29). Seguradoras ficam em abstenção até lente própria (PLANO, seção 14); bancos, até o F2B-32.
   - **Relatório do F1-12.** O escopo de cada método e o motivo; o cabeçalho deixa de dizer "ação" para classe fora do escopo (revisão do F2A-29).
-  - **Golden.** Só inclusões: casos com setor de banco, de seguradora e das variantes da [FINANCEIRAS], com controle de setor não financeiro. Nenhum caso existente tem setor: `--onde "False"`.
+  - **Golden.** Alterações e inclusões por classe/modelo no motor de ações: `--onde "caso['motor'] == 'acoes'"`. Inclui BPP empresa, banco 2.07/2.08, seguradora, ausente/conflitante, holding e setor divergente. A decisão de modelo sem padrão empresa pode mudar casos existentes; documentar todos, sem remoção.
 
   **Testes que mudam:** `tests/test_registry.py` (versões) e, em `tests/test_methods_contrato*.py`, os que fixam o `applies_to` só declarado (lista no diário).
 
+  - **Testes que mudam também:** `tests/test_valuation_escopo.py`, `tests/test_asset_classifier*.py`, `tests/test_controladores.py` e testes diretos de `contas_cvm` que fixem modelo pelo setor, somente para a troca autorizada ao BPP. Contrato, cascata e relatório no mesmo item; listar cada asserção no diário. Não estreitar direitos de classes nem fórmulas aqui além do escopo decidido.
+  - **Aceite adicional:** mesmo setor com BPP diferente, fora do índice com BPP válido, sem BPP (abstém), banco com 2.03 não patrimonial e PL 2.07/2.08, conflito de modelos, evidência entregue após as_of. Nenhum teste de STOCK/UNIT mantém empresa por ausência de modelo; FII com classe oficial válida preserva seus métodos e não exige BPP de companhia. Sem mudança de saída de FII neste item.
+
   **Aceite:**
   - `tests/test_valuation_escopo.py::test_banco_e_seguradora_nao_recebem_metodos_de_empresa` passa por xfail estrito → correção → marca retirada → PASS;
-  - `tests/test_methods_contrato.py::test_escopo_e_aplicado` e `::test_sem_classe_nem_modelo_nada_muda`; `tests/test_valuation_escopo.py::test_classe_com_espacos_e_reconhecida` e `::test_abstencao_por_escopo_nao_traz_numero`;
+  - `tests/test_methods_contrato.py::test_escopo_e_aplicado` e `::test_stock_unit_sem_modelo_abstem`, `::test_sem_classe_abstem` e `::test_fii_com_classe_oficial_nao_exige_bpp`; `tests/test_valuation_escopo.py::test_classe_com_espacos_e_reconhecida` e `::test_abstencao_por_escopo_nao_traz_numero`;
   - mutation de `sentinela.methods*` ≥ 80%;
   - golden pela regra;
   - diário: os tickers do índice e do universo inicial que passam a se abster, por setor;
   - gate da fase.
 
 - [ ] **F2B-44** · fix · `fix: record IF.data provenance and the reference instant`
-  Corrige o BUG-2A-19 e o BUG-2A-20 (registrados no F2B-36), antes de a Basileia aparecer na lente de bancos (F2B-32).
+  Corrige o BUG-2A-19 e o BUG-2A-20 (registrados no F2B-36), antes de a inadimplência contextual do IF.data aparecer no F2B-32; Basileia está fora da 2B por decisão de 19/10/2026.
   - Cada arquivo baixado do IF.data registra a proveniência da D16 por `proveniencia.registrar_sem_falhar`, como os outros provedores, e o `Capital` a carrega.
   - A validade do cache é medida contra o instante de referência recebido (parâmetro), não contra o relógio.
   - Resposta vazia (`value: []`) não é gravada no cache: a data-base ainda não publicada é consultada de novo na próxima análise.
@@ -692,8 +730,11 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   PLANO, F2B-3 (a lente; a ligação no motor é o F2B-32); checkpoint, seção 4, item 5; D22. Pré-condição: `docs/metodologia/bancos.md` aprovada.
   - `sentinela/methods/bancos.py`: P/VP justificado = (ROE − g) ÷ (k − g), no regime da ficha; valor = P/VP justificado × VPA; escopo STOCK e UNIT com modelo banco; abstenções da ficha; versão 1.0.0 no `registry.py`, com changelog.
   - Insumo que a ficha pedir e o `MethodInputs` não tiver (o payout pela DVA, por exemplo) entra no mesmo item, opcional.
-  - Basileia e inadimplência não entram no valor.
+  - Inadimplência só para leitura, conceito do relatório 16 declarado; Basileia fora da 2B.
   - Nenhum motor chama a lente: golden inalterado.
+
+  - **Contrato da ficha 0.2:** ROE nominal = lucro anual/PL **inicial** dos controladores, ambos da mesma DFP; VPA usa PL final e ações finais. Payout da DVA, JCP bruto, p em (0,1]; só anual; prejuízo abstém. g pela opção (i), teto real PIB depois de Fisher; converter também ROE e fluxos. Se teto atuar, expor payout projetado implícito e a ponte da seção 1 da ficha; não afirmar preservação do payout histórico.
+  - **Aceite adicional:** payout ausente/0/>1, lucro negativo, PL inicial inválido, ITR não substitui DFP, domínio não finito antes do teto; g≥ROE e k≤g abstêm; cenário com teto atuando demonstra coerência do dividendo e payout implícito em (0,1]. Esperado independente ITUB4: P/VP 1,420603401260, R$ 26,346908251509; nenhuma fonte de mercado substitui VPA CVM.
 
   **Aceite:**
   - `tests/test_methods_bancos.py::test_pvp_justificado`, `::test_exemplo_da_ficha` (D28), `::test_real_e_nominal_dao_o_mesmo_pvp`, `::test_roe_nao_maior_que_g_abstem`, `::test_k_nao_maior_que_g_abstem` e `::test_vpa_nao_positivo_abstem`;
@@ -704,13 +745,13 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
 - [ ] **F2B-32** · fix · `fix: value banks with the bank lens` · **[golden]** **[BANCOS]**
   Armadilha 17. Desde o F2B-4, bancos estão em abstenção.
-  - **Motor de ações.** Modelo banco → a lente do F2B-3, com ROE dos controladores (F2A-9), VPA e payout pelas fontes da ficha, k e inflação (F2B-30). Preço justo, upside, score e rótulos pelas regras da V1 (o F2C as refaz); `metodos_usados` com a lente. Singleton novo e relatório do F1-12 no mesmo commit.
-  - **Qualidade.** A Basileia aparece, com o alerta pela ficha (limiar e norma citados); a inadimplência, ou a limitação; as datas diferentes da Basileia e da DFP, declaradas. O `divida_pl` não é lido.
-  - **Golden.** Alterados só os casos de banco incluídos no F2B-4: `--onde "entrada.get('setor') == 'Bancos'"`, mais os setores que a [FINANCEIRAS] puser no modelo banco. Inclusões: grade de ROE, g e VPA.
+  - **Motor de ações.** Modelo banco → a lente do F2B-3, com ROE dos controladores sobre PL inicial da última DFP anual, VPA CVM e payout DVA, k, IPCA da janela e teto PIB (F2B-30), pelas guardas da ficha 0.2. Preço justo, upside, score e rótulos pelas regras da V1 (o F2C as refaz); `metodos_usados` com a lente. Singleton novo e relatório do F1-12 no mesmo commit.
+  - **Qualidade.** Basileia fora da 2B. Inadimplência IF.data só para leitura: conta 148834 / 24454 no mesmo relatório 16, conglomerado e data; não chamar de >90 dias sem comprovação nem de ativos problemáticos. Ausente/inválida: informar motivo sem alterar valor; datas de IF.data e DFP declaradas. O `divida_pl` não é lido.
+  - **Golden.** Alterados só os casos de banco incluídos no F2B-4: `--onde "caso['motor'] == 'acoes' and entrada.get('modelo') == 'banco'"`; o F2B-4 passa a evidência/modelo ao harness, sem inferência por setor. Inclusões: grade de ROE, g e VPA.
 
   **Aceite:**
   - `tests/test_valuation_bancos.py::test_banco_recebe_a_lente_de_bancos` passa por xfail estrito → correção → marca retirada → PASS;
-  - `::test_sem_ifdata_a_limitacao_aparece` e `::test_banco_sem_vpa_se_abstem`; com o alerta adotado, `::test_basileia_abaixo_do_limite_gera_alerta`;
+  - `::test_sem_ifdata_a_limitacao_aparece` e `::test_banco_sem_vpa_se_abstem`; `::test_inadimplencia_invalida_aparece_com_motivo` e `::test_basileia_nao_entra_na_saida_da_lente`;
   - golden pela regra;
   - diário: os bancos do universo inicial, com P/VP de mercado, P/VP justificado, preço justo, upside e classificação agrupada, com prêmio de 4%, 5% e 7%;
   - gate da fase.
@@ -764,6 +805,8 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - ADR-0003, D24 a D26;
   - o diário desta fase e o da 2A, nas pendências com destino na 2C: F2C-1 (TTM, proventos da DVA, JCP bruto, ações do TTM), F2C-2 (EBITDA ≤ 0, margens), F2C-3 (ROE e P/L no score, penalidades em dobro), F2C-4, F2C-9 e F2C-10;
   - os candidatos da auditoria do Gemini que a [AUDITORIA] mandou para a 2C (achado 5, decisões A e D) e a pergunta 7 do F2B-21.
+
+  - **Destino decidido em 19/10/2026:** BUG-2B-02 (cache duplicado), 03 (três tentativas em 404), 05 (alerta PNA/PNB), 07 (divulgados_coerentes), 08 (_meses), 09 (corrida da proveniência), 10 (CNPJ com espaços), 11 (caixa da classe) e BTCI11/TRPL11. Os primeiros oito mantêm regressões; BTCI11/TRPL11 exige regressão própria antes de correção. Atualizar destinos no registro sem marcar bugs como corrigidos. Os demais nomeados no marcador ficam no F2B-46, não repetir na 2C.
 
   Nada é implementado.
 
@@ -884,48 +927,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
     Efeito do achado 1 em (a): empresa com prejuízo deixa de levar −30 de confiança e "Dados fundamentais obrigatórios ausentes", o P/L negativo chega ao motor, e o Gordon e o Graham se abstêm pelas regras deles.
 - **Decisões do marcador "Fichas da 2B, taxa e fontes".**
-  - **[TAXA]** (F2B-22, F2B-23, F2B-26, F2B-27, F2B-30 e F2B-1; checkpoint, seção 4, item 2; PLANO, seção 15):
-    - **g real (Gordon e lente de bancos;** auditoria externa da 2A, correção 1). Exemplo da 2ª passada do Gemini, conferido pelo Claude: preço 100, LPA 10, DY 6% (D0 = 6), payout 60% (retenção b = 40%), ROE 12%, NTN-B 7%, prêmio 5% (k real 12%), inflação 5,5%:
-      - (i) g real = (1 + ROE × b) ÷ (1 + π) − 1 = 1,048 ÷ 1,055 − 1 = −0,66%; valor R$ 47,07. Equivale ao modelo nominal com k nominal por Fisher (1,12 × 1,055 − 1 = 18,16%) e g nominal de 4,8%: os dividendos crescem menos que a inflação sempre que ROE × b < π;
-      - (ii) g real = ROE real × b, com ROE real = 1,12 ÷ 1,055 − 1 = 6,16%: g real = +2,46%; valor R$ 64,47 (+37%). Supõe que o patrimônio existente acompanha a inflação, e só a retenção gera crescimento real;
-      - (iii) g real com teto de crescimento real de longo prazo (por exemplo, o do PIB), com a fonte do teto;
-
-      a matriz do F2B-21 mostra o efeito no universo inicial;
-    - **nome dos campos do Tesouro** ("taxa de compra" e "taxa de venda"): nomes neutros no código, com o nome oficial na proveniência, ou exceção à regra de vocabulário só para o título público (seção "Vocabulário");
-    - **prêmio:** base de 5%, com 4% e 7% de sensibilidade, já decididos; o valor só é fixado depois da coleta da NTN-B com o Tesouro respondendo. Pelo dossiê (seção 2, com a NTN-B de contingência), k real de 11%, 12% e 14%, contra 20,75% hoje (Selic + 7%);
-    - **vértice:** o mais perto de 10 anos, 2035, 2045, o mais longo, ou a média de 2035 em diante (o código de hoje). Efeito: os valores da pergunta 1 do F2B-21;
-    - **tipo de taxa:** compra (a que o investidor recebe) ou venda;
-    - **inflação da conversão:** IPCA de 12 meses (realizado), Focus (expectativa) ou implícita (mercado, no mesmo vértice). Com Fisher exato, tudo real e tudo nominal dão o mesmo valor (dossiê, seção 3); a escolha muda o g real do Gordon e da lente de bancos;
-    - **defasagem máxima** da NTN-B: só a última data-base, ou N dias úteis com a data exibida. Além dela, abstenção, sem contingência;
-    - **fonte:** Tesouro Nacional (oficial). Outra fonte, como a ANBIMA, só por decisão.
-  - **[BAZIN]** (F2B-24 e F2B-31; F-5):
-    - (a) manter a Selic: os testes que o F2B-7 marcou com o F-5 seguem como quebra esperada, a nota do Bazin segue o Copom (princípio 9 do PLANO) e o F-5 fica aberto;
-    - (b) taxa fixa (6% no original): âncora estável no ciclo; regime e justificativa na ficha (D23); os testes marcados com o F-5 viram no F2B-31;
-    - (c) k real sem crescimento real: coerente com o Gordon (g real = 0); os testes marcados com o F-5 viram no F2B-31;
-    - (d) adiar para o F2C-5 (lentes): a Selic fica como taxa do Bazin até lá, e o F2B-5 não tira a `selic` do contrato.
-
-    Efeito: a matriz do F2B-21 (pergunta 3).
-  - **[FII]** (F2B-25, F2B-28 e F2B-2; checkpoint, seção 4, item 3):
-    - **spread:** definição (mediana dos FIIs listados, por tipo, tijolo e papel, ou por fundo), janela (5 anos, 10 anos ou a série inteira) e atualização (constante datada, revista por versão da ficha, ou recalculada a cada análise, o que exige as séries em produção, da Fase 3). Pelo dossiê (seção 4), o spread desloca o nível e não a ordem;
-    - **vértice:** o mesmo da taxa real, ou outro;
-    - **DY:** o do Informe (F2B-28, oficial) ou o da cascata (yfinance e brapi), e a base (sobre o preço);
-    - **benchmark do score** (hoje ±20 pela Selic líquida): (a) manter a Selic líquida, e a nota segue o ciclo, contra o princípio 9; (b) o mesmo benchmark do preço justo; (c) a Selic só exibida;
-    - **papel e tijolo:** benchmark único, ou papel indexado ao CDI comparado com o CDI (F-9);
-    - **vacância:** sem fonte oficial (F2A-23); o risco "vacância não informada" na saída, ou não;
-    - **P/VP:** contexto pelo checkpoint; os pontos de score das faixas da V1 ficam ou saem.
-  - **[BANCOS]** (F2B-26, F2B-3 e F2B-32; checkpoint, seção 4, item 5):
-    - **g:** ROE × retenção, com o payout pela DVA (F2A-7) ou pelo DY da cascata (o do yfinance diverge nos bancos: F2A-16, pergunta 8), ou inflação + x;
-    - **VPA:** só o da CVM (banco sem VPA se abstém; hoje o BBAS3, até a ficha 1.1 (b)), ou o de outras fontes como reserva;
-    - **Basileia:** só exibida, ou alerta abaixo do mínimo regulatório, com a norma citada;
-    - **inadimplência:** pela pergunta 5 do F2B-21, ou a limitação declarada;
-    - **holdings de banco** (desconto sobre as participações, opcional no PLANO): fora desta fila; se o Marcos as quiser na 2B, item novo, com ficha própria.
-  - **[FINANCEIRAS]** (decisão B do Gemini; F2B-4 e F2B-32). Hoje `contas_cvm.modelo_do_setor` põe no modelo banco só o setor "Bancos", e no de seguradora quem tem "seguradoras" no setor. Opções para o escopo dos métodos:
-    - (a) o mapeamento de hoje: "Emp. Adm. Part. - Bancos", "Intermediação Financeira" e "Crédito Imobiliário" seguem como empresa, com os métodos de empresa e a alavancagem;
-    - (b) os setores financeiros e as holdings deles saem dos métodos de empresa (abstenção), mesmo com balanço comum;
-    - (c) pelo modelo da demonstração medido (2.07 ou 2.08 → banco), não pelo setor (o caso da XP, F2A-33).
-
-    Efeito: a contagem da pergunta 5 do F2B-21. No cadastro, o F2A-16 contou Emp. Adm. Part. - Bancos 1, Intermediação Financeira 10, Emp. Adm. Part. - Intermediação Financeira 16, Crédito Imobiliário 6 e a holding dele 5 (companhias do cadastro, não só listadas).
-  - **[BTG]** (F2A-39). Aceitar a fonte da B3 que o F2B-21 trouxer (ISIN e CNPJ no mesmo registro) como evidência da ligação na tabela de correções. Recusada: o BTG segue em exclusão provisória, e o F2A-39 vai para a 2C ou para a Fase 3. A ligação indireta (prefixo do ISIN e composição) já foi recusada em 13/10/2026.
+  - **Decisões do marcador tomadas em 19/10/2026:** [TAXA], g, Gordon, [BAZIN] (b), [FII], [BANCOS], [FINANCEIRAS] (c) e [BTG] estão registradas em `docs/decisoes/marcador-2b.md` e na seção 7 de cada ficha 0.2. Esse registro substitui as opções anteriores desta seção. Restam auditoria pelo Claude e aprovação das fichas; não resta escolha implícita para o executor. Destinos dos bugs: F2B-46 ou proposta da 2C no F2B-34, conforme registro.
 - **Regra do golden.** A da 2A (opção (a), decidida em 5/10/2026) continua, com a taxa acrescentada ao harness no F2B-1. As alternativas recusadas na 2A (congelar o golden como registro da V1; regenerar só no fim da fase) valem igual aqui.
 - **[CACHE].** O script de invalidação sai no F2B-5 (decisão de 5/10/2026). Itens desta fase mudam valores que a cascata grava no cache de fundamentos (F2B-8, F2B-10 a F2B-13, F2B-18, F2B-39 e F2A-39), então o passo 3 do [DECISÃO] final limpa a tabela inteira, com um comando e sem lista de tickers. Decisão de 5/10/2026 mantida na revisão de 18/10/2026; não é pergunta do marcador.
 - **Escolhas de desenho que a aprovação confirma:**

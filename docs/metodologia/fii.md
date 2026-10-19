@@ -1,124 +1,194 @@
-# Rendimento do FII contra a NTN-B — versão 0.1
+# Rendimento do FII sobre NTN-B — versão 0.2
 
-**Status:** rascunho (19/10/2026, escrito pelo loop no F2B-25). O loop nunca marca ficha como aprovada; a aprovação, depois da auditoria externa em modo FICHA (D30), é do Marcos no marcador "Fichas da 2B, taxa e fontes".
-**Itens que dependem:** F2B-28 (DY do Informe Mensal), F2B-2 (rendimento do FII contra NTN-B + spread).
-**Achado de origem:** F-9 da auditoria red team (`docs/auditoria/2026-09-red-team.md`): o preço justo do FII é só DY ÷ Selic líquida, sem âncora patrimonial; armadilha 5.
-**Decisões de origem:** checkpoint da Fase 0, seção 4, item 3 (NTN-B + spread, com o spread pela mediana histórica; Selic líquida e P/VP como contexto); ADR-0003, D21 a D23.
-**Depende de:** `docs/metodologia/taxa-real.md` (F2B-22), para a NTN-B e o vértice.
-**Levantamento:** `docs/decisoes/fontes-fase2b.md` (F2B-21), perguntas 3 e 4.
-
-Esta ficha apresenta definições, dados e opções. Nenhum parâmetro é decidido pelo texto: os da seção 7 estão marcados **[DECISÃO]**.
+**Status:** rascunho revisto em 19/10/2026; aguarda auditoria FICHA pelo Claude
+(D30) e aprovação do Marcos. **Decisões:** [marcador](../decisoes/marcador-2b.md).
+**Implementação futura:** F2B-2; F2B-28 fornece reconstrução inicial, ainda sem
+todas as guardas temporais, de eventos e de atualidade desta ficha.
 
 ## 1. Fórmula e referência
 
-**Preço justo = preço × DY ÷ (NTN-B + spread) = R ÷ (NTN-B + spread)**, com R o rendimento por cota de 12 meses.
+`V0 = R_real / (y_real + s)`, com **crescimento real zero**.
+Derivação: para q=y_real+s>0 e fluxo real anual constante a partir de t=1,
+`V0 = soma[t=1..∞] R_real/(1+q)^t = R_real/q`.
+Moeda-base t=0: fim do último mês do Informe usado. A soma retrospectiva é
+tratada, por hipótese, como aproximação desse fluxo anual futuro em moeda-base.
+Somar valores nominais passados e posicioná-los nessa data é aproximação
+explicitada, não prova de atualização contratual nem de sustentabilidade real.
+Não há ajuste intramensal pelo IPCA neste proxy; se ele não for representativo,
+abster por fluxo não recorrente ou evento, em vez de afirmar fluxo real observado.
 
-- **O preço cancela** (armadilha 5): o preço justo é o rendimento capitalizado a uma taxa, e o upside é DY ÷ (NTN-B + spread) − 1. A ordem entre os FIIs é a do DY; a taxa muda o nível.
-- **Referência:** é a forma de uma perpetuidade sem crescimento (o valor de um fluxo constante é o fluxo dividido pela taxa: o modelo de dividendos com crescimento g = 0, na forma da ficha do Gordon, `docs/metodologia/gordon.md`, seção 1), com a taxa exigida = taxa real do título público + um spread que representa o prêmio histórico dos FIIs sobre ele (checkpoint, item 3). A comparação do rendimento do FII com a NTN-B, e não com a Selic, segue o regime real da fase (D22): o rendimento de um FII de tijolo tende a ser corrigido por índices de preço nos contratos de aluguel.
-- **V1 (`sentinela/methods/fii_yield.py`):** preço justo = DY × preço ÷ (Selic × `FII_FATOR_IR` = 0,85), a Selic líquida de IR; com vacância informada, o DY vira DY × (1 − vacância), caminho hoje inerte (o motor passa `None`); o P/VP entra só no score (F-9).
+Na representação nominal coerente, `R_N,t = R_real × (1+π)^t`,
+`1+q_N=(1+q)(1+π)` e `g_N=π`; a soma descontada dá o mesmo V0. O regime
+real não autoriza esquecer a transformação dos fluxos (D22). O π de um cenário
+de conferência seria o IPCA da mesma janela anual do Informe, conforme taxa-real;
+nenhuma inflação Focus é necessária à fórmula real de crescimento zero.
+
+Referência consultada para o desconto de fluxo estável: Damodaran,
+*Investment Valuation*, **2ª ed.**, Wiley, 2002,
+[cap. 13, seção I, “The Gordon Growth Model”, “The Model”](https://pages.stern.nyu.edu/~adamodar/pdfiles/valn2ed/ch13.pdf).
+Correspondência na **3ª ed., 2012, cap. 13: a conferir pelo auditor**.
+A perpetuidade acima é derivada, não atribuição de que a NTN-B mais spread
+seja taxa universal de FII. Essa taxa é decisão do Marcos. Base do DY: Resolução
+CVM 184, Anexo K, Suplemento I, item 7.2, nota 3, conferida na cópia oficial
+`resol184.docx` do levantamento: rendimentos **declarados** por cota sobre VP
+do fim do mês anterior; não confundir com fluxo pago nem com cotação.
 
 ## 2. Insumos
 
-| Insumo | Definição exata | Fonte | Unidade e escala | Data de referência |
-|---|---|---|---|---|
-| Rendimento de 12 meses (R) | soma dos rendimentos por cota dos 12 últimos meses | duas opções (7.3): o Informe Mensal da CVM pelo F2B-28 (`Percentual_Dividend_Yield_Mes`, **em razão**, sobre o VP da cota do mês anterior; F2B-21, pergunta 4) ou a cascata (DY do yfinance e da brapi × preço) | R$ por cota | o último mês do Informe ou a do provedor |
-| Preço | fechamento bruto | cascata (D-1); no exemplo, o COTAHIST | R$ por cota | pregão |
-| NTN-B | a do vértice | ficha da taxa real | razão, real | data-base do Tesouro |
-| Spread | prêmio do DY de 12 meses dos FIIs sobre a NTN-B | série do F2B-21 (pergunta 4), por definição e janela (7.1) | razão | a da versão da ficha, ou recalculada (7.1) |
-| Selic líquida (contexto) | Selic × 0,85 | BCB SGS 432 | razão | a da série |
-| P/VP (contexto) | preço ÷ VP da cota | Informe Mensal (F2A-11) | razão | último Informe |
+| Insumo | Fonte, unidade e construção |
+|---|---|
+| DY_m | Informe CVM complemento, Percentual_Dividend_Yield_Mes em razão mensal, não %; maior versão elegível por mês |
+| VP_m | Valor_Patrimonial_Cotas em R$/cota do fim do mês; 13 meses para reconstruir 12 rendimentos |
+| R | soma de DY_m × VP_(m−1), 12 meses consecutivos, R$/cota na mesma base de cotas |
+| Preço | COTAHIST/cascata, R$/cota, mesmo direito; DY_12m=R/preço |
+| y_real | Média NTN-B escolhida na taxa-real 0.2, taxa_aplicacao, sem prêmio das ações |
+| s | Mediana de 5 anos do grupo tijolo contra a mesma taxa_aplicacao e mesma definição de R e preço; constante datada, depois de recalibrada no F2B-2 |
+| Tipo | Informe CVM ativo_passivo; regra de composição de universo-inicial, seção de fontes: fração >50% da soma dos ativos imobiliários identificados |
+| Eventos | Cotas_Emitidas, VP e documentos oficiais de eventos da CVM/B3/administrador, disponíveis até as_of |
+| P/VP, Selic e vacância | Só contexto/score existente; não entram em R nem em V0 |
+
+Classificação: recebíveis (CRI/CRA, LCI/LCA, letras hipotecárias, LIG) = papel;
+imóveis, terrenos, direitos reais, participações imobiliárias = tijolo; cotas de
+FII = fundos de fundos. Denominador é a soma desses grupos, sem caixa/renda
+fixa; declarar a fração sobre ativos investidos, não sobre patrimônio total.
+Aplicar à composição do mesmo mês do último Informe elegível. Grupo sem maioria
+estrita, base zero, dados inválidos ou composição não disponível: desconhecido,
+abstenção. A amostra de agosto/2026 não prova o tipo nos cinco anos anteriores.
 
 ## 3. Regime, janela e data
 
-- **Regime:** a NTN-B é real; o rendimento do FII é tratado como fluxo que acompanha a inflação (contratos de aluguel corrigidos por índice de preço). **Limite (F-9):** os FIIs de papel indexados ao CDI têm rendimento que segue o juro nominal, não a inflação; para eles a comparação com a NTN-B mistura regimes (ponto 7.5).
-- **Tributação:** o rendimento do FII é isento de IR para pessoa física nas condições da lei; a NTN-B paga IR. A V1 compara com a Selic **líquida**; a NTN-B + spread é bruta, e o spread histórico já embute essa diferença na medida em que foi medido contra a taxa bruta (ponto para a [FII]).
-- **Janela:** rendimento de 12 meses (soma dos meses); spread pela janela da 7.1.
-- **Data:** a do último Informe, a do preço e a data-base da NTN-B, na proveniência (D16).
+Doze meses civis consecutivos até o último mês elegível, com VP do mês anterior
+ao primeiro: **13 VPs**. Selecionar cada mês pela maior versão numérica **entregue
+até as_of**; sem entrega demonstrada não escolher a versão atual como se histórica.
+Maior versão empatada e conflitante abstém. Informe mais recente até **3 meses
+civis** antes de as_of, medidos pelo mês de referência; sem deslocar a janela
+para esconder buraco. A composição usada na classificação tem a mesma idade
+máxima e o mesmo corte. Preço último pregão; NTN-B até 5 dias úteis; publicação,
+calendário e datas conforme registro §2. Não anualizar história curta.
 
-## 4. Hipóteses e inaplicabilidade
+Qualquer evento de cota na janela, inclusive emissão, ou salto de escala/cota
+incompatível com continuidade, causa abstenção: **não há ajuste de eventos na
+2B**. Variação de Cotas_Emitidas sinaliza evento a conciliar, nunca um rendimento
+artificial. Sem documentação suficiente para distinguir evento de erro ou atestar
+continuidade, abster por base de cotas não demonstrada, sem criar percentual
+arbitrário para o salto. Verificação cobre as 13 bases e o intervalo até o preço.
+Amortização/devolução de capital não é rendimento: não somar Percentual_Amortizacao;
+se positiva na janela, ou liquidação/distribuição extraordinária não recorrente
+identificada, abster por fluxo não representativo. Contratos indexados não garantem
+constância real da distribuição; sustentabilidade permanece hipótese declarada.
 
-Abstenções:
-- "DY ausente ou não confiável" (DY zero ou ausente, ou fora de 0 a 25% ou não finito, pelo invariante dos motores). Na V1 esse caso não é abstenção: `fii_engine.py:78` devolve preço justo igual ao preço, score 50 e NEUTRO; o método novo passa a se abster, como pede o contrato de método;
-- "insumo ausente: NTN-B" (sem dado dentro da defasagem; ficha da taxa real), sem contingência;
-- "insumo ausente: spread" (sem a constante da versão da ficha, ou sem a série, se recalculado);
-- com o Informe (F2B-28): menos de 12 meses no Informe → abstenção, com o motivo.
+## 4. Escopo e matriz de validade
 
-Hipóteses: o rendimento dos 12 últimos meses é sustentável; o spread histórico é estável o bastante para servir de taxa exigida; sem ajuste de vacância, como hoje na prática (sem fonte oficial, F2A-23; ponto 7.6).
+Só classe oficial FII e tipo **tijolo**. Papel (KNCR11/MXRF11/HCTR11), fundos
+de fundos (CPTS11/HFOF11), tipo desconhecido/misto sem maioria: "tipo de FII
+fora do escopo na 2B" ou "classificação de FII desconhecida"; aguardam 2C.
+HGLG11/KNRI11 precisam ainda cumprir todas as guardas. XPML11 abstém por evento.
+Ações, bancos, seguradoras, holdings, units, preferenciais, ETF, BDR e UNKNOWN
+não entram: "classe fora do escopo FII". Setor ou ticker não substitui a classe.
 
-## 5. Exemplo calculado de forma independente
+Cada linha aplica antes das contas os motivos separados de ausente, não numérico,
+NaN e infinito do registro §2.1; contexto inválido é indicado sem alterar o valor.
 
-**HGLG11 (CSHG Logística FII, CNPJ 11.728.688/0001-47)**, tijolo, conta à mão, sem o código do projeto:
+| Insumo | Zero | Negativo | Fora de faixa / motivo |
+|---|---|---|---|
+| Preço e cada VP | abstém: não positivo | abstém | unidade/base divergente: base de cota incompatível |
+| Cada DY_m | válido como mês sem rendimento, se informado | abstém | >25% mensal: fora da faixa da fronteira atual; não confundir com validação de recorrência |
+| DY_12m e R | abstém: rendimento anual não positivo | abstém | DY_12m>25%: rendimento não confiável; 25% é teto de domínio existente, não parâmetro de valor |
+| Cotas_Emitidas | abstém: cotas não positivas | abstém | quantidade não inteira, mudança ou evento: base de cotas incompatível |
+| Amortização | válida sem amortização | abstém: dado inválido | positiva: devolução de capital na janela, abstenção |
+| Cada posição da classificação | válido | abstém | soma zero, maioria ausente ou fração >1: tipo desconhecido |
+| y_real | válido | válido se >−1 e q>0 | ≤−1 ou fonte/idade inválida: taxa indisponível |
+| s | zero matematicamente válido, só se mediana comprovada | permitido se mediana comprovada e q>0 | não recalibrado/sem versão: spread indisponível |
+| q=y+s | abstém: taxa não positiva | abstém | não finito: taxa inválida |
+| Resultado/intermediário | abstém com R>0 | abstém | não finito: resultado não finito |
 
-- **Informe Mensal de FII** (CVM, `inf_mensal_fii_complemento_2025.csv` e `_2026.csv`, maior `Versao` de cada mês): rendimento do mês = `Percentual_Dividend_Yield_Mes` (razão) × `Valor_Patrimonial_Cotas` do mês anterior.
+Não impor fator de 0,85: **spread bruto sobre benchmark bruto**, com a diferença
+tributária já na série. Não extrapolar isenção individual; a calibração observada
+não é parecer tributário. Sem spread validado não há valor numérico operacional.
 
-  | Mês | DY do mês | VP do mês anterior | Rendimento (R$/cota) |
-  |---|---|---|---|
-  | 2025-10 | 0,006769 | 162,498293 | 1,099951 |
-  | 2025-11 | 0,005901 | 162,238907 | 0,957372 |
-  | 2025-12 | 0,006635 | 165,789389 | 1,100013 |
-  | 2026-01 | 0,006604 | 166,576588 | 1,100072 |
-  | 2026-02 | 0,006610 | 166,408892 | 1,099963 |
-  | 2026-03 | 0,006637 | 165,744203 | 1,100044 |
-  | 2026-04 (versão 2) | 0,006477 | 165,712611 | 1,073321 |
-  | 2026-05 | 0,006607 | 166,490023 | 1,100000 |
-  | 2026-06 | 0,006626 | 166,003651 | 1,099940 |
-  | 2026-07 | 0,007023 | 166,603103 | 1,170054 |
-  | 2026-08 (versão 2) | 0,007027 | 166,431221 | 1,169512 |
-  | 2026-09 | 0,007052 | 165,951408 | 1,170289 |
+## 5. Exemplo independente
 
-  R = soma = **R$ 13,240530** por cota.
-- **Preço:** COTAHIST de setembro de 2026 (`COTAHIST_M092026.ZIP`), último pregão do arquivo, 25/09/2026 (não o último dia útil do mês), HGLG11, mercado à vista: **R$ 147,86**. DY de 12 meses = 13,240530 ÷ 147,86 = **8,9548%**.
-- **NTN-B:** 6,8818% (média das IPCA+ de 2035 em diante, venda, data-base 15/10/2026; ficha da taxa real). As datas não coincidem: rendimento até setembro de 2026, preço de 25/09/2026 e NTN-B de 15/10/2026; num cálculo de produção, as três ficam na proveniência.
-- **Preço justo** = 13,240530 ÷ (0,068818 + spread):
+**HGLG11**, CNPJ 11.728.688/0001-47, janela 01/10/2025–30/09/2026,
+moeda-base de cenário **R$ de 30/09/2026**, as_of 19/10/2026 17:10 Brasília.
+Complementos CVM 2025/2026; hashes completos no registro §2.3. Seleção por maior
+versão numérica nos snapshots — demonstração aritmética, sem presumir as entregas
+históricas ainda não conciliadas. Valores abaixo preservam a precisão publicada:
 
-  | Spread | Taxa | Preço justo (R$) | Upside sobre R$ 147,86 |
-  |---|---|---|---|
-  | 1 ponto | 7,8818% | 167,99 | +13,6% |
-  | 2 pontos | 8,8818% | 149,07 | +0,8% |
-  | 3 pontos | 9,8818% | 133,99 | −9,4% |
-  | 2,7452 (mediana mensal, todos, série 2017-10 a 2026-09; 2,75 arredondado) | 9,6270% | 137,54 | −7,0% |
-  | 3,2466 (idem, últimos 5 anos; 3,25 arredondado) | 10,1284% | 130,73 | −11,6% |
-  | 2,2071 (mediana mensal, tijolo, série; 2,21 arredondado) | 9,0889% | 145,68 | −1,5% |
-  | 2,6455 (idem, tijolo, últimos 5 anos; 2,65 arredondado) | 9,5273% | 138,98 | −6,0% |
-  | V1: Selic líquida, 14,75% × 0,85 (a Selic de contingência da V1, `SELIC_FALLBACK`, que é também a semente dos testes) | 12,5375% | 105,61 | −28,6% |
+| Mês | Versão | DY_m | VP_(m−1), R$ |
+|---|---|---|---|
+| 2025-10 | 1 | 0,006769 | 162,498293155102 |
+| 2025-11 | 1 | 0,005901 | 162,238906796951 |
+| 2025-12 | 1 | 0,006635 | 165,789388949214 |
+| 2026-01 | 1 | 0,006604 | 166,576588317915 |
+| 2026-02 | 1 | 0,006610 | 166,408892392171 |
+| 2026-03 | 1 | 0,006637 | 165,744203362955 |
+| 2026-04 | 2 | 0,006477 | 165,712610785485 |
+| 2026-05 | 1 | 0,006607 | 166,490023171738 |
+| 2026-06 | 1 | 0,006626 | 166,003651097124 |
+| 2026-07 | 1 | 0,007023 | 166,603102910645 |
+| 2026-08 | 2 | 0,007027 | 166,431221117306 |
+| 2026-09 | 1 | 0,007052 | 165,951408188109 |
 
-As medianas entram na conta com quatro casas (série do F2B-21, `spreads_agregados` em `scripts/levantamento_fase2b.py`, seção 4; o documento `docs/decisoes/fontes-fase2b.md` as mostra com duas); com o valor arredondado, o preço justo muda nos centavos (2,75 pontos dão R$ 137,47). O F2B-2 transforma este exemplo em teste (D28), com o spread que o Marcos escolher, fixado com as casas da constante decidida.
+VP final de setembro/2026: 165,476630173739 (13º VP).
+Soma dos produtos exatos = **R$ 13,240529645135538184/cota**.
+Fechamento COTAHIST **30/09/2026 R$ 147,95**, mercado 010:
+DY=**8,949327235644%**. Não usar 25/09 só por ser última linha física.
 
-## 6. Sensibilidade
+**Resultado operacional: abstenção.** Além do spread ainda não recalibrado,
+Cotas_Emitidas passa de 33.787.575 em outubro/2025 a 42.404.675 em novembro;
+depois 43.455.524 em abril/2026, 45.601.745 em maio e 45.601.713 em agosto.
+A regra do Marcos exclui evento de cota, inclusive neste exemplo. A conta acima
+não valida rendimento econômico contínuo nem elegibilidade do fundo.
 
-No universo inicial (F2B-21, pergunta 3; mediana do upside dos 25 FIIs atuais, com o DY do retrato do yfinance e NTN-B de 6,8818%): +35,5% com 1 ponto, +20,2% com 2, +8,1% com 3; +16,9% com 2,25 pontos (p25 da série), +10,9% com 2,75 (mediana da série), +5,4% com 3,25 (mediana de 5 anos), +4,1% com 3,38 (p75 da série). A V1 (Selic líquida) vai de +25,6% (Selic de 10%) a −16,2% (15%).
+Para teste independente da fórmula, cenário **condicional**, não resultado do
+HGLG11: R=13,240529645135538184, y=74,38/1100, s=2 pp hipotéticos dão
+**R$ 151,116233758550**; se s ausente ou houver evento, o teste espera abstenção.
+Confronto com avisos do administrador para validar o rendimento é pendência
+expressa do F2B-2; o próprio Informe não é segunda fonte independente.
 
-Pelo preço cancelar, o spread desloca o nível e não a ordem (dossiê da Fase 2, seção 4). Por grupo, a mediana do spread é de 2,21 pontos (tijolo) a 5,40 (papel) na série, e de 2,65 a 6,15 nos últimos 5 anos: um spread único trata papel e tijolo com a mesma taxa exigida.
+## 6. Sensibilidade e recalibração
 
-O vértice não é quantificado aqui: o spread do F2B-21 só existe contra a média de 2035 em diante, e outro vértice exige medi-lo de novo (7.2).
+Mesma definição de R em todos os cenários condicionais acima:
 
-Limites da série (F2B-21): só os 25 FIIs atuais do universo (sobrevivência); tipo pela composição de agosto de 2026, fixa; a cesta da NTN-B de 2035 em diante muda de prazo ao longo dos anos (de cerca de 18 anos em 2017 a 9 hoje); o DY da série vem do Informe e do COTAHIST, e o da matriz do universo, do yfinance.
+| Spread hipotético | Valor aritmético (R$) |
+|---|---|
+| 1 pp | 170,585414 |
+| 2 pp | 151,116234 |
+| 3 pp | 135,635897 |
+
+Nenhum desses é a constante escolhida. Os **2,65 pp da 0.1 não são reutilizados**:
+foram medidos com taxa_resgate e eventos sem ajuste. Não é correto acrescentar
+0,12 pp à mediana antiga: o diferencial histórico e as exclusões variam por mês.
+
+**Pendência autorizada no F2B-2:** usar scripts/levantamento_fase2b.py como base
+para recalcular 60 meses encerrados no último mês elegível. Em cada mês: R de
+12 meses/fechamento do mês − média da taxa_aplicacao da última data-base elegível
+até esse fechamento; mediana entre os tijolos elegíveis, depois mediana das 60
+medianas mensais (mesmo peso por mês). Reconstruir disponibilidade, versões,
+classificação e eventos à época, inclusive as bases anteriores às janelas.
+Mês sem fundos válidos é lacuna, não zero; sem 60 medianas válidas contíguas,
+spread indisponível, sem reduzir janela silenciosamente. Publicar número de
+fundos/meses antes e depois dos eventos, meses removidos, mudança da mediana,
+p25/p75 e limites da amostra. Comparar 1/2/3 pp e mediana recalibrada sobre o
+mesmo rendimento, sem misturar DY da cascata com Informe. Seleção só de fundos
+atuais mantém viés de sobrevivência: declarar e medir cobertura; não dizer que
+representa todos os listados. A composição atual não classifica todo o passado.
 
 ## 7. Parâmetros e justificativa
 
-### 7.1 Spread — [DECISÃO]
-- **Definição:** mediana dos FIIs (todos), por tipo (tijolo e papel), ou por fundo.
-- **Janela:** 5 anos, 10 anos (a série do F2B-21 tem 9) ou a série inteira.
-- **Atualização:** constante datada, revista por versão da ficha; ou recalculada a cada análise, o que exige as séries em produção (Fase 3).
-- Efeito no exemplo: de R$ 130,73 (3,25 pontos) a R$ 145,68 (2,21 pontos); 1 ponto de spread muda o preço justo em cerca de 10%.
+**Todas [DECISÃO] decididas pelo Marcos em 19/10/2026:**
 
-### 7.2 Vértice — [DECISÃO]
-O mesmo da taxa real (ficha do F2B-22, 7.2) ou outro. O spread do F2B-21 foi medido contra a média de 2035 em diante; trocar o vértice exige medir de novo.
+| Opção da 0.1 | Decidida |
+|---|---|
+| 7.1 Spread | mediana de 5 anos dos tijolos; recalcular com taxa_aplicacao no F2B-2, constante datada após validação |
+| 7.2 Vértice | mesma média da taxa-real 0.2, sem prêmio das ações |
+| 7.3 Rendimento | Informe, declarado, reconstruído; 12 meses/13 VPs, corte por entrega e idade de 3 meses |
+| 7.4 Score | inalterado na 2B, inclusive comparação existente com Selic; exceção temporária ao princípio 9 do PLANO, não misturar com fórmula de V0 |
+| 7.5 Tipo | só tijolo; demais e desconhecido abstêm até 2C |
+| 7.6 Vacância | sem fonte oficial; manter o tratamento atual, sem inventar ajuste ou pontuação nova |
+| 7.7 P/VP | pontos e score inalterados, sem entrar no valor de rendimento |
+| 7.8 Tributação | spread bruto sobre bruto, sem desconto tributário adicional |
 
-### 7.3 Rendimento — [DECISÃO]
-O do Informe (F2B-28; oficial, em razão, sobre o VP do mês anterior, reconstruído em R$ por cota) ou o da cascata (yfinance e brapi). No HGLG11: 8,95% pelo Informe e COTAHIST; o do retrato do yfinance do F2B-21 é outra medida (proventos pela data ex sobre o preço do retrato).
-
-### 7.4 Benchmark do score — [DECISÃO]
-Hoje ±20 pontos pela Selic líquida. Opções: (a) manter a Selic líquida, e a nota segue o ciclo (contra o princípio 9 do PLANO); (b) o mesmo benchmark do preço justo (NTN-B + spread); (c) a Selic só exibida, como contexto.
-
-### 7.5 Papel e tijolo — [DECISÃO]
-Benchmark único (NTN-B + spread) ou o papel indexado ao CDI comparado com o CDI (F-9). Sem a separação, um FII de papel com DY alto por CDI alto parece barato contra a NTN-B.
-
-### 7.6 Vacância — [DECISÃO]
-Sem fonte oficial (F2A-23). Opções: o risco "vacância não informada" na saída, ou nada.
-
-### 7.7 P/VP — [DECISÃO]
-Contexto, pelo checkpoint. Os pontos de score das faixas da V1 (`FiiNav`) ficam ou saem; se saírem, a asserção do score em `test_b_fii_nao_considera_o_patrimonio_no_fair_value` muda no F2B-2 (marcador, passo 6). Qualquer que seja a decisão, o F2B-2 muda outras asserções de `tests/test_financeiro_pre_refactor.py` (marca `f9_fii_selic`): o `fair_value == 110,0` do mesmo teste, que é 100 × 0,0935 ÷ (0,10 × 0,85), pela Selic líquida; e `test_b_fii_compara_dy_com_a_selic_liquida_de_ir`, conforme a 7.4.
-
-### 7.8 Tributação — [DECISÃO]
-O rendimento do FII é isento para pessoa física, e a NTN-B paga IR; a V1 compara com a Selic líquida. Opções: comparar com a NTN-B bruta mais um spread medido contra a taxa bruta (o F2B-21), ou com a NTN-B líquida de IR, o que exige definir a alíquota e medir o spread de novo.
+Eventos/saltos abstêm; crescimento **real** zero explicitamente derivado.
+As decisões não transformam a reconstrução do F2B-28 em fluxo validado nem
+aprovam uma constante ainda não calculada. Pendências autorizadas estão na seção 6.
