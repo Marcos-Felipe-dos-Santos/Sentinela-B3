@@ -540,3 +540,23 @@
 - **Para o Marcos revisar:** as referências (capítulos de memória); o preço do exemplo é o último pregão do arquivo mensal de setembro (25/09/2026), não o fim do mês.
 - **Revisão:** 1ª rodada aprovada com médios, corrigidos antes do commit: o DY de 5,49% da ABEV3 (seção 7.5) passou a citar a fonte (retrato público do yfinance do F2B-21, fora do git); a tabela de sensibilidade ganhou a coluna da (ii) com teto de 2% (na ABEV3, o teto só age sobre a (ii): R$ 7,21 com prêmio de 5%), e o exemplo mostra o mesmo número; o JCP zero da Ambev na DVA ficou anotado como conferido no arquivo. Menores: o texto da abstenção por inflação e a razão do misto (sobre o nominal, igual ao real por Fisher).
 
+
+### F2B-24 — docs: add methodology sheet for the Bazin rate
+- **Executor:** claude-code (claude-opus-5-5)
+- **Status:** sucesso
+- **O que foi feito:** `docs/metodologia/bazin.md`, versão 0.1, status **rascunho**, com as sete seções do modelo e as quatro opções da [BAZIN], cada uma com fórmula, regime, referência e efeito:
+  1. forma comum (D ÷ taxa) e a referência (Bazin, 1992: rendimento mínimo de 6%); o colapso da V1 (o preço cancela, F-5); tabela das opções (a) Selic, (b) 6% fixo, (c) k real sem crescimento real e (d) adiar para o F2C-5; o gate de 5% e o alerta de 15% em todas;
+  2. insumos (DY, preço, Selic, k real, perfil), com a janela de 5 anos do checkpoint declarada como limitação até o F2C-1;
+  3. regime de cada opção (nominal, sem ajuste, real);
+  4. abstenções da 1.0.1 e as novas por opção (taxa real indisponível na (c));
+  5. exemplo independente com a LREN3: DVA 2025 (JCP de 834.310 mil; dividendos 0; versão 2 da DFP) e Composição do Capital (982.199 mil ações), fechamento de 25/09/2026 no COTAHIST (R$ 11,12): D = R$ 0,849430 (JCP do exercício, por competência, declarado como definição diferente da do insumo da seção 2), DY 7,6388%; valor R$ 5,76 pela (a) com Selic de 14,75%, R$ 14,16 pela (b), R$ 7,81, 7,15 e 6,12 pela (c) com prêmio de 4%, 5% e 7%;
+  6. sensibilidade pelo universo inicial (matriz do F2B-21) e a observação de que, com o preço cancelando e a taxa única, a ordem dos ativos é a do DY em todas as opções; muda o nível e a estabilidade no tempo;
+  7. parâmetros: a opção da taxa **[DECISÃO]**, com o que acontece com os testes marcados com o F-5 no F2B-7 e com o F2B-31 em cada uma; o piso de 5% **[DECISÃO]**; o gate e o alerta, já decididos.
+- **Dificuldades:** as primeiras candidatas ao exemplo não serviam: a ABEV3 (DY de 4,56% pela DVA) e a CYRE3 (4,82%) ficam abaixo do gate de 5%; várias outras não têm dividendos nas linhas 7.08.04.01 e 7.08.04.02 da DVA consolidada.
+- **Como resolvi:** a LREN3, com JCP de 2025 na 7.08.04.01, DY de 7,64% pela DVA e perfil renda.
+- **Testes:** 1474 passed, 1 skipped, 24 xfailed, sem mudança (só documento). Golden sem diferença.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** a opção da taxa (7.1), o piso (7.2) e a aprovação da ficha. Ressalvas da 2ª revisão do F2B-23, registradas aqui porque o commit dele saiu como revisado: na ficha do Gordon, a seção 3 diz que, com k e g convertidos pela mesma inflação, o valor é o mesmo nos dois regimes, e chama o nominal de "igual ao real" ao falar do misto; isso vale só pela definição (i) (a (ii) não é a conversão de Fisher do g nominal), e o texto deveria dizer "pela definição (i)" para não pender para uma opção; e a seção 3 cita só o F2B-21 para a razão misto ÷ nominal, sem o dossiê (seção 3), que o item pede. Pontos para a auditoria em modo FICHA.
+- **Para o Marcos revisar:** a referência do livro de Bazin (citada de memória); o JCP entra bruto (antes do IR na fonte), declarado como hipótese.
+- **Revisão:** 1ª rodada aprovada com médios, corrigidos antes do commit: a seção 6 dizia que a (c) com prêmio de 5% equivale à (a) com Selic de 11,88% "em qualquer data" (vale só nesta data-base; a (c) segue a NTN-B) e sugeria que só a (b) e a (c) preservam a ordem dos ativos (a taxa é única em todas as opções, e a ordem é sempre a do DY; a diferença é de nível e de estabilidade); o exemplo declara que o D é o JCP do exercício na DVA, não o DY de 12 meses da cascata. Menores: a (a) também mantém a `selic` no contrato; o perfil renda da LREN3 decorre do DY (> 4%), sem depender do ROE, que não estava no documento versionado; a regra do perfil é um E, com desigualdades estritas.
+

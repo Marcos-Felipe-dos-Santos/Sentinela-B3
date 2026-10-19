@@ -484,7 +484,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** como o F2B-22.
 
-- [ ] **F2B-24** · docs · `docs: add methodology sheet for the Bazin rate` · **[ADR-0003]** **[BAZIN]**
+- [x] **F2B-24** · docs · `docs: add methodology sheet for the Bazin rate` · **[ADR-0003]** **[BAZIN]**
   `docs/metodologia/bazin.md`, rascunho. F-5: o Bazin da V1 é DY × preço ÷ máx(Selic, 5%) (`sentinela/methods/bazin.py:65`), o preço cancela e a nota segue o Copom. A ficha apresenta as opções da [BAZIN], cada uma com fórmula, regime, referência, efeito pela matriz do F2B-21 e os testes que o F2B-7 marcou com o F-5:
   - (a) manter a Selic; (b) taxa fixa (6% no Bazin original); (c) k real sem crescimento real (o Gordon com g real = 0); (d) adiar para o F2C-5 (lentes);
   - o gate de DY de 5% e o alerta de armadilha ficam em todas;
