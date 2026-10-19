@@ -169,6 +169,7 @@ def test_changelog_tem_a_1_0_0():
     for nome in NOMES:
         mudancas = registry.CHANGELOG[nome]
         esperado = {
+            "Graham": ["1.0.0", "1.1.0"],
             "Bazin": ["1.0.0", "1.0.1"],
             "Gordon": ["1.0.0", "1.1.0"],
             "P/VP do FII": ["1.0.0", "1.1.0"],
@@ -187,7 +188,7 @@ def test_nomes_sao_unicos():
 
 def test_validar_rejeita_registro_inconsistente():
     g = registry.obter("Graham")
-    ok = {"Graham": (registry.Mudanca("1.0.0", "x"),)}
+    ok = {"Graham": (registry.Mudanca("1.1.0", "x"),)}
     registry.validar((g,), ok)
     with pytest.raises(ValueError, match="repetido"):
         registry.validar((g, g), ok)

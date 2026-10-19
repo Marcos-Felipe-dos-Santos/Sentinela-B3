@@ -42,7 +42,7 @@ def test_formula_raiz_de_22_5_lpa_ajustado_vpa():
     assert r.valor == BRL(math.sqrt(22.5 * lpa * vpa))
     assert r.obter("lpa_ajustado") == BRL(10.0)
     assert r.obter("pl_aplicado") == Ratio(10.0)
-    assert (r.metodo, r.versao) == ("Graham", "1.0.0")
+    assert (r.metodo, r.versao) == ("Graham", "1.1.0")
 
 
 def test_mesma_ordem_de_operacoes_da_v1():
@@ -139,7 +139,7 @@ def test_insumo_ausente_abstem_se(campo):
 def test_metadados():
     g = Graham()
     assert g.nome == "Graham"
-    assert g.version == "1.0.0"
+    assert g.version == "1.1.0"
     assert g.regime is Regime.SEM_TAXA
     assert g.requires == ("preco", "pl", "pvp", "vpa", "perfil")
     assert g.applies_to == frozenset({AssetType.STOCK, AssetType.UNIT})
@@ -160,7 +160,7 @@ def test_metadados():
 def test_abstencao_identifica_metodo_e_versao(kw):
     r = _graham(**kw)
     assert isinstance(r, Abstention)
-    assert (r.metodo, r.versao) == ("Graham", "1.0.0")
+    assert (r.metodo, r.versao) == ("Graham", "1.1.0")
 
 
 def test_resultado_que_estoura_para_infinito_abstem_se():
@@ -177,4 +177,4 @@ def test_resultado_que_estoura_para_infinito_abstem_se():
     )
     assert isinstance(r, Abstention)
     assert r.motivo == MOTIVO_NAO_FINITO
-    assert (r.metodo, r.versao) == ("Graham", "1.0.0")
+    assert (r.metodo, r.versao) == ("Graham", "1.1.0")

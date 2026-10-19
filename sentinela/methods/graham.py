@@ -1,4 +1,4 @@
-"""Graham 1.0.0: comportamento da V1, extraído na Fase 1, sem mudança de número.
+"""Graham 1.1.0: abstém-se com VPA não positivo.
 
 Valor justo = raiz de 22,5 × LPA ajustado × VPA, com piso no P/L, limite de P/L e
 limite de P/VP pelo perfil. Não usa taxa de desconto.
@@ -37,7 +37,7 @@ class GrahamParams:
 
 class Graham(ValuationMethod):
     nome = "Graham"
-    version = "1.0.0"
+    version = "1.1.0"
     regime = Regime.SEM_TAXA
     requires = ("preco", "pl", "pvp", "vpa", "perfil")
     assumptions = (
@@ -66,6 +66,8 @@ class Graham(ValuationMethod):
         )
         if pvp > limite_pvp:
             return Abstention(self.nome, self.version, MOTIVO_PVP_ACIMA)
+        if inputs.vpa.valor <= 0:
+            return Abstention(self.nome, self.version, "VPA ≤ 0")
         pl_graham = max(pl, params.pl_piso)
         lpa_ajustado = inputs.preco.valor / pl_graham
         valor = (FATOR_GRAHAM * lpa_ajustado * inputs.vpa.valor) ** 0.5

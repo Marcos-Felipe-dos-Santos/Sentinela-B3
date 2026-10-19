@@ -61,6 +61,9 @@ CHANGELOG["Bazin"] += (
         "motivo da abstenção (DY não confiável antes do mínimo); nenhum número muda",
     ),
 )
+CHANGELOG["Graham"] += (
+    Mudanca("1.1.0", "com VPA não positivo, abstém-se antes da raiz"),
+)
 CHANGELOG["P/VP do FII"] += (
     Mudanca(
         "1.1.0", "com P/VP não positivo, abstém-se em vez de classificar como desconto"

@@ -21,20 +21,17 @@ PARAMS = GrahamParams(
 )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG-2A-18 · Graham com VPA < 0 calcula raiz de negativo em vez de se abster · "
-        "corrige: F2B-42"
-    ),
-)
-def test_vpa_negativo_se_abstem():
+@pytest.mark.parametrize("vpa", [-50.0, 0.0])
+def test_vpa_negativo_se_abstem(vpa: float) -> None:
     inputs = MethodInputs(
         as_of=date(2026, 10, 2),
         preco=BRL(100.0),
         pl=Ratio(10.0),
         pvp=Ratio(1.5),
-        vpa=BRL(-50.0),
+        vpa=BRL(vpa),
         perfil=Perfil.RENDA,
     )
-    assert isinstance(Graham().calcular(inputs, PARAMS), Abstention)
+    resultado = Graham().calcular(inputs, PARAMS)
+    assert isinstance(resultado, Abstention)
+    assert resultado.motivo == "VPA ≤ 0"
+    assert (resultado.metodo, resultado.versao) == ("Graham", "1.1.0")

@@ -81,6 +81,7 @@ do C-C). B2, C-D e C-E não têm mais janela.
 - Os singletons dos motores (`_GRAHAM`, `_BAZIN`, `_LYNCH`, `_GORDON`, `_FII_YIELD`, `_FII_NAV` e o novo dos bancos): nenhum item os renomeia sem atualizar `sentinela/reports/rastreabilidade.py` no mesmo commit.
 - Arquivos dos tickets do Jules com janela nesta fase: `peers_engine.py` e `tests/test_peers_engine.py` (C-C), `technical_engine.py` (B1), `database.py` (B3), `README.md` (C-A) e `.env.example` (C-B). Nenhum item os toca.
 - Teste existente só muda onde o item manda; a lista está em cada item, e a justificativa, no diário.
+- **Decisão do Marcos de 18/10/2026:** o item que troca a versão de um método pode atualizar, em qualquer arquivo de teste, só as asserções que fixam a versão desse método (e o changelog no registry), sem mudar nenhuma outra asserção. Toda asserção que mudar por isso vai listada no diário do item.
 
 **Regra do golden** (a da 2A, decidida pelo Marcos em 5/10/2026, opção (a); esta proposta a mantém):
 - Item **[golden]** regenera com `GERAR_GOLDEN=1 python -m pytest tests/test_equivalencia_motores.py::test_gerar_golden`, no mesmo commit da mudança.
@@ -389,7 +390,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden inalterado (o motor não passa P/VP ≤ 0 à lente);
   - gate da fase.
 
-- [ ] **F2B-42** · fix · `fix: abstain Graham on non-positive book value per share`
+- [x] **F2B-42** · fix · `fix: abstain Graham on non-positive book value per share`
   Corrige o BUG-2A-18. `sentinela/methods/graham.py` com VPA < 0 calcula a raiz de um número negativo (sai um complexo, e o `math.isfinite` quebra). O método passa a se abster com VPA ≤ 0 ("VPA ≤ 0"). Guarda de validade de insumo: versão menor, com changelog, sem ficha (mesma decisão do F2B-41).
 
   **Testes que mudam:** `tests/test_registry.py` (versão).

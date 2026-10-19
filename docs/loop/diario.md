@@ -435,3 +435,16 @@
 - **Resíduos:** nenhum versionado; logs em /tmp e passagem/piloto em outputs, fora do git.
 - **Decisões que ficaram para o Marcos:** nenhuma deste item.
 - **Para o Marcos revisar:** a ampliação do escopo dos dois itens é somente a autorizada acima; nenhuma fórmula, taxa, parâmetro ou golden mudou.
+
+### F2B-42 — fix: abstain Graham on non-positive book value per share
+- **Executor:** codex (GPT-6)
+- **Status:** sucesso
+- **O que foi feito:** BUG-2A-18 reproduzido antes da correção com `--runxfail`: VPA −50 levanta `TypeError` por raiz complexa, e VPA zero devolve valor zero em vez de abstenção. `Graham` 1.1.0 passa a se abster com "VPA ≤ 0", preservando a ordem das guardas anteriores. Changelog atualizado; regressão parametrizada com zero e negativo, xfail retirado, motivo/nome/versão conferidos e registro do bug em "corrigido".
+- **Dificuldades:** o item ficou [!] na preparação porque quatro asserções fixavam a versão anterior fora da lista. Depois da decisão, dois testes de validação do registro ainda montavam um changelog sintético válido de Graham 1.0.0; atualizada somente a versão desse método no changelog sintético. Nenhuma asserção de erro ou regra de cálculo mudou nesses testes.
+- **Decisão do Marcos de 18/10/2026:** registrada na seção "Intocáveis nesta fase" da fila a autorização geral para o item atualizar, em qualquer teste, somente as asserções da versão do método que troca e o changelog no registry, listando cada alteração no diário. Bloqueio retirado e execução retomada.
+- **Asserções de versão atualizadas:** em `tests/test_methods_graham.py`, `test_formula_raiz_de_22_5_lpa_ajustado_vpa`, `test_metadados`, `test_abstencao_identifica_metodo_e_versao` e `test_resultado_que_estoura_para_infinito_abstem_se`: 1.0.0 → 1.1.0. Em `tests/test_registry.py::test_changelog_tem_a_1_0_0`, histórico de Graham ganha 1.1.0. Changelogs sintéticos de Graham em `tests/test_registry.py::test_validar_rejeita_registro_inconsistente` e `tests/test_methods_contrato_mensagens.py::test_mensagens_do_registro`: 1.0.0 → 1.1.0, sem alterar asserções de erro. `tests/test_rastreabilidade.py` não precisou mudar: a asserção de Graham já lê a versão do registro; nenhuma outra asserção desse arquivo foi tocada.
+- **Testes:** 1472 passed, 1 skipped, 6 xfailed → 1474 passed, 1 skipped, 5 xfailed (regressão negativa em PASS e caso zero acrescentado). Gates Ruff verdes; golden inalterado, sem regeneração; teste financeiro sem alteração neste item. `ruff format` nos cinco arquivos Python inicialmente alterados, sem mudança de formato.
+- **Mutação:** `python -m mutmut run 'sentinela.methods*'` e exportação CICD. Graham inicialmente 89/91 (97,8%); os dois sobreviventes apagavam nome e versão da nova abstenção. A regressão passou a conferir ambos; rodada dos métodos e reexecução explícita dos dois mutantes: 91/91 (100%). Demais módulos: base 183/183, bazin 61/61, fii_nav 26/26, fii_yield 51/51, gordon 116/116, lynch 109/109 e registry 34/34; todos 100%.
+- **Resíduos:** nenhum versionado; logs de verificação em /tmp, passagem em outputs.
+- **Decisões que ficaram para o Marcos:** nenhuma deste item.
+- **Para o Marcos revisar:** só a validade do VPA mudou; fórmula e parâmetros para entradas válidas permanecem iguais.
