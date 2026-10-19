@@ -370,6 +370,21 @@ def _texto_liquidez(liquidez: dict[str, Any]) -> str:
     return f"{'; '.join(partes)}; até {liquidez['data_final']} ({liquidez['fonte']}){lacuna}"
 
 
+def _texto_rendimento_fii(medida: dict[str, Any], dy_cascata: Any) -> str:
+    if "abstencao" in medida:
+        return f"não calculado: {medida['abstencao']}"
+    cascata = (
+        f"{_numero(dy_cascata * 100)}%"
+        if isinstance(dy_cascata, (int, float)) and not isinstance(dy_cascata, bool)
+        else "n/d"
+    )
+    return (
+        f"DY de 12 meses {_numero(medida['dy'] * 100)}% pelo Informe (até {medida['mes_final']}, "
+        f"rendimento de R$ {_numero(medida['rendimento_12m'])} por cota, sobre o "
+        f"{medida['base']}) contra {cascata} da cascata"
+    )
+
+
 def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str, Any]:
     """Roda o motor da V1 sobre `dados`, capturando o detalhe de cada método."""
     instancias = _instancias(eh_fii)
@@ -514,6 +529,14 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
     if liquidez:
         fontes.append(
             ("Liquidez (F2A-26, ainda sem uso nos métodos)", _texto_liquidez(liquidez))
+        )
+    rendimento = dados.get("rendimento_fii_cvm")
+    if rendimento:
+        fontes.append(
+            (
+                "Rendimento do FII pelo Informe (F2B-28, ainda sem uso nos métodos)",
+                _texto_rendimento_fii(rendimento, dados.get("dy")),
+            )
         )
     ttm = dados.get("ttm_cvm")
     if ttm:

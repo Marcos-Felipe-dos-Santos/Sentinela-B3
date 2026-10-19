@@ -11,7 +11,14 @@ from config import FII_MANUAL_FALLBACK, _normalizar_dy
 from cvm_fii_provider import CVMFIIProvider
 from cvm_provider import CVMProvider
 from database import DatabaseManager
-from sentinela.data import acoes_cvm, contas_cvm, liquidez, normalizacao, series_cvm
+from sentinela.data import (
+    acoes_cvm,
+    contas_cvm,
+    liquidez,
+    normalizacao,
+    rendimento_fii,
+    series_cvm,
+)
 from sentinela.data.providers.b3_cotahist import HistoricoRecente
 from sentinela.data.providers.ifdata import IFDataProvider
 from sentinela.data.referencia.carga import ReferenciaOficial
@@ -474,6 +481,7 @@ class MarketEngine:
 
         self._buscar_ifdata(dados)
         self._buscar_cvm_fii(ticker, dados)
+        self._buscar_rendimento_fii(ticker, dados)
         self._buscar_liquidez(ticker, dados)
 
         if list_missing_required_fields(dados, classifier):
@@ -664,6 +672,36 @@ class MarketEngine:
             logger.warning(f"[{ticker}] Brapi error: {e}")
 
         return False
+
+    def _buscar_rendimento_fii(self, ticker: str, dados: dict[str, Any]) -> None:
+        """Rendimento de 12 meses do FII pelo Informe Mensal (F2B-28), fora do prompt.
+
+        Só mede: nenhum motor lê; o DY da cascata não muda. Grava `dados['rendimento_fii_cvm']`
+        (DY sobre o preço da cascata, meses, base e proveniência) ou a abstenção. O CNPJ vem
+        só do índice oficial; provedor e método por `getattr`. Sem eles, sem CNPJ ou com falha,
+        a chave fica de fora.
+        """
+        if not self._is_fii_ticker(ticker, dados):
+            return
+        ler = getattr(getattr(self, 'cvm_fii', None), 'obter_rendimentos_fii', None)
+        cnpj = dados.get('cnpj')
+        if ler is None or not cnpj:
+            return
+        try:
+            informe = ler(cnpj)
+        except Exception as exc:
+            logger.warning(
+                f"[{ticker}] Informe Mensal indisponível para o rendimento: {exc}"
+            )
+            return
+        resultado = rendimento_fii.rendimento_12_meses(
+            informe['registros'], dados.get('preco_atual')
+        )
+        dados['rendimento_fii_cvm'] = (
+            {'abstencao': resultado.motivo}
+            if isinstance(resultado, rendimento_fii.Abstencao)
+            else {**resultado, 'proveniencia': informe.get('proveniencia')}
+        )
 
     def _buscar_liquidez(self, ticker: str, dados: dict[str, Any]) -> None:
         """Liquidez do ticker pelo COTAHIST (F2A-26), em `dados['liquidez']`, fora do prompt.

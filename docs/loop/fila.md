@@ -517,7 +517,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** como o F2B-22.
 
-- [ ] **F2B-28** · feat · `feat: add FII trailing distributions from the monthly report` · **[ADR-0003]**
+- [x] **F2B-28** · feat · `feat: add FII trailing distributions from the monthly report` · **[ADR-0003]**
   Pendência "DY do Informe Mensal de FII (F2B-2)" (PLANO, seção 10). É aditivo: quem passa a usar é o F2B-2, se a ficha do FII escolher.
   - **Leitura.** O `CVMFIIProvider` lê os 12 últimos meses do fundo (o Informe do ano e o do anterior), com a maior `Versao` de cada mês.
   - **Conta.** Função pura em `sentinela/data/`: DY de 12 meses sobre o preço, pela base e pela representação que o F2B-21 determinou (pergunta 4). A conversão de percentual passa por `sentinela/data/normalizacao.py`, com a representação do Informe declarada e citada (armadilha 4). Menos de 12 meses: abstenção, com o motivo. Base não determinada no F2B-21: `[!]`.

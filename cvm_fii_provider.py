@@ -185,3 +185,54 @@ class CVMFIIProvider:
                 )
 
         return None
+
+    def _linhas_do_fundo(self, cnpj: str, ano: int) -> tuple[Path, list[dict]] | None:
+        """Linhas do fundo no complemento do ano; `None` se o Informe não pôde ser lido."""
+        try:
+            zip_path = self.baixar_informe(ano)
+            df = self._parsear_complemento(zip_path, ano)
+            if df.empty or "CNPJ_Fundo_Classe" not in df.columns:
+                return zip_path, []
+            linhas = df[df["CNPJ_Fundo_Classe"].str.strip() == cnpj].to_dict("records")
+        except (OSError, ValueError, KeyError, zipfile.BadZipFile) as exc:
+            logger.warning(
+                "Erro ao ler rendimentos FII cnpj=%s ano=%d: %s", cnpj, ano, exc
+            )
+            return None
+        return zip_path, linhas
+
+    def obter_rendimentos_fii(self, cnpj_fundo: str) -> dict:
+        """Meses do fundo nos Informes do ano e do anterior, para o rendimento de 12 meses (F2B-28).
+
+        Sem meses do fundo no ano corrente (começo do ano, antes do Informe de janeiro, ou
+        Informe do ano ilegível), o último mês é do ano anterior, e a janela precisa da cota
+        de dois anos atrás: lê também esse Informe. Devolve todas as linhas do complemento
+        (todas as versões; a escolha da maior é da conta, `sentinela.data.rendimento_fii`) e
+        a proveniência da mais recente. Ano que falha fica de fora, com aviso no log.
+        """
+        cnpj = cnpj_fundo.strip()
+        ano_atual = date.today().year
+        registros: list[dict] = []
+        mais_recente = None
+        anos = [ano_atual, ano_atual - 1]
+        for ano in anos:
+            lido = self._linhas_do_fundo(cnpj, ano)
+            if ano == ano_atual and not (lido and lido[1]):
+                anos.append(ano_atual - 2)
+            if lido is None:
+                continue
+            zip_path, linhas = lido
+            registros.extend(linhas)
+            for linha in linhas:
+                chave = (
+                    str(linha.get("Data_Referencia") or ""),
+                    _to_float(linha.get("Versao")) or 0.0,
+                )
+                if mais_recente is None or chave > mais_recente[0]:
+                    mais_recente = (chave, zip_path, ano, linha)
+        proveniencia_recente = (
+            self._proveniencia(mais_recente[1], mais_recente[2], mais_recente[3])
+            if mais_recente
+            else None
+        )
+        return {"registros": registros, "proveniencia": proveniencia_recente}

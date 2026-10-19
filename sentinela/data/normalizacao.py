@@ -17,6 +17,9 @@ Representação por provedor (F2A-16, `docs/decisoes/fontes-fase2a.md`, seção 
   do lucro ÷ PL da CVM em 4 de 10 tickers (KLBN11, SUZB3, WEGE3, RENT3). O da brapi segue a
   regra da V1, como no DY. O da CVM é derivado no próprio código (lucro ÷ PL dos
   controladores), em razão.
+- **Informe Mensal de FII (CVM):** `Percentual_Dividend_Yield_Mes` em razão (0,007413 = 0,74% no
+  mês), conferida pela coluna-irmã de rentabilidade patrimonial (F2B-21, pergunta 4, em
+  `docs/decisoes/fontes-fase2b.md`; o F2A-16 a registrara em percentual).
 
 Funções puras: sem rede, sem relógio, sem `config`.
 """
@@ -34,11 +37,15 @@ class Representacao(Enum):
     PERCENTUAL = "percentual (evidência do F2A-16)"
     RAZAO = "razão (evidência do F2A-16 ou derivada no código)"
     INFERIDA_V1 = "inferida pela regra da V1: acima de 1 é percentual, senão razão"
+    RAZAO_INFORME_FII = (
+        "razão (evidência do F2B-21, pergunta 4: coluna-irmã de rentabilidade patrimonial)"
+    )
 
 
 REPRESENTACAO_DY: dict[str, Representacao] = {
     "yfinance": Representacao.PERCENTUAL,
     "brapi": Representacao.INFERIDA_V1,
+    "cvm_fii": Representacao.RAZAO_INFORME_FII,
 }
 REPRESENTACAO_ROE: dict[str, Representacao] = {
     "yfinance": Representacao.RAZAO,
