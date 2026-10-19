@@ -168,9 +168,11 @@ def test_changelog_tem_a_1_0_0():
     assert set(registry.CHANGELOG) == set(NOMES)
     for nome in NOMES:
         mudancas = registry.CHANGELOG[nome]
-        esperado = {"Bazin": ["1.0.0", "1.0.1"], "Gordon": ["1.0.0", "1.1.0"]}.get(
-            nome, ["1.0.0"]
-        )  # F2A-21 e F2A-25
+        esperado = {
+            "Bazin": ["1.0.0", "1.0.1"],
+            "Gordon": ["1.0.0", "1.1.0"],
+            "P/VP do FII": ["1.0.0", "1.1.0"],
+        }.get(nome, ["1.0.0"])  # F2A-21 e F2A-25
         assert [m.version for m in mudancas] == esperado
         assert mudancas[0].descricao == (
             "comportamento da V1, extraído na Fase 1, sem mudança de número"

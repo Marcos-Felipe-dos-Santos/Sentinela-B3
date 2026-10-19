@@ -114,7 +114,10 @@ def test_relatorio_mostra_cada_metodo_com_versao():
 def test_relatorio_do_fii_mostra_rendimento_e_lente_de_pvp():
     html = _html(_fii(pvp=0.8), eh_fii=True)
     assert "Bazin FII" in html and "P/VP do FII" in html
-    assert html.count("versão 1.0.0") == 2
+    assert (
+        "Bazin FII <small>versão 1.0.0" in html
+        and "P/VP do FII <small>versão 1.1.0" in html
+    )
     assert "desconto sobre o patrimônio" in html
     assert "fator_ir" in html
 

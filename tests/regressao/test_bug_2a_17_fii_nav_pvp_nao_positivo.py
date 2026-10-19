@@ -17,10 +17,6 @@ from sentinela.methods.fii_nav import FiiNav, FiiNavParams
 PARAMS = FiiNavParams(premio_alto=1.15, premio_moderado=1.05, desconto=0.85)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG-2A-17 · FiiNav classifica P/VP ≤ 0 como desconto · corrige: F2B-41",
-)
 @pytest.mark.parametrize("pvp", [0.0, -1.0])
 def test_pvp_nao_positivo_se_abstem(pvp):
     resultado = FiiNav().calcular(

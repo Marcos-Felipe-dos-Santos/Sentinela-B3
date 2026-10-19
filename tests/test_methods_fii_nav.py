@@ -35,8 +35,6 @@ def _nav(pvp):
         (0.85, ()),
         (0.8499, (FAIXA_DESCONTO,)),
         (0.5, (FAIXA_DESCONTO,)),
-        (0.0, (FAIXA_DESCONTO,)),
-        (-1.0, (FAIXA_DESCONTO,)),
     ],
 )
 def test_faixa_pelos_limites_estritos_da_v1(pvp, alertas):
@@ -44,7 +42,7 @@ def test_faixa_pelos_limites_estritos_da_v1(pvp, alertas):
     assert isinstance(r, MethodResult)
     assert r.valor == Ratio(pvp)
     assert r.alertas == alertas
-    assert (r.metodo, r.versao) == ("P/VP do FII", "1.0.0")
+    assert (r.metodo, r.versao) == ("P/VP do FII", "1.1.0")
 
 
 def test_as_tres_faixas_tem_rotulos_distintos():
@@ -63,16 +61,24 @@ def test_pvp_ausente_abstem_se():
     r = FiiNav().calcular(MethodInputs(as_of=date(2026, 10, 2)), PARAMS)
     assert isinstance(r, Abstention)
     assert r.motivo == "insumo ausente: pvp"
-    assert (r.metodo, r.versao) == ("P/VP do FII", "1.0.0")
+    assert (r.metodo, r.versao) == ("P/VP do FII", "1.1.0")
 
 
 def test_metadados():
     m = FiiNav()
     assert m.nome == "P/VP do FII"
-    assert m.version == "1.0.0"
+    assert m.version == "1.1.0"
     assert m.regime is Regime.SEM_TAXA
     assert m.requires == ("pvp",)
     assert m.applies_to == frozenset({AssetType.FII})
     assert m.params_type is FiiNavParams
     assert m.assumptions
     assert all(isinstance(a, str) and a for a in m.assumptions)
+
+
+@pytest.mark.parametrize("pvp", [0.0, -1.0])
+def test_pvp_nao_positivo_se_abstem_com_motivo(pvp: float) -> None:
+    r = _nav(pvp)
+    assert isinstance(r, Abstention)
+    assert r.motivo == "P/VP ≤ 0"
+    assert (r.metodo, r.versao) == ("P/VP do FII", "1.1.0")

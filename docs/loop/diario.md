@@ -422,3 +422,16 @@
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** nada além do acima.
 - **Retomada pelo Codex:** suíte e gates de Ruff conferidos novamente; golden inalterado; metadados existentes do mutmut confirmam 274/306 (89,5%). Primeira revisão pediu correção da base da suíte e realocação das ressalvas do F2B-39 para sua própria seção; corrigido antes da segunda revisão.
+
+### F2B-41 — fix: abstain the FII book-value lens on non-positive P/VP
+- **Executor:** codex (GPT-6)
+- **Status:** sucesso
+- **O que foi feito:** BUG-2A-17 reproduzido antes da correção: os dois casos (0 e −1) falharam com `--runxfail`, pois a lente devolvia desconto. `FiiNav` 1.1.0 passa a se abster com motivo "P/VP ≤ 0"; changelog atualizado. Retirado o xfail da regressão e registro em "corrigido". Os dois casos antigos de desconto agora verificam abstenção, motivo e versão, sem redução de cobertura. Metadados de versão dos testes e do registro atualizados.
+- **Dificuldades:** a suíte inicialmente deu 1471 passed, 1 failed, 1 skipped, 6 xfailed: o teste do relatório exigia duas versões 1.0.0 e não constava no escopo. O mutmut parou na suíte limpa. Item ficou [!] até a decisão abaixo.
+- **Decisão do Marcos de 18/10/2026:** autorizada, no F2B-41, somente a atualização da asserção da versão do FiiNav em `tests/test_rastreabilidade.py`, preservando a versão 1.0.0 do Bazin FII e todas as outras asserções do arquivo. Acrescentado aos "Testes que mudam" dos F2B-41 e F2B-42: "também tests/test_rastreabilidade.py, só na asserção da versão do método que o item troca". Bloqueio retirado e execução retomada.
+- **Como resolvi:** a única asserção alterada no relatório confere explicitamente Bazin FII 1.0.0 e P/VP do FII 1.1.0; o resto do arquivo está intacto.
+- **Testes:** 1470 passed, 1 skipped, 8 xfailed → 1472 passed, 1 skipped, 6 xfailed. Os dois casos do BUG-2A-17 passaram de xfail a PASS; os dois casos da faixa foram substituídos por abstenções. Gates Ruff verdes; golden inalterado, sem regeneração; teste financeiro permanece com apenas as mudanças do F2B-7.
+- **Mutação:** `python -m mutmut run 'sentinela.methods*'` e `python -m mutmut export-cicd-stats`. Por módulo, mortos/total: base 183/183, bazin 61/61, fii_nav 26/26, fii_yield 51/51, gordon 116/116, graham 81/81, lynch 109/109 e registry 34/34; todos 100%. A guarda e o motivo novos não têm sobreviventes.
+- **Resíduos:** nenhum versionado; logs em /tmp e passagem/piloto em outputs, fora do git.
+- **Decisões que ficaram para o Marcos:** nenhuma deste item.
+- **Para o Marcos revisar:** a ampliação do escopo dos dois itens é somente a autorizada acima; nenhuma fórmula, taxa, parâmetro ou golden mudou.

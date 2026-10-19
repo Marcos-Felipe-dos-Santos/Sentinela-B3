@@ -377,10 +377,11 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden inalterado;
   - gate da fase.
 
-- [ ] **F2B-41** · fix · `fix: abstain the FII book-value lens on non-positive P/VP`
+- [x] **F2B-41** · fix · `fix: abstain the FII book-value lens on non-positive P/VP`
   Corrige o BUG-2A-17. `sentinela/methods/fii_nav.py` classifica P/VP ≤ 0 como "desconto" quando chamado direto; o motor de FII já transforma esse P/VP em `None` antes da lente (F2A-11), então só chamadas fora do motor veem o erro. A lente passa a se abster ("P/VP ≤ 0"). Guarda de validade de insumo: versão menor, com changelog, sem ficha (decisão do Marcos de 18/10/2026, [AUDITORIA]).
 
   **Testes que mudam:** `tests/test_methods_fii_nav.py::test_faixa_pelos_limites_estritos_da_v1`, nos casos de P/VP 0,0 e −1,0, que fixavam o desconto (diário do fechamento da 2A); `tests/test_registry.py` (versão).
+  também tests/test_rastreabilidade.py, só na asserção da versão do método que o item troca
 
   **Aceite:**
   - `tests/regressao/test_bug_2a_17_fii_nav_pvp_nao_positivo.py` com a marca retirada, em PASS, e o registro atualizado;
@@ -392,6 +393,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   Corrige o BUG-2A-18. `sentinela/methods/graham.py` com VPA < 0 calcula a raiz de um número negativo (sai um complexo, e o `math.isfinite` quebra). O método passa a se abster com VPA ≤ 0 ("VPA ≤ 0"). Guarda de validade de insumo: versão menor, com changelog, sem ficha (mesma decisão do F2B-41).
 
   **Testes que mudam:** `tests/test_registry.py` (versão).
+  também tests/test_rastreabilidade.py, só na asserção da versão do método que o item troca
 
   **Aceite:**
   - `tests/regressao/test_bug_2a_18_graham_vpa_negativo.py` com a marca retirada, em PASS, e o registro atualizado;

@@ -61,6 +61,11 @@ CHANGELOG["Bazin"] += (
         "motivo da abstenção (DY não confiável antes do mínimo); nenhum número muda",
     ),
 )
+CHANGELOG["P/VP do FII"] += (
+    Mudanca(
+        "1.1.0", "com P/VP não positivo, abstém-se em vez de classificar como desconto"
+    ),
+)
 
 
 def validar(
