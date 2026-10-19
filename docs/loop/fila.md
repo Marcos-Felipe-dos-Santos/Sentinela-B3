@@ -450,7 +450,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - nenhum módulo de produção alterado;
   - gate da fase.
 
-- [ ] **F2B-43** · test · `test: register bugs confirmed by the phase 2B survey`
+- [x] **F2B-43** · test · `test: register bugs confirmed by the phase 2B survey`
   Regra do projeto (`tests/regressao/README.md`): todo bug confirmado vira teste antes da correção. Para cada ponto confirmado nas perguntas 7 e 8 do F2B-21, um teste em `tests/regressao/` (`test_bug_2b_NN_<sintoma>.py`), xfail estrito com `reason="BUG-2B-NN · <sintoma> · corrige: a decidir no marcador"`, e a linha no registro. Os refutados ficam só no documento do levantamento.
 
   **Aceite:**
