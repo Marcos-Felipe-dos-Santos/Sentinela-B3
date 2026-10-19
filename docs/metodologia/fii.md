@@ -1,4 +1,4 @@
-# Rendimento do FII sobre NTN-B — versão 0.2
+# Rendimento do FII sobre NTN-B — versão 0.3
 
 **Status:** rascunho revisto em 19/10/2026; aguarda auditoria FICHA pelo Claude
 (D30) e aprovação do Marcos. **Decisões:** [marcador](../decisoes/marcador-2b.md).
@@ -41,7 +41,7 @@ do fim do mês anterior; não confundir com fluxo pago nem com cotação.
 | VP_m | Valor_Patrimonial_Cotas em R$/cota do fim do mês; 13 meses para reconstruir 12 rendimentos |
 | R | soma de DY_m × VP_(m−1), 12 meses consecutivos, R$/cota na mesma base de cotas |
 | Preço | COTAHIST/cascata, R$/cota, mesmo direito; DY_12m=R/preço |
-| y_real | Média NTN-B escolhida na taxa-real 0.2, taxa_aplicacao, sem prêmio das ações |
+| y_real | Média NTN-B escolhida na taxa-real 0.3, taxa_aplicacao, sem prêmio das ações |
 | s | Mediana de 5 anos do grupo tijolo contra a mesma taxa_aplicacao e mesma definição de R e preço; constante datada, depois de recalibrada no F2B-2 |
 | Tipo | Informe CVM ativo_passivo; regra de composição de universo-inicial, seção de fontes: fração >50% da soma dos ativos imobiliários identificados |
 | Eventos | Cotas_Emitidas, VP e documentos oficiais de eventos da CVM/B3/administrador, disponíveis até as_of |
@@ -66,12 +66,16 @@ para esconder buraco. A composição usada na classificação tem a mesma idade
 máxima e o mesmo corte. Preço último pregão; NTN-B até 5 dias úteis; publicação,
 calendário e datas conforme registro §2. Não anualizar história curta.
 
-Qualquer evento de cota na janela, inclusive emissão, ou salto de escala/cota
-incompatível com continuidade, causa abstenção: **não há ajuste de eventos na
-2B**. Variação de Cotas_Emitidas sinaliza evento a conciliar, nunca um rendimento
-artificial. Sem documentação suficiente para distinguir evento de erro ou atestar
-continuidade, abster por base de cotas não demonstrada, sem criar percentual
-arbitrário para o salto. Verificação cobre as 13 bases e o intervalo até o preço.
+**Decisão do Marcos de 19/10/2026 após auditoria da 0.2:** quanto à base de
+cotas, abster apenas com **desdobramento ou grupamento**, ou salto de **VP por
+cota incompatível com a continuidade**. Não há ajuste desses eventos na 2B.
+**Emissão com VP contínuo é aceita** e registrada como contexto, com mês,
+quantidades e VP antes/depois. Alteração de Cotas_Emitidas sozinha não é veto:
+o rendimento é reconstruído por cota, não pelo total emitido. Conferir a série
+dos 13 VPs e documentos oficiais de eventos, sem criar percentual arbitrário
+como limite de salto. Um dado inválido ou continuidade não demonstrável ainda
+abstém por base incompatível; não confundir falta de prova com emissão constatada.
+Verificação cobre as 13 bases e o intervalo até o preço.
 Amortização/devolução de capital não é rendimento: não somar Percentual_Amortizacao;
 se positiva na janela, ou liquidação/distribuição extraordinária não recorrente
 identificada, abster por fluxo não representativo. Contratos indexados não garantem
@@ -82,7 +86,9 @@ constância real da distribuição; sustentabilidade permanece hipótese declara
 Só classe oficial FII e tipo **tijolo**. Papel (KNCR11/MXRF11/HCTR11), fundos
 de fundos (CPTS11/HFOF11), tipo desconhecido/misto sem maioria: "tipo de FII
 fora do escopo na 2B" ou "classificação de FII desconhecida"; aguardam 2C.
-HGLG11/KNRI11 precisam ainda cumprir todas as guardas. XPML11 abstém por evento.
+HGLG11/KNRI11 precisam ainda cumprir todas as guardas. XPML11 é caso de
+controle de salto de VP/desdobramento/grupamento, conforme a evidência do evento;
+emissão, isoladamente, não é motivo de exclusão.
 Ações, bancos, seguradoras, holdings, units, preferenciais, ETF, BDR e UNKNOWN
 não entram: "classe fora do escopo FII". Setor ou ticker não substitui a classe.
 
@@ -94,7 +100,7 @@ NaN e infinito do registro §2.1; contexto inválido é indicado sem alterar o v
 | Preço e cada VP | abstém: não positivo | abstém | unidade/base divergente: base de cota incompatível |
 | Cada DY_m | válido como mês sem rendimento, se informado | abstém | >25% mensal: fora da faixa da fronteira atual; não confundir com validação de recorrência |
 | DY_12m e R | abstém: rendimento anual não positivo | abstém | DY_12m>25%: rendimento não confiável; 25% é teto de domínio existente, não parâmetro de valor |
-| Cotas_Emitidas | abstém: cotas não positivas | abstém | quantidade não inteira, mudança ou evento: base de cotas incompatível |
+| Cotas_Emitidas | abstém: cotas não positivas | abstém | quantidade não inteira: dado inválido; desdobramento/grupamento ou salto de VP incompatível: abstém; emissão com VP contínuo: contexto, sem veto |
 | Amortização | válida sem amortização | abstém: dado inválido | positiva: devolução de capital na janela, abstenção |
 | Cada posição da classificação | válido | abstém | soma zero, maioria ausente ou fração >1: tipo desconhecido |
 | y_real | válido | válido se >−1 e q>0 | ≤−1 ou fonte/idade inválida: taxa indisponível |
@@ -134,15 +140,34 @@ Soma dos produtos exatos = **R$ 13,240529645135538184/cota**.
 Fechamento COTAHIST **30/09/2026 R$ 147,95**, mercado 010:
 DY=**8,949327235644%**. Não usar 25/09 só por ser última linha física.
 
-**Resultado operacional: abstenção.** Além do spread ainda não recalibrado,
-Cotas_Emitidas passa de 33.787.575 em outubro/2025 a 42.404.675 em novembro;
-depois 43.455.524 em abril/2026, 45.601.745 em maio e 45.601.713 em agosto.
-A regra do Marcos exclui evento de cota, inclusive neste exemplo. A conta acima
-não valida rendimento econômico contínuo nem elegibilidade do fundo.
+**Continuidade conferida nos 13 VPs dos snapshots:** nas emissões apontadas,
+a quantidade aumenta, mas o VP por cota mantém a escala em R$; não ocorre a
+multiplicação/divisão de VP de um desdobramento/grupamento.
+
+| Emissão, contexto | Cotas antes → depois | VP anterior → atual, R$/cota | Variação do VP |
+|---|---|---|---|
+| nov/2025 | 33.787.575 → 42.404.675 | 162,238906796951 → 165,789388949214 | +2,188428301423% |
+| abr/2026 | 42.404.675 → 43.455.524 | 165,712610785485 → 166,490023171738 | +0,469132905799% |
+| mai/2026 | 43.455.524 → 45.601.745 | 166,490023171738 → 166,003651097124 | −0,292132864990% |
+
+Na série inteira, variações mensais de VP vão de −0,399431196050% a
++2,188428301423%, sem salto de escala aparente; essa faixa é evidência do
+exemplo, **não limiar novo de elegibilidade**. Em agosto/2026, a quantidade cai
+32 cotas (45.601.745 → 45.601.713), enquanto VP varia −0,288295024200%:
+registrar a alteração como contexto, sem inferir desdobramento/grupamento de uma
+mudança no total. Sob a nova regra, **as emissões não causam abstenção do HGLG11**.
+A leitura mensal não substitui os documentos de eventos nem comprova por si as
+datas de entrega de cada versão: tais guardas continuam exigidas em produção.
+
+O rendimento reconstruído permanece **13,240529645135538184 R$/cota** e
+DY **8,949327235644%**. Sem a constante de spread recalibrada no F2B-2, ainda
+não há valor operacional; esse motivo é distinto da emissão, agora aceita.
 
 Para teste independente da fórmula, cenário **condicional**, não resultado do
 HGLG11: R=13,240529645135538184, y=74,38/1100, s=2 pp hipotéticos dão
-**R$ 151,116233758550**; se s ausente ou houver evento, o teste espera abstenção.
+**R$ 151,116233758550**; emissão com VP contínuo preserva essa conta.
+Se s estiver ausente, houver desdobramento/grupamento ou salto de VP incompatível,
+o teste espera abstenção.
 Confronto com avisos do administrador para validar o rendimento é pendência
 expressa do F2B-2; o próprio Informe não é segunda fonte independente.
 
@@ -168,7 +193,8 @@ medianas mensais (mesmo peso por mês). Reconstruir disponibilidade, versões,
 classificação e eventos à época, inclusive as bases anteriores às janelas.
 Mês sem fundos válidos é lacuna, não zero; sem 60 medianas válidas contíguas,
 spread indisponível, sem reduzir janela silenciosamente. Publicar número de
-fundos/meses antes e depois dos eventos, meses removidos, mudança da mediana,
+fundos/meses antes e depois das exclusões por desdobramento/grupamento ou salto
+de VP incompatível, emissões contínuas mantidas como contexto, meses removidos, mudança da mediana,
 p25/p75 e limites da amostra. Comparar 1/2/3 pp e mediana recalibrada sobre o
 mesmo rendimento, sem misturar DY da cascata com Informe. Seleção só de fundos
 atuais mantém viés de sobrevivência: declarar e medir cobertura; não dizer que
@@ -181,7 +207,7 @@ representa todos os listados. A composição atual não classifica todo o passad
 | Opção da 0.1 | Decidida |
 |---|---|
 | 7.1 Spread | mediana de 5 anos dos tijolos; recalcular com taxa_aplicacao no F2B-2, constante datada após validação |
-| 7.2 Vértice | mesma média da taxa-real 0.2, sem prêmio das ações |
+| 7.2 Vértice | mesma média da taxa-real 0.3, sem prêmio das ações |
 | 7.3 Rendimento | Informe, declarado, reconstruído; 12 meses/13 VPs, corte por entrega e idade de 3 meses |
 | 7.4 Score | inalterado na 2B, inclusive comparação existente com Selic; exceção temporária ao princípio 9 do PLANO, não misturar com fórmula de V0 |
 | 7.5 Tipo | só tijolo; demais e desconhecido abstêm até 2C |
@@ -189,6 +215,8 @@ representa todos os listados. A composição atual não classifica todo o passad
 | 7.7 P/VP | pontos e score inalterados, sem entrar no valor de rendimento |
 | 7.8 Tributação | spread bruto sobre bruto, sem desconto tributário adicional |
 
-Eventos/saltos abstêm; crescimento **real** zero explicitamente derivado.
+**Complemento decidido pelo Marcos em 19/10/2026:** desdobramento/grupamento
+ou salto de VP incompatível abstêm; emissão com VP contínuo é aceita, em contexto.
+Crescimento **real** zero explicitamente derivado.
 As decisões não transformam a reconstrução do F2B-28 em fluxo validado nem
 aprovam uma constante ainda não calculada. Pendências autorizadas estão na seção 6.

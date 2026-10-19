@@ -1,6 +1,6 @@
-# Taxa de desconto real — versão 0.2
+# Taxa de desconto real — versão 0.3
 
-**Status:** rascunho revisto em 19/10/2026 após auditoria FICHA da 0.1.
+**Status:** rascunho 0.3, revisto em 19/10/2026 após auditoria FICHA da 0.2 pelo Claude; fórmula e parâmetros desta ficha preservados.
 **Decisões:** Marcos, 19/10/2026; [registro do marcador](../decisoes/marcador-2b.md).
 **Dependências:** F2B-27, F2B-29, F2B-30, F2B-1, F2B-2, F2B-3 e F2B-32.
 Aguarda nova auditoria pelo Claude (D30) e aprovação do Marcos; não implementado.
@@ -27,6 +27,9 @@ cap. 7, “Riskless Rates and Risk Premiums”, seção sobre taxas reais e risc
 soberano **a conferir pelo auditor**. A composição brasileira é decisão do
 Marcos, não consequência atribuída aos livros. D22 fundamenta a coerência de
 regimes exigida pelo projeto; a prova algébrica acima independe da edição.
+O Claude confirmou em 19/10/2026 os títulos dos capítulos de Fisher e Damodaran
+na auditoria da 0.2; páginas e passagens específicas continuam não conferidas.
+O registro do marcador identifica o relatório; a versão 0.3 aguarda nova auditoria.
 
 ## 2. Insumos
 

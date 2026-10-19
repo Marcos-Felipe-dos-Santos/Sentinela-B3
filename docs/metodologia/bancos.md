@@ -1,4 +1,4 @@
-# Lente de bancos — versão 0.2
+# Lente de bancos — versão 0.3
 
 **Status:** rascunho revisto em 19/10/2026; aguarda auditoria FICHA pelo Claude
 (D30) e aprovação do Marcos. **Decisões:** [marcador](../decisoes/marcador-2b.md).
@@ -54,15 +54,24 @@ persistência e a fonte Focus do teto são adaptações, não prescrições do l
 | ROE_N | L0 / PL_inicial; razão anual; numerador de um exercício, denominador estoque de abertura desse exercício |
 | p observado | Dividendos + JCP bruto da DVA anual dos controladores / L0; no Itaú, 7.09.04.02 e 7.09.04.01, com descrição; não aplicar esses códigos a todo banco sem conferir modelo |
 | VPA0 | PL_final dos controladores / ações finais da mesma DFP; R$/ação, ou soma ponderada por componentes oficiais para R$/unit |
-| k_r, π e teto PIB | taxa-real 0.2 e Gordon 0.2; IPCA do mesmo exercício anual; Focus PIB mediana, baseCalculo 0, maior ano da última pesquisa publicada |
+| k_r, π e teto PIB | taxa-real 0.3 e Gordon 0.3; IPCA do mesmo exercício anual; Focus PIB mediana, baseCalculo 0, maior ano da última pesquisa publicada |
 | Preço | Só P/VP de mercado, por mesma ação/unit, não forma múltiplo justificado |
 | Inadimplência | IF.data relatório 16, apenas contexto: carteira ativa inadimplida arrastada (148834) / Total Geral (24454), mesmo conglomerado, data e perímetro |
 
 Uma linha de JCP/dividendo explicitamente zero é válida; linha ausente não vira
 zero automaticamente. Com apenas um provento, aceitar soma só após comprovar
 não ocorrência do outro; do contrário, abster por DVA incompleta. Excluir
-participações de terceiros; se a DVA consolidada não demonstrar o perímetro,
-exigir reconciliação com nota/individual do mesmo exercício, ou abster. Payout
+participações de terceiros. **Decisão do Marcos de 19/10/2026 após auditoria
+0.2:** os pares código/descrição de JCP e dividendos do modelo banco (pela tabela
+de contas; no Itaú, 7.09.04.01/02) são dos controladores quando os não controladores
+estão em linha própria (no Itaú, 7.09.04.04, descrição compatível), excluída da soma.
+Se ausente/zerada, só usar a reserva sem evidência de minoritários na DRE/BPP,
+com os mesmos critérios do F2A-41: ausência verdadeira não é sem correspondência,
+e valor inválido ou conflito não autoriza reserva. Sem essa estrutura, abster:
+"estrutura da DVA não permite atribuir proventos aos controladores". A estrutura
+separada válida dispensa nota adicional. F2B-3 completa os pares do modelo na
+tabela de contas, inclusive participação separada, sem tratá-los como já implementados.
+Payout
 por DY da cascata não é alternativa. VPA só CVM, escala de ações conforme
 por-acao 1.1, sem reserva por fonte de mercado. Unit sem composição abstém.
 
@@ -136,7 +145,10 @@ Valores monetários em milhares de R$:
 - Lucro controladores (3.09.01): **44.857.000**.
 - PL inicial, comparativo 31/12/2024: **221.284.000−10.194.000=211.090.000**.
 - PL final: **215.076.000−10.575.000=204.501.000**.
-- DVA dividendos **33.704.000**, JCP **0 informado**; p=**75,136545020844%**.
+- DVA dividendos **33.704.000** (7.09.04.02), JCP **0 informado** (7.09.04.01),
+  por código/descrição; não controladores **992.000** em linha própria 7.09.04.04,
+  "Part. Não Controladores nos Lucros Retidos", excluída da soma. A estrutura
+  demonstra o perímetro, sem abstenção por esse motivo; p=**75,136545020844%**.
 - Ações finais: **5.617.743+5.409.126−345=11.026.524 milhares**;
   escala conferida com LPA divulgado ON/PN de 4,05 R$/ação (lucro/ações≈4,0681).
 - ROE_N inicial = 44.857.000/211.090.000 = **21,250177649344%**;
@@ -160,8 +172,8 @@ Reconciliação histórica: PL final−inicial=**−6.589.000 mil**, mas lucro�
 **11.153.000 mil**; diferença **−17.742.000 mil** em outras movimentações.
 Portanto crescimento de PL observado não é ROE×retenção nesta DFP. O exemplo
 projeta persistência, sem afirmar clean surplus histórico. A conta é esperado
-aritmético; elegibilidade operacional exige comprovar atribuição da DVA e direitos
-da classe. Não afirmar que PINE4 ou SANB11 falham especificamente por VPA:
+aritmético; a DVA atende ao critério de estrutura separada, enquanto direitos
+da classe e demais guardas continuam necessários à elegibilidade operacional. Não afirmar que PINE4 ou SANB11 falham especificamente por VPA:
 o levantamento só registra falta agregada de ROE, VPA positivo ou payout.
 
 ## 6. Sensibilidade
@@ -193,7 +205,9 @@ não dispensa as guardas k>g e ROE>g, nem autoriza arredondar antes de compará-
 
 **[DECISÃO] 7.1 decidida pelo Marcos em 19/10/2026:** g opção (i), depois teto
 real PIB Focus, mesma fonte/base do Gordon; sem piso arbitrário de k−g.
-**7.2 decidida:** payout DVA, JCP bruto, controladores, só anual, em (0,1].
+**7.2 decidida:** payout DVA, JCP bruto, controladores, só anual, em (0,1];
+estrutura separada ou reserva sem minoritários definida na seção 2, por decisão
+do Marcos de 19/10/2026 após auditoria da 0.2.
 **7.3 decidida:** VPA só CVM, por ação ou unit com composição.
 **7.4 decidida:** Basileia fora da 2B.
 **7.5 decidida:** inadimplência do IF.data apenas para leitura, conta e denominador

@@ -1,4 +1,4 @@
-# Critério de rendimento do Bazin — versão 0.2
+# Critério de rendimento do Bazin — versão 0.3
 
 **Status:** rascunho revisto em 19/10/2026; aguarda auditoria FICHA pelo Claude
 (D30) e aprovação do Marcos. **Decisões:** [marcador](../decisoes/marcador-2b.md).
@@ -24,17 +24,29 @@ não conferida não se transforma em evidência por repetição. A fórmula do c
 
 | Insumo | Definição, fonte e unidade |
 |---|---|
-| D_bruto_12m | Soma de dividendos e JCP bruto por título, com datas ex na janela (data de referência menos 12 meses, data de referência], sem duplicação; série por evento identificando natureza, valor e classe |
+| D_bruto_12m | Soma de dividendos e JCP bruto por título, com datas ex na janela (data de referência menos 12 meses, data de referência], sem duplicação; **relação de proventos em dinheiro da B3, empresas listadas**, por evento: tipo, valor bruto por ação, data ex e classe |
 | Preço | Fechamento bruto na data de referência do DY, R$/ação ou R$/unit; comparação corrente conforme registro §2.2 |
 | DY | Soma anterior / mesmo preço; razão anual; não adotar campo percentual sem representação comprovada |
 | Taxa | 0,06 constante, não max(Selic, piso); BAZIN_TAXA_MIN sai no F2B-5 quando sem leitor |
 | Modelo, classe e unit | BPP consolidado e referência oficial; composição e proventos por componente, direitos demonstrados |
 | Lucro/ROE/perfil | Contexto da ficha por-acao 1.1: lucro/PL dos controladores; perfil crescimento se ROE > 20% e DY < 4%, conforme regra já existente |
 
-A cascata normaliza `dividendYield`, mas **não comprova** por si data ex,
-JCP bruto, janela ou denominador. O F2B-31 só aceita a entrada com essa
-semântica comprovada e registrada; sem ela, "proventos brutos por data ex não
-demonstrados". Não renomear DY agregado para afirmar conteúdo inexistente.
+**Fonte decidida pelo Marcos em 19/10/2026 após a auditoria da 0.2:** relação
+de proventos em dinheiro da **B3, empresas listadas**, serviço CompanyCall:
+tipo (dividendo/JCP), valor **bruto** por ação e data ex, por classe/título.
+O F2B-31 confirma resposta e leiaute do serviço, identifica endpoint e campos
+literais, escala, datas e cobertura, com URL, coleta, hash e contrato D18. Não
+confundir essa relação com GetDetail, que sustenta a ligação cadastral do BTG.
+**Se a fonte não responder, F2B-31 fica [!]**, com motivo no diário, antes de
+substituir os insumos; não trocar para yfinance como fonte de cálculo.
+
+Yfinance fica **só como conferência**, mesma classe, janela e denominador;
+valor, natureza/data ex ou cobertura divergentes geram aviso com as diferenças,
+sem substituir a B3. Falha da conferência gera aviso de indisponibilidade,
+sem invalidar uma série B3 completa. A cascata normaliza `dividendYield`, mas
+esse campo não comprova bruto/data ex: não renomeá-lo para afirmar conteúdo
+inexistente. Entrada B3 incompleta/ilegível abstém com motivo; indisponibilidade
+da fonte na execução do F2B-31 é bloqueio do item, não licença de reserva.
 O perfil, sem ROE válido, fica "perfil não determinado", sem preencher ROE;
 para DY elegível ≥5%, crescimento é logicamente impossível pela regra acima.
 ROE/prejuízo não vira veto adicional ao Bazin; prejuízo com DY positivo traz
@@ -102,8 +114,11 @@ Soma/preço = **7,934887931034%**; soma/0,06 = **R$ 15,340783333333**.
 
 **Limite da evidência:** essa série não separa nem comprova JCP bruto. Portanto,
 o exemplo valida seleção das datas e soma, mas a saída operacional **abstém**
-por bruto não demonstrado; os R$ 15,34078333 não são resultado aprovado para
-LREN3. O F2B-31 deve confrontar avisos oficiais antes de usá-la. Caso de contrato
+por falta da série B3; os R$ 15,34078333 são **apenas conferência yfinance**, não
+resultado da fonte escolhida para LREN3. O F2B-31 obtém os eventos da relação
+B3, preserva seus valores brutos e datas ex, compara com essa conferência e
+registra aviso se divergir. Esta revisão docs não consultou nem validou resposta
+da relação B3; a confirmação é aceite bloqueante do F2B-31. Caso de contrato
 independente, sintético: numa classe única com cobertura completa nessa mesma
 janela, dividendos 0,40 em 10/12/2025 e JCP bruto 0,20 em 10/06/2026, preço
 10,00 em 30/09/2026, D=0,60, DY=6%, critério=10,00; evento em 30/09/2025
@@ -144,5 +159,7 @@ com DY positivo decididos:** bruto, elegível com aviso. Escopo STOCK/UNIT empre
 F2B-31 **permanece**, pois a implementação ainda usa Selic. Os testes F-5 passam
 à regra fixa nesse item; o teste da mediana de três métodos também depende do
 F-4/Gordon, resolvido no F2B-1, e não pode ser atribuído só ao Bazin. Pendências:
-localização bibliográfica e confronto dos eventos com fonte bruta oficial, a
-verificar antes de admitir o insumo; não usar lacuna como licença para assumir.
+localização bibliográfica e confirmação da relação B3 de proventos em dinheiro.
+**[DECISÃO] fonte decidida após auditoria da 0.2, em 19/10/2026:** B3 para
+cálculo bruto por data ex; yfinance só conferência com aviso de divergência.
+Se a B3 não responder no F2B-31, marcar [!] e registrar o motivo, sem reserva.

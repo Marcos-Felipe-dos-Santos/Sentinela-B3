@@ -1,4 +1,4 @@
-# Gordon no regime real — versão 0.2
+# Gordon no regime real — versão 0.3
 
 **Status:** rascunho revisto, 19/10/2026; aguarda auditoria FICHA pelo Claude
 (D30) e aprovação do Marcos. **Executor da revisão:** Codex.
@@ -33,11 +33,11 @@ seção 1. O teto pelo Focus é adaptação decidida pelo Marcos, não prescriç
 | Insumo | Fonte, perímetro e unidade |
 |---|---|
 | Lucro, LPA e PL | CVM DFP anual consolidada, mesma versão, exercício e controladores; LPA básico da classe conforme por-acao 1.1; lucro/PL em R$ após escala, LPA já em R$/ação |
-| ROE_N | lucro dos controladores do exercício / PL final dos controladores da mesma DFP; convenção histórica desta lente, não a convenção inicial da lente de bancos |
+| ROE_N | lucro dos controladores do exercício / PL dos controladores **do início do exercício**, no comparativo da mesma DFP/versão, como na lente de bancos |
 | D0 | Dividendos + JCP **bruto** da DVA, contas 7.08.04.02 e 7.08.04.01, confirmadas por descrição e perímetro; dividir por ações líquidas do mesmo documento quando o direito comum permitir |
 | p | Soma da DVA / lucro dos controladores; janela anual idêntica; não DY × preço / LPA de outra janela |
 | Ações / composição | CVM Composição do Capital e FCA; escala determinada pela ficha por-acao 1.1, não pela escala monetária; unit = soma dos componentes oficiais |
-| k, π | ficha taxa-real 0.2; π do exercício anual convertido |
+| k, π | ficha taxa-real 0.3; π do exercício anual convertido |
 | Teto_PIB_real | BCB Olinda, ExpectativasMercadoAnuais, PIB Total, mediana, baseCalculo=0, maior ano na última pesquisa publicada; regra no registro §2.2 |
 | Preço | Fechamento bruto por ação/unit do mesmo direito do D0; só comparação/upside, não cria D0 |
 
@@ -48,13 +48,25 @@ Não usar DY de 12 meses da cascata. JCP informado como zero é zero; linha ause
 não é zero: se só um dos dois proventos existe, usar o valor existente apenas
 quando a ausência do outro estiver confirmada como não ocorrência na DVA.
 Sem prova, abster por proventos incompletos. Valores de terceiros não entram.
-Consolidado sem atribuição verificável aos controladores: abstenção; DVA individual
-ou nota pode comprovar o perímetro, sem trocar exercício nem versão silenciosamente.
+**Perímetro decidido pelo Marcos em 19/10/2026, após a auditoria da 0.2:**
+na DVA consolidada, JCP 7.08.04.01 e dividendos 7.08.04.02, por **código e
+descrição**, são dos controladores quando a participação dos não controladores
+está em linha própria (7.08.04.04, descrição compatível). Essa parcela separada
+não entra na soma. A linha ausente/zerada só permite a reserva sem minoritários
+quando a leitura não tem conflito, valor inválido ou código com outra descrição
+e não há evidência de minoritários na DRE/BPP, como na reserva do F2A-41.
+Ausência verdadeira difere de sem correspondência. Sem essa estrutura, abster:
+"estrutura da DVA não permite atribuir proventos aos controladores". Não exigir
+nota adicional para a estrutura separada válida. Mapear os pares na tabela de
+contas no F2B-1, inclusive a participação separada, sem presumir mapeamento já
+implementado. A regra não altera o perímetro do lucro nem o da janela anual.
 
 ## 3. Regime, janela e data
 
 Um exercício anual completo, última DFP elegível, nunca ITR parcial/TTM. Numeradores
-DVA, lucro e LPA têm início/fim idênticos; PL final é estoque nessa data. Datas,
+DVA, lucro e LPA têm início/fim idênticos; o PL do ROE é o estoque imediatamente
+anterior ao início desse exercício, obtido no comparativo da mesma DFP/versão.
+Ações para D0 continuam sendo as do fim do período. Datas,
 idade máxima da DFP, preço e metadados no registro §2.2. Taxa até 5 dias úteis,
 cobertura IPCA até 2 meses; Focus última edição devida/publicada. Direitos e
 composição vigentes, com evidência não futura. Eventos entre a DFP e o preço
@@ -101,8 +113,14 @@ permanece: divulgar sensibilidade, não criar piso para k−g não autorizado.
 **ABEV3**, CNPJ 07.526.557/0001-00, DFP 2025 v1, entregue 12/02/2026.
 Snapshot e hashes no registro §2.3; as_of 19/10/2026 17:10 Brasília.
 Janela 01/01–31/12/2025, moeda-base **R$ de 31/12/2025**.
-Dados monetários em mil R$: lucro 15.503.400; PL final dos controladores
-88.774.781 − 860.742 = 87.914.039; DVA dividendos 10.903.280, JCP 0 informado;
+Dados monetários em mil R$: lucro 15.503.400; PL **inicial** dos controladores
+em 31/12/2024, comparativo da DFP 2025 v1:
+**99.580.514 − 938.375 = 98.642.139** (2.03 menos 2.03.09).
+PL final em 31/12/2025: 88.774.781 − 860.742 = 87.914.039, apenas contexto.
+DVA dividendos 10.903.280 (7.08.04.02), JCP 0 informado (7.08.04.01),
+e **485.033** em 7.08.04.04, "Part. Não Controladores nos Lucros Retidos",
+linha própria excluída dos proventos: a estrutura demonstra a atribuição aos
+controladores pela regra da seção 2; **não há abstenção por esse motivo**;
 LPA básico ON 0,9926913764. Ações 15.761.639 − 145.113 = 15.616.526 milhares;
 conferência de escala: lucro / ações = 0,99276 R$/ação, próximo do LPA divulgado;
 a divergência é do denominador final versus médio, não prova de igualdade.
@@ -113,30 +131,33 @@ não é retorno real entre essas datas nem análise estrita em setembro.
 
 - D0 = 10.903.280 / 15.616.526 = **0,698188572797817** R$/ação.
 - p = 10.903.280 / 15.503.400 = **70,328315079273%**.
-- ROE_N = 15.503.400 / 87.914.039 = **17,634726121501%**.
-- g_N_bruto = **5,232520371405%**.
-- π=4,26% (exercício 2025); g_r_bruto=**0,932783782280%**.
+- ROE_N = 15.503.400 / 98.642.139 = **15,716812466932%**.
+- g_N_bruto = **4,663443074769%**.
+- π=4,26% (exercício 2025); g_r_bruto=**0,386958636840%**.
 - PIB Focus: pesquisa 16/10/2026, ano 2030, base 0, mediana **2%**, disponível
   no snapshot de 19/10 antes de as_of: teto não atua.
 - k_r = 74,38/1100 + 0,05 = **11,761818181818%**.
-- Valor = D0 × (1 + g_r)/(k_r − g_r) = **R$ 6,507516151252**.
+- Valor = D0 × (1 + g_r)/(k_r − g_r) = **R$ 6,161748819933**.
 
 Conferência nominal: D1_N = D0 × (1 + g_r) × 1,0426,
-k_N=16,522871636364%, g_N=5,232520371405%; mesmo R$ 6,507516151252.
+k_N=16,522871636364%, g_N=4,663443074769%; mesmo R$ 6,161748819933.
 O antigo payout D0/LPA daria 70,3328939%, por misturar denominadores; foi
-retirado da conta. É esperado independente para o núcleo matemático, não
-certificação de recorrência e atribuição da DVA da Ambev: sem essa prova, a saída
-operacional se abstém. Não afirmar aprovação de elegibilidade a partir do exemplo.
+retirado da conta. A atribuição da DVA está demonstrada pela linha própria dos
+não controladores; o exemplo deixa de abster por perímetro. O resultado continua
+sendo cenário ilustrativo com preço de setembro e taxa de outubro, sujeito às
+demais guardas de recorrência, classe, eventos e disponibilidade; não é aprovação
+automática da ficha. O ROE histórico sobre a abertura é estimativa de persistência
+do retorno, não identidade entre patrimônio passado e futuro.
 
 ## 6. Sensibilidade
 
 | Cenário, demais insumos constantes | g_real | Valor (R$) |
 |---|---|---|
-| Prêmio 4%, IPCA 4,26% | 0,932784% | 7,169587 |
-| Prêmio 5%, IPCA 4,26% | 0,932784% | 6,507516 |
-| Prêmio 7%, IPCA 4,26% | 0,932784% | 5,493018 |
+| Prêmio 4%, IPCA 4,26% | 0,386959% | 6,755660 |
+| Prêmio 5%, IPCA 4,26% | 0,386959% | 6,161749 |
+| Prêmio 7%, IPCA 4,26% | 0,386959% | 5,240356 |
 | IPCA 0%, teto real 2%, prêmio 5% | 2% (teto atua) | 7,295284 |
-| IPCA 6%, teto real 2%, prêmio 5% | −0,724037% | 5,551349 |
+| IPCA 6%, teto real 2%, prêmio 5% | −1,260903% | 5,293710 |
 
 Variações de IPCA são hipóteses de sensibilidade, não substituições da série de
 2025. Fronteira sintética: D1=1, k=10%; g=9%, 9,9% e 9,99% dão 100, 1.000
@@ -150,7 +171,9 @@ o cenário de fronteira apenas mostra por que validar k > g mesmo com teto.
 retirado GORDON_G_MAX nominal de 8%; retirados mínimos DY 4%/ROE 10%;
 payout DVA em (0,1], sem truncamento a 95%; D0 e LPA na mesma DFP anual,
 JCP bruto; STOCK/UNIT empresa, abstenção para classes distintas na 2B e
-unit pela composição. As alternativas (ii), crescimento ROE real × retenção,
+unit pela composição. **Complemento decidido após a auditoria da 0.2:** ROE
+sobre PL inicial dos controladores e atribuição operacional da DVA pela estrutura
+separada ou reserva sem minoritários da seção 2. As alternativas (ii), crescimento ROE real × retenção,
 e inflação do Focus não alimentam o método. O teto é limite à extrapolação,
 não demonstração de estabilidade da empresa. Pendências de referência e
-comprovação do perímetro estão explicitadas; não há aprovação da ficha.
+estrutura da DVA estão explicitadas; não há aprovação da ficha.

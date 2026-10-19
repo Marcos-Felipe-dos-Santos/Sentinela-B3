@@ -1,7 +1,7 @@
 # Marcador da Fase 2B — decisões de 19/10/2026
 
 **Autor das decisões:** Marcos. **Registro:** Codex, em 19/10/2026.
-**Estado:** decisões tomadas; fichas 0.2 ainda em rascunho. Auditoria FICHA pelo
+**Estado:** decisões tomadas; fichas 0.3 ainda em rascunho. Auditoria FICHA pelo
 Claude, de outra família que o executor desta revisão (D30), e aprovação do Marcos
 continuam obrigatórias. Este registro não aprova método nem autoriza ultrapassar o marcador.
 
@@ -17,11 +17,11 @@ continuam obrigatórias. Este registro não aprova método nem autoriza ultrapas
 | [TAXA] — decidida | Converter taxas e fluxos; CF_nominal,t = CF_real,t × (1 + π)^t; declarar moeda-base | Todas as fichas de desconto |
 | g — decidida | Opção (i): Fisher sobre ROE nominal × retenção; depois teto real pelo PIB do ano mais longo do Focus; sai GORDON_G_MAX de 8% nominal | F2B-1 e F2B-3 |
 | Gordon — decidida | D0 e payout da DVA dos controladores da última DFP anual, mesma janela do LPA, JCP bruto; payout fora de (0,1] abstém; sem corte em 95%, DY 4% ou ROE 10%; ROE > 0 e k > g | F2B-1 |
-| Gordon — decidida | STOCK/UNIT, modelo empresa; classes distintas abstêm na 2B; unit pela composição oficial | F2B-1 e F2B-4 |
-| [BAZIN] — decidida | Opção (b), rendimento mínimo fixo de 6%, como critério; sai BAZIN_TAXA_MIN. JCP bruto; prejuízo com DY positivo elegível com aviso; STOCK/UNIT, empresa | F2B-31 permanece: é ele que retira a Selic do Bazin |
+| Gordon — decidida | STOCK/UNIT, modelo empresa; classes distintas abstêm na 2B; unit pela composição oficial; ROE sobre PL inicial dos controladores | F2B-1 e F2B-4 |
+| [BAZIN] — decidida | Opção (b), rendimento mínimo fixo de 6%, como critério; sai BAZIN_TAXA_MIN. JCP bruto; prejuízo com DY positivo elegível com aviso; STOCK/UNIT, empresa; proventos brutos por data ex da relação B3, yfinance só conferência | F2B-31 permanece: é ele que retira a Selic do Bazin |
 | [FII] — decidida | Apenas tijolo; papel, mistos sem classificação inequívoca, fundos de fundos (CPTS11/HFOF11) e classificação desconhecida abstêm até 2C | F2B-2 e F2B-4 |
 | [FII] — decidida | Mediana dos últimos 5 anos do grupo tijolo contra taxa_aplicacao; 2,65 pp não é a constante aprovada, pois usou taxa_resgate | Recalibração pendente no F2B-2 |
-| [FII] — decidida | Informe: maior versão entregue até as_of; 12 meses consecutivos, 13 VPs; salto ou evento de cota na janela abstém; Informe até 3 meses | F2B-2 completa as guardas que o F2B-28 ainda não entrega |
+| [FII] — decidida | Informe: maior versão entregue até as_of; 12 meses consecutivos, 13 VPs; desdobramento/grupamento ou salto de VP incompatível abstém; emissão com VP contínuo é contexto; Informe até 3 meses | F2B-2 completa as guardas que o F2B-28 ainda não entrega |
 | [FII] — decidida | Perpetuidade de crescimento real zero; spread bruto sobre bruto, sem novo fator tributário; score e pontos de P/VP inalterados na 2B | F2B-2; exceção temporária ao princípio 9 do PLANO para o score |
 | [BANCOS] — decidida | ROE sobre PL inicial dos controladores; payout DVA; VPA CVM; só DFP anual; g pela opção (i), limitado após Fisher | F2B-3 e F2B-32 |
 | [BANCOS] — decidida | Prejuízo, payout fora de (0,1], k ≤ g ou g ≥ ROE: abstenção | F2B-3 |
@@ -33,7 +33,28 @@ A identificação da B3 está em fontes-fase2b, seção 6: CNPJ
 30.306.294/0001-45, otherCodes BPAC11/BRBPACUNT006, coleta de
 19/10/2026 02:42 UTC. É evidência para a tabela de correções, não inferência por ticker.
 
-## 2. Contratos comuns da revisão 0.2
+### 1.1 Revisão 0.3 — decisões após auditoria do Claude, 19/10/2026
+
+Relatório recebido: `auditoria-ficha-2b-v0.2-claude-relatorio.md`, referente ao
+commit 62c160b, SHA-256 `92bf5573b30c25264930d9f71fc15bf05baa7826a0ed55af98be799be1a7a762`; veredito da 0.2:
+**não pode seguir**. As decisões abaixo corrigem a interpretação da 0.2 e
+substituem as condições incompatíveis dela, sem marcar fichas como aprovadas.
+
+| Achado | Decisão do Marcos de 19/10/2026 aplicada na 0.3 |
+|---|---|
+| Bloqueia 1, FII | Quanto à base de cotas, abster só com desdobramento/grupamento ou salto de VP por cota incompatível com continuidade. Emissão com VP contínuo é aceita, como contexto. A alteração do total emitido não basta como veto. HGLG11 tem VP contínuo nas emissões de nov/2025, abr/2026 e mai/2026, conferido na ficha §5; mantém-se a pendência de spread no F2B-2. |
+| Bloqueia 2, DVA | JCP/dividendos da DVA consolidada, por código e descrição (7.08.04.01/02 em empresa; pares do banco na tabela), são dos controladores com participação dos não controladores em linha própria, excluída da soma; ausente/zerada só autoriza reserva sem evidência de minoritários, nos termos do F2A-41, nunca com dado inválido/conflitante ou sem correspondência. Sem essa estrutura, abster. Ambev tem 485.033 mil em 7.08.04.04 e Itaú 992.000 mil em 7.09.04.04: não abstêm por perímetro. F2B-1/F2B-3 completam o mapeamento necessário, sem implementação neste commit. |
+| Bloqueia 3, Bazin | Fonte: relação de proventos em dinheiro da B3, empresas listadas, tipo, valor bruto por ação e data ex. Yfinance só conferência, com aviso de divergência. F2B-31 confirma que o serviço responde e o leiaute; se não responder, [!] com motivo, sem reserva por yfinance. |
+| Ressalva 4, Gordon | ROE sobre PL inicial dos controladores, como bancos. ABEV3: comparativo 31/12/2024 da DFP 2025 v1, 99.580.514−938.375=98.642.139 mil R$; ROE 15,716812466932%, g real 0,386958636840%, valor R$ 6,161748819933. Sensibilidade e reprodução atualizadas. |
+| Ressalva 5, Focus | Consulta original de PIB reforçada em §2.3 com data, instante de gravação conhecido, URL, filtro, resposta bruta preservada e SHA-256; pesquisa 16/10/2026, ano 2030, base 0, mediana 2%. Não confundir pesquisa com publicação ou gravação local. |
+
+O Claude confirmou os capítulos de Fisher (II) e Damodaran 3ª ed. (7, 13, 19,
+21) e a referência de Gordon/Shapiro (1956, pp. 102–110); páginas dos livros
+não foram conferidas. Localização do critério de 6% em Bazin continua declarada
+como limitação, aceita pelo relatório como tal, sem página inventada. A próxima
+auditoria FICHA das cinco **0.3 é do Claude**, D30; aprovação continua com Marcos.
+
+## 2. Contratos comuns da revisão 0.3
 
 Estas regras são especificação documental para os itens futuros; não descrevem uma
 implementação já concluída. D16/D17: registrar referência, entrega/publicação,
@@ -134,6 +155,26 @@ Isto não elimina a incerteza econômica nem a precisão limitada dos dados publ
 | Atualidade IPCA | setembro/2026, publicado 09/10/2026; variável 2265 = 4,58%, só controle da cobertura, sem substituir 4,26% do exercício de 2025 |
 | Focus PIB | [consulta Olinda](https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/ExpectativasMercadoAnuais?$format=json&$filter=Indicador%20eq%20'PIB%20Total'&$orderby=Data%20desc&$top=100), obtida em 19/10/2026 antes de 20:08 UTC; SHA-256 d0fb1e1bd19dbf7cbac8a70d4c3b60daf9d1fcf5cdb6fafb6972b135c3fb6081; Data 16/10/2026, ano 2030, base 0, mediana 2,0000% |
 
+**Registro explícito da consulta Focus PIB (complemento da 0.3, 19/10/2026):**
+
+- Serviço BCB Olinda `ExpectativasMercadoAnuais`; requisição original:
+  `$format=json&$filter=Indicador%20eq%20'PIB%20Total'&$orderby=Data%20desc&$top=100`,
+  na URL da linha Focus acima. A resposta contém ambas as bases; seleção explícita
+  `baseCalculo=0`, `Data=2026-10-16`, maior `DataReferencia=2030`.
+- Consulta em **19/10/2026**; a cópia original foi gravada em
+  **2026-10-19T20:07:43.009903+00:00**, conforme mtime do arquivo da consulta,
+  antes do as_of de 20:10 UTC. É evidência de disponibilidade observada, não
+  horário de publicação pelo BCB nem instante da pesquisa.
+- SHA-256 da **resposta bruta completa**, antes de filtrar: `d0fb1e1bd19dbf7cbac8a70d4c3b60daf9d1fcf5cdb6fafb6972b135c3fb6081`.
+  Cópia preservada para conferência local em
+  `outputs/levantamento_cache/f2b21/focus_pib_ficha03.resposta` (cache público,
+  fora do git). O hash não é o de um JSON reserializado ou apenas da linha selecionada.
+- Registro selecionado: `Indicador=PIB Total`, `Data=2026-10-16`,
+  `DataReferencia=2030`, `baseCalculo=0`, `Mediana=2.0000` (%),
+  `numeroRespondentes=72`. Teto em razão **0,02**, não constante substituta
+  para uma consulta futura indisponível. Não atualizar a resposta para fingir
+  que é a mesma coleta histórica.
+
 `as_of` dos cenários: **19/10/2026 20:10 UTC (17:10 de Brasília)**.
 O snapshot atesta disponibilidade até esse instante, não desde a data de pesquisa.
 DFP Ambev v1 entregue em 12/02/2026; Itaú v2 em 12/02/2026; Renner v2 em
@@ -163,15 +204,18 @@ quando executados. Não confundir encaminhamento com bug corrigido.
 
 - Conferência bibliográfica onde consta "a conferir pelo auditor". A revisão
   distingue fonte consultada de edição não acessível; não inventa páginas.
-- F2B-2: recalibrar o spread com taxa_aplicacao e eventos excluídos; documentar
+- F2B-2: recalibrar o spread com taxa_aplicacao, excluindo desdobramento/grupamento ou
+  salto de VP incompatível e mantendo emissão com VP contínuo em contexto; documentar
   amostra, cobertura, exclusões, sobrevivência, classificação temporal e efeito
   dos meses removidos. Sem constante validada, a lente se abstém.
-- F2B-31: comprovar JCP bruto e janela por data ex; campo agregado sem essa
+- F2B-31: confirmar a relação B3 de proventos em dinheiro e seu leiaute; sem resposta,
+  marcar [!]; yfinance só conferência com aviso de divergência. Comprovar JCP bruto
+  e janela por data ex; campo agregado sem essa
   garantia não basta. A DVA anual do exemplo não prova provento por data ex.
-- F2B-1/F2B-3: conferir perímetro dos proventos e direitos; se a atribuição aos
-  controladores não for demonstrável, abstenção. Nos bancos, conferir a ponte
+- F2B-1/F2B-3: aplicar a regra operacional de estrutura separada da DVA ou reserva
+  sem minoritários da §1.1; sem estrutura, abstenção; conferir direitos. Nos bancos, conferir a ponte
   entre patrimônio, retenção e payout quando o teto de crescimento atuar.
-- Claude audita as cinco fichas 0.2; Marcos decide sua aprovação. Nenhuma ficha
+- Claude audita as cinco fichas 0.3; Marcos decide sua aprovação. Nenhuma ficha
   é promovida a 1.0 por este registro. Nenhum método é implementado aqui.
 
 ## 5. Reprodução aritmética mínima (Python padrão)
@@ -190,8 +234,8 @@ y = sum(map(D, ["6.84", "6.73", "6.73", "6.74", "6.82", "6.83",
                 "6.75", "6.75", "6.75", "6.71", "6.73"])) / D(1100)
 k = y + D("0.05")
 kn = (1 + k) * (1 + pi) - 1
-# Gordon: payout por totais; D0 por ações finais.
-lucro, pl, proventos, acoes = map(D, ["15503400", "87914039", "10903280", "15616526"])
+# Gordon: payout por totais; ROE sobre PL inicial; D0 por ações finais.
+lucro, pl, proventos, acoes = map(D, ["15503400", "98642139", "10903280", "15616526"])
 p = proventos / lucro
 roe = lucro / pl
 g = min((1 + roe * (1 - p)) / (1 + pi) - 1, D("0.02"))
