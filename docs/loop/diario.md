@@ -520,3 +520,23 @@
 - **Para o Marcos revisar:** as referências bibliográficas (capítulos citados de memória, sem conferência no texto); o exemplo vira teste no F2B-30.
 - **Revisão:** 1ª rodada aprovada com médios, corrigidos antes do commit: o "−42,7%" da sensibilidade vinha do CSV do cache (12 inflações), não da tabela versionada do levantamento; a ficha dá −39,7% nas três inflações da seção 7.4 e cita o CSV para o resto. A hipótese de tomar a NTN-B inteira como livre de risco virou o ponto 7.7 [DECISÃO] (risco de crédito soberano), em vez de decidida pelo texto. A seção 7.4 diz que os prazos da inflação e do vértice não casam (só a implícita casa). Menores: a linha de 2045 diz o título, e o efeito do vértice é de até 0,11 ponto na tabela. Fica para um item futuro: a fila (seção "Riscos e decisões", [TAXA]) diz "20,75% hoje (Selic + 7%)", e com a semente de 14,75% são 21,75%, como na ficha.
 
+
+### F2B-23 — docs: add methodology sheet for Gordon in the real regime
+- **Executor:** claude-code (claude-opus-5-5)
+- **Status:** sucesso
+- **O que foi feito:** `docs/metodologia/gordon.md`, versão 0.1, status **rascunho**, com as sete seções do modelo:
+  1. fórmula (valor = D1 ÷ (k − g), D1 = D0 × (1 + g), no regime real), referências (Gordon, 1962; Gordon e Shapiro, 1956; Damodaran, cap. 13) e o que muda em relação ao Gordon 1.1.0 da V1;
+  2. insumos (preço, DY, LPA dos métodos, ROE dos controladores, k real e inflação), com a janela de 12 meses do checkpoint declarada como limitação até o F2C-1;
+  3. regime real e a conversão do ROE e do g, que são nominais; a armadilha 1 no exemplo (misto 1,74 vez o real);
+  4. as abstenções da 1.1.0 e as novas (taxa real ou inflação indisponíveis, sem contingência);
+  5. exemplo independente com a ABEV3: DFP 2025 da CVM (3.11.01, 3.99.01.01, 2.03, 2.03.09, DVA 7.08.04, Composição do Capital) e o fechamento de 25/09/2026 no COTAHIST (R$ 15,32), conta à mão: D0 R$ 0,698189, DY 4,5574%, ROE 17,6347%, payout 70,3329%, g nominal 5,2317%; valor R$ 6,35 pela (i), R$ 8,92 pela (ii), R$ 6,35 pela (iii) com teto de 2%; conferência nominal R$ 6,35; misto R$ 11,05; V1 R$ 4,45;
+  6. sensibilidade (prêmio × inflação × definição de g, na ABEV3) e o resumo do universo pela matriz do F2B-21, com o viés analítico da (ii), g(ii) − g(i) = π(1 − b) ÷ (1 + π), conferido no exemplo (2,9648 pontos);
+  7. parâmetros **[DECISÃO]**: definição do g real (com o efeito de cada opção), teto de g no regime real (com o `--par` do golden), DY e ROE mínimos, payout máximo e o dividendo de base (DY da cascata ou DVA).
+- **Dificuldades:** o método calcula o payout como DY × preço ÷ LPA; um D0 tirado direto do lucro dava um payout ligeiramente diferente (70,3283% contra 70,3329%).
+- **Como resolvi:** o exemplo usa os insumos como o método os recebe (preço, DY, LPA divulgado, ROE), com o DY tirado dos dividendos da DVA ÷ preço, declarado no texto.
+- **Testes:** 1474 passed, 1 skipped, 24 xfailed, sem mudança (só documento). Golden sem diferença.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** os cinco pontos [DECISÃO] da seção 7 e a aprovação da ficha. Ressalva da 2ª revisão do F2B-22, registrada aqui porque o commit dele saiu como revisado: na ficha da taxa real, o ponto 7.7 (risco de crédito soberano) diz só que o spread descontado reduz o k; no modelo de Damodaran, descontar o spread de inadimplência costuma vir junto com somar um prêmio de risco-país ao prêmio do capital próprio, e o efeito líquido depende de o prêmio de 5% já incluir o risco Brasil. É ponto para a auditoria em modo FICHA.
+- **Para o Marcos revisar:** as referências (capítulos de memória); o preço do exemplo é o último pregão do arquivo mensal de setembro (25/09/2026), não o fim do mês.
+- **Revisão:** 1ª rodada aprovada com médios, corrigidos antes do commit: o DY de 5,49% da ABEV3 (seção 7.5) passou a citar a fonte (retrato público do yfinance do F2B-21, fora do git); a tabela de sensibilidade ganhou a coluna da (ii) com teto de 2% (na ABEV3, o teto só age sobre a (ii): R$ 7,21 com prêmio de 5%), e o exemplo mostra o mesmo número; o JCP zero da Ambev na DVA ficou anotado como conferido no arquivo. Menores: o texto da abstenção por inflação e a razão do misto (sobre o nominal, igual ao real por Fisher).
+

@@ -471,7 +471,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** as sete seções do modelo preenchidas; todo número com fonte; status "rascunho"; nenhum parâmetro decidido pelo texto; diff só na ficha, no diário e na fila.
 
-- [ ] **F2B-23** · docs · `docs: add methodology sheet for Gordon in the real regime` · **[ADR-0003]** **[TAXA]**
+- [x] **F2B-23** · docs · `docs: add methodology sheet for Gordon in the real regime` · **[ADR-0003]** **[TAXA]**
   `docs/metodologia/gordon.md`, rascunho.
   - **Fórmula.** Valor = D1 ÷ (k − g), no regime real, com D1 = D0 × (1 + g real). Referência citada.
   - **g real: [DECISÃO]** (auditoria externa da 2A, correção 1; a definição não pode ser tomada pelo texto). A ficha apresenta as opções da [TAXA], com o efeito de cada uma no exemplo e na matriz do F2B-21: (i) g real = (1 + ROE × retenção) ÷ (1 + inflação) − 1; (ii) g real = ROE real × retenção, com ROE real = (1 + ROE) ÷ (1 + inflação) − 1; (iii) g real limitado por um teto de crescimento real de longo prazo, com a fonte do teto. A mesma escolha vale para a lente de bancos (F2B-26).
