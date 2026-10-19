@@ -560,3 +560,23 @@
 - **Para o Marcos revisar:** a referência do livro de Bazin (citada de memória); o JCP entra bruto (antes do IR na fonte), declarado como hipótese.
 - **Revisão:** 1ª rodada aprovada com médios, corrigidos antes do commit: a seção 6 dizia que a (c) com prêmio de 5% equivale à (a) com Selic de 11,88% "em qualquer data" (vale só nesta data-base; a (c) segue a NTN-B) e sugeria que só a (b) e a (c) preservam a ordem dos ativos (a taxa é única em todas as opções, e a ordem é sempre a do DY; a diferença é de nível e de estabilidade); o exemplo declara que o D é o JCP do exercício na DVA, não o DY de 12 meses da cascata. Menores: a (a) também mantém a `selic` no contrato; o perfil renda da LREN3 decorre do DY (> 4%), sem depender do ROE, que não estava no documento versionado; a regra do perfil é um E, com desigualdades estritas.
 
+
+### F2B-25 — docs: add methodology sheet for FII yield against NTN-B
+- **Executor:** claude-code (claude-opus-5-5)
+- **Status:** sucesso
+- **O que foi feito:** `docs/metodologia/fii.md`, versão 0.1, status **rascunho**, com as sete seções do modelo:
+  1. fórmula (preço justo = R ÷ (NTN-B + spread)), com o preço cancelando (armadilha 5) declarado, a referência (perpetuidade sem crescimento, a forma da ficha do Gordon com g = 0) e a V1 (DY ÷ Selic líquida; F-9);
+  2. insumos: o rendimento de 12 meses pelo Informe (em razão, sobre o VP do mês anterior; F2B-21, pergunta 4) ou pela cascata, o preço, a NTN-B, o spread e, como contexto, a Selic líquida e o P/VP;
+  3. regime (o rendimento do tijolo acompanha a inflação; o papel indexado ao CDI é o limite do F-9) e a tributação (isento × NTN-B bruta);
+  4. abstenções (as da V1 e as novas: NTN-B ou spread ausentes; menos de 12 meses no Informe);
+  5. exemplo independente com o HGLG11: os 12 meses de outubro de 2025 a setembro de 2026 do Informe (DY do mês × VP do mês anterior, maior versão), R = R$ 13,240530 por cota; preço de 25/09/2026 no COTAHIST, R$ 147,86, DY de 8,9548%; preço justo de R$ 167,99 (1 ponto) a R$ 130,73 (3,25 pontos, mediana de 5 anos), e R$ 105,61 pela V1;
+  6. sensibilidade pelo universo inicial (matriz do F2B-21), o spread por grupo (tijolo e papel) e os limites da série;
+  7. parâmetros **[DECISÃO]**: spread (definição, janela, atualização), vértice, rendimento (Informe ou cascata), benchmark do score, papel e tijolo, vacância, P/VP (com a asserção do F2B-2 que muda) e tributação.
+- **Dificuldades:** a primeira versão da referência citava um capítulo de livro de que eu não tinha certeza.
+- **Como resolvi:** a referência passou a ser a forma da ficha do Gordon com g = 0, já citada lá. As lições das revisões anteriores foram aplicadas antes da revisão: as datas diferentes do rendimento, do preço e da NTN-B estão declaradas; o preço é o último pregão do arquivo mensal, não o fim do mês; a Selic de 14,75% da linha da V1 é a contingência (`SELIC_FALLBACK`), também semente dos testes.
+- **Testes:** 1474 passed, 1 skipped, 24 xfailed, sem mudança (só documento). Golden sem diferença.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** os oito pontos [DECISÃO] da seção 7 e a aprovação da ficha. Ressalvas da 2ª revisão do F2B-24, registradas aqui porque o commit dele saiu como revisado: na ficha do Bazin, `test_b_mediana_de_tres_metodos_pela_selic` também tem a marca do F-4 e muda no F2B-1 qualquer que seja a opção do Bazin; o exemplo da (c) combina o preço de 25/09/2026 com a NTN-B de 15/10/2026 sem dizer; a Selic de 14,75% do exemplo não diz que é a contingência; e o preço é o último pregão do arquivo mensal, não o fim do mês. Pontos para a auditoria em modo FICHA.
+- **Para o Marcos revisar:** o rendimento de 12 meses do exemplo é reconstruído (DY do mês × VP do mês anterior), não um campo de valor distribuído, que o Informe não tem (F2B-21, pergunta 4).
+- **Revisão:** 1ª rodada aprovada com médios, corrigidos antes do commit: os spreads da tabela do exemplo apareciam arredondados (2,75; 3,25; 2,21; 2,65) enquanto a taxa usava a mediana exata; agora mostram as quatro casas e a ficha diz o efeito do arredondamento (R$ 137,47 com 2,75); a 7.7 passou a citar as outras asserções que o F2B-2 muda (o `fair_value == 110,0` e `test_b_fii_compara_dy_com_a_selic_liquida_de_ir`); a seção 4 diz "DY ausente ou não confiável" e que a V1 não se abstém nesse caso (preço justo igual ao preço, score 50). Menores: a vacância da V1 (caminho inerte) e o vértice fora da sensibilidade, declarados.
+

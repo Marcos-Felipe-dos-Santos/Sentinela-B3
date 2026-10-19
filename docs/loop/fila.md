@@ -492,7 +492,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** como o F2B-22, com as quatro opções e o efeito de cada uma.
 
-- [ ] **F2B-25** · docs · `docs: add methodology sheet for FII yield against NTN-B` · **[ADR-0003]** **[FII]**
+- [x] **F2B-25** · docs · `docs: add methodology sheet for FII yield against NTN-B` · **[ADR-0003]** **[FII]**
   `docs/metodologia/fii.md`, rascunho. Checkpoint, seção 4, item 3: NTN-B + spread, com o spread pela mediana histórica; Selic líquida e P/VP como contexto. F-9.
   - **Fórmula.** Preço justo = preço × DY ÷ (NTN-B + spread); o preço cancela (armadilha 5), e a ficha o declara.
   - **Insumos.** DY (Informe, pelo F2B-28, ou o da cascata), janela de 12 meses e base (pergunta 4); NTN-B (vértice); spread.
