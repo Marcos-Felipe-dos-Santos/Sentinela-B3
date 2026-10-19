@@ -580,3 +580,22 @@
 - **Para o Marcos revisar:** o rendimento de 12 meses do exemplo é reconstruído (DY do mês × VP do mês anterior), não um campo de valor distribuído, que o Informe não tem (F2B-21, pergunta 4).
 - **Revisão:** 1ª rodada aprovada com médios, corrigidos antes do commit: os spreads da tabela do exemplo apareciam arredondados (2,75; 3,25; 2,21; 2,65) enquanto a taxa usava a mediana exata; agora mostram as quatro casas e a ficha diz o efeito do arredondamento (R$ 137,47 com 2,75); a 7.7 passou a citar as outras asserções que o F2B-2 muda (o `fair_value == 110,0` e `test_b_fii_compara_dy_com_a_selic_liquida_de_ir`); a seção 4 diz "DY ausente ou não confiável" e que a V1 não se abstém nesse caso (preço justo igual ao preço, score 50). Menores: a vacância da V1 (caminho inerte) e o vértice fora da sensibilidade, declarados.
 
+
+### F2B-26 — docs: add methodology sheet for the bank lens
+- **Executor:** claude-code (claude-opus-5-5)
+- **Status:** sucesso
+- **O que foi feito:** `docs/metodologia/bancos.md`, versão 0.1, status **rascunho**, com as sete seções do modelo:
+  1. P/VP justificado = (ROE − g) ÷ (k − g), com a derivação pelo Gordon (g = ROE × b; o fator (1 + g) some com o ROE sobre o patrimônio inicial), a prova de que os regimes real e nominal dão o mesmo P/VP só com as quatro taxas convertidas (ROE real = (1 + ROE) ÷ (1 + π) − 1), o efeito de converter só k e g e a referência (Damodaran, capítulos citados de memória, a conferir);
+  2. insumos (ROE e PL dos controladores pelo modelo de instituição financeira do F2A-9, VPA do F2A-36, payout pela DVA, k real, inflação, Basileia e inadimplência);
+  3. regime real, janela do último documento e as datas da Basileia e do balanço declaradas; o `divida_pl` fora;
+  4. abstenções (ROE ≤ g, k ≤ g, VPA ausente ou ≤ 0, taxa real e inflação ausentes) e as limitações (banco fora do índice lido como empresa; holdings pela [FINANCEIRAS]); Basileia e inadimplência fora do valor;
+  5. exemplo independente com o ITUB4, DFP 2025 (versão 2): lucro dos controladores de 44.857.000 mil, PL dos controladores de 204.501.000 mil (215.076.000 − 10.575.000), dividendos da DVA de 33.704.000 mil (JCP 0, conferido), 11.026.524 mil ações; ROE de 21,9349% (real 16,7949%), VPA de R$ 18,5463, payout de 75,1365%, g real pela (i) de 1,0085%; P/VP justificado de 1,4518 nos dois regimes (R$ 26,93) e 1,9246 convertendo só k e g; P/VP de mercado de 2,27 (R$ 42,13 em 25/09/2026);
+  6. sensibilidade prêmio × g (definições (i) e (ii) do Gordon e inflação + 0, 1 e 2 pontos), de 1,21 a 1,88;
+  7. parâmetros **[DECISÃO]**: g, payout, VPA, Basileia, inadimplência e o ROE da fórmula; holdings fora da fila.
+- **Dificuldades:** nenhuma de dado; as lições das revisões das fichas anteriores foram aplicadas antes da revisão (datas diferentes declaradas, preço como último pregão do arquivo mensal, a conta de cada coluna da sensibilidade descrita).
+- **Testes:** 1474 passed, 1 skipped, 24 xfailed, sem mudança (só documento). Golden sem diferença.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** os pontos [DECISÃO] da seção 7 e a aprovação da ficha. Ressalvas menores da 2ª revisão do F2B-25, registradas aqui porque o commit dele saiu como revisado: na ficha do FII, a referência diz "g = 0" onde deveria dizer "g real = 0"; a série tem 25 fundos, 17 de tijolo e 6 de papel, e os 2 restantes não aparecem na 7.1 nem na 7.5; a seção 6 não diz que as linhas "NTN-B + mediana" da matriz combinam o DY do Informe (spread) com o do yfinance (`fontes-fase2b.md:131`); e "1 ponto muda o preço justo em cerca de 10%" é de 10,1% a 11,3% no exemplo. Pontos para a auditoria em modo FICHA.
+- **Para o Marcos revisar:** os capítulos de Damodaran citados de memória.
+- **Revisão:** 1ª rodada aprovada com médios, corrigidos antes do commit: a derivação da seção 1 misturava o ROE sobre o patrimônio do fim e o do começo; agora deriva direto com ROE = lucro1 ÷ VPA0 (sem o fator (1 + g)), cita a forma com o ROE do último exercício e declara a hipótese de ROE constante, com a convenção do denominador como ponto 7.6 [DECISÃO]; a singularidade perto de k = g (BMEB4, P/VP de 50,7) ficou declarada na seção 4 e ligada ao teto da (iii) ou a um piso de k − g na 7.1. Menores: "três taxas" no lugar de "quatro"; as faixas do levantamento trocadas pelos valores da tabela dele, com o cenário; a diferença do P/VP de mercado (2,27 contra 2,38) explicada.
+

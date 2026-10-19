@@ -504,7 +504,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   **Aceite:** como o F2B-22.
 
-- [ ] **F2B-26** · docs · `docs: add methodology sheet for the bank lens` · **[ADR-0003]** **[BANCOS]**
+- [x] **F2B-26** · docs · `docs: add methodology sheet for the bank lens` · **[ADR-0003]** **[BANCOS]**
   `docs/metodologia/bancos.md`, rascunho. Checkpoint, seção 4, item 5; D22 ("a lente de bancos tem derivação explícita na ficha").
   - **Fórmula.** P/VP justificado = (ROE − g) ÷ (k − g); valor = P/VP justificado × VPA. Derivação nos regimes real e nominal, com a prova de que dão o mesmo valor por Fisher. A equivalência exige converter as quatro taxas, inclusive o ROE contábil, que é nominal (ROE real = (1 + ROE nominal) ÷ (1 + π) − 1); convertendo só k e g, os regimes divergem. A conversão do ROE e a definição de g seguem a decisão do g real da [TAXA], a mesma do Gordon (F2B-23). A ficha diz qual conversão o método usa, e o `::test_real_e_nominal_dao_o_mesmo_pvp` do F2B-3 compara as duas contas independentes, não a fórmula consigo mesma. Referência citada.
   - **Insumos.** ROE e PL dos controladores (F2A-9), VPA (F2A-36), g, k e inflação.
