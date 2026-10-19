@@ -500,3 +500,23 @@
   - Ficam registrados: dois pontos confirmados sem teste (BTCI11/TRPL11 e proventos com um só componente) são desvio do aceite ("para cada ponto confirmado, um teste"), pela razão acima, e precisam do aceite do Marcos no marcador; o BUG-2B-08 (`!= 3`) e o BUG-2B-05 (`divergencia_acoes is None`) são registros fracos como especificação (o item que corrigir deve afirmar o valor esperado); a evidência das linhas novas do registro cita a função, sem número de linha. Gate completo: `ruff check --select E9,F63,F7,F82 .` verde e `tests/test_financeiro_pre_refactor.py` sem diferença desde o F2B-7.
 - **Revisão, 2ª rodada:** reprovada porque o registro e a docstring do BUG-2B-06 ainda diziam "FII com preço, DY e P/VP, 30%", e o teste usa preço, DY, P/VP e VPA (40%), e porque a contagem e a lista de sintomas do diário eram de antes da separação. Corrigidos: o registro e a docstring citam os 40% e que o teste do banco o identifica pelo setor; a linha de testes acima foi refeita com a execução de agora. Também: o teste do preço infinito no BUG-2B-04 aceita a correção nas duas formas (abstenção inteira, ou P/L e P/VP ausentes), para não prender a forma da correção.
 
+
+### F2B-22 — docs: add methodology sheet for the real cost of equity
+- **Executor:** claude-code (claude-opus-5-5)
+- **Status:** sucesso
+- **O que foi feito:** `docs/metodologia/taxa-real.md`, versão 0.1, status **rascunho**, no modelo de `docs/metodologia/README.md`, com as sete seções:
+  1. fórmula (k real = NTN-B do vértice + prêmio; Fisher exato nos dois sentidos), com as referências (Damodaran, *Investment Valuation*, 3ª ed., cap. 7; Fisher, *The Theory of Interest*, cap. II) e a consequência do regime (armadilha 1; dossiê, seção 3);
+  2. insumos, com a fonte que respondeu no F2B-21 (histórico do Tesouro Transparente) e a que não respondeu (API da V1, 404), a inflação (IBGE, Focus; SGS 433 sem resposta) e o prêmio;
+  3. regime real, janela (última data-base) e data (proveniência da D16);
+  4. abstenções, sem as contingências de 7% e 5,5% de `config.py`;
+  5. exemplo independente: média das 11 IPCA+ de 2035 em diante (75,70 ÷ 11 = 6,8818%) + 5% = 11,8818% real; nominal 16,8056% com o Focus de 12 meses (ida e volta sem perda), 17,0060% com o IPCA do IBGE e 15,7977% com o Focus de 2030;
+  6. sensibilidade (vértice × prêmio; tipo de taxa; inflação) e o resumo da matriz do F2B-21;
+  7. parâmetros, todos **[DECISÃO]**, com as opções e o efeito: prêmio (com a condição da coleta do Tesouro e a observação de que a `cost_of_equity_real` de hoje soma 7%, não 5%), vértice, tipo de taxa e o nome dos campos, inflação da conversão (com o descasamento de prazo), defasagem máxima, fonte e risco de crédito soberano na taxa.
+- **Dificuldades:** nenhuma.
+- **Como resolvi:** —
+- **Testes:** 1474 passed, 1 skipped, 24 xfailed, sem mudança (só documento). Golden sem diferença.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** os seis pontos [DECISÃO] da seção 7, a aprovação da ficha (depois da auditoria em modo FICHA) e se o histórico do Tesouro Transparente satisfaz a condição do checkpoint para fixar o prêmio. Ressalva da 3ª revisão do F2B-43, registrada aqui porque o commit dele saiu como revisado: o BUG-2B-09 espera 0,5 s pela outra thread; numa máquina muito carregada (cobertura, mutmut, CI lento), a primeira pode trocar o nome sozinha antes de a segunda escrever, e o teste daria XPASS, quebrando a suíte pelo `xfail_strict` sem mudança de código. Nas 20 execuções locais não aconteceu; aumentar a espera é mudança de teste, a decidir. Também: o BUG-2B-06 e o BUG-2B-02 dependem de nomes privados (`_CAMPOS_ESPERADOS`, `_read_raw`), e o caso do FII no BUG-2B-06 fixa os campos de FII em preço, DY, P/VP e VPA, escolha a confirmar no marcador.
+- **Para o Marcos revisar:** as referências bibliográficas (capítulos citados de memória, sem conferência no texto); o exemplo vira teste no F2B-30.
+- **Revisão:** 1ª rodada aprovada com médios, corrigidos antes do commit: o "−42,7%" da sensibilidade vinha do CSV do cache (12 inflações), não da tabela versionada do levantamento; a ficha dá −39,7% nas três inflações da seção 7.4 e cita o CSV para o resto. A hipótese de tomar a NTN-B inteira como livre de risco virou o ponto 7.7 [DECISÃO] (risco de crédito soberano), em vez de decidida pelo texto. A seção 7.4 diz que os prazos da inflação e do vértice não casam (só a implícita casa). Menores: a linha de 2045 diz o título, e o efeito do vértice é de até 0,11 ponto na tabela. Fica para um item futuro: a fila (seção "Riscos e decisões", [TAXA]) diz "20,75% hoje (Selic + 7%)", e com a semente de 14,75% são 21,75%, como na ficha.
+

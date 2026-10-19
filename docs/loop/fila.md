@@ -459,7 +459,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - nenhum código de produção muda; golden inalterado;
   - gate da fase.
 
-- [ ] **F2B-22** · docs · `docs: add methodology sheet for the real cost of equity` · **[ADR-0003]** **[TAXA]**
+- [x] **F2B-22** · docs · `docs: add methodology sheet for the real cost of equity` · **[ADR-0003]** **[TAXA]**
   ADR-0003, D21 a D23. Escreve `docs/metodologia/taxa-real.md` no modelo de `docs/metodologia/README.md`, com status **rascunho**. O loop nunca marca ficha como aprovada.
   - **Fórmula.** k real = NTN-B do vértice + prêmio; conversão real ↔ nominal por Fisher exato, (1 + nominal) = (1 + real) × (1 + inflação). Referência de finanças com a seção citada.
   - **Insumos.** NTN-B (fonte, tipo de taxa, data-base) e inflação, pelas perguntas 1 e 2 do F2B-21.
