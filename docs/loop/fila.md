@@ -402,7 +402,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden inalterado (no motor, o VPA vem de preço ÷ P/VP com P/VP > 0);
   - gate da fase.
 
-- [ ] **F2B-21** · levantamento · `docs: survey rates, FII yields and bank sources for phase 2B`
+- [x] **F2B-21** · levantamento · `docs: survey rates, FII yields and bank sources for phase 2B`
   Confere nos arquivos reais os fatos de que as fichas e os itens seguintes dependem. Grava `docs/decisoes/fontes-fase2b.md` e `scripts/levantamento_fase2b.py` (`--secao N` roda só algumas).
   - **Rede e cache.** Só de leitura, com cache em `outputs/levantamento_cache/`. O script não importa `config`, não usa token da brapi e não lê `.env`.
   - **Amostra.** O universo inicial (`docs/decisoes/universo-inicial.md`) e o índice oficial; nunca a carteira.
