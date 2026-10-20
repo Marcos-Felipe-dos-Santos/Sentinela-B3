@@ -591,7 +591,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden inalterado; nenhum teste existente muda (o diff dos arquivos de teste só tem inclusões);
   - gate da fase.
 
-- [ ] **F2B-47** · fix · `fix: enforce the approved local cutoff for Tesouro snapshots`
+- [x] **F2B-47** · fix · `fix: enforce the approved local cutoff for Tesouro snapshots`
   Correção de defeito introduzido no F2B-27, confirmado ao conferir o marcador §2.2 durante o F2B-29; não muda decisão metodológica. Antes de consumir a fonte no F2B-30.
   - `sentinela/data/providers/tesouro.py`: comparar dias em America/Sao_Paulo; publicação só com data entra depois do fim desse dia, preservando o corte dos instantes e da coleta. Download valida a referência no mesmo dia local.
   - **BUG-2B-16:** regressão estrita em `tests/regressao/test_bug_2b_16_tesouro_corte_local.py` antes da correção; retirar marca, atualizar registro e manter os dois casos em PASS.

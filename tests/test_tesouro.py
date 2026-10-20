@@ -251,12 +251,12 @@ def test_taxa_sem_fator_positivo_e_recusada(taxa):
         tesouro.ler_csv(CSV.replace("6,84", taxa), as_of=INSTANTE.date())
 
 
-def test_disponibilidade_inclui_instante_exato_da_coleta_e_data_da_publicacao(tmp_path):
+def test_disponibilidade_inclui_coleta_exata_com_publicacao_anterior(tmp_path):
     from dataclasses import replace
 
     arquivo = _cache(tmp_path, timedelta(0))
     prov = proveniencia.registrar_arquivo(arquivo, tesouro.URL, "Tesouro Direto", None)
-    prov = replace(prov, data_entrega="2026-10-19", motivo_sem_entrega=None)
+    prov = replace(prov, data_entrega="2026-10-18", motivo_sem_entrega=None)
     assert (
         len(tesouro.ler_snapshot(tesouro.ArquivoTesouro(arquivo, prov), as_of=INSTANTE))
         == 1
@@ -309,3 +309,50 @@ def test_data_ausente_ou_impossivel_e_recusada(coluna, valor):
 def test_csv_truncado_rejeita_data_ausente_com_value_error(linha):
     with pytest.raises(ValueError):
         tesouro.ler_csv(CABECALHO + linha + "\n", as_of=INSTANTE.date())
+
+
+@pytest.mark.parametrize(
+    "instante,aceito",
+    [
+        (datetime(2026, 10, 20, 2, 59, 59, tzinfo=UTC), False),
+        (datetime(2026, 10, 20, 3, tzinfo=UTC), True),
+    ],
+)
+def test_publicacao_so_com_data_espera_fim_do_dia_em_sao_paulo(
+    tmp_path, instante, aceito
+):
+    from dataclasses import replace
+
+    arquivo = _cache(tmp_path)
+    prov = proveniencia.registrar_arquivo(arquivo, tesouro.URL, "Tesouro Direto", None)
+    prov = replace(prov, data_entrega="2026-10-19", motivo_sem_entrega=None)
+    snapshot = tesouro.ArquivoTesouro(arquivo, prov)
+    if aceito:
+        assert len(tesouro.ler_snapshot(snapshot, as_of=instante)) == 1
+    else:
+        with pytest.raises(ValueError, match="publicação"):
+            tesouro.ler_snapshot(snapshot, as_of=instante)
+
+
+@pytest.mark.parametrize("com_cache", [True, False])
+def test_download_recusa_referencia_ainda_futura_no_dia_local(
+    tmp_path, monkeypatch, com_cache
+):
+    if com_cache:
+        arquivo = _cache(tmp_path, timedelta(days=2))
+
+    class Resposta:
+        content = CSV.replace("15/10/2026", "20/10/2026").encode()
+
+        def raise_for_status(self):
+            pass
+
+    monkeypatch.setattr(tesouro.requests, "get", lambda *a, **kw: Resposta())
+    instante = datetime(2026, 10, 20, 2, tzinfo=UTC)
+    if com_cache:
+        snapshot = tesouro.TesouroProvider(tmp_path).baixar(instante)
+        assert snapshot.avisos
+        assert arquivo.read_text() == CSV
+    else:
+        with pytest.raises(ValueError, match="futura"):
+            tesouro.TesouroProvider(tmp_path).baixar(instante)

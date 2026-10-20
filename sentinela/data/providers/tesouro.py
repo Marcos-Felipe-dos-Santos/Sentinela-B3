@@ -15,6 +15,7 @@ from datetime import UTC, date, datetime
 from io import StringIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -112,6 +113,10 @@ def _com_fuso(instante: datetime) -> datetime:
     return instante.astimezone(UTC)
 
 
+def _dia_local(instante: datetime) -> date:
+    return instante.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+
+
 def ler_snapshot(
     arquivo: ArquivoTesouro, *, as_of: datetime
 ) -> tuple[TituloTesouro, ...]:
@@ -127,15 +132,16 @@ def ler_snapshot(
     coleta = _com_fuso(datetime.fromisoformat(registro.data_coleta))
     if coleta > instante or arquivo.caminho.stat().st_mtime > instante.timestamp():
         raise ValueError("coleta posterior ao as_of")
-    if (
-        registro.data_entrega is not None
-        and date.fromisoformat(registro.data_entrega) > instante.date()
-    ):
-        raise ValueError("publicação posterior ao as_of")
+    if registro.data_entrega is not None and date.fromisoformat(
+        registro.data_entrega
+    ) >= _dia_local(instante):
+        raise ValueError(
+            "publicação posterior ao corte: data sem horário exige fim do dia"
+        )
     if proveniencia.hash_sha256(arquivo.caminho) != registro.hash_sha256:
         raise ValueError("conteúdo diverge da proveniência")
     return ler_csv(
-        arquivo.caminho.read_text(encoding="utf-8-sig"), as_of=instante.date()
+        arquivo.caminho.read_text(encoding="utf-8-sig"), as_of=_dia_local(instante)
     )
 
 
@@ -167,7 +173,7 @@ class TesouroProvider:
             resposta = requests.get(URL, timeout=60)
             resposta.raise_for_status()
             conteudo = resposta.content
-            ler_csv(conteudo.decode("utf-8-sig"), as_of=instante.date())
+            ler_csv(conteudo.decode("utf-8-sig"), as_of=_dia_local(instante))
         except (requests.RequestException, ValueError) as erro:
             if not caminho.exists():
                 raise

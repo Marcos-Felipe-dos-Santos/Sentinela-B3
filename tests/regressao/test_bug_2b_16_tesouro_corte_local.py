@@ -10,9 +10,6 @@ from sentinela.data import proveniencia
 from sentinela.data.providers import tesouro
 
 
-@pytest.mark.xfail(
-    strict=True, reason="BUG-2B-16 · corte local do Tesouro · corrige: F2B-47"
-)
 @pytest.mark.parametrize(
     "caso", ["publicacao_so_com_data", "referencia_futura_no_fuso_local"]
 )
