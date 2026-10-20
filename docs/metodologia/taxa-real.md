@@ -1,9 +1,11 @@
-# Taxa de desconto real — versão 0.3
+# Taxa de desconto real — versão 1.0
 
-**Status:** rascunho 0.3, revisto em 19/10/2026 após auditoria FICHA da 0.2 pelo Claude; fórmula e parâmetros desta ficha preservados.
+**Status:** aprovada pelo Marcos em 19/10/2026. Auditoria FICHA do Claude
+sobre a versão 0.3: **pode seguir** (D30); promovida a 1.0 sem mudança de regra
+ou número, conforme registro do marcador.
 **Decisões:** Marcos, 19/10/2026; [registro do marcador](../decisoes/marcador-2b.md).
 **Dependências:** F2B-27, F2B-29, F2B-30, F2B-1, F2B-2, F2B-3 e F2B-32.
-Aguarda nova auditoria pelo Claude (D30) e aprovação do Marcos; não implementado.
+Aprovação documental registrada; implementação nos itens da fila, ainda não entregue.
 
 ## 1. Fórmula e referência
 
@@ -29,7 +31,8 @@ Marcos, não consequência atribuída aos livros. D22 fundamenta a coerência de
 regimes exigida pelo projeto; a prova algébrica acima independe da edição.
 O Claude confirmou em 19/10/2026 os títulos dos capítulos de Fisher e Damodaran
 na auditoria da 0.2; páginas e passagens específicas continuam não conferidas.
-O registro do marcador identifica o relatório; a versão 0.3 aguarda nova auditoria.
+O registro do marcador identifica a auditoria da 0.3, com veredito "pode seguir".
+Páginas e passagens específicas permanecem na lista de pendências atribuídas.
 
 ## 2. Insumos
 
@@ -133,4 +136,4 @@ Todas as opções [DECISÃO] da 0.1 estão **decididas pelo Marcos em 19/10/2026
 | 7.7 Risco soberano | já na NTN-B integral | nenhum spread soberano adicional |
 
 Moeda-base e conversão dos fluxos completam D22. Pendência bibliográfica
-explicitamente marcada na seção 1; aprovação da ficha permanece pendente.
+explicitamente marcada na seção 1 e preservada como pendência não bloqueante.

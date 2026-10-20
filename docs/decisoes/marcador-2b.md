@@ -1,9 +1,11 @@
 # Marcador da Fase 2B — decisões de 19/10/2026
 
 **Autor das decisões:** Marcos. **Registro:** Codex, em 19/10/2026.
-**Estado:** decisões tomadas; fichas 0.3 ainda em rascunho. Auditoria FICHA pelo
-Claude, de outra família que o executor desta revisão (D30), e aprovação do Marcos
-continuam obrigatórias. Este registro não aprova método nem autoriza ultrapassar o marcador.
+**Estado:** cinco fichas **1.0, aprovadas pelo Marcos em 19/10/2026**, após
+veredito **pode seguir** da auditoria FICHA do Claude sobre a 0.3 (D30).
+A promoção muda somente versão/status, sem regra ou número de cálculo.
+Marcador liberado; execução retoma no F2B-46, sem push. As pendências atribuídas
+na seção 4 continuam em vigor.
 
 ## 1. Decisões tomadas
 
@@ -53,6 +55,24 @@ O Claude confirmou os capítulos de Fisher (II) e Damodaran 3ª ed. (7, 13, 19,
 não foram conferidas. Localização do critério de 6% em Bazin continua declarada
 como limitação, aceita pelo relatório como tal, sem página inventada. A próxima
 auditoria FICHA das cinco **0.3 é do Claude**, D30; aprovação continua com Marcos.
+
+### 1.2 Aprovação das cinco fichas — Marcos, 19/10/2026
+
+Auditoria FICHA: **Claude**, sobre o commit **19d46ac**, fichas 0.3.
+Relatório `auditoria-ficha-2b-v0.3-claude-relatorio.md`, SHA-256
+`47c904f7a46b6c9b70370f6045431b5f125742b2a0aace56056f29adea7452d4`. Veredito: **pode seguir**;
+os cinco achados da rodada anterior foram fechados e as contas conferiram.
+
+**Aprovação expressa do Marcos em 19/10/2026:** taxa-real, Gordon, Bazin,
+FII e bancos promovidas de 0.3 a **1.0**, com status aprovado, **sem mudar
+regra nem número**. Cumprida a etapa 5 de ciclo-de-fase.md, D21/D30;
+o marcador da fila passa a [x] e o loop retoma no F2B-46 (etapa 4).
+
+**Pendências não bloqueantes preservadas:** F2B-2 recalibra o spread;
+F2B-31 confirma a relação de proventos B3 (sem resposta, [!]); F2B-1/F2B-3
+mapeiam os pares da DVA na tabela de contas; referências mantêm as páginas e
+a localização da regra de 6% de Bazin não conferidas. A aprovação não declara
+essas tarefas entregues nem muda suas condições de abstenção/bloqueio.
 
 ## 2. Contratos comuns da revisão 0.3
 
@@ -215,8 +235,9 @@ quando executados. Não confundir encaminhamento com bug corrigido.
 - F2B-1/F2B-3: aplicar a regra operacional de estrutura separada da DVA ou reserva
   sem minoritários da §1.1; sem estrutura, abstenção; conferir direitos. Nos bancos, conferir a ponte
   entre patrimônio, retenção e payout quando o teto de crescimento atuar.
-- Claude audita as cinco fichas 0.3; Marcos decide sua aprovação. Nenhuma ficha
-  é promovida a 1.0 por este registro. Nenhum método é implementado aqui.
+- Auditoria FICHA da 0.3 concluída pelo Claude, "pode seguir"; aprovação expressa
+  do Marcos em 19/10/2026 e promoção documental a 1.0 registradas na seção 1.2.
+  Nenhum método é implementado pela aprovação; as pendências acima continuam atribuídas.
 
 ## 5. Reprodução aritmética mínima (Python padrão)
 

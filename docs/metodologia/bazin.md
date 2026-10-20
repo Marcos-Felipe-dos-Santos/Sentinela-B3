@@ -1,7 +1,9 @@
-# Critério de rendimento do Bazin — versão 0.3
+# Critério de rendimento do Bazin — versão 1.0
 
-**Status:** rascunho revisto em 19/10/2026; aguarda auditoria FICHA pelo Claude
-(D30) e aprovação do Marcos. **Decisões:** [marcador](../decisoes/marcador-2b.md).
+**Status:** aprovada pelo Marcos em 19/10/2026. Auditoria FICHA do Claude
+sobre a versão 0.3: **pode seguir** (D30); promovida a 1.0 sem mudança de regra
+ou número, conforme registro do marcador.
+**Decisões:** [marcador](../decisoes/marcador-2b.md).
 **Implementação futura:** F2B-31; limpeza de constantes sem leitor no F2B-5.
 
 ## 1. Fórmula e referência

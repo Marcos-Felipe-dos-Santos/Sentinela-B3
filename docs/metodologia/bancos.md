@@ -1,7 +1,9 @@
-# Lente de bancos — versão 0.3
+# Lente de bancos — versão 1.0
 
-**Status:** rascunho revisto em 19/10/2026; aguarda auditoria FICHA pelo Claude
-(D30) e aprovação do Marcos. **Decisões:** [marcador](../decisoes/marcador-2b.md).
+**Status:** aprovada pelo Marcos em 19/10/2026. Auditoria FICHA do Claude
+sobre a versão 0.3: **pode seguir** (D30); promovida a 1.0 sem mudança de regra
+ou número, conforme registro do marcador.
+**Decisões:** [marcador](../decisoes/marcador-2b.md).
 **Implementação futura:** F2B-3 (método), F2B-32 (motor), F2B-4 (modelo/escopo).
 
 ## 1. Fórmula, derivação e referência
@@ -217,4 +219,5 @@ declarados, sem efeito no valor e sem confundir conceitos.
 inclusive holdings; sem BPP consolidado, abstenção. Exigir lucro positivo,
 payout em (0,1], k>g e g<ROE. A ponte do payout sob teto é exposta na seção 1
 para conferência da auditoria, não premissa escondida. Referências não acessíveis
-continuam marcadas; nenhuma destas decisões aprova automaticamente a ficha.
+continuam marcadas como pendências não bloqueantes; aprovação expressa do Marcos
+registrada no cabeçalho, sem modificar as regras acima.

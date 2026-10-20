@@ -533,12 +533,11 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: DY do Informe × DY da cascata nos FIIs atuais do universo inicial;
   - gate da fase.
 
-- [DECISÃO] **Fichas da 2B, taxa e fontes.** Decisões tomadas pelo Marcos em **19/10/2026**, registradas em `docs/decisoes/marcador-2b.md` e na seção 7 das cinco fichas **0.3**, ainda em rascunho.
-  - [x] Decididos [TAXA], g real, Gordon, [BAZIN] (b), [FII], [BANCOS], [FINANCEIRAS] (c), [BTG] e destinos dos bugs. F2B-31 permanece para implantar 6% fixos; F2A-39 permanece com a evidência GetDetail CVM 22616.
-  - **Auditoria da 0.2:** Claude, 19/10/2026, "não pode seguir"; relatório `auditoria-ficha-2b-v0.2-claude-relatorio.md`, identificado no registro do marcador §1.1. As decisões posteriores estão aplicadas na 0.3.
-  - [ ] **Claude** audita as cinco fichas 0.3 em modo FICHA, por família diferente do executor desta revisão (Codex), conforme D30. Guardar relatórios em `docs/loop/historico/fase-2b/auditoria-fichas.md`; a revisão do commit não substitui essa auditoria.
-  - [ ] Marcos aprova cada ficha, promovendo a 1.0 com data/nome, ou pede correções. Bibliografia marcada "a conferir pelo auditor" precisa ser examinada; spread do FII é pendência expressa do F2B-2, sem adotar os antigos 2,65 pp.
-  - [ ] Só depois da auditoria e aprovação, Marcos troca **este marcador** por `[x]` e retoma o loop. Não atravessar o marcador neste commit documental; item de método sem ficha aprovada fica `[!]`.
+- [x] **Fichas da 2B, taxa e fontes.** **Aprovadas pelo Marcos em 19/10/2026:** taxa-real, Gordon, Bazin, FII e bancos, promovidas de 0.3 a **1.0**, sem mudança de regra ou número. Decisões e aprovação em `docs/decisoes/marcador-2b.md`, seções 1.1/1.2.
+  - [x] Decididos [TAXA], g real, Gordon, [BAZIN] (b), [FII], [BANCOS], [FINANCEIRAS] (c), [BTG] e destinos dos bugs. F2B-31 e F2A-39 permanecem.
+  - [x] Auditoria FICHA das cinco 0.3 pelo **Claude** (D30), sobre 19d46ac, veredito **pode seguir**; relatório `auditoria-ficha-2b-v0.3-claude-relatorio.md` identificado com hash no registro §1.2. A reprovação anterior da 0.2 permanece como histórico no §1.1.
+  - [x] Aprovação expressa do Marcos em 19/10/2026; etapa 5 do ciclo cumprida. Loop liberado para F2B-46, etapa 4, sem push.
+  - **Pendências atribuídas preservadas:** recalibração do spread FII (F2B-2); confirmação da relação B3 (F2B-31, [!] se não responder); mapeamento dos pares DVA (F2B-1/F2B-3); páginas das referências e localização dos 6% de Bazin. Nenhuma é declarada entregue por esta aprovação.
 
 - [ ] **F2B-46** · fix · `fix: enforce CVM input domains and completeness by statement model`
   **Decisão do Marcos de 19/10/2026**, marcador 2B. Antes do F2B-27, corrige os bugs confirmados do F2B-43 necessários às lentes da fase. Não troca fórmula de valuation.

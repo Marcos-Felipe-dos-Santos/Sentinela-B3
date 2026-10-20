@@ -1,7 +1,9 @@
-# Gordon no regime real — versão 0.3
+# Gordon no regime real — versão 1.0
 
-**Status:** rascunho revisto, 19/10/2026; aguarda auditoria FICHA pelo Claude
-(D30) e aprovação do Marcos. **Executor da revisão:** Codex.
+**Status:** aprovada pelo Marcos em 19/10/2026. Auditoria FICHA do Claude
+sobre a versão 0.3: **pode seguir** (D30); promovida a 1.0 sem mudança de regra
+ou número, conforme registro do marcador.
+**Executor da revisão:** Codex.
 **Decisões:** [marcador 2B](../decisoes/marcador-2b.md), Marcos, 19/10/2026.
 **Implementação futura:** F2B-1, com insumos de F2B-29/F2B-30 e escopo F2B-4.
 
@@ -176,4 +178,5 @@ sobre PL inicial dos controladores e atribuição operacional da DVA pela estrut
 separada ou reserva sem minoritários da seção 2. As alternativas (ii), crescimento ROE real × retenção,
 e inflação do Focus não alimentam o método. O teto é limite à extrapolação,
 não demonstração de estabilidade da empresa. Pendências de referência e
-estrutura da DVA estão explicitadas; não há aprovação da ficha.
+estrutura da DVA estão explicitadas e mantidas nos itens executores; aprovação
+da ficha registrada no cabeçalho, sem mudar as regras acima.

@@ -1,7 +1,9 @@
-# Rendimento do FII sobre NTN-B — versão 0.3
+# Rendimento do FII sobre NTN-B — versão 1.0
 
-**Status:** rascunho revisto em 19/10/2026; aguarda auditoria FICHA pelo Claude
-(D30) e aprovação do Marcos. **Decisões:** [marcador](../decisoes/marcador-2b.md).
+**Status:** aprovada pelo Marcos em 19/10/2026. Auditoria FICHA do Claude
+sobre a versão 0.3: **pode seguir** (D30); promovida a 1.0 sem mudança de regra
+ou número, conforme registro do marcador.
+**Decisões:** [marcador](../decisoes/marcador-2b.md).
 **Implementação futura:** F2B-2; F2B-28 fornece reconstrução inicial, ainda sem
 todas as guardas temporais, de eventos e de atualidade desta ficha.
 

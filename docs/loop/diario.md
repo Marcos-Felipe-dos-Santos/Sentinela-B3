@@ -654,3 +654,16 @@
 - **Dificuldades e solução:** separadas evidência de VP contínuo, total emitido e documentos de eventos; nenhuma faixa percentual arbitrária introduzida. Conferidas as linhas da DVA no arquivo bruto, sem exigir prova adicional não especificada. Regra de fonte B3 documentada como aceite futuro, sem declarar serviço já consultado.
 - **Resíduos:** somente oito documentos no escopo versionado; evidência bruta pública no cache ignorado, trabalho auxiliar em /tmp; nenhum arquivo não rastreado removido, nenhuma credencial lida, nenhum push.
 - **Pendências e revisão do Marcos:** próxima auditoria FICHA pelo Claude (D30) e aprovação das fichas; recalibração do spread no F2B-2 sob a regra corrigida; confirmação da relação B3 no F2B-31. Nenhuma ficha marcada como aprovada por este commit.
+
+
+### Marcador — docs: approve phase 2B methodology sheets
+- **Executor:** codex (GPT-6).
+- **Data:** 19/10/2026.
+- **Status:** sucesso; aprovação do Marcos registrada, marcador [x].
+- **O que foi feito:** taxa-real, Gordon, Bazin, FII e bancos promovidas de 0.3 para 1.0, status "aprovada pelo Marcos em 19/10/2026", sem modificar regra, fórmula ou número de cálculo. Removidos somente avisos de aprovação pendente que ficaram superados. Registro do marcador §1.2 identifica a auditoria FICHA do Claude sobre 19d46ac, relatório `auditoria-ficha-2b-v0.3-claude-relatorio.md`, SHA-256 e veredito "pode seguir". Fila marca [x] o marcador e libera o F2B-46; etapa 5 do ciclo concluída, retomada da etapa 4 autorizada pelo Marcos.
+- **Pendências preservadas:** recalibração do spread no F2B-2; confirmação da relação de proventos B3 no F2B-31 ([!] sem resposta); mapeamento dos pares DVA nos F2B-1/F2B-3; páginas e localização dos 6% em Bazin. Nenhuma tarefa de implementação declarada entregue pela promoção.
+- **Testes:** suíte inicial 1494 passed, 1 skipped, 24 xfailed; promoção somente documental. Regras e números dos corpos das fichas conferidos contra 19d46ac; golden inalterado; gates do protocolo verdes. Mutação não se aplica.
+- **Dificuldades e solução:** mantidas as condições e pendências aceitas pelo auditor, distinguindo aprovação documental de implementação; sem reabrir decisão já aprovada.
+- **Resíduos:** nenhum arquivo fora do escopo no stage; nenhum arquivo não rastreado apagado; sem credenciais ou dados de carteira; sem push.
+- **Decisões que ficaram para o Marcos:** nenhuma para aprovar estas cinco fichas; próximos checkpoints continuam na fila.
+- **Para o Marcos revisar:** execução prossegue a partir do F2B-46, um commit por item e auditoria por outra família no checkpoint, conforme ciclo de fase e D30.
