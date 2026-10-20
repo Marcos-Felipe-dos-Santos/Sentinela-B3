@@ -631,6 +631,9 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden inalterado; nenhum teste existente muda;
   - gate da fase.
 
+- [x] **F2B-49** · chore · `chore: satisfy the macro provider lint gate`
+  Correção própria do executor,20/10/2026: o gate completo apontou TRY004 depois da revisão do F2B-30, mas o executor criou93b9ac9 indevidamente. Sem amend: normalizar o erro de tipo booleano dentro da fronteira de conversão, preservando ValueError/motivo da matriz e todas as asserções. Arquivos: sentinela/data/providers/macro.py, fila e diário. Aceite: regressão BUG-2B-23 e suíte verdes, Ruff CI/data/methods sem erro novo, mutação macro≥80%, revisão/safe-commit; sem mudança financeira ou push.
+
 - [ ] **F2B-1** · fix · `fix: discount Gordon at the real cost of equity` · **[golden]** **[TAXA]**
   - **Complemento do parecer Gemini completo (20/10/2026):** nos helpers _acao/_processar da seção A, injetar custo real, inflação, teto PIB e proventos DVA necessários; preservar TODAS as asserções da seção A. lpa_basico_agregado abstém linhas conflitantes e inclui Abstencao na anotação; zero descartado da classe não autoriza usar agregado sem as conferências de espécie e escala da ficha1.1.
   Armadilha 1; F-4 e F-6; checkpoint, seção 4, item 2 (regime real); PLANO, F2B-1. Pré-condição: `docs/metodologia/taxa-real.md` e `docs/metodologia/gordon.md` aprovadas; sem isso, `[!]`.

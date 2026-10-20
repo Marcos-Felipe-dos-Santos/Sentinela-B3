@@ -32,9 +32,9 @@ def _local(as_of: datetime) -> date:
 def _numero(valor: object, nome: str) -> float:
     if valor is None or (isinstance(valor, str) and not valor.strip()):
         raise ValueError(f"insumo ausente: {nome}")
-    if isinstance(valor, bool):
-        raise ValueError(f"insumo inválido: {nome}, tipo ou unidade")
     try:
+        if isinstance(valor, bool):
+            raise TypeError("booleano não representa percentual")
         numero = float(valor)
     except (TypeError, ValueError) as erro:
         raise ValueError(f"insumo inválido: {nome}, tipo ou unidade") from erro
