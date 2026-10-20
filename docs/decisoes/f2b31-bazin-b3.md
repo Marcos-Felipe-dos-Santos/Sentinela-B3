@@ -58,7 +58,9 @@ a auditoria:
    pelo fator; a reconciliação fica para um item futuro, se decidido.
 5. **Cobertura.** Todas as páginas lidas (registros = `totalRecords`) e algum provento,
    de qualquer espécie, com data com antes do início da janela. Sem isso, abstenção.
-6. **Emissor.** A relação vem pelo nome de pregão, e a busca é instável com barra
+6. **Emissor.** A relação vem pelo nome de pregão, e a busca falha com barra — **bug
+   BUG-2B-29** (auditoria de 20/10/2026), não escolha de abstenção; regressão em xfail
+   estrito em `tests/regressao/`, destino na proposta da 2C. A busca é instável com barra
    ("AMBEV S/A" devolve 0 registros; "AMBEV SA", 40; "AMBEV", 134; "KLABIN S/A", 0;
    "KLABIN SA", 219). Os proventos recentes do complemento, que vem pelo código do emissor e
    com o ISIN, têm de estar todos na relação (espécie, natureza, data com e valor), quando

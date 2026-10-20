@@ -685,6 +685,9 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: antes → depois no universo inicial, como no F2B-1;
   - gate da fase.
 
+- [x] **F2B-50** · test · `test: register the B3 trading-name search bug`
+  Auditoria do Claude (chat) de 20/10/2026, sobre o F2B-31: a busca da B3 pelo nome de pregão com barra ("AMBEV S/A" devolve zero registros) é bug do coletor, não escolha de abstenção. BUG-2B-29 em xfail estrito em `tests/regressao/`, destino na proposta da 2C (a forma da correção não está decidida).
+
 - [ ] **F2B-2** · fix · `fix: compare FII yield with NTN-B plus the historical spread` · **[golden]** **[FII]**
   - **Aceite adicional Gemini HEAD60e61e2 (20/10/2026):** Data_Referencia NaN no cvm_fii_provider produz ausência/abstenção com motivo, sem seleção silenciosa nem exceção.
   PLANO, F2B-2; checkpoint, seção 4, item 3; F-9; pendência "DY do Informe Mensal de FII". Pré-condição: `docs/metodologia/fii.md` aprovada.
