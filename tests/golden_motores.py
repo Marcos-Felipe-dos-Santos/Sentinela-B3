@@ -12,6 +12,7 @@ import random
 from pathlib import Path
 from unittest.mock import patch
 
+from apoio_bazin import enriquecer_bazin
 from apoio_gordon import AS_OF_GORDON, enriquecer_gordon
 
 import fii_engine
@@ -34,11 +35,13 @@ def executar(caso):
     try:
         if caso["motor"] == "acoes":
             taxa = caso.get("taxa_real") or {"ntnb": 0.07, "inflacao": 0.055}
-            entrada = enriquecer_gordon(
-                entrada,
-                ntnb=taxa["ntnb"],
-                inflacao=taxa["inflacao"],
-                teto=caso.get("teto_pib_cenario", 0.02),
+            entrada = enriquecer_bazin(
+                enriquecer_gordon(
+                    entrada,
+                    ntnb=taxa["ntnb"],
+                    inflacao=taxa["inflacao"],
+                    teto=caso.get("teto_pib_cenario", 0.02),
+                )
             )
             with (
                 patch.object(
@@ -536,6 +539,28 @@ def _acoes_gordon_real():
     return casos
 
 
+def _acoes_taxa_bazin():
+    """Grade do F2B-31: DY em torno do gate, do critério, do alerta e do limite, por Selic."""
+    casos = []
+    for selic in (0.02, 0.06, 0.1475, 0.25):
+        for dy in (0.0499, 0.05, 0.0599, 0.06, 0.0601, 0.15, 0.1501, 0.25, 0.2501):
+            casos.append(
+                _acao(
+                    f"bazin_taxa_selic{selic}_dy{dy}",
+                    {
+                        "ticker": "TST3",
+                        "preco_atual": 100.0,
+                        "pl": 10.0,
+                        "pvp": 1.0,
+                        "dy": dy,
+                        "roe": 0.12,
+                    },
+                    selic=selic,
+                )
+            )
+    return casos
+
+
 def montar_casos():
     casos = (
         _acoes_fronteiras()
@@ -546,6 +571,7 @@ def montar_casos():
         + _acoes_classe_ativo()
         + _acoes_preco_nao_finito()
         + _acoes_gordon_real()
+        + _acoes_taxa_bazin()
         + _fii_fronteiras()
         + _fii_selic_e_vacancia()
         + _fii_aleatorios()

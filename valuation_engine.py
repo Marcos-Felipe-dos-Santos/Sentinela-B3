@@ -6,7 +6,7 @@ from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
 from config import DISTRESSED_TICKERS, MACRO, _normalizar_dy, get_selic_atual
-from sentinela.data import gordon_cvm
+from sentinela.data import gordon_cvm, proventos_b3
 from sentinela.domain.enums import Perfil
 from sentinela.domain.units import BRL, RateNominal, Ratio
 from sentinela.methods.base import MethodInputs, MethodResult
@@ -71,7 +71,7 @@ class ValuationEngine:
             dy_confiavel=dy_confiavel,
         )
 
-    def _avaliar_metodos(self, inputs, inputs_gordon=None):
+    def _avaliar_metodos(self, inputs, inputs_gordon=None, inputs_bazin=None):
         """Resultado de cada método extraído, na ordem da V1."""
         return {
             "Graham": _GRAHAM.calcular(
@@ -84,11 +84,10 @@ class ValuationEngine:
                 ),
             ),
             "Bazin": _BAZIN.calcular(
-                inputs,
+                inputs if inputs_bazin is None else inputs_bazin,
                 BazinParams(
                     dy_min=MACRO.BAZIN_DY_MIN,
                     dy_armadilha=MACRO.BAZIN_DY_ARMADILHA,
-                    taxa_min=MACRO.BAZIN_TAXA_MIN,
                 ),
             ),
             "Lynch": _LYNCH.calcular(
@@ -224,7 +223,42 @@ class ValuationEngine:
         else:
             dados.pop("gordon_diagnostico", None)
             inputs_gordon = replace(inputs, as_of=dia_gordon, **entradas_gordon)
-        resultados = self._avaliar_metodos(inputs, inputs_gordon)
+        # F2B-31 (ficha Bazin 1.0): o DY do Bazin é o bruto de 12 meses da relação B3; sem
+        # ela, o Bazin se abstém, sem reserva no DY da cascata.
+        entradas_bazin = proventos_b3.entradas(dados, instante)
+        avisos_bazin = ()
+        if isinstance(entradas_bazin, proventos_b3.Abstencao):
+            dados["bazin_diagnostico"] = entradas_bazin.motivo
+            dados.pop("bazin_proventos", None)
+            inputs_bazin = replace(inputs, as_of=dia_gordon, dy=None)
+        else:
+            dados.pop("bazin_diagnostico", None)
+            dados["bazin_proventos"] = entradas_bazin["serie"]
+            avisos_bazin = tuple(entradas_bazin["avisos"])
+            dy_b3, dy_b3_confiavel = _normalizar_dy(entradas_bazin["dy"])
+            lpa_cvm = dados.get("lpa")
+            lpa_cvm = (
+                lpa_cvm
+                if isinstance(lpa_cvm, (int, float))
+                and not isinstance(lpa_cvm, bool)
+                and math.isfinite(lpa_cvm)
+                else None
+            )
+            crescimento = (
+                dy_b3_confiavel
+                and roe > MACRO.ROE_CRESCIMENTO_MIN
+                and dy_b3 < MACRO.DY_CRESCIMENTO_MAX
+            )
+            inputs_bazin = replace(
+                inputs,
+                as_of=dia_gordon,
+                preco=BRL(entradas_bazin["preco_referencia"]),
+                dy=Ratio(dy_b3),
+                dy_confiavel=dy_b3_confiavel,
+                perfil=Perfil.CRESCIMENTO if crescimento else Perfil.RENDA,
+                lpa=None if lpa_cvm is None else BRL(lpa_cvm),
+            )
+        resultados = self._avaliar_metodos(inputs, inputs_gordon, inputs_bazin)
         graham = resultados["Graham"]
         if isinstance(graham, MethodResult):
             metodos["Graham"] = graham.valor.valor
@@ -243,6 +277,9 @@ class ValuationEngine:
                 riscos.append("DY muito alto (possível armadilha)")
                 confianca -= 10
             metodos['Bazin'] = bazin.valor.valor
+            for aviso in (*avisos_bazin, *bazin.alertas):
+                if aviso != ALERTA_DY_ARMADILHA and aviso not in riscos:
+                    riscos.append(aviso)
 
         # ── 3. PETER LYNCH ───────────────────────────────────────────────────
         # Fórmula e condições em sentinela/methods/lynch.py.

@@ -665,7 +665,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário (gate do PLANO): antes → depois no universo inicial, com prêmio de 4%, 5% e 7%;
   - gate da fase.
 
-- [ ] **F2B-31** · fix · `fix: take the Selic out of the Bazin rate` · **[golden]** **[BAZIN]**
+- [x] **F2B-31** · fix · `fix: take the Selic out of the Bazin rate` · **[golden]** **[BAZIN]**
   F-5; armadilha 5. Pré-condição: `docs/metodologia/bazin.md` aprovada. **Mantido por decisão de 19/10/2026:** opção (b), ainda falta retirar a Selic da implementação; ausência futura de Selic não é motivo para retirar o item que faz a troca.
   - **Bazin 2.0.0.** Taxa fixa de 6%, critério de rendimento mínimo nominal, não avaliação por desconto; constante versionada. JCP bruto e série de 12 meses por data ex comprovados; prejuízo com DY positivo elegível com aviso. Sem cobertura/bruto demonstrados, abstenção conforme ficha 0.3. `requires` sem `selic`; o `BazinParams` perde o piso da Selic. O gate de 5% e o alerta de armadilha ficam. Changelog.
   - **Seção A.** Não muda (F2B-7). Os testes que o F2B-7 marcou com o F-5 viram aqui, por xfail estrito → marca retirada → PASS.

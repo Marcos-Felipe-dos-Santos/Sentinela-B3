@@ -73,6 +73,7 @@ class SentinelaAI:
                 'serie_cvm', 'ttm_cvm', 'alavancagem_cvm', 'ifdata', 'liquidez',
                 'rendimento_fii_cvm', 'taxa_real', 'janela_contabil_cvm',
                 'gordon_cvm', 'gordon_diagnostico', 'base_acionaria_gordon',
+                'proventos_b3', 'bazin_proventos', 'bazin_diagnostico', 'modelo_bpp',
                 'escala_pelo_consolidado', 'especies_da_companhia',
             }
             return "\n".join(

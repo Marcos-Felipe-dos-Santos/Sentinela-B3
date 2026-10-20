@@ -4,6 +4,7 @@ from datetime import date
 from unittest.mock import patch
 
 import pytest
+from apoio_bazin import enriquecer_bazin
 from apoio_gordon import AS_OF_GORDON, DiaGordon, enriquecer_gordon
 
 from fii_engine import FIIEngine
@@ -64,7 +65,7 @@ def _acao(**kw):
         },
     }
     dados.update(kw)
-    enriquecidos = enriquecer_gordon(dados)
+    enriquecidos = enriquecer_bazin(enriquecer_gordon(dados))
     if "taxa_real" in kw:
         enriquecidos["taxa_real"] = kw["taxa_real"]
     return enriquecidos
@@ -114,8 +115,11 @@ def test_relatorio_mostra_cada_metodo_com_versao():
     assert "raiz de 22,5" in html
     assert "<td><code>pl_limite</code></td><td>25.0</td>" in html
     assert "R$ 122,47" in html
-    # a Selic usada e a síntese
-    assert "14,50%" in html
+    # F2B-31: nenhum método de ação usa a Selic; a taxa do Bazin e a fonte dos proventos
+    assert "<h2>Selic usada</h2>" not in html
+    assert "<tr><td>taxa_aplicada</td><td>6,00%</td></tr>" in html
+    assert "Proventos do Bazin (relação B3, F2B-31)" in html
+    assert "critério fixo de 6% (ficha Bazin 1.0)" in html
     assert "Mediana" in html and "Score" in html
 
 
@@ -149,7 +153,8 @@ def test_proveniencia_dos_cinco_campos_e_heranca_dos_demais():
     assert "yfinance" in html
     assert "brapi" in html
     assert "herdada de fonte_fundamentos: CVM" in html
-    assert "sem proveniência registrada" in html  # a Selic (E-6)
+    # a Selic (E-6), que só o relatório do FII mostra desde o F2B-31
+    assert "sem proveniência registrada" in _html(_fii(), eh_fii=True)
 
 
 def test_relatorio_declara_os_limites_conhecidos_e_o_aviso():
@@ -200,10 +205,11 @@ def test_ticker_valido_e_normalizado():
 
 
 def test_variacao_sobre_o_preco_esta_em_pontos_percentuais():
-    # Mediana 55,17 sobre preço 100: o motor já devolve o upside em pontos percentuais
+    # Mediana 122,47 (Graham; Bazin 133,33 a 6% desde o F2B-31; Gordon 30,60) sobre preço
+    # 100: o motor já devolve o upside em pontos percentuais
     html = _html(_acao())
-    assert "<th>Variação sobre o preço</th><td>-44,80%</td>" in html
-    assert "4.480" not in html
+    assert "<th>Variação sobre o preço</th><td>22,50%</td>" in html
+    assert "2.250" not in html
 
 
 def test_variacao_do_fii_esta_em_pontos_percentuais():

@@ -17,9 +17,11 @@ from sentinela.data import (
     gordon_cvm,
     liquidez,
     normalizacao,
+    proventos_b3,
     rendimento_fii,
     series_cvm,
 )
+from sentinela.data.providers import b3_cotahist, b3_proventos
 from sentinela.data.providers.b3_cotahist import HistoricoRecente
 from sentinela.data.providers.ifdata import IFDataProvider
 from sentinela.data.referencia.carga import ReferenciaOficial
@@ -317,6 +319,7 @@ class MarketEngine:
         self.ifdata = IFDataProvider()
         self.cvm_fii = CVMFIIProvider()
         self.cotahist = HistoricoRecente()
+        self.b3_proventos = b3_proventos
         self.database = DatabaseManager()
         self.asset_classifier = asset_classifier or AssetClassifier()
         self.referencia = REFERENCIA_OFICIAL
@@ -484,6 +487,7 @@ class MarketEngine:
         self._buscar_ifdata(dados)
         self._buscar_cvm_fii(ticker, dados)
         self._buscar_rendimento_fii(ticker, dados)
+        self._buscar_proventos_b3(ticker, dados)
         self._buscar_liquidez(ticker, dados)
         self._buscar_taxa_real(dados)
 
@@ -717,6 +721,110 @@ class MarketEngine:
             as_of=datetime.now(UTC), janela=janela
         )
 
+    def _buscar_proventos_b3(self, ticker: str, dados: dict[str, Any]) -> None:
+        """Relação de proventos em dinheiro da B3 para o Bazin (F2B-31), fora do prompt.
+
+        Só STOCK e UNIT do modelo empresa pelo BPP consolidado (ficha Bazin 1.0, §4). Grava em
+        `dados['proventos_b3']` os registros literais, o total do serviço, os eventos em ações
+        e os proventos em dinheiro do complemento (a conferência do emissor),
+        os últimos fechamentos do yfinance por data (o motor usa o último pregão encerrado
+        antes do as_of, marcador da 2B, §2.2), o calendário de pregões
+        quando a data ex depende dele e os dividendos do yfinance, só para conferência; ou a
+        abstenção. A conta, com o as_of, é do motor (`proventos_b3.entradas`). Provedor por
+        `getattr`; sem ele, a chave fica de fora.
+        """
+        if dados.get('classe_ativo') not in ('STOCK', 'UNIT'):
+            return
+        provedor = getattr(self, 'b3_proventos', None)
+        if provedor is None:
+            return
+        modelo = dados.get('modelo_bpp')
+        if modelo != 'empresa':
+            dados['proventos_b3'] = {
+                'abstencao': f"fora do escopo do Bazin: modelo {modelo}"
+                if modelo
+                else "modelo empresa não demonstrado no BPP consolidado"
+            }
+            return
+        historico = dados.get('historico')
+        if (
+            dados.get('fonte_preco') != 'yfinance'
+            or not isinstance(historico, pd.DataFrame)
+            or historico.empty
+        ):
+            dados['proventos_b3'] = {'abstencao': proventos_b3.MOTIVO_PRECO}
+            return
+        agora = datetime.now(UTC)
+        hoje = agora.astimezone(proventos_b3.FUSO).date()
+        fechamentos = {
+            i.date().isoformat(): float(c)
+            for i, c in historico['Close'].tail(10).items()
+            if isinstance(c, (int, float)) and math.isfinite(c) and c > 0
+        }
+        anteriores = [date.fromisoformat(d) for d in fechamentos if date.fromisoformat(d) < hoje]
+        if not anteriores:
+            dados['proventos_b3'] = {'abstencao': proventos_b3.MOTIVO_PRECO_NAO_ENCERRADO}
+            return
+        referencia = max(anteriores)
+        try:
+            relacao = provedor.coletar(dados['cd_cvm'], agora)
+        except Exception as exc:
+            logger.warning(f"[{ticker}] relação de proventos da B3 indisponível: {exc}")
+            dados['proventos_b3'] = {
+                'abstencao': f"relação de proventos da B3 indisponível: {exc}"
+            }
+            return
+        dividendos = None
+        if 'Dividends' in historico:
+            pagos = historico['Dividends'][historico['Dividends'] > 0]
+            dividendos = {i.date().isoformat(): float(v) for i, v in pagos.items()}
+        dados['proventos_b3'] = {
+            'registros': list(relacao.registros),
+            'total': relacao.total,
+            'eventos_acoes': list(relacao.eventos_acoes),
+            'dinheiro_complemento': list(relacao.dinheiro_complemento),
+            'fechamentos': fechamentos,
+            'pregoes': self._pregoes_da_data_ex(relacao.registros, referencia, agora),
+            'conferencia_yfinance': dividendos,
+            'coleta': relacao.coleta,
+            'proveniencia': {
+                'fonte': 'B3, relação de proventos em dinheiro (CompanyCall)',
+                'nome_pregao': relacao.nome_pregao,
+                'coleta': relacao.coleta,
+                'arquivos': list(relacao.fontes),
+            },
+        }
+
+    @staticmethod
+    def _pregoes_da_data_ex(registros, referencia: date, agora: datetime) -> list | None:
+        """Pregões do COTAHIST em torno do início da janela, se alguma data com cair nele.
+
+        `None` quando nenhuma data ex depende do calendário, ou se o COTAHIST não puder ser
+        lido (a série se abstém nesse caso).
+        """
+        inicio = proventos_b3.inicio_da_janela(referencia)
+        limite = inicio - proventos_b3.FOLGA_SEM_PREGAO
+        datas = {
+            proventos_b3.ler_data(r.get('lastDatePriorEx'))
+            for r in registros
+            if isinstance(r, dict)
+        }
+        if not any(d is not None and limite < d < inicio for d in datas):
+            return None
+        meses = sorted({(limite.year, limite.month), (inicio.year, inicio.month)})
+        try:
+            pregoes = {
+                cotacao.data
+                for ano, mes in meses
+                for cotacao in b3_cotahist.ler_zip_em_cache(
+                    b3_cotahist.baixar_mes(ano, mes, agora)
+                )
+            }
+        except Exception as exc:
+            logger.warning(f"COTAHIST indisponível para a data ex: {exc}")
+            return None
+        return sorted(d.isoformat() for d in pregoes)
+
     def _buscar_liquidez(self, ticker: str, dados: dict[str, Any]) -> None:
         """Liquidez do ticker pelo COTAHIST (F2A-26), em `dados['liquidez']`, fora do prompt.
 
@@ -900,6 +1008,10 @@ class MarketEngine:
                         f"{RISCO_ALAVANCAGEM_CVM} ({campo}): {motivo}"
                     )
             cvm_campos.update(self._por_acao_cvm(ticker, dados, ind))
+            obter_modelo = getattr(cvm, "modelo_do_documento", None)
+            if callable(obter_modelo):
+                # F2B-31: escopo do Bazin pelo BPP consolidado (ficha Bazin 1.0, §4).
+                dados["modelo_bpp"] = obter_modelo(cd_cvm, ind)
             obter_gordon = getattr(cvm, "gordon_do_documento", None)
             if callable(obter_gordon):
                 instante_gordon = datetime.now(UTC)

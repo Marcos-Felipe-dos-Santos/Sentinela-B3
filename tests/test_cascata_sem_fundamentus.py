@@ -6,6 +6,7 @@ falta dado, não quando o scraper falhava e outras fontes completavam os campos.
 """
 
 import pytest
+from apoio_bazin import enriquecer_bazin
 
 from tests.test_market_engine import _engine, _historico
 from valuation_engine import ValuationEngine
@@ -38,9 +39,11 @@ def _cascata(monkeypatch, info):
 
 
 def _processar(dados):
+    # F2B-31: a cascata de teste não tem a relação B3; o Bazin a recebe sintética, com o
+    # mesmo DY.
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr("valuation_engine.get_selic_atual", lambda: 0.145)
-        return ValuationEngine().processar(dados)
+        return ValuationEngine().processar(enriquecer_bazin(dados))
 
 
 def test_cascata_nao_chama_o_fundamentus(monkeypatch):

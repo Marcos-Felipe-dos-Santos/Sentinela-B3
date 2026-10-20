@@ -66,6 +66,10 @@ CHANGELOG["Bazin"] += (
         "1.0.1",
         "motivo da abstenção (DY não confiável antes do mínimo); nenhum número muda",
     ),
+    Mudanca(
+        "2.0.0",
+        "ficha Bazin 1.0: critério fixo de 6% sobre o DY bruto de 12 meses da relação B3; saem a Selic e o piso; aviso de prejuízo",
+    ),
 )
 CHANGELOG["Graham"] += (
     Mudanca("1.1.0", "com VPA não positivo, abstém-se antes da raiz"),

@@ -118,9 +118,9 @@ Não é consultoria financeira.</p>
 {% for nome, valor in fontes %}<tr><th>{{ nome }}</th><td>{{ valor }}</td></tr>{% endfor %}
 </table>
 
-<h2>Selic usada</h2>
+{% if selic %}<h2>Selic usada</h2>
 <p>{{ selic }} ao ano (taxa nominal).</p>
-
+{% endif %}
 <h2>Taxa real</h2>
 {% if taxa_real %}
 <table>{% for nome, valor in taxa_real %}<tr><th>{{ nome }}</th><td>{{ valor }}</td></tr>{% endfor %}</table>
@@ -409,6 +409,17 @@ def _taxa_real(dados: dict[str, Any]) -> list[tuple[str, str]]:
     ]
 
 
+def _texto_proventos_bazin(dados: dict[str, Any]) -> str:
+    serie = dados.get("bazin_proventos")
+    if not serie:
+        return f"não calculado: {dados.get('bazin_diagnostico') or 'sem relação B3'}"
+    return (
+        f"R$ {_numero(serie['d_bruto_12m'], 6)} brutos por papel em 12 meses, datas ex "
+        f"de {serie['inicio_exclusivo']} (exclusive) a {serie['referencia']}, "
+        f"{len(serie['eventos'])} eventos; critério fixo de 6% (ficha Bazin 1.0)"
+    )
+
+
 def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str, Any]:
     """Roda o motor da V1 sobre `dados`, capturando o detalhe de cada método."""
     instancias = _instancias(eh_fii)
@@ -440,11 +451,13 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         for i in instancias
     ]
 
+    # F2B-31: a Selic só aparece se algum método do relatório a exige (nenhum de ação).
+    usa_selic = any("selic" in i.requires for i in instancias)
     entradas = next(
         (r[1] for r in registros if r[1].selic is not None),
         registros[0][1] if registros else None,
     )
-    selic = entradas.selic if entradas is not None else None
+    selic = entradas.selic if entradas is not None and usa_selic else None
     insumos = [
         {
             "campo": campo,
@@ -520,6 +533,10 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
             }
         )
 
+    if dados.get("bazin_diagnostico"):
+        for metodo in metodos:
+            if metodo["nome"] == "Bazin":
+                metodo["abstencao"] = dados["bazin_diagnostico"]
     if dados.get("gordon_diagnostico"):
         for metodo in metodos:
             if metodo["nome"] == "Gordon":
@@ -578,6 +595,10 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
                 _texto_rendimento_fii(rendimento, dados.get("dy")),
             )
         )
+    if not eh_fii:
+        fontes.append(
+            ("Proventos do Bazin (relação B3, F2B-31)", _texto_proventos_bazin(dados))
+        )
     ttm = dados.get("ttm_cvm")
     if ttm:
         fontes.append(
@@ -625,7 +646,9 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         "plano_url": PLANO_URL,
         "limites": LIMITES,
         "fontes": fontes,
-        "selic": _formatar(selic) if selic is not None else "indisponível",
+        "selic": (_formatar(selic) if selic is not None else "indisponível")
+        if usa_selic
+        else None,
         "insumos": insumos,
         "metodos": metodos,
         "sintese": sintese,

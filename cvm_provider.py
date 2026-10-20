@@ -918,6 +918,33 @@ class CVMProvider:
         except (KeyError, ValueError, TypeError, OSError, zipfile.BadZipFile) as erro:
             return {"abstencao": f"DFP anual do Gordon indisponível: {erro}"}
 
+    def modelo_do_documento(self, cd_cvm: int, ind: dict) -> str | None:
+        """Modelo de demonstração pelo BPP consolidado do documento de `ind` (F2B-31).
+
+        "banco" com o PL no par do modelo de instituição financeira, "empresa" com o par do
+        modelo empresa, `None` sem o BPP do documento ou sem nenhum dos dois: a mesma regra
+        de `gordon_do_documento`, para o escopo do Bazin (ficha Bazin 1.0, §4), que não é o
+        rótulo do setor.
+        """
+        try:
+            referencia = date.fromisoformat(ind["cvm_dt_refer"])
+            bruto = self._read_raw(self.baixar_dfp(referencia.year), "BPP_con")
+            bpp = bruto[
+                (pd.to_numeric(bruto["CD_CVM"], errors="coerce") == cd_cvm)
+                & (bruto["DT_REFER"].astype(str) == referencia.isoformat())
+                & (pd.to_numeric(bruto["VERSAO"], errors="coerce") == float(ind["cvm_versao"]))
+                & (bruto["ORDEM_EXERC"] == "ÚLTIMO")
+            ].copy()
+        except (KeyError, ValueError, TypeError, OSError, zipfile.BadZipFile):
+            return None
+        if bpp.empty:
+            return None
+        bpp["VL_CONTA"] = pd.to_numeric(bpp["VL_CONTA"], errors="coerce")
+        for modelo in ("banco", "empresa"):
+            if isinstance(_ler(bpp, "pl_total", modelo), contas_cvm.Leitura):
+                return modelo
+        return None
+
     def proventos_do_documento(
         self,
         zip_path: Path,

@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+from apoio_bazin import enriquecer_bazin
 from apoio_gordon import AS_OF_GORDON, DiaGordon, enriquecer_gordon
 
 from fii_engine import FIIEngine
@@ -9,7 +10,10 @@ from valuation_engine import ValuationEngine
 
 
 def test_dy_normalization_percentual() -> None:
-    """F2A-4: o DY percentual do Yahoo vira razão na fronteira; o motor recebe 0,1247."""
+    """F2A-4: o DY percentual do Yahoo vira razão na fronteira; o motor recebe 0,1247.
+
+    F2B-31: o Bazin usa a relação B3 sintética com o mesmo DY (D = 12,47), a 6% fixos.
+    """
     dados = {
         'ticker': 'PETR4',
         'preco_atual': 100.0,
@@ -18,12 +22,13 @@ def test_dy_normalization_percentual() -> None:
         'pvp': 4.0,
         'dy': normalizacao.dy_na_fronteira(12.47, 'yfinance').valor,
     }
+    dados = enriquecer_bazin(dados)
 
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
         resultado = ValuationEngine().processar(dados)
 
-    assert resultado['fair_value'] == pytest.approx(124.7, abs=0.01)
-    assert resultado['metodos_usados'] == 'Bazin: R$124.70'
+    assert resultado['fair_value'] == pytest.approx(207.83, abs=0.01)
+    assert resultado['metodos_usados'] == 'Bazin: R$207.83'
 
 
 def test_dy_invalido_acima_25pct() -> None:
@@ -54,8 +59,9 @@ def test_recomendacao_compra_forte_exige_upside() -> None:
         'roe': 0.10,
         'pl': 30.0,
         'pvp': 4.0,
-        'dy': 0.068,
+        'dy': 0.051,
     }
+    dados = enriquecer_bazin(dados)  # F2B-31: Bazin 85,00 a 6% fixos
 
     with (
         patch('valuation_engine.get_selic_atual', return_value=0.10),
@@ -64,7 +70,7 @@ def test_recomendacao_compra_forte_exige_upside() -> None:
         resultado = ValuationEngine().processar(dados)
 
     assert resultado['score_final'] >= 75
-    assert resultado['upside'] == pytest.approx(-32.0, abs=0.1)
+    assert resultado['upside'] == pytest.approx(-15.0, abs=0.1)
     assert resultado['recomendacao'] == 'QUALIDADE — AGUARDAR'
 
 
@@ -76,8 +82,9 @@ def test_recomendacao_qualidade_aguardar() -> None:
         'roe': 0.10,
         'pl': 30.0,
         'pvp': 4.0,
-        'dy': 0.09,
+        'dy': 0.054,
     }
+    dados = enriquecer_bazin(dados)  # F2B-31: Bazin 90,00 a 6% fixos
 
     with (
         patch('valuation_engine.get_selic_atual', return_value=0.10),
@@ -267,6 +274,7 @@ def test_dy_muito_alto_penaliza_bazin() -> None:
         'pvp': 1.0,
         'dy': 0.18,
     }
+    dados = enriquecer_bazin(dados)
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
         resultado = ValuationEngine().processar(dados)
     
@@ -419,6 +427,7 @@ def test_bazin_aciona_no_limite_de_5pct() -> None:
         'pvp': 4.0,
         'dy': 0.05,
     }
+    dados = enriquecer_bazin(dados)
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
         resultado = ValuationEngine().processar(dados)
 
@@ -428,11 +437,11 @@ def test_bazin_aciona_no_limite_de_5pct() -> None:
 def test_fair_value_usa_mediana_com_tres_metodos() -> None:
     """Com Graham+Bazin+Gordon divergindo, fair_value deve ser a mediana, não a média.
 
-    Valores calculados manualmente com selic=0.05:
+    Valores calculados manualmente (a Selic de 5% não entra no Bazin desde o F2B-31):
       Graham ≈ 106.07  (sqrt(22.5 * 10 * 50))
-      Bazin  = 200.00  ((0.10 * 100) / 0.05)
+      Bazin  = 166.67  ((0.10 * 100) / 0.06)
       Gordon = 30.60 (DVA3/ação, kreal12%, greal2%)
-    Mediana = 106.07 | Média ≈ 112.22
+    Mediana = 106.07 | Média ≈ 101.11
     """
     dados = {
         'ticker': 'DIVG3',
@@ -442,7 +451,7 @@ def test_fair_value_usa_mediana_com_tres_metodos() -> None:
         'pvp': 2.0,
         'dy': 0.10,
     }
-    dados = enriquecer_gordon(dados)
+    dados = enriquecer_bazin(enriquecer_gordon(dados))
     with patch('valuation_engine.get_selic_atual', return_value=0.05), patch('valuation_engine.date',DiaGordon):
         resultado = ValuationEngine().processar(dados, as_of=AS_OF_GORDON)
 

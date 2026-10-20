@@ -36,7 +36,6 @@ PARAMETROS_1_0_0 = {
         {
             "dy_min": ("BAZIN_DY_MIN", 0.05),
             "dy_armadilha": ("BAZIN_DY_ARMADILHA", 0.15),
-            "taxa_min": ("BAZIN_TAXA_MIN", 0.05),
         },
     ),
     "Lynch": (
@@ -161,7 +160,7 @@ def test_changelog_tem_a_1_0_0():
         mudancas = registry.CHANGELOG[nome]
         esperado = {
             "Graham": ["1.0.0", "1.1.0"],
-            "Bazin": ["1.0.0", "1.0.1"],
+            "Bazin": ["1.0.0", "1.0.1", "2.0.0"],
             "Gordon": ["1.0.0", "1.1.0", "2.0.0"],
             "P/VP do FII": ["1.0.0", "1.1.0"],
         }.get(nome, ["1.0.0"])  # F2A-21 e F2A-25
