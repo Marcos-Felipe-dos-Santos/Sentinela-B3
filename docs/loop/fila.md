@@ -700,8 +700,15 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden inalterado;
   - gate da fase.
 
-- [!] **F2B-52** · decisão · perfil do Bazin pelo DY da B3 e de Graham e Lynch pelo DY da cascata
-  Auditoria do Claude (chat) de 20/10/2026, sobre o F2B-31: Lynch e Bazin podem entrar juntos na mediana porque o perfil usa DY de fontes diferentes, e é mudança de comportamento sem decisão. Motivo e contagem no diário. O loop para aqui, antes do F2B-2, até a decisão do Marcos.
+- [x] **F2B-52** · fix · `fix: use one profile per asset from the B3 dividend yield`
+  Auditoria do Claude (chat) de 20/10/2026, sobre o F2B-31: Lynch e Bazin podiam entrar juntos na mediana, ou o ativo perder os dois, porque o perfil usava DY de fontes diferentes. **Decisão do Marcos de 20/10/2026, opção (a):** um perfil só por ativo, usado por todos os métodos (Graham, Lynch, Bazin). O DY do perfil é o da relação de proventos da B3 (ficha Bazin 1.0) quando a série B3 é válida; quando ela se abstém, o perfil usa o DY da cascata, com o aviso "perfil pelo DY da cascata: <motivo da B3>". A regra do perfil (ROE > 20% e DY < 4%) não muda.
+
+  **Aceite:**
+  - rito D27: o caso BEEF3 (perfil único) e o caso inverso (o ativo não perde os dois métodos) escritos antes da implementação, com xfail estrito, falhando com `--runxfail` → correção → marca retirada → PASS;
+  - golden: alterações só nos casos em que o perfil muda pela troca da fonte, listados no diário;
+  - diário: a contagem de perfis que mudam no universo inicial;
+  - mutation de `sentinela.methods*` ≥ 80%;
+  - gate da fase.
 
 - [ ] **F2B-2** · fix · `fix: compare FII yield with NTN-B plus the historical spread` · **[golden]** **[FII]**
   - **Aceite adicional Gemini HEAD60e61e2 (20/10/2026):** Data_Referencia NaN no cvm_fii_provider produz ausência/abstenção com motivo, sem seleção silenciosa nem exceção.

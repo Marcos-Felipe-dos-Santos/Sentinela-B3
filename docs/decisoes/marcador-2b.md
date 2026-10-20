@@ -331,3 +331,15 @@ implementação, execução dos dois testes da seçãoB contra o código anterio
 com `--runxfail`, restauração por `stash pop`, PASS e fechamento do F2B-1.
 O desvio original permanece como nota no diário, junto à saída refeita.
 Pendências anteriores atribuídas aos demais itens/referências não são encerradas.
+
+## Perfil único por ativo — decisão do Marcos, 20/10/2026 (F2B-52)
+
+Origem: auditoria do Claude (chat) de 20/10/2026, sobre o F2B-31; parada `[!]` do F2B-52.
+Desde o F2B-31, o perfil do Bazin vinha do DY da relação B3 e o de Graham e Lynch, do DY da
+cascata, e Lynch e Bazin podiam entrar juntos na mediana, ou o ativo perder os dois.
+
+**Decisão, opção (a):** um perfil só por ativo, usado por todos os métodos (Graham, Lynch,
+Bazin). O DY do perfil é o da relação de proventos da B3 (ficha Bazin 1.0) quando a série B3
+é válida; quando ela se abstém, o perfil usa o DY da cascata, com o aviso "perfil pelo DY da
+cascata: <motivo da B3>". A regra do perfil (ROE > 20% e DY < 4%) não muda. Rejeitadas: (b)
+perfis por fonte, aceitando os dois juntos; (c) perfis por fonte com outra regra.

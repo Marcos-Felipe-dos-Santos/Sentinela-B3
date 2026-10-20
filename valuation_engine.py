@@ -107,6 +107,7 @@ class ValuationEngine:
     def processar(self, dados, *, as_of: datetime | None = None):
         if not dados or not dados.get('preco_atual'):
             return None
+        dados.pop("perfil_fonte", None)  # F2B-52: só o da análise corrente
 
         ticker = str(dados.get('ticker', '')).upper()
         p   = float(dados['preco_atual'])
@@ -186,11 +187,32 @@ class ValuationEngine:
         # CRESCIMENTO: ROE alto + dividendos baixos (empresa reinveste lucros)
         # ATENÇÃO: se DY foi zerado por falta de confiabilidade, NÃO classificar como
         # crescimento só porque dy=0 — manter RENDA/VALOR por precaução.
-        if dy_confiavel:
-            is_growth = roe > MACRO.ROE_CRESCIMENTO_MIN and dy < MACRO.DY_CRESCIMENTO_MAX
+        # F2B-52 (decisão do Marcos de 20/10/2026): um perfil só por ativo, para todos os
+        # métodos, pelo DY bruto de 12 meses da relação B3 (ficha Bazin 1.0) quando a série é
+        # válida; sem ela, pelo DY da cascata, com o aviso e o motivo da B3.
+        instante = as_of if as_of is not None else datetime.now(UTC)
+        entradas_bazin = proventos_b3.entradas(dados, instante)
+        if isinstance(entradas_bazin, proventos_b3.Abstencao):
+            dy_perfil, dy_perfil_confiavel = dy, dy_confiavel
+            # O aviso fica nos dados e no relatório, fora de `riscos`: lá ele rebaixaria a
+            # classificação de todo ativo sem a relação B3, o que a decisão não pede.
+            dados["perfil_fonte"] = {
+                "fonte": "cascata",
+                "aviso": f"perfil pelo DY da cascata: {entradas_bazin.motivo}",
+            }
+        else:
+            dy_perfil, dy_perfil_confiavel = _normalizar_dy(entradas_bazin["dy"])
+            dados["perfil_fonte"] = {"fonte": "relação de proventos da B3"}
+        if dy_perfil_confiavel:
+            is_growth = (
+                roe > MACRO.ROE_CRESCIMENTO_MIN and dy_perfil < MACRO.DY_CRESCIMENTO_MAX
+            )
         else:
             is_growth = False  # sem DY confiável, evitar Lynch (pode inflar valuation)
-            logger.info(f"[{dados.get('ticker','?')}] DY não confiável → is_growth=False (conservador)")
+            logger.info(
+                f"[{dados.get('ticker','?')}] DY do perfil ({dados['perfil_fonte']['fonte']}) "
+                "não confiável → is_growth=False (conservador)"
+            )
 
         metodos = {}
 
@@ -210,7 +232,6 @@ class ValuationEngine:
             roe=roe,
             lpa=lpa,
         )
-        instante = as_of if as_of is not None else datetime.now(UTC)
         if instante.tzinfo is None or instante.utcoffset() is None:
             entradas_gordon = gordon_cvm.Abstencao("as_of exige fuso horário")
             dia_gordon = inputs.as_of
@@ -225,7 +246,6 @@ class ValuationEngine:
             inputs_gordon = replace(inputs, as_of=dia_gordon, **entradas_gordon)
         # F2B-31 (ficha Bazin 1.0): o DY do Bazin é o bruto de 12 meses da relação B3; sem
         # ela, o Bazin se abstém, sem reserva no DY da cascata.
-        entradas_bazin = proventos_b3.entradas(dados, instante)
         avisos_bazin = ()
         if isinstance(entradas_bazin, proventos_b3.Abstencao):
             dados["bazin_diagnostico"] = entradas_bazin.motivo
@@ -244,18 +264,12 @@ class ValuationEngine:
                 and math.isfinite(lpa_cvm)
                 else None
             )
-            crescimento = (
-                dy_b3_confiavel
-                and roe > MACRO.ROE_CRESCIMENTO_MIN
-                and dy_b3 < MACRO.DY_CRESCIMENTO_MAX
-            )
             inputs_bazin = replace(
                 inputs,
                 as_of=dia_gordon,
                 preco=BRL(entradas_bazin["preco_referencia"]),
                 dy=Ratio(dy_b3),
                 dy_confiavel=dy_b3_confiavel,
-                perfil=Perfil.CRESCIMENTO if crescimento else Perfil.RENDA,
                 lpa=None if lpa_cvm is None else BRL(lpa_cvm),
             )
         resultados = self._avaliar_metodos(inputs, inputs_gordon, inputs_bazin)

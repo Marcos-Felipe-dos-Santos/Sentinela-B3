@@ -601,6 +601,18 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         fontes.append(
             ("Proventos do Bazin (relação B3, F2B-31)", _texto_proventos_bazin(dados))
         )
+        perfil = dados.get("perfil_fonte") or {}
+        fontes.append(
+            (
+                "DY do perfil (F2B-52)",
+                perfil.get("aviso")
+                or (
+                    f"pela {perfil['fonte']}"
+                    if perfil.get("fonte")
+                    else "não calculado (sem detecção de perfil)"
+                ),
+            )
+        )
     ttm = dados.get("ttm_cvm")
     if ttm:
         fontes.append(
