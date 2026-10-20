@@ -1,4 +1,5 @@
 import logging
+import statistics
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from config import MAX_WORKERS
@@ -87,9 +88,13 @@ class PeersEngine:
             vals = [d[campo] for d in dados_peers if d.get(campo) is not None]
             return round(sum(vals) / len(vals), 4) if vals else None
 
+        # Para o PL_Media_Peers usamos a mediana dos pares com pl_confiavel = True (ou ausente/None, considerado válido por segurança exceto se explícito)
+        pl_vals = [d['pl'] for d in dados_peers if d.get('pl') is not None and d.get('pl_confiavel', True) is not False]
+        pl_mediana = round(statistics.median(pl_vals), 4) if pl_vals else None
+
         return {
             'Setor':            setor,
-            'PL_Media_Peers':   media('pl'),
+            'PL_Media_Peers':   pl_mediana,
             'PVP_Media_Peers':  media('pvp'),
             'DY_Media_Peers':   media('dy'),
             'Peers_Utilizados': [d.get('ticker', 'N/A') for d in dados_peers],

@@ -1,7 +1,7 @@
 """Testes para peers_engine.py — foco em resiliência a falhas do scraper."""
 
-import sys
 import os
+import sys
 from unittest.mock import MagicMock
 
 # Garantir que o diretório raiz do projeto está no path
@@ -141,3 +141,51 @@ def test_peers_com_erro_scraper_mas_fundamentals_aceitos():
     assert len(result["Peers_Utilizados"]) == 4  # todos aceitos
     assert result["PL_Media_Peers"] == 10.0
 
+
+# ── Testes para P/L Mediana e Filtro pl_confiavel ───────────────────────────
+
+def test_pl_setorial_usa_mediana():
+    """O P/L setorial deve usar a mediana dos pares válidos, enquanto P/VP e DY usam a média aritmética."""
+    def fake_buscar(ticker):
+        if ticker == "BBDC4":
+            return {"ticker": ticker, "preco_atual": 15.0, "pl": 1.0, "pvp": 1.0, "dy": 0.05, "pl_confiavel": True}
+        if ticker == "BBAS3":
+            return {"ticker": ticker, "preco_atual": 25.0, "pl": 10.0, "pvp": 1.5, "dy": 0.05, "pl_confiavel": True}
+        if ticker == "SANB11":
+            return {"ticker": ticker, "preco_atual": 30.0, "pl": 10.0, "pvp": 2.0, "dy": 0.05, "pl_confiavel": True}
+        if ticker == "BPAC11":
+            return {"ticker": ticker, "preco_atual": 40.0, "pl": 50.0, "pvp": 1.5, "dy": 0.05, "pl_confiavel": True}
+        return {"ticker": ticker, "preco_atual": 10.0}
+
+    engine = _make_engine(fake_buscar)
+    result = engine.comparar("ITUB4", setor="bancos")
+
+    assert "erro" not in result
+    # P/Ls: 1.0, 10.0, 10.0, 50.0 -> Mediana: 10.0 (Média seria 17.75)
+    assert result["PL_Media_Peers"] == 10.0
+    # P/VPs: 1.0, 1.5, 2.0, 1.5 -> Média: 1.5
+    assert result["PVP_Media_Peers"] == 1.5
+
+
+def test_pl_nao_confiavel_fica_fora_da_mediana():
+    """Pares com pl_confiavel=False devem ser excluídos do cálculo da mediana do P/L (mas permanecem para P/VP e DY)."""
+    def fake_buscar(ticker):
+        if ticker == "BBDC4":
+            return {"ticker": ticker, "preco_atual": 15.0, "pl": -50.0, "pvp": 1.0, "dy": 0.05, "pl_confiavel": False}
+        if ticker == "BBAS3":
+            return {"ticker": ticker, "preco_atual": 25.0, "pl": 8.0, "pvp": 1.5, "dy": 0.05, "pl_confiavel": True}
+        if ticker == "SANB11":
+            return {"ticker": ticker, "preco_atual": 30.0, "pl": 10.0, "pvp": 2.0, "dy": 0.05, "pl_confiavel": True}
+        if ticker == "BPAC11":
+            return {"ticker": ticker, "preco_atual": 40.0, "pl": 12.0, "pvp": 1.5, "dy": 0.05, "pl_confiavel": True}
+        return {"ticker": ticker, "preco_atual": 10.0}
+
+    engine = _make_engine(fake_buscar)
+    result = engine.comparar("ITUB4", setor="bancos")
+
+    assert "erro" not in result
+    # P/Ls válidos: 8.0, 10.0, 12.0 -> Mediana: 10.0
+    # O -50.0 é ignorado porque pl_confiavel=False
+    assert result["PL_Media_Peers"] == 10.0
+    # P/VPs: 1.0, 1.5, 2.0, 1.5 -> Média: 1.5
+    assert result["PVP_Media_Peers"] == 1.5
