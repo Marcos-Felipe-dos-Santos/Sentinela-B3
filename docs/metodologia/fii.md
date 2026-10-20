@@ -101,6 +101,11 @@ constância real da distribuição; sustentabilidade permanece hipótese declara
   ("continuidade não demonstrável"). Não há limite percentual de variação de VP. Onde as §3 a
   §7 dizem "salto de VP incompatível", vale este critério. Emissão com VP contínuo segue
   aceita, em contexto.
+- **Complemento decidido pelo Marcos em 20/10/2026.** (a) A conferência compara o
+  rendimento reconstruído, arredondado a duas casas, com o valor da B3: igual é conferido,
+  diferente gera aviso; sem tolerância percentual. (b) A lista de eventos vazia só vale como
+  "sem evento" se a resposta da B3 for válida (sucesso e estrutura esperada); erro ou
+  formato inesperado é fonte indisponível, e o FII se abstém.
 - **XPML11**, o caso de controle: a anomalia observada não é desdobramento, e sim DY
   mensal negativo declarado no Informe (−5,8778% em 01/2026), e a guarda de DY_m negativo
   da seção 4 a abstém.
