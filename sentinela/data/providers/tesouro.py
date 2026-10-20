@@ -13,7 +13,7 @@ import csv
 import logging
 import math
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from io import StringIO
 from pathlib import Path
@@ -23,6 +23,7 @@ from zoneinfo import ZoneInfo
 import requests
 
 from sentinela.data import proveniencia
+from sentinela.data.taxas import ANO_MIN_NTNB
 from sentinela.domain.units import RateNominal, RateReal
 
 URL = (
@@ -166,7 +167,29 @@ def ler_csv(
         )
         chave = nome, vencimento, data_base
         if chave in titulos and titulos[chave] != titulo:
-            raise ValueError("linhas conflitantes para o mesmo título e data-base")
+            if validar_aplicacao:
+                raise ValueError("linhas conflitantes para o mesmo título e data-base")
+            anterior = titulos[chave]
+            if (
+                anterior.taxa_aplicacao,
+                anterior.pu_aplicacao,
+                anterior.motivo_aplicacao,
+            ) != (titulo.taxa_aplicacao, titulo.pu_aplicacao, titulo.motivo_aplicacao):
+                titulo = replace(
+                    titulo,
+                    taxa_aplicacao=None,
+                    motivo_aplicacao="linhas conflitantes no par de aplicação",
+                )
+            if (
+                anterior.taxa_resgate,
+                anterior.pu_resgate,
+                anterior.motivo_resgate,
+            ) != (titulo.taxa_resgate, titulo.pu_resgate, titulo.motivo_resgate):
+                titulo = replace(
+                    titulo,
+                    taxa_resgate=None,
+                    motivo_resgate="linhas conflitantes no par de resgate",
+                )
         titulos[chave] = titulo
     if not familia_presente:
         raise ValueError("CSV sem títulos das famílias previstas")
@@ -192,7 +215,8 @@ def selecionar_ofertas(titulos: tuple[TituloTesouro, ...]) -> CestaTesouro:
     elegiveis = tuple(
         t
         for t in titulos
-        if t.tipo in {"NTN-B", "NTN-B Principal"} and t.vencimento >= date(2035, 1, 1)
+        if t.tipo in {"NTN-B", "NTN-B Principal"}
+        and t.vencimento >= date(ANO_MIN_NTNB, 1, 1)
     )
     base = max((t.data_base for t in elegiveis), default=None)
     referencia = tuple(t for t in elegiveis if t.data_base == base)

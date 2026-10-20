@@ -4,6 +4,7 @@ Todos os testes usam MacroContext(selic=0.10) para evitar chamada BCB na
 inicialização. Propriedades dinâmicas (cdi, ipca_12m, ntnb_longa) são
 testadas via monkeypatch dos fetchers privados — sem tráfego de rede.
 """
+
 import pytest
 
 from config import (
@@ -17,6 +18,7 @@ from config import (
 # ---------------------------------------------------------------------------
 # Backward compat
 # ---------------------------------------------------------------------------
+
 
 def test_macro_no_args_backward_compat():
     """MacroContext() sem argumento deve funcionar (usa get_selic_atual)."""
@@ -38,6 +40,7 @@ def test_existing_class_attrs_preserved():
 # selic / selic_liquida
 # ---------------------------------------------------------------------------
 
+
 def test_selic_from_explicit_init():
     m = MacroContext(selic=0.10)
     assert m.selic == pytest.approx(0.10)
@@ -51,6 +54,7 @@ def test_selic_liquida_applies_fii_factor():
 # ---------------------------------------------------------------------------
 # cdi
 # ---------------------------------------------------------------------------
+
 
 def test_cdi_annualizes_daily_rate(monkeypatch):
     """_fetch_bcb retorna taxa diária; cdi deve anualizar base 252."""
@@ -83,6 +87,7 @@ def test_cdi_is_lazy(monkeypatch):
 # ipca_12m
 # ---------------------------------------------------------------------------
 
+
 def test_ipca_12m_returns_compounded_value(monkeypatch):
     """_fetch_ipca_acumulado determina o valor; property deve devolvê-lo."""
     m = MacroContext(selic=0.10)
@@ -104,6 +109,7 @@ def test_ipca_12m_fallback_on_error(monkeypatch):
 # ntnb_longa
 # ---------------------------------------------------------------------------
 
+
 def test_ntnb_returns_value_from_fetcher(monkeypatch):
     m = MacroContext(selic=0.10)
     monkeypatch.setattr(m, "_fetch_ntnb", lambda: 0.0656)
@@ -122,6 +128,7 @@ def test_ntnb_fallback_on_error(monkeypatch):
 # cost_of_equity_real
 # ---------------------------------------------------------------------------
 
+
 def test_cost_of_equity_real(monkeypatch):
     """cost_of_equity_real = ntnb_longa + GORDON_PREMIO_RISCO."""
     m = MacroContext(selic=0.10)
@@ -135,6 +142,7 @@ def test_cost_of_equity_real(monkeypatch):
 # _fetch_ipca_acumulado — lógica de composição
 # ---------------------------------------------------------------------------
 
+
 def test_fetch_ipca_acumulado_compounds_correctly(monkeypatch):
     """Verifica que os valores mensais são compostos corretamente."""
     import requests
@@ -142,6 +150,7 @@ def test_fetch_ipca_acumulado_compounds_correctly(monkeypatch):
     class FakeResp:
         def raise_for_status(self):
             pass
+
         def json(self):
             # 12 meses de 0.50% a.m.
             return [{"valor": "0.50"}] * 12
@@ -152,3 +161,69 @@ def test_fetch_ipca_acumulado_compounds_correctly(monkeypatch):
     result = m._fetch_ipca_acumulado()
     expected = (1.005) ** 12 - 1
     assert result == pytest.approx(expected, rel=1e-6)
+
+
+def test_taxa_real_sem_rede_no_import():
+    """O ponto novo é lazy; o contorno antigo da Selic continua na suíte."""
+    import ast
+    from pathlib import Path
+
+    import config
+
+    arvore = ast.parse(Path(config.__file__).read_text())
+    chamadas = [
+        n
+        for n in arvore.body
+        if isinstance(n, ast.Expr) and isinstance(n.value, ast.Call)
+    ]
+    assert not any(
+        isinstance(n.value.func, ast.Name) and n.value.func.id == "get_taxa_real"
+        for n in chamadas
+    )
+    assert config.get_taxa_real()["ntnb"] == 0.07
+    assert config.get_taxa_real()["inflacao"]["valor"] == 0.055
+
+
+def test_taxa_real_cache_por_janela_dia_e_edicao(monkeypatch):
+    from datetime import UTC, date, datetime, timedelta
+
+    import config
+
+    monkeypatch.setattr(config, "_taxa_real_cache", {})
+    chamadas = []
+
+    def carregar(instante, janela):
+        chamadas.append((instante, janela))
+        return {
+            "ntnb": 0.07,
+            "pib": {"proxima_publicacao": "2026-10-19T11:30:00+00:00"},
+        }
+
+    monkeypatch.setattr(config, "_carregar_taxa_real", carregar)
+    antes = datetime(2026, 10, 19, 10, tzinfo=UTC)
+    assert config.get_taxa_real(as_of=antes)["ntnb"] == 0.07
+    assert config.get_taxa_real(as_of=antes + timedelta(minutes=10))["ntnb"] == 0.07
+    assert len(chamadas) == 1
+    config.get_taxa_real(as_of=datetime(2026, 10, 19, 11, 30, tzinfo=UTC))
+    assert len(chamadas) == 2
+    config.get_taxa_real(as_of=datetime(2026, 10, 20, 10, tzinfo=UTC))
+    assert len(chamadas) == 3
+    config.get_taxa_real(as_of=antes, janela=(date(2025, 1, 1), date(2025, 12, 31)))
+    assert len(chamadas) == 4
+    assert (
+        config.get_taxa_real(
+            as_of=datetime(2026, 10, 19, tzinfo=UTC).replace(tzinfo=None)
+        )
+        is None
+    )
+
+
+def test_taxa_real_falha_sem_contingencia_e_sem_cache_numerico(monkeypatch):
+    from datetime import UTC, datetime
+
+    import config
+
+    monkeypatch.setattr(config, "_taxa_real_cache", {})
+    monkeypatch.setattr(config, "_carregar_taxa_real", lambda *a: None)
+    assert config.get_taxa_real(as_of=datetime(2026, 10, 20, tzinfo=UTC)) is None
+    assert config._taxa_real_cache == {}

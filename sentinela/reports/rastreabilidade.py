@@ -121,6 +121,11 @@ Não é consultoria financeira.</p>
 <h2>Selic usada</h2>
 <p>{{ selic }} ao ano (taxa nominal).</p>
 
+<h2>Taxa real</h2>
+{% if taxa_real %}
+<table>{% for nome, valor in taxa_real %}<tr><th>{{ nome }}</th><td>{{ valor }}</td></tr>{% endfor %}</table>
+{% else %}<p>Indisponível: sem registro elegível, sem valor de contingência.</p>{% endif %}
+
 <h2>Insumos</h2>
 <table>
 <tr><th>Campo</th><th>Valor</th><th>Unidade</th><th>Proveniência</th></tr>
@@ -385,6 +390,25 @@ def _texto_rendimento_fii(medida: dict[str, Any], dy_cascata: Any) -> str:
     )
 
 
+def _taxa_real(dados: dict[str, Any]) -> list[tuple[str, str]]:
+    registro = dados.get("taxa_real")
+    if not registro:
+        return []
+    inflacao = registro.get("inflacao") or {}
+    return [
+        ("NTN-B real", _formatar(units.RateReal(registro["ntnb"]))),
+        ("Custo de capital real", _formatar(units.RateReal(registro["custo_capital_real"]))),
+        ("Prêmio das ações", _formatar(units.RateReal(registro["premio"]))),
+        ("Vértice", str(registro.get("vertice"))),
+        ("Data-base", str(registro.get("data_base"))),
+        ("Fonte", str(registro.get("fonte"))),
+        ("Inflação da janela", str(inflacao["abstencao"]) if "abstencao" in inflacao else _formatar(units.RateNominal(inflacao["valor"]))),
+        ("Janela", f"{inflacao.get('inicio')} a {inflacao.get('fim')}"),
+        ("Fonte do IPCA", str((inflacao.get("proveniencia") or {}).get("fonte"))),
+        ("Proveniência", str(registro.get("proveniencia"))),
+    ]
+
+
 def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str, Any]:
     """Roda o motor da V1 sobre `dados`, capturando o detalhe de cada método."""
     instancias = _instancias(eh_fii)
@@ -578,6 +602,7 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         sintese = [("Abstenção do motor", motivo_ausente)]
 
     return {
+        "taxa_real": _taxa_real(dados),
         "ticker": dados.get("ticker", ""),
         "data": hoje.isoformat(),
         "classe": "FII" if eh_fii else "ação",

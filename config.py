@@ -1,9 +1,13 @@
 import logging
 import os
 import time
+from datetime import UTC, date, datetime
+from zoneinfo import ZoneInfo
 
 import requests
 from dotenv import load_dotenv
+
+from sentinela.data import taxas as _taxas
 
 load_dotenv()
 
@@ -116,6 +120,41 @@ def get_selic_atual() -> float:
         return SELIC_FALLBACK
 
 
+# Taxa real da ficha 1.1: carregamento separado, sem rede nova no import.
+_TAXA_REAL_TTL = 86400
+_taxa_real_cache: dict = {}
+
+
+def _carregar_taxa_real(
+    instante: datetime, janela: tuple[date, date] | None
+) -> dict | None:
+    from sentinela.data.providers.macro import MacroProvider
+
+    return MacroProvider().registro(instante, janela)
+
+
+def get_taxa_real(
+    *, as_of: datetime | None = None, janela: tuple[date, date] | None = None
+) -> dict | None:
+    """Registro observado até as_of; ausência não usa contingência numérica."""
+    instante = as_of if as_of is not None else datetime.now(UTC)
+    if instante.tzinfo is None or instante.utcoffset() is None:
+        return None
+    chave = (janela, instante.astimezone(ZoneInfo("America/Sao_Paulo")).date())
+    anterior = _taxa_real_cache.get(chave)
+    if anterior is not None:
+        coleta, registro = anterior
+        idade = (instante - coleta).total_seconds()
+        proxima = (registro.get("pib") or {}).get("proxima_publicacao")
+        edicao_devida = proxima is not None and datetime.fromisoformat(proxima) <= instante
+        if 0 <= idade < _TAXA_REAL_TTL and not edicao_devida:
+            return registro
+    registro = _carregar_taxa_real(instante, janela)
+    if registro is not None:
+        _taxa_real_cache[chave] = (instante, registro)
+    return registro
+
+
 # Fallbacks para indicadores macro dinâmicos
 CDI_FALLBACK      = 0.143   # CDI ≈ Selic (BCB SGS série 12 anualizada)
 IPCA_12M_FALLBACK = 0.055   # IPCA acumulado 12m estimado (BCB SGS série 433)
@@ -127,6 +166,9 @@ NTNB_LONGA_FALLBACK = 0.070 # Yield real NTN-B vencimento >= 2035 (Tesouro Diret
 # Altere aqui para tunar o comportamento sem caçar literais no código.
 
 class MacroContext:
+    PREMIO_ACOES_REAL = _taxas.PREMIO_ACOES_REAL
+    NTNB_VENCIMENTO_MIN = _taxas.ANO_MIN_NTNB
+
     # DY normalização (Yahoo Finance)
     DY_PERCENTUAL_THRESHOLD = 1.0      # DY > 1 → Yahoo retornou como %
     DY_SANIDADE_MAX         = 0.25     # DY > 25% → dado inválido

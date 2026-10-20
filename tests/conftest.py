@@ -35,6 +35,28 @@ def _requests_get_so_bcb(url, *args, **kwargs):
 with mock.patch("requests.get", _requests_get_so_bcb):
     import config  # instancia MACRO com a Selic semeada
 
+# F2B-30: semente isolada, sem contingência equivalente em produção.
+TAXA_REAL_SEMENTE = {
+    "ntnb": 0.07,
+    "custo_capital_real": 0.12,
+    "premio": 0.05,
+    "vertice": "NTN-B ≥2035, pesos iguais",
+    "data_base": "2026-10-15",
+    "fonte": "semente de teste",
+    "inflacao": {"valor": 0.055},
+    "pib": {"valor": 0.02, "ano": 2030},
+    "proveniencia": {"fonte": "semente de teste"},
+}
+config._carregar_taxa_real = lambda instante, janela: dict(TAXA_REAL_SEMENTE)
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _taxa_real_semeada():
+    assert config.get_taxa_real()["ntnb"] == 0.07
+    assert config.get_taxa_real()["inflacao"]["valor"] == 0.055
+    yield
+
+
 # ── Pasta de dados ─────────────────────────────────────────────────────────────
 # F2A-20: o índice oficial e o classificador leem `SENTINELA_DADOS`. A suíte a aponta
 # para uma pasta temporária vazia, para nunca ler o índice da máquina.

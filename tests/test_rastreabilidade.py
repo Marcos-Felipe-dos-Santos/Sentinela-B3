@@ -305,3 +305,35 @@ def test_regime_da_divida_e_declarado():
     )
     texto = _proveniencia_do_insumo(_contexto(dados), "divida_liq_ebitda")
     assert "regime da dívida: pós-IFRS 16, arrendamento incluído na dívida" in texto
+
+
+def test_relatorio_mostra_a_taxa_real_e_a_fonte():
+    registro = {
+        "ntnb": 0.07,
+        "custo_capital_real": 0.12,
+        "premio": 0.05,
+        "vertice": "vencimentos ≥2035",
+        "data_base": "2026-10-15",
+        "fonte": "Tesouro Transparente",
+        "inflacao": {
+            "valor": 0.0426,
+            "inicio": "2025-01-01",
+            "fim": "2025-12-31",
+            "proveniencia": {"fonte": "IBGE SIDRA 1737"},
+        },
+    }
+    html = _html(_acao(taxa_real=registro))
+    for texto in (
+        "Taxa real",
+        "7,00%",
+        "12,00%",
+        "5,00%",
+        "Tesouro Transparente",
+        "2026-10-15",
+        "2035",
+        "4,26%",
+        "2025-01-01",
+        "IBGE SIDRA 1737",
+        "Selic usada",
+    ):
+        assert texto in html

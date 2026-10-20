@@ -79,3 +79,9 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2B-21 | BTCI11/TRPL11 confirmados FII pela B3 viram UNKNOWN quando o ISIN não está no Informe | `referencia.montagem.montar_outros` (lacuna de enriquecimento do índice) | F2B-21, Gemini FASE, Marcos20/10/2026; evidência B3 no teste | `test_bug_2b_21_fiis_fora_do_informe.py` | F2B-34 (2C) | aberto |
 
 **BUG-2B-20 / F2B-48 — complemento 20/10/2026:** revisão taxa-real1.1 aprovada pelo Marcos; regressões permanentes distinguem zero econômico de sentinela, vetam aplicação inválida apenas na cesta escolhida, preservam referência sem recuo e registram exclusões. Invalidade/ausência de resgate suprime só a informação de resgate, com motivo.
+
+| BUG-2B-22 | conflito histórico em referência não escolhida veta a cesta atual | sentinela/data/providers/tesouro.py (ler_csv) | Ressalva Gemini, aceite F2B-30, reprodução20/10/2026 | test_bug_2b_22_tesouro_conflito_cesta.py | F2B-30 | corrigido |
+
+| BUG-2B-23 | provedor macro reúne ausência/tipo/NaN/infinito/domínio no mesmo motivo, contra marcador §2.1 | sentinela/data/providers/macro.py (_numero) | revisão1 do F2B-30,20/10/2026, antes do commit | test_bug_2b_23_macro_motivos_distintos.py | F2B-30 | corrigido |
+
+| BUG-2B-24 | soma de taxas finitas excede o domínio de float e propaga OverflowError em vez de abstenção | sentinela/data/taxas.py (calcular) | conferência da matriz§4 no F2B-30,20/10/2026, antes do commit | test_bug_2b_24_taxa_real_soma_nao_finita.py | F2B-30 | corrigido |

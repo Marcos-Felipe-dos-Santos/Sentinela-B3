@@ -7,7 +7,7 @@ import pandas as pd
 import yfinance as yf
 
 from brapi_provider import BrapiProvider
-from config import FII_MANUAL_FALLBACK, _normalizar_dy
+from config import FII_MANUAL_FALLBACK, _normalizar_dy, get_taxa_real
 from cvm_fii_provider import CVMFIIProvider
 from cvm_provider import CVMProvider
 from database import DatabaseManager
@@ -483,6 +483,7 @@ class MarketEngine:
         self._buscar_cvm_fii(ticker, dados)
         self._buscar_rendimento_fii(ticker, dados)
         self._buscar_liquidez(ticker, dados)
+        self._buscar_taxa_real(dados)
 
         if list_missing_required_fields(dados, classifier):
             self._aplicar_cache_fundamentos(ticker, dados)
@@ -701,6 +702,17 @@ class MarketEngine:
             {'abstencao': resultado.motivo}
             if isinstance(resultado, rendimento_fii.Abstencao)
             else {**resultado, 'proveniencia': informe.get('proveniencia')}
+        )
+
+    def _buscar_taxa_real(self, dados: dict[str, Any]) -> None:
+        """Registro aditivo, fora dos métodos e do prompt (F2B-30).
+
+        Sem início/fim comprovados, IPCA se abstém; não inferir janeiro pela
+        data final de um balanço nem usar a janela do TTM como DFP anual.
+        """
+        janela = dados.get('janela_contabil_cvm')
+        dados['taxa_real'] = get_taxa_real(
+            as_of=datetime.now(UTC), janela=janela
         )
 
     def _buscar_liquidez(self, ticker: str, dados: dict[str, Any]) -> None:
@@ -1003,7 +1015,15 @@ class MarketEngine:
                 'exercicios': exercicios,
                 'proventos_base': series_cvm.COMPETENCIA,
             }
-            ttm = series_cvm.ttm(acumulados_ttm(cd_cvm, hoje, modelo), hoje)
+            acumulados = acumulados_ttm(cd_cvm, hoje, modelo)
+            if exercicios:
+                atual = exercicios[-1]
+                janelas = {(a.inicio, a.fim) for a in acumulados
+                           if a.documento == 'DFP' and a.dt_refer == atual.get('dt_refer')
+                           and str(a.versao) == str(atual.get('versao'))}
+                if len(janelas) == 1:
+                    dados['janela_contabil_cvm'] = next(iter(janelas))
+            ttm = series_cvm.ttm(acumulados, hoje)
             dados['ttm_cvm'] = (
                 {'abstencao': ttm.motivo} if isinstance(ttm, series_cvm.Abstencao) else ttm
             )
