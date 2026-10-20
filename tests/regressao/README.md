@@ -69,3 +69,4 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2B-12 | tabela de correções aceita ticker fora do formato | `sentinela/data/referencia/correcoes.py` (`validar_correcoes`) | F2B-21, pergunta 8 (Gemini 2ª) | `test_bug_2b_12_ticker_invalido_na_correcao.py` | F2B-46 | corrigido |
 
 | BUG-2B-13 | Proventos com só dividendos ou só JCP descartados | `sentinela/data/series_cvm.py` (`proventos`) | Decisão do Marcos de 19/10/2026, F2B-46 | `test_bug_2b_13_proventos_uma_rubrica.py` | F2B-46 | corrigido |
+| BUG-2B-14 | CSV do Tesouro truncado gera AttributeError em data ausente e impede retorno do cache válido | `sentinela/data/providers/tesouro.py` (`ler_csv`, `baixar`) | Revisão do stage F2B-27, Codex (19/10/2026) | `test_bug_2b_14_tesouro_csv_truncado.py` | F2B-27 | corrigido |

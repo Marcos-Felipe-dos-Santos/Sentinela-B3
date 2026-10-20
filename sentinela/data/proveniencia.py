@@ -20,7 +20,9 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-DOCUMENTOS = frozenset({"DFP", "ITR", "FCA", "Informe Mensal", "COTAHIST", "Cadastro"})
+DOCUMENTOS = frozenset(
+    {"DFP", "ITR", "FCA", "Informe Mensal", "COTAHIST", "Cadastro", "Tesouro Direto"}
+)
 SUFIXO = ".proveniencia.json"
 MOTIVO_ARQUIVO_AGREGADO = (
     "arquivo com vários documentos: a entrega de cada um está no próprio arquivo"

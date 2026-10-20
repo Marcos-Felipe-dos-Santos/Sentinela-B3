@@ -242,3 +242,24 @@ def test_contrato_cotahist(tmp_path):
     assert petr3.volume_financeiro == pytest.approx(568_366_968.00)
     assert petr3.isin == "BRPETRACNOR9"
     assert petr3.tipo_mercado == "010"
+
+
+def test_contrato_tesouro():
+    from sentinela.data.providers import tesouro
+    from sentinela.domain.units import RateNominal, RateReal
+
+    fixture = _fixture("tesouro_2026.json")
+    titulos = tesouro.ler_csv(
+        fixture["membros"]["precotaxatesourodireto.csv"], as_of=date(2026, 10, 19)
+    )
+    por_nome = {titulo.nome: titulo for titulo in titulos}
+    assert len(titulos) == 4
+    real = por_nome["Tesouro IPCA+ com Juros Semestrais"]
+    assert real.tipo == "NTN-B"
+    assert real.data_base == date(2026, 10, 15)
+    assert real.vencimento == date(2035, 5, 15)
+    assert real.taxa_aplicacao == RateReal(0.0682)
+    assert real.taxa_resgate == RateReal(0.0694)
+    assert por_nome["Tesouro IPCA+"].taxa_aplicacao == RateReal(0.0673)
+    assert por_nome["Tesouro Prefixado"].taxa_aplicacao == RateNominal(0.1264)
+    assert por_nome["Tesouro Prefixado com Juros Semestrais"].taxa_resgate == RateNominal(0.1303)

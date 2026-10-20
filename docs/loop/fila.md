@@ -559,11 +559,11 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - para cada bug, destino F2B-46, registro atualizado para corrigido e retirada só de sua marca; demais xfails preservados;
   - mutation ≥80% nos módulos puros alterados de `sentinela/data/`; golden inalterado; gate da fase.
 
-- [ ] **F2B-27** · feat · `feat: add Tesouro Nacional bond rates provider` · **[ADR-0003]**
+- [x] **F2B-27** · feat · `feat: add Tesouro Nacional bond rates provider` · **[ADR-0003]**
   Cria `sentinela/data/providers/tesouro.py`. É aditivo: o consumidor é o F2B-30. Vem depois do marcador porque o nome dos campos de taxa do título é decidido na [TAXA] (vocabulário; auditoria externa da 2A, correção 2).
   - **Fonte.** CSV do Tesouro Transparente confirmado no F2B-21, seção 1. Sai a API da V1 como fonte. Campos `taxa_aplicacao` e `taxa_resgate`, com nomes literais das colunas na proveniência, conforme taxa-real 0.3. Sem fonte confirmada, `[!]`.
   - **Parser puro.** Por título: nome, tipo (NTN-B, NTN-B Principal, prefixado), vencimento, data-base, as duas taxas do título em decimal, com os nomes neutros decididos na [TAXA], com o tipo do `units.py` pelo título (`RateReal` na NTN-B, `RateNominal` no prefixado). Não escolhe vértice.
-  - **Download.** Cache em `data/tesouro/`, TTL de um dia para o arquivo do dia; rede fora, vale o cache, com aviso e data. Proveniência (D16) pelo `proveniencia.registrar_sem_falhar`. O instante entra como parâmetro.
+  - **Download.** Cache em `data/tesouro/`, TTL de um dia para o arquivo do dia; rede fora, vale o cache, com aviso e data. Proveniência (D16) pelo `proveniencia.registrar_sem_falhar`. O instante entra como parâmetro. Integração aditiva: incluir `Tesouro Direto` nos tipos de documento de `sentinela/data/proveniencia.py` e acrescentar o recorte real em `tests/fixtures/contratos/tesouro_2026.json`; sem alterar asserções existentes.
 
   - **Corte temporal:** parser rejeita referência futura e dados inválidos/conflitantes; metadados de publicação/coleta permitem selecionar somente dados disponíveis até as_of. Cache não dispensa o corte nem a idade de 5 dias úteis na seleção do F2B-30.
   - **Aceite adicional:** testes de colunas neutras, escala %→razão, corte no as_of, conflito de linhas e referência futura; nenhuma leitura da API da V1.
@@ -571,6 +571,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   **Aceite:**
   - `tests/test_tesouro.py::test_titulo_segue_o_layout_oficial`, `::test_tipo_da_taxa_pelo_titulo`, `::test_vencimento_e_data_base` e `::test_rede_fora_usa_o_cache_com_aviso`, com arquivos sintéticos em `tmp_path`;
   - `tests/test_contratos_provedores.py::test_contrato_tesouro`, com recorte do arquivo real (D18);
+  - BUG-2B-14 confirmado na revisão: `tests/regressao/test_bug_2b_14_tesouro_csv_truncado.py` em PASS, marca retirada e registro atualizado;
   - mutation ≥ 80% em `sentinela.data.providers.tesouro*`;
   - golden inalterado; nenhum teste existente muda;
   - gate da fase.

@@ -1,0 +1,13 @@
+{
+  "fonte": "https://www.tesourotransparente.gov.br/ckan/dataset/df56aa42-484a-4a59-8184-7676580c81e3/resource/796d2059-14e9-44e3-80c9-2d9e30b405c1/download/precotaxatesourodireto.csv",
+  "arquivo_original": "precotaxatesourodireto.csv",
+  "data_coleta": "2026-10-19T02:16:07.567857+00:00",
+  "sha256_original": "f4f9b0fb9a1850da4cbca47d5b896464c04b21b302cf591de178726a426e2972",
+  "recorte": "Quatro famílias, uma linha por família, data-base 15/10/2026; colunas e valores preservados do CSV público.",
+  "membros": {
+    "precotaxatesourodireto.csv": "Tipo Titulo;Data Vencimento;Data Base;Taxa Compra Manha;Taxa Venda Manha;PU Compra Manha;PU Venda Manha;PU Base Manha\nTesouro Prefixado;01/01/2029;15/10/2026;12,64;12,76;770,85;768,69;768,69\nTesouro IPCA+ com Juros Semestrais;15/05/2035;15/10/2026;6,82;6,94;4655,94;4620,08;4620,08\nTesouro IPCA+;15/05/2045;15/10/2026;6,73;6,85;1432,33;1402,43;1402,43\nTesouro Prefixado com Juros Semestrais;01/01/2035;15/10/2026;12,91;13,03;893,35;887,80;887,80\n"
+  },
+  "sha256_membros": {
+    "precotaxatesourodireto.csv": "42ba636a2ba7a9443618826a845ff665eb8e26cd13b763c35cdfe141ea59eb3b"
+  }
+}
