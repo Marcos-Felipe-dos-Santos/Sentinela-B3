@@ -710,7 +710,8 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - mutation de `sentinela.methods*` ≥ 80%;
   - gate da fase.
 
-- [ ] **F2B-2** · fix · `fix: compare FII yield with NTN-B plus the historical spread` · **[golden]** **[FII]**
+- [!] **F2B-2** · fix · `fix: compare FII yield with NTN-B plus the historical spread` · **[golden]** **[FII]**
+  - **[!] 20/10/2026 — bloqueio de escopo antes da implementação:** a lente 2.0.0 precisa da NTN-B real (y_real, sem prêmio) em `MethodInputs`, e a lista de arquivos restritos não libera `sentinela/methods/base.py` para o F2B-2. Motivo e achados no diário.
   - **Aceite adicional Gemini HEAD60e61e2 (20/10/2026):** Data_Referencia NaN no cvm_fii_provider produz ausência/abstenção com motivo, sem seleção silenciosa nem exceção.
   PLANO, F2B-2; checkpoint, seção 4, item 3; F-9; pendência "DY do Informe Mensal de FII". Pré-condição: `docs/metodologia/fii.md` aprovada.
   - **Rendimento do FII 2.0.0** (nome da lente pela ficha; o singleton `_FII_YIELD` fica). Preço justo = preço × DY ÷ (NTN-B do vértice + spread). Spread recalibrado no próprio item: mediana mensal dos tijolos, depois mediana dos 60 meses contíguos, contra taxa_aplicacao e rendimento do Informe/COTAHIST; aplicar corte por publicação e classificação temporal; excluir desdobramento/grupamento ou salto de VP incompatível, mantendo emissões com VP contínuo em contexto. Registrar amostra, coberturas, exclusões e efeito na mediana, conforme ficha 0.3. Os antigos 2,65 pp não valem como constante. Rendimento só do Informe do F2B-28, maior versão entregue até as_of; 12 meses/13 VPs, idade até 3 meses; desdobramento/grupamento ou salto de VP incompatível abstém, emissão com VP contínuo é aceita em contexto. Sem spread validado, abstenção. `requires` sem `selic` (sai a conta de `sentinela/methods/fii_yield.py:53`).
