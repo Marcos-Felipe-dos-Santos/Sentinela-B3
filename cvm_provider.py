@@ -720,6 +720,10 @@ class CVMProvider:
             motivo = f"DVA indisponível ({exc})"
             return {"dividendos": None, "jcp": None,
                     "proventos_motivos": {"dividendos": motivo, "jcp": motivo}}
+        if dva.empty:
+            motivo = "DVA indisponível no documento"
+            return {"dividendos": None, "jcp": None,
+                    "proventos_motivos": {"dividendos": motivo, "jcp": motivo}}
         saida: dict = {"proventos_motivos": {}}
         for campo in ("dividendos", "jcp"):
             leitura = _ler(dva, campo, modelo)
@@ -788,15 +792,10 @@ class CVMProvider:
                 leitura = _ler(doc, campo, modelo)
                 valores[campo] = leitura.valor if isinstance(leitura, contas_cvm.Leitura) else None
                 if campo in ("dividendos", "jcp") and isinstance(leitura, contas_cvm.Abstencao):
-                    if dva_indisponivel or leitura.motivo != contas_cvm.MOTIVO_LINHA_AUSENTE:
-                        motivos[campo] = dva_indisponivel or leitura.motivo
-                    if (
-                        dva_indisponivel is None
-                        and leitura.motivo == contas_cvm.MOTIVO_LINHA_AUSENTE
-                        and doc["CD_CONTA"].str.startswith("7.").any()
-                    ):
-                        # DVA do documento presente: ausência da rubrica não é falha de leitura.
-                        valores[campo] = 0.0
+                    if dva_indisponivel or not doc["CD_CONTA"].str.startswith("7.").any():
+                        motivos[campo] = dva_indisponivel or "DVA indisponível no documento"
+                    else:
+                        motivos[campo] = f"{leitura.motivo} {leitura.detalhe}".strip()
             # F2B-37: o lucro dos controladores pela mesma leitura com reservas da série anual
             # (D20 e decisão 7.2), com o balanço do mesmo documento.
             bpp_doc = bpp[

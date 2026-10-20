@@ -338,8 +338,8 @@ def test_exercicio_fora_do_ano_civil():
 
 
 def test_proventos_com_uma_rubrica_preservam_o_informado():
-    assert series_cvm.proventos(1.0, None) == 1.0
-    assert series_cvm.proventos(None, 1.0) == 1.0
+    assert series_cvm.proventos(1.0, None, motivos={"jcp": "linha ausente no documento"}) == 1.0
+    assert series_cvm.proventos(None, 1.0, motivos={"dividendos": "linha ausente no documento"}) == 1.0
     assert series_cvm.proventos(0.0, 0.0) == 0.0
 
 
@@ -703,7 +703,7 @@ def test_ttm_le_o_balanco_do_mesmo_documento_para_a_reserva(tmp_path):
         zf.writestr("itr_cia_aberta_BPP_con_2025.csv", texto.encode("latin-1"))
     marco, junho = provider._acumulados_do_arquivo(caminho, "ITR", CD_CVM, "empresa")
     assert marco.valores["lucro_controladores"] == 100_000.0
-    assert marco.motivos == {}
+    assert marco.motivos == {"dividendos": "DVA indisponível no documento", "jcp": "DVA indisponível no documento"}
     assert junho.valores["lucro_controladores"] is None
     assert "não controladores no balanço" in junho.motivos["lucro_controladores"]
 

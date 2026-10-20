@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 import logging
 import math
+import os
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from io import StringIO
@@ -48,8 +49,11 @@ class TituloTesouro:
     tipo: str
     vencimento: date
     data_base: date
-    taxa_aplicacao: RateReal | RateNominal
+    taxa_aplicacao: RateReal | RateNominal | None
     taxa_resgate: RateReal | RateNominal
+    pu_aplicacao: float | None = None
+    pu_resgate: float | None = None
+    motivo_aplicacao: str | None = None
 
 
 @dataclass(frozen=True)
@@ -64,6 +68,15 @@ class ArquivoTesouro:
         return dict(COLUNAS_TAXAS)
 
 
+def _pu(texto: str | None) -> float | None:
+    if texto is None:
+        return None
+    valor = float(texto.replace(",", "."))
+    if not math.isfinite(valor) or valor < 0:
+        raise ValueError("PU inválido")
+    return valor
+
+
 def _taxa(texto: str | None) -> float:
     valor = float((texto or "").replace(",", ".")) / 100
     if not math.isfinite(valor) or valor <= -1:
@@ -75,34 +88,47 @@ def ler_csv(texto: str, *, as_of: date) -> tuple[TituloTesouro, ...]:
     """Lê percentuais anuais do layout oficial, sem escolher vencimentos.
 
     Títulos indexados à Selic ou outros indexadores não representam nenhuma das
-    três famílias deste contrato. Linhas elegíveis inválidas não são descartadas.
+    três famílias deste contrato. as_of é o dia civil local: referência só com
+    data entra depois do seu fim. Linhas posteriores ficam fora da seleção sem
+    invalidar o arquivo cumulativo. Não escolhe a cesta/vértices do F2B-30.
+    PU e taxa de aplicação ambos nulos indicam ausência de oferta; a observação
+    fica preservada com taxa_aplicacao=None e motivo, não vira taxa zero.
     """
     leitor = csv.DictReader(StringIO(texto.lstrip("\ufeff")), delimiter=";")
     if not _COLUNAS <= set(leitor.fieldnames or ()):
         raise ValueError("colunas obrigatórias ausentes no CSV do Tesouro")
     titulos: dict[tuple[str, date, date], TituloTesouro] = {}
+    familia_presente = False
     for linha in leitor:
         nome = linha["Tipo Titulo"]
         if nome not in _TIPOS:
             continue
+        familia_presente = True
         tipo, classe = _TIPOS[nome]
-        vencimento = date(*map(int, (linha["Data Vencimento"] or "").split("/")[::-1]))
         data_base = date(*map(int, (linha["Data Base"] or "").split("/")[::-1]))
-        if data_base > as_of:
-            raise ValueError("data-base futura em relação ao as_of")
+        if data_base >= as_of:
+            continue
+        vencimento = date(*map(int, (linha["Data Vencimento"] or "").split("/")[::-1]))
+        pu_aplicacao = _pu(linha.get("PU Compra Manha"))
+        pu_resgate = _pu(linha.get("PU Venda Manha"))
+        taxa_aplicacao = _taxa(linha[COLUNAS_TAXAS["taxa_aplicacao"]])
+        sem_oferta = taxa_aplicacao == 0 and pu_aplicacao == 0
         titulo = TituloTesouro(
             nome,
             tipo,
             vencimento,
             data_base,
-            classe(_taxa(linha[COLUNAS_TAXAS["taxa_aplicacao"]])),
+            None if sem_oferta else classe(taxa_aplicacao),
             classe(_taxa(linha[COLUNAS_TAXAS["taxa_resgate"]])),
+            pu_aplicacao,
+            pu_resgate,
+            "sem oferta de aplicação na data-base" if sem_oferta else None,
         )
         chave = nome, vencimento, data_base
         if chave in titulos and titulos[chave] != titulo:
             raise ValueError("linhas conflitantes para o mesmo título e data-base")
         titulos[chave] = titulo
-    if not titulos:
+    if not familia_presente:
         raise ValueError("CSV sem títulos das famílias previstas")
     return tuple(titulos.values())
 
@@ -160,7 +186,13 @@ class TesouroProvider:
         return ArquivoTesouro(caminho, registro, avisos)
 
     def baixar(self, instante: datetime) -> ArquivoTesouro:
-        """Obtém observação atual; cache antigo continua identificado como antigo."""
+        """Observação lógica da requisição = instante explícito do chamador.
+
+        O chamador fornece o instante desta requisição, não uma data histórica
+        simulada. Após download íntegro, o mtime recebe esse instante, preservado
+        na proveniência. Assim baixar(t) pode ser lido em as_of=t. Cache anterior
+        mantém sua coleta original; gravação no disco não é nova observação.
+        """
         instante = _com_fuso(instante)
         caminho = self.cache_dir / "precotaxatesourodireto.csv"
         if caminho.exists():
@@ -190,4 +222,5 @@ class TesouroProvider:
             temporario.replace(caminho)
         finally:
             temporario.unlink(missing_ok=True)
+        os.utime(caminho, (instante.timestamp(), instante.timestamp()))
         return self._snapshot(caminho)

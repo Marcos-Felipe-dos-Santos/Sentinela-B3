@@ -11,4 +11,13 @@ from sentinela.data.series_cvm import proventos
 
 @pytest.mark.parametrize("parcelas", [(10.0, None), (None, 10.0)])
 def test_parcela_declarada_nao_some(parcelas):
-    assert proventos(*parcelas) == 10.0
+    assert (
+        proventos(
+            *parcelas,
+            motivos={
+                "dividendos": "linha ausente no documento",
+                "jcp": "linha ausente no documento",
+            },
+        )
+        == 10.0
+    )

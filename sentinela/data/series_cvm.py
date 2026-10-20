@@ -85,6 +85,23 @@ class Trimestre:
     documentos: tuple[Acumulado, ...]
 
 
+def _linha_ausente(motivo: str | None) -> bool:
+    return isinstance(motivo, str) and (
+        motivo == MOTIVO_LINHA_AUSENTE or motivo.startswith(MOTIVO_LINHA_AUSENTE + " ")
+    )
+
+
+def _valor_acumulado(documento: Acumulado, campo: str) -> float | None:
+    valor = documento.valores.get(campo)
+    if (
+        campo in ("dividendos", "jcp")
+        and valor is None
+        and _linha_ausente(documento.motivos.get(campo))
+    ):
+        return 0.0
+    return valor
+
+
 def proventos(
     dividendos: float | None,
     jcp: float | None,
@@ -96,7 +113,7 @@ def proventos(
         return None
     for campo, valor in (("dividendos", dividendos), ("jcp", jcp)):
         motivo = (motivos or {}).get(campo)
-        if valor is None and motivo and not motivo.startswith(MOTIVO_LINHA_AUSENTE):
+        if valor is None and not _linha_ausente(motivo):
             return None
     return (dividendos if dividendos is not None else 0.0) + (
         jcp if jcp is not None else 0.0
@@ -129,7 +146,11 @@ def _por_acao(
         acoes_por_unit=acoes_por_unit,
     )
     por_acao = resultado if isinstance(resultado, acoes_cvm.PorAcao) else None
-    fator = sum(acoes_por_unit.values()) if eh_unit and acoes_por_unit else 1
+    fator = (
+        sum(acoes_por_unit.values())
+        if eh_unit and acoes_cvm._unit_valida(acoes_por_unit)
+        else 1
+    )
     recalculado = (
         por_acao.lpa / fator if por_acao and por_acao.lpa is not None else None
     )
@@ -252,14 +273,15 @@ def trimestres(acumulados: Iterable[Acumulado]) -> list[Trimestre]:
         if anterior is None or anterior.inicio != acumulado.inicio:
             inicio, valores, documentos = (
                 acumulado.inicio,
-                dict(acumulado.valores),
+                {c: _valor_acumulado(acumulado, c) for c in acumulado.valores},
                 (acumulado,),
             )
         else:
             inicio = anterior.fim + timedelta(days=1)
             valores = {
                 campo: _diferenca(
-                    acumulado.valores.get(campo), anterior.valores.get(campo)
+                    _valor_acumulado(acumulado, campo),
+                    _valor_acumulado(anterior, campo),
                 )
                 for campo in acumulado.valores
             }
@@ -289,13 +311,20 @@ def ttm(acumulados: Iterable[Acumulado], data_referencia: date) -> dict | Absten
     motivos: dict[str, str] = {}
     for campo in CAMPOS_TTM:
         parcelas = [t.valores.get(campo) for t in ultimos]
-        if any(p is None for p in parcelas):
+        documentos_do_campo = [d for t in ultimos for d in t.documentos]
+        if all(
+            d.valores.get(campo) is None and _linha_ausente(d.motivos.get(campo))
+            for d in documentos_do_campo
+        ):
+            valores[campo] = None
+            motivos[campo] = MOTIVO_LINHA_AUSENTE
+        elif any(p is None for p in parcelas):
             valores[campo] = None
             do_documento = [
                 d.motivos[campo]
                 for t in ultimos
                 for d in t.documentos
-                if campo in d.motivos
+                if campo in d.motivos and not _linha_ausente(d.motivos[campo])
             ]
             motivos[campo] = (
                 f"{MOTIVO_CAMPO_AUSENTE}: {do_documento[0]}"

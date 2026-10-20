@@ -1057,7 +1057,7 @@ class MarketEngine:
         )
         if resultado.escala_pelo_consolidado is not None:
             dados['escala_pelo_consolidado'] = resultado.escala_pelo_consolidado
-        fator = sum(acoes_por_unit.values()) if eh_unit and acoes_por_unit else 1
+        fator = sum(acoes_por_unit.values()) if eh_unit and acoes_cvm._unit_valida(acoes_por_unit) else 1
         por_acao = resultado if isinstance(resultado, acoes_cvm.PorAcao) else None
         recalculado = por_acao.lpa / fator if por_acao and por_acao.lpa is not None else None
         lpa = acoes_cvm.lpa_dos_metodos(

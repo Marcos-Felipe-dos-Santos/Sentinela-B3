@@ -59,8 +59,7 @@ def test_vencimento_e_data_base():
 
 
 def test_referencia_futura_e_recusada():
-    with pytest.raises(ValueError, match="futura"):
-        tesouro.ler_csv(CSV, as_of=date(2026, 10, 14))
+    assert tesouro.ler_csv(CSV, as_of=date(2026, 10, 14)) == ()
 
 
 @pytest.mark.parametrize("taxa", ["", "texto", "NaN", "inf", "-100"])
@@ -235,8 +234,9 @@ def test_taxa_de_resgate_invalida_nao_fica_oculta():
         tesouro.ler_csv(CSV.replace("6,96", "inf"), as_of=INSTANTE.date())
 
 
-def test_bom_utf8_e_data_base_igual_ao_as_of_sao_validos():
-    assert len(tesouro.ler_csv("\ufeff" + CSV, as_of=date(2026, 10, 15))) == 1
+def test_bom_utf8_preservado_e_base_no_mesmo_dia_ainda_nao_elegivel():
+    assert tesouro.ler_csv("\ufeff" + CSV, as_of=date(2026, 10, 15)) == ()
+    assert len(tesouro.ler_csv("\ufeff" + CSV, as_of=date(2026, 10, 16))) == 1
 
 
 def test_familia_fora_do_contrato_nao_interrompe_leitura():
@@ -335,11 +335,11 @@ def test_publicacao_so_com_data_espera_fim_do_dia_em_sao_paulo(
 
 
 @pytest.mark.parametrize("com_cache", [True, False])
-def test_download_recusa_referencia_ainda_futura_no_dia_local(
+def test_download_preserva_csv_mas_filtra_referencia_futura_local(
     tmp_path, monkeypatch, com_cache
 ):
     if com_cache:
-        arquivo = _cache(tmp_path, timedelta(days=2))
+        _cache(tmp_path, timedelta(days=2))
 
     class Resposta:
         content = CSV.replace("15/10/2026", "20/10/2026").encode()
@@ -349,10 +349,36 @@ def test_download_recusa_referencia_ainda_futura_no_dia_local(
 
     monkeypatch.setattr(tesouro.requests, "get", lambda *a, **kw: Resposta())
     instante = datetime(2026, 10, 20, 2, tzinfo=UTC)
-    if com_cache:
-        snapshot = tesouro.TesouroProvider(tmp_path).baixar(instante)
-        assert snapshot.avisos
-        assert arquivo.read_text() == CSV
-    else:
-        with pytest.raises(ValueError, match="futura"):
-            tesouro.TesouroProvider(tmp_path).baixar(instante)
+    snapshot = tesouro.TesouroProvider(tmp_path).baixar(instante)
+    assert snapshot.avisos == ()
+    assert tesouro.ler_snapshot(snapshot, as_of=instante) == ()
+    assert "20/10/2026" in snapshot.caminho.read_text()
+
+
+@pytest.mark.parametrize("pu", ["NaN", "inf", "-1", "texto", ""])
+def test_pu_de_aplicacao_invalido_e_recusado(pu):
+    texto = CSV.replace("Taxa Venda Manha", "Taxa Venda Manha;PU Compra Manha").replace(
+        "6,84;6,96", f"6,84;6,96;{pu}"
+    )
+    with pytest.raises(ValueError):
+        tesouro.ler_csv(texto, as_of=INSTANTE.date())
+
+
+def test_reuso_de_cache_preserva_instante_da_observacao(tmp_path, monkeypatch):
+    class Resposta:
+        content = CSV.encode()
+
+        def raise_for_status(self):
+            pass
+
+    monkeypatch.setattr(tesouro.requests, "get", lambda *a, **k: Resposta())
+    p = tesouro.TesouroProvider(tmp_path)
+    primeiro = p.baixar(INSTANTE)
+    segundo = p.baixar(INSTANTE + timedelta(hours=1))
+    assert segundo.proveniencia.data_coleta == primeiro.proveniencia.data_coleta
+    assert segundo.caminho.stat().st_mtime == INSTANTE.timestamp()
+
+
+def test_linha_futura_invalida_nao_contamina_recorte_elegivel():
+    texto = CSV + "Tesouro IPCA+;invalido;20/10/2026;NaN;inf\n"
+    assert len(tesouro.ler_csv(texto, as_of=date(2026, 10, 19))) == 1

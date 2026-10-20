@@ -598,6 +598,16 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - **Testes que mudam:** só a fixture de publicação do teste de igualdade da coleta em `tests/test_tesouro.py`, para uma data anterior, e seu nome; a asserção de coleta inclusiva fica. Acrescentar fronteiras de fim do dia local e de data futura local no download.
   - **Aceite:** suíte/gates da fase, mutation ≥80% em `providers.tesouro`, golden inalterado. Nenhum outro módulo de produção ou método muda.
 
+- [!] **F2B-48** · fix · `fix: close audited unit dividend and Tesouro data gaps`
+  Decisão do Marcos de 20/10/2026 após auditoria FASE Gemini em HEAD 60e61e2; os três primeiros grupos conferidos pelo Claude. Um fix único, regressões xfail estrito antes das correções (D27), sem push.
+  - BUG-2B-17: unit inválida abstém em lpa_dos_metodos, market_engine._por_acao_cvm e series_cvm.exercicio; validar _unit_valida antes do fator.
+  - BUG-2B-18: TTM e série anual preservam ausência comprovada das rubricas e recusam motivo inválido/desconhecido/ausente; alinhar proventos_do_documento e _acumulados_do_arquivo.
+  - BUG-2B-19: observação do download definida pelo instante explícito; baixar(t) lido em as_of=t é aceito; Data Base só com data entra após fim do dia local; CSV cumulativo filtra referências posteriores em vez de rejeitar o arquivo.
+  - BUG-2B-20: ler PU, contar sentinelas taxa/PU de aplicação zero no arquivo arquivado e representar sem oferta, nunca taxa 0%; manter regressão sintética.
+  - Arquivos: sentinela/data/acoes_cvm.py, sentinela/data/series_cvm.py, sentinela/data/providers/tesouro.py, market_engine.py, cvm_provider.py; testes diretos dos caminhos e tests/regressao/, fila/diário/registro. Asserções antigas só mudam quando contradizem explicitamente estas correções, listadas no diário; golden não muda.
+  - Aceite: regressões17–20 em PASS e registro corrigido; suíte e gates verdes, mutação ≥80% por módulo puro alterado e score V1 registrado. Destinos das ressalvas e dos oito bugs da 2C atualizados; regressão BTCI11/TRPL11 registrada sem correção.
+  - **Parada obrigatória [!]:** após as correções, aguardar Marcos revisar a matriz da ficha taxa-real para1.1 (zero válido versus sentinela sem oferta); não executar F2B-30 nem mudar a ficha por iniciativa do executor.
+
 - [ ] **F2B-30** · feat · `feat: expose the real cost of equity with provenance` · **[TAXA]** **[ADR-0003]**
   A taxa real chega a quem a usa, com proveniência (D16). Nenhum motor a lê ainda: o consumidor é o F2B-1.
   - **`sentinela/data/taxas.py` (puro).** Média de peso igual das duas famílias IPCA+, vencimentos ≥2035, taxa_aplicacao na última base elegível; idade até 5 dias úteis; não descartar linha inválida para alterar a cesta. Custo real = média + 5% das ações, risco Brasil já no título, sem spread soberano separado. Devolve o registro (taxa, vértice, data-base, fonte e proveniência) ou abstenção com motivo.
@@ -607,6 +617,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - **Cascata.** `dados['taxa_real']` com o registro, fora do prompt.
   - **Relatório do F1-12.** Ganha a seção "Taxa real" (NTN-B, vértice, data-base, fonte, prêmio e inflação); a "Selic usada" fica enquanto algum método a usar.
 
+  - **Aceite da auditoria Gemini HEAD60e61e2 (20/10/2026):** validação estrita apenas nas linhas da cesta escolhida; linha inválida de outro vértice/data não derruba a cesta selecionada, mas linha inválida dentro dela abstém o benchmark inteiro.
   - **PIB para os consumidores:** provedor de expectativas BCB Olinda, ExpectativasMercadoAnuais, PIB Total, mediana/baseCalculo 0, maior ano da última pesquisa publicada até as_of; corte e idade pelo calendário, conforme registro do marcador §2.2. O teto chega com fonte/data/ano e não substitui a inflação. Entradas necessárias ao contrato são opcionais e aditivas; não implementa crescimento de método aqui.
   - **Aceite adicional:** janela do IPCA compatível, deflação, fonte desatualizada e publicação posterior ao as_of; PIB com bases 0/1, maior ano, ausência e conflito; no consumidor não há reserva silenciosa.
 
@@ -621,6 +632,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
 - [ ] **F2B-1** · fix · `fix: discount Gordon at the real cost of equity` · **[golden]** **[TAXA]**
   Armadilha 1; F-4 e F-6; checkpoint, seção 4, item 2 (regime real); PLANO, F2B-1. Pré-condição: `docs/metodologia/taxa-real.md` e `docs/metodologia/gordon.md` aprovadas; sem isso, `[!]`.
+  - **Aceite da auditoria Gemini HEAD60e61e2 (20/10/2026):** lpa_basico_agregado detecta linhas conflitantes, sem escolher a primeira; espécie única só é atestada depois de conferida na Composição do Capital, sem inferi-la só do FCA.
   - **Gordon 2.0.0.** Regime REAL. k = custo de capital real do F2B-30; ROE nominal=lucro anual/PL inicial dos controladores da mesma DFP; g nominal=ROE nominal×retenção DVA, Fisher com IPCA do exercício e depois teto PIB real Focus; sai teto nominal de 8%. D0 e payout DVA dos controladores, última DFP anual, mesma janela do LPA, JCP bruto; sem DY da cascata. D1 = D0 × (1 + g real); payout fora de (0,1] abstém, sem truncar a 95%; saem mínimos DY 4% e ROE 10%, ficam ROE>0 e k>g. `requires` sem `selic`; sem a taxa, "insumo ausente". Changelog.
   - **`cost_of_equity_real`** (`config.py:234-236`) passa a delegar ao F2B-30 (PLANO: "via `cost_of_equity_real`"). O `GordonParams` perde o prêmio, e `valuation_engine.py:106` deixa de ler `GORDON_PREMIO_RISCO`.
   - **Motor.** Passa k, inflação da janela, teto PIB e proventos anuais com perímetro comprovado ao Gordon; a Selic (`valuation_engine.py:177`) fica só para o Bazin, até o F2B-31. Não inferir DVA ou janela a partir do DY agregado.
@@ -666,6 +678,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - gate da fase.
 
 - [ ] **F2B-2** · fix · `fix: compare FII yield with NTN-B plus the historical spread` · **[golden]** **[FII]**
+  - **Aceite adicional Gemini HEAD60e61e2 (20/10/2026):** Data_Referencia NaN no cvm_fii_provider produz ausência/abstenção com motivo, sem seleção silenciosa nem exceção.
   PLANO, F2B-2; checkpoint, seção 4, item 3; F-9; pendência "DY do Informe Mensal de FII". Pré-condição: `docs/metodologia/fii.md` aprovada.
   - **Rendimento do FII 2.0.0** (nome da lente pela ficha; o singleton `_FII_YIELD` fica). Preço justo = preço × DY ÷ (NTN-B do vértice + spread). Spread recalibrado no próprio item: mediana mensal dos tijolos, depois mediana dos 60 meses contíguos, contra taxa_aplicacao e rendimento do Informe/COTAHIST; aplicar corte por publicação e classificação temporal; excluir desdobramento/grupamento ou salto de VP incompatível, mantendo emissões com VP contínuo em contexto. Registrar amostra, coberturas, exclusões e efeito na mediana, conforme ficha 0.3. Os antigos 2,65 pp não valem como constante. Rendimento só do Informe do F2B-28, maior versão entregue até as_of; 12 meses/13 VPs, idade até 3 meses; desdobramento/grupamento ou salto de VP incompatível abstém, emissão com VP contínuo é aceita em contexto. Sem spread validado, abstenção. `requires` sem `selic` (sai a conta de `sentinela/methods/fii_yield.py:53`).
   - **Contexto.** Selic líquida e P/VP aparecem na saída e no relatório, sem formar o preço justo. Score e pontos de P/VP inalterados na 2B, por decisão de 19/10/2026; exceção temporária ao princípio 9 do PLANO para o score. Fórmula de rendimento é real com crescimento zero, spread bruto sobre bruto, sem fator tributário adicional.
@@ -701,6 +714,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - gate da fase.
 
 - [ ] **F2B-4** · fix · `fix: enforce method scope by asset class and statement model` · **[golden]** **[FINANCEIRAS]**
+  - **Aceite da auditoria Gemini HEAD60e61e2 (20/10/2026):** após correção da espécie de MGLU3, recalcular classes_preferenciais a partir das espécies corrigidas, sem conservar classe espúria.
   PLANO, F2B-4; P7; armadilha 17; `sentinela/methods/registry.py` ("Aplicar e estreitar é o F2B-4").
   - **Contrato.** `MethodInputs` ganha a classe do ativo e o modelo da demonstração (enum novo em `sentinela/domain/enums.py`: empresa, banco, seguradora). `ValuationMethod.calcular` confere o escopo declarado e se abstém com o motivo ("classe <classe> fora do escopo do método", "modelo <modelo> fora do escopo do método"). Classe oficial é exigida para todos. **Modelo por BPP é exigido só para STOCK/UNIT**: sem modelo demonstrado, abstenção com motivo, sem presumir empresa em chamadas antigas. FII usa sua classe oficial e não exige BPP de companhia nem enum empresa/banco/seguradora; mantém os métodos de FII. A exceção antiga para ações sem modelo é substituída pela decisão do Marcos de 19/10/2026.
   - **Escopo.** Graham, Bazin, Lynch e Gordon: STOCK e UNIT, modelo empresa. Rendimento e P/VP do FII: FII. Cada método ganha versão menor no changelog. Sem ficha, pela dispensa do Marcos de 18/10/2026, limitada à aplicação do escopo (gate da fase): o diff de cada método só declara e aplica o escopo; mudança de fórmula, insumo, regime ou parâmetro no mesmo item reprova a revisão.
@@ -734,6 +748,8 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - mutation ≥ 80% em `sentinela.data.providers.ifdata*`;
   - golden inalterado;
   - gate da fase.
+
+  - **Aceite adicional Gemini HEAD60e61e2 (20/10/2026), BUG-2A-20:** instante de referência explícito em toda chamada e teste do cache, sem reserva de relógio implícito.
 
 - [ ] **F2B-3** · feat · `feat: add justified price-to-book lens for banks` · **[BANCOS]**
   PLANO, F2B-3 (a lente; a ligação no motor é o F2B-32); checkpoint, seção 4, item 5; D22. Pré-condição: `docs/metodologia/bancos.md` aprovada.
@@ -815,11 +831,13 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - o diário desta fase e o da 2A, nas pendências com destino na 2C: F2C-1 (TTM, proventos da DVA, JCP bruto, ações do TTM), F2C-2 (EBITDA ≤ 0, margens), F2C-3 (ROE e P/L no score, penalidades em dobro), F2C-4, F2C-9 e F2C-10;
   - os candidatos da auditoria do Gemini que a [AUDITORIA] mandou para a 2C (achado 5, decisões A e D) e a pergunta 7 do F2B-21.
 
-  - **Destino decidido em 19/10/2026:** BUG-2B-02 (cache duplicado), 03 (três tentativas em 404), 05 (alerta PNA/PNB), 07 (divulgados_coerentes), 08 (_meses), 09 (corrida da proveniência), 10 (CNPJ com espaços), 11 (caixa da classe) e BTCI11/TRPL11. Os primeiros oito mantêm regressões; BTCI11/TRPL11 exige regressão própria antes de correção. Atualizar destinos no registro sem marcar bugs como corrigidos. Os demais nomeados no marcador ficam no F2B-46, não repetir na 2C.
+  - **Destino decidido em 19/10/2026:** BUG-2B-02 (cache duplicado), 03 (três tentativas em 404), 05 (alerta PNA/PNB), 07 (divulgados_coerentes), 08 (_meses), 09 (corrida da proveniência), 10 (CNPJ com espaços), 11 (caixa da classe) e BTCI11/TRPL11. Os primeiros oito mantêm regressões; BUG-2B-21 mantém as duas regressões de BTCI11/TRPL11 até a correção, com identidade oficial complementar. Atualizar destinos no registro sem marcar bugs como corrigidos. Os demais nomeados no marcador ficam no F2B-46, não repetir na 2C.
 
   Nada é implementado.
 
   **Aceite:** arquivo no formato desta fila; todo item com aceite verificável; nenhuma decisão do Marcos tomada pelo texto.
+
+  - **Ressalvas Gemini HEAD60e61e2 (20/10/2026) para 2C, sem correção no F2B-48:** reserva do TTM só com BPP do mesmo documento efetivamente lido (não basta BPP vazio); reforçar a barreira da regressão BUG-2B-09 para distinguir corrida de timeout. Demais ressalvas sem item 2B específico entram na proposta com evidência, aceite e destino; não declarar correção nem presumir classificação de BTCI11/TRPL11 sem fonte oficial.
 
 - [ ] **F2B-45** · fix · `fix: stop parsing Portuguese debt text in the stock engine` · **[golden]**
   Saiu do F2B-5: limpeza não muda golden (auditoria externa da 2A, correção 4). PLANO, seção 10 (texto de dívida). No motor de ações (`valuation_engine.py:278-291`), a conversão de `divida_liq_ebitda` em texto pt-BR ("1.234,56") não tem fonte desde o F2A-22. Sai a conversão. Hoje o texto inválido vira `0.0`, sem penalidade e sem aviso; depois do item, valor que não é número finito (texto inclusive) segue sem penalidade **e** com o aviso "alavancagem não avaliada". O teste cobre as duas partes: a ausência da penalidade, que já existe, e o aviso, que é novo.

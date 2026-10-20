@@ -32,5 +32,9 @@ def test_tesouro_respeita_corte_local_e_fim_do_dia(tmp_path, caso):
     )
     if caso == "publicacao_so_com_data":
         registro = replace(registro, data_entrega="2026-10-19", motivo_sem_entrega=None)
-    with pytest.raises(ValueError):
-        tesouro.ler_snapshot(tesouro.ArquivoTesouro(arquivo, registro), as_of=instante)
+    snapshot = tesouro.ArquivoTesouro(arquivo, registro)
+    if caso == "publicacao_so_com_data":
+        with pytest.raises(ValueError):
+            tesouro.ler_snapshot(snapshot, as_of=instante)
+    else:
+        assert tesouro.ler_snapshot(snapshot, as_of=instante) == ()

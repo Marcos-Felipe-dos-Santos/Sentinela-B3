@@ -372,7 +372,7 @@ def lpa_dos_metodos(
         return _lpa_da_classe(
             classe or especie, especie, divulgados, recalculado, varias
         )
-    if not acoes_por_unit:
+    if not _unit_valida(acoes_por_unit):
         return Abstencao(MOTIVO_UNIT)
     total, componentes, notas = 0.0, {}, []
     for componente, quantidade in acoes_por_unit.items():
