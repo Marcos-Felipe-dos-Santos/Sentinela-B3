@@ -795,3 +795,19 @@
 - **Testes:** regressão23, suíte completa e gates refeitos; resultados finais abaixo. Nenhum golden alterado. Mutação macro refeita para a alteração.
 - **Resíduos:** caches/mutantes locais ignorados; nenhum dado da carteira, credencial, arquivo não rastreado apagado ou push. Item30 financeiro permanece entregue; este commit corrige seu gate.
 - **Gates finais F2B-49:** suíte1841 passed/1 skipped/17 xfailed, aviso antigo; Ruff CI e regras completas data/methods executados e conferidos separadamente, ambos verdes. Mutação macro562/690=81,45%,128sobreviventes, zero pendentes; exportação CI refeita; nenhum golden alterado.
+
+### F2B-1 — bloqueio de escopo antes da implementação
+- **Executor:** codex (GPT-6).
+- **Status:** bloqueado, antes de editar código/testes do item; fila [!].
+- **Evidência:** MethodInputs em sentinela/methods/base.py é frozen/slots e contém custo_capital_real e inflacao, mas não D0/proventos DVA, payout nem teto PIB. A ficha Gordon e o item exigem esses insumos específicos da DFP e do Focus; a lista de permissões dos arquivos restritos libera base.py apenas paraF2B-29/F2B-4, nãoF2B-1. O contrato de entrada não pode ser expandido por duck typing, atributos dinâmicos ou parâmetros de regra usados como transporte para contornar a restrição. Não mudar o arquivo proibido nem escolher silenciosamente uma exceção.
+- **Regra aplicada:** docs/loop/protocolo.md, Regras duras: “Não tocar nos arquivos intocáveis do cabeçalho da fila. Se um item parecer exigir isso, marque [!] e pare.” Skill executar-fila manda parar quando um item fica [!]. Falta compatibilizar a permissão da fila para adicionar os insumos opcionais exigidos pelo próprio Gordon, preservando asserções da seçãoA e demais limites do item.
+- **Testes/estado:** HEADadbd999, F2B-48/F2B-30/F2B-49 concluídos e commitados;1841passed/1skipped/17xfailed, aviso antigo; gates Ruff verdes; golden inalterado. Não executado código do F2B-1 nem alterada fórmula/método.
+- **Resíduos:** apenas este registro e a marca de bloqueio da fila ficam sem commit, pois não se fecha item de implementação pela metade. Passagem local em outputs/passagem.md; caches/mutantes ignorados. Sem push, credencial lida, dado da carteira ou arquivo não rastreado apagado.
+
+### F2B-1 — docs: authorize additive Gordon method inputs
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso documental; bloqueio de escopo anterior resolvido, F2B-1 retorna a[ ]. A implementação do método permanece pendente neste commit.
+- **Decisão do Marcos,20/10/2026:** F2B-1 pode alterar sentinela/methods/base.py e, se precisar de tipo novo, sentinela/domain/units.py somente aditivamente: novos campos opcionais em MethodInputs e _TIPOS_CAMPOS para os insumos da ficha Gordon1.0 (teto real do PIB e proventos/payout DVA com perímetro dos controladores), cada um tipado e validado como no F2B-29. Nenhum campo existente muda de nome, tipo ou padrão. Permissão estendida aos F2B-3/F2B-32 se precisarem dos mesmos insumos, sempre aditivamente.
+- **O que foi feito:** permissão registrada junto à lista de arquivos restritos, antes situada na linha79; marca[!] retirada, preservando no diário o histórico do bloqueio. Cópia da passagem correspondente em docs/loop/passagem-f2b1-2026-10-20.md, com a resolução, integra este commit a pedido do Marcos. O histórico completo de outputs/passagem.md continua ignorado; nenhuma inclusão forçada de outputs no git. RetomadaB: as duas alterações anteriores de fila/diário correspondiam à passagem, sem divergências; autorização recebida dispensa nova confirmação.
+- **Testes:** baseline1841passed/1skipped/17xfailed, um aviso antigo; sem código/testes/golden alterados. Gates do protocolo conferidos antes do commit.
+- **Resíduos/decisões pendentes:** passagem local preservada; nenhuma decisão metodológica nova, dado da carteira ou credencial. Sem push. Próximo passo: F2B-1 pelo rito xfail estrito → correção → PASS, escopo e golden do item.
