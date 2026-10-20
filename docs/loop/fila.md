@@ -576,7 +576,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden inalterado; nenhum teste existente muda;
   - gate da fase.
 
-- [ ] **F2B-29** · feat · `feat: add real-rate inputs and Fisher conversion to the method contract`
+- [x] **F2B-29** · feat · `feat: add real-rate inputs and Fisher conversion to the method contract`
   Aditivo, sem consumidor: nenhum método muda.
   - **`sentinela/domain/units.py`.** O tipo da inflação (variação anual de preços, em decimal) e as conversões real ↔ nominal por Fisher exato, como a ficha da taxa real (seção 1). O docstring que dizia que a conversão não existia de propósito passa a citar a ficha.
   - **`sentinela/methods/base.py`.** `MethodInputs` ganha o custo de capital real (`RateReal`) e a inflação, opcionais. Checagem do contrato: custo de capital real só em método REAL, como a `selic` só em método NOMINAL.
@@ -586,9 +586,17 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   **Aceite:**
   - `tests/test_units.py::test_fisher_ida_e_volta` (valores do exemplo da ficha) e `::test_inflacao_nao_soma_com_taxa`;
   - `tests/test_methods_contrato.py::test_custo_de_capital_real_so_em_metodo_real`;
+  - BUG-2B-15 confirmado na revisão: `tests/regressao/test_bug_2b_15_fluxo_nominal_underflow.py` em PASS, marca retirada e registro atualizado;
   - mutation ≥ 80% em `sentinela.domain.units*` e em `sentinela.methods*`;
   - golden inalterado; nenhum teste existente muda (o diff dos arquivos de teste só tem inclusões);
   - gate da fase.
+
+- [ ] **F2B-47** · fix · `fix: enforce the approved local cutoff for Tesouro snapshots`
+  Correção de defeito introduzido no F2B-27, confirmado ao conferir o marcador §2.2 durante o F2B-29; não muda decisão metodológica. Antes de consumir a fonte no F2B-30.
+  - `sentinela/data/providers/tesouro.py`: comparar dias em America/Sao_Paulo; publicação só com data entra depois do fim desse dia, preservando o corte dos instantes e da coleta. Download valida a referência no mesmo dia local.
+  - **BUG-2B-16:** regressão estrita em `tests/regressao/test_bug_2b_16_tesouro_corte_local.py` antes da correção; retirar marca, atualizar registro e manter os dois casos em PASS.
+  - **Testes que mudam:** só a fixture de publicação do teste de igualdade da coleta em `tests/test_tesouro.py`, para uma data anterior, e seu nome; a asserção de coleta inclusiva fica. Acrescentar fronteiras de fim do dia local e de data futura local no download.
+  - **Aceite:** suíte/gates da fase, mutation ≥80% em `providers.tesouro`, golden inalterado. Nenhum outro módulo de produção ou método muda.
 
 - [ ] **F2B-30** · feat · `feat: expose the real cost of equity with provenance` · **[TAXA]** **[ADR-0003]**
   A taxa real chega a quem a usa, com proveniência (D16). Nenhum motor a lê ainda: o consumidor é o F2B-1.

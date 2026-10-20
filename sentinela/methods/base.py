@@ -19,6 +19,7 @@ from typing import Any
 from sentinela.domain.enums import AssetType, Perfil, Regime
 from sentinela.domain.units import (
     BRL,
+    Inflacao,
     Percent,
     QuantidadeAcoes,
     RateNominal,
@@ -32,7 +33,7 @@ TIPO_TAXA: dict[Regime, type | None] = {
     Regime.SEM_TAXA: None,
 }
 
-_UNIDADES = (BRL, Ratio, Percent, RateNominal, RateReal, QuantidadeAcoes)
+_UNIDADES = (BRL, Ratio, Percent, RateNominal, RateReal, QuantidadeAcoes, Inflacao)
 _TIPOS_CAMPOS: dict[str, type] = {
     "preco": BRL,
     "lpa": BRL,
@@ -42,6 +43,8 @@ _TIPOS_CAMPOS: dict[str, type] = {
     "dy": Ratio,
     "roe": Ratio,
     "selic": RateNominal,
+    "custo_capital_real": RateReal,
+    "inflacao": Inflacao,
     "vacancia": Ratio,
     "perfil": Perfil,
 }
@@ -64,6 +67,8 @@ class MethodInputs:
     perfil: Perfil | None = None
     pl_confiavel: bool = True
     dy_confiavel: bool = True
+    custo_capital_real: RateReal | None = None
+    inflacao: Inflacao | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.as_of, date) or isinstance(self.as_of, datetime):
@@ -189,6 +194,8 @@ class ValuationMethod(ABC):
             raise TypeError(
                 f"requires deve ser tupla de insumos de MethodInputs: {cls.requires!r}"
             )
+        if "custo_capital_real" in cls.requires and cls.regime is not Regime.REAL:
+            raise TypeError("custo_capital_real: só método REAL pode exigi-lo")
         if "selic" in cls.requires and cls.regime is not Regime.NOMINAL:
             raise TypeError("selic é taxa nominal: só método NOMINAL pode exigi-la")
         if (

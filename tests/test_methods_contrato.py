@@ -351,3 +351,56 @@ def test_calcular_devolve_so_resultado_ou_abstencao():
 def test_regime_e_perfil_enums():
     assert {r.name for r in Regime} == {"REAL", "NOMINAL", "SEM_TAXA"}
     assert {p.name for p in Perfil} == {"RENDA", "CRESCIMENTO"}
+
+
+def test_custo_de_capital_real_so_em_metodo_real():
+    for regime in (Regime.NOMINAL, Regime.SEM_TAXA):
+        with pytest.raises(TypeError, match="custo_capital_real"):
+            _metodo(regime=regime, requires=("custo_capital_real",))
+    tipo = _metodo(regime=Regime.REAL, requires=("custo_capital_real",))
+    assert tipo.requires == ("custo_capital_real",)
+    assert isinstance(tipo().calcular(_inputs(), _Params(1.0)), Abstention)
+    assert (
+        tipo().calcular(_inputs(), _Params(1.0)).motivo
+        == "insumo ausente: custo_capital_real"
+    )
+
+
+def test_inputs_reais_aditivos_tipificados_e_congelados():
+    from sentinela.domain.units import Inflacao
+
+    vazio = _inputs()
+    assert vazio.custo_capital_real is None
+    assert vazio.inflacao is None
+    real = _inputs(custo_capital_real=RateReal(0.1), inflacao=Inflacao(-0.01))
+    assert real.custo_capital_real == RateReal(0.1)
+    assert real.inflacao == Inflacao(-0.01)
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        real.inflacao = Inflacao(0)
+    with pytest.raises(TypeError, match="custo_capital_real"):
+        _inputs(custo_capital_real=RateNominal(0.1))
+    with pytest.raises(TypeError, match="inflacao"):
+        _inputs(inflacao=Ratio(0.04))
+
+
+def test_contrato_real_recebe_insumos_e_inflacao_com_unidade():
+    from sentinela.domain.units import Inflacao
+
+    def calcular(self, inputs, params):
+        return MethodResult(
+            self.nome,
+            self.version,
+            inputs.custo_capital_real,
+            intermediarios=(Intermediario("inflacao", inputs.inflacao),),
+        )
+
+    tipo = _metodo(
+        regime=Regime.REAL,
+        requires=("custo_capital_real", "inflacao"),
+        _calcular=calcular,
+    )
+    resultado = tipo().calcular(
+        _inputs(custo_capital_real=RateReal(0.1), inflacao=Inflacao(0.04)), _Params(1)
+    )
+    assert resultado.valor == RateReal(0.1)
+    assert resultado.obter("inflacao") == Inflacao(0.04)
