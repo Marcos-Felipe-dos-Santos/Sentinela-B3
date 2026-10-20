@@ -1,9 +1,10 @@
-# Taxa de desconto real — versão 1.0
+# Taxa de desconto real — versão 1.1
 
-**Status:** aprovada pelo Marcos em 19/10/2026. Auditoria FICHA do Claude
-sobre a versão 0.3: **pode seguir** (D30); promovida a 1.0 sem mudança de regra
-ou número, conforme registro do marcador.
-**Decisões:** Marcos, 19/10/2026; [registro do marcador](../decisoes/marcador-2b.md).
+**Status:** aprovada pelo Marcos em 20/10/2026, revisão 1.1 (D21).
+A auditoria FICHA do Claude com **pode seguir** cobriu a versão 0.3, promovida
+à 1.0 em 19/10/2026. A revisão 1.1 incorpora a decisão de oferta do F2B-48;
+não atribui ao auditor uma conferência desta revisão ainda não realizada.
+**Decisões:** Marcos, 19 e 20/10/2026; [registro do marcador](../decisoes/marcador-2b.md).
 **Dependências:** F2B-27, F2B-29, F2B-30, F2B-1, F2B-2, F2B-3 e F2B-32.
 Aprovação documental registrada; implementação nos itens da fila, ainda não entregue.
 
@@ -47,7 +48,10 @@ Páginas e passagens específicas permanecem na lista de pendências atribuídas
 
 Selecionar a maior Data Base elegível ≤ as_of; reunir todos os títulos das duas
 famílias nessa data, um por tipo/vencimento. Peso igual, sem ponderação por
-prazo, estoque ou duration. Linha inválida não sai silenciosamente da média:
+prazo, estoque ou duration. A referência é escolhida antes de excluir títulos
+sem oferta. Par de aplicação com taxa e PU ambos zero sai da cesta, com contagem
+na proveniência; se todos saírem, abster por cesta vazia sem trocar de data.
+Linha inválida da cesta escolhida não sai silenciosamente da média:
 abster o benchmark inteiro. Duplicata idêntica conta uma; conflitante abstém.
 A API do Tesouro Direto da V1 não é fonte alternativa. Falta de fonte não vira
 7% nem inflação de 5,5% de contingência.
@@ -73,13 +77,23 @@ motivos distintos do registro §2.1, antes de qualquer limite ou conta.
 
 | Insumo | Zero | Negativo | Fora de faixa / outro impedimento |
 |---|---|---|---|
-| Cada taxa real do Tesouro | válido | válido se > −1 | ≤ −1: taxa real sem fator positivo; escala não comprovada: unidade inválida |
+| Taxa de aplicação com PU > 0 | zero econômico válido | válida se > −1 | ≤ −1: taxa real sem fator positivo; escala não comprovada: unidade inválida |
+| Par de aplicação: taxa = 0 e PU = 0 | sem oferta: excluir e contar na proveniência | não se aplica | todos os elegíveis sem oferta: cesta vazia, sem usar data anterior |
+| PU de aplicação | com taxa ≠ 0: linha inválida, cesta abstém; com taxa = 0: sem oferta | linha inválida, cesta abstém | ausente, não numérico, NaN ou infinito: linha inválida, cesta abstém |
+| Taxa/PU de resgate | taxa = 0 com PU > 0: válido; ambos zero: sem oferta informativa | taxa > −1 com PU > 0: válida; PU negativo: inválido | taxa ≠ 0 com PU = 0, taxa ≤ −1, ausência, não numérico, NaN ou infinito: taxa_resgate ausente, motivo na proveniência; aplicação segue |
 | Prêmio das ações | finito matematicamente, mas não é parâmetro aprovado | inválido | Diferente de 0,05 em produção: parâmetro fora da versão; sensibilidade identificada à parte |
 | π | válido | deflação válida se > −1 | ≤ −1: Fisher indefinido; outra janela: inflação incompatível |
 | Quantidade de títulos | inválido: cesta vazia | inválido | não inteiro ou linhas conflitantes: cesta inválida |
 | Datas/publicação | não se aplica numericamente | não se aplica | futura, idade excedida ou disponibilidade não demonstrada: motivo temporal específico |
 | CF e moeda-base | zero válido | válido na identidade, consumidor define elegibilidade | sem moeda/data ou regimes diferentes: fluxo incompatível |
 | k_N, k_r e resultado | taxa zero válida na identidade | > −1 válido na identidade | fator ≤ 0 ou não finito: resultado inválido; consumidor exige taxa de desconto admissível |
+
+A taxa de aplicação zero com PU positivo é expressamente válida: a expressão
+“só um dos dois zerado” significa aqui taxa não zero com PU zero. O par de
+resgate nunca entra na média; sua invalidade ou ausência de oferta abstém apenas
+a informação de resgate, com taxa_resgate ausente e motivo na proveniência.
+Os quatro motivos comuns de ausência/não numérico/NaN/infinito aplicam-se a cada
+campo do par; o efeito depende do par, conforme a tabela.
 
 A identidade não garante convergência de perpetuidade: cada consumidor valida
 k > g e seu próprio fluxo. Uma taxa real negativa admissível como observação
@@ -93,6 +107,18 @@ Snapshot, hashes e as_of no registro §2.3. Taxas de aplicação em 15/10/2026:
 |---|---|
 | IPCA+ | 15/05/2035: 6,84; 15/08/2040: 6,73; 15/05/2045: 6,73; 15/08/2050: 6,74 |
 | IPCA+ com Juros Semestrais | 15/05/2035: 6,82; 15/05/2037: 6,83; 15/08/2040: 6,75; 15/05/2045: 6,75; 15/08/2050: 6,75; 15/05/2055: 6,71; 15/08/2060: 6,73 |
+
+Os 11 títulos têm PU positivo nos dois pares; excluídos sem oferta = **0**
+na proveniência desta cesta. As 14 linhas sem oferta do arquivo arquivado são
+Prefixado com Juros Semestrais, vencimento 01/01/2021, datas de 2010 (diário
+F2B-48), portanto nenhuma pertence à cesta de 15/10/2026.
+
+Exemplos sintéticos da matriz, na mesma data-base: taxa 0%/PU 100 permanece como
+zero econômico; taxa 0%/PU 0 sai e incrementa excluídos; taxa 6%/PU 0 ou PU −1
+abstém a cesta de aplicação. Se esse último par for somente de resgate, a taxa
+de aplicação permanece, taxa_resgate fica ausente e o motivo é registrado.
+Se todos os elegíveis forem 0%/PU 0, não há média nessa data, mesmo que exista
+oferta na data anterior.
 
 Soma = 74,38%; média = **6,761818181818…%** (6,76% apenas na apresentação).
 k_real = **11,761818181818…%**. Para converter a DFP 01/01–31/12/2025,
@@ -137,3 +163,8 @@ Todas as opções [DECISÃO] da 0.1 estão **decididas pelo Marcos em 19/10/2026
 
 Moeda-base e conversão dos fluxos completam D22. Pendência bibliográfica
 explicitamente marcada na seção 1 e preservada como pendência não bloqueante.
+
+**Revisão 1.1 — [DECISÃO] decidida pelo Marcos em 20/10/2026 (D21):**
+a matriz distingue zero econômico de sentinela sem oferta, registra exclusões,
+veta taxa não zero com PU zero e limita a invalidade de resgate à informação
+de resgate. Motivação: as 14 sentinelas verificadas no F2B-48.

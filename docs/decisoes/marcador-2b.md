@@ -3,7 +3,9 @@
 **Autor das decisões:** Marcos. **Registro:** Codex, em 19/10/2026.
 **Estado:** cinco fichas **1.0, aprovadas pelo Marcos em 19/10/2026**, após
 veredito **pode seguir** da auditoria FICHA do Claude sobre a 0.3 (D30).
-A promoção muda somente versão/status, sem regra ou número de cálculo.
+A promoção original mudou somente versão/status. Em 20/10/2026, a ficha taxa-real
+passa a **1.1 aprovada pelo Marcos (D21)**, com as regras de oferta da seção 1.3;
+as outras quatro permanecem na versão 1.0.
 Marcador liberado; execução retoma no F2B-46, sem push. As pendências atribuídas
 na seção 4 continuam em vigor.
 
@@ -73,6 +75,29 @@ F2B-31 confirma a relação de proventos B3 (sem resposta, [!]); F2B-1/F2B-3
 mapeiam os pares da DVA na tabela de contas; referências mantêm as páginas e
 a localização da regra de 6% de Bazin não conferidas. A aprovação não declara
 essas tarefas entregues nem muda suas condições de abstenção/bloqueio.
+
+### 1.3 Aprovação da revisão taxa-real1.1 — Marcos,20/10/2026 (D21)
+
+Motivação: F2B-48,14linhas do CSV com taxa e PU de aplicação zerados.
+Aprovação expressa recebida, com as seguintes regras do Marcos:
+
+- `Taxa Compra Manha = 0` E `PU Compra Manha = 0`: título sem oferta de aplicação na data-base; sai da cesta, e a contagem de excluídos vai para a proveniência.
+- Taxa=0 com PU>0: zero econômico válido.
+- Só um dos dois zerado, ou PU negativo: linha inválida; a cesta abstém.
+- Todos os títulos elegíveis(≥2035) sem oferta na data-base: cesta vazia, abstém, sem trocar de data.
+- A mesma regra no par `Taxa Venda Manha`/`PU Venda Manha` (`taxa_resgate`, só informativo).
+
+**Definições complementares do Marcos, 20/10/2026 — decididas:** taxa zero
+com PU positivo é válida; taxa não zero com PU zero invalida a aplicação e
+abstém a cesta. A expressão anterior “só um dos dois zerado” tem esse sentido,
+sem vetar o zero econômico válido. Par de resgate inválido abstém somente a
+informação de resgate: taxa_resgate ausente, motivo na proveniência, aplicação
+segue normalmente. A cesta registra a quantidade excluída sem oferta e não
+retrocede a referência se todos os elegíveis estiverem sem oferta.
+
+Implementação e regressões no fechamento do F2B-48; idade em dias úteis e
+exposição do custo real permanecem no F2B-30. A cesta de 15/10/2026 tem 11
+títulos com PUs positivos nos dois pares, exclusões=0 e números inalterados.
 
 ## 2. Contratos comuns da revisão 0.3
 

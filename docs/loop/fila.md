@@ -63,7 +63,7 @@ do C-C). B2, C-D e C-E não têm mais janela.
 
 **Intocáveis nesta fase:**
 - `tests/test_financeiro_pre_refactor.py`:
-  - seção A: muda só no F2B-7 (**[SEÇÃO A]** em (c)); depois dele, não muda;
+  - seção A: asserções mudam só no F2B-7 (**[SEÇÃO A]** em (c)); depois dele, não mudam. Nos F2B-1/F2B-4, helpers só recebem insumos/modelo exigidos pelo novo contrato, conforme ressalva Gemini confirmada pelo Marcos em 20/10/2026; nenhuma asserção muda;
   - seção B: recebe no F2B-7 os números da seção A que dependem da taxa, com `quebra_esperada`; muda depois só no F2B-1 (os dois testes do F-4, `:115` e `:125`, e os que o F2B-7 marcou com o F-4), no F2B-31 (os marcados com o F-5) e no F2B-2 (`test_b_fii_nao_considera_o_patrimonio_no_fair_value`, `:135`: muda o número do benchmark, e o teste continua caracterizando o F-9, porque o P/VP fica como contexto pelo checkpoint; e os marcados com o F-9);
   - seção C: não muda.
 - `tests/fixtures/golden_motores.jsonl` e `tests/golden_motores.py`: só nos itens **[golden]**, pela regra abaixo. `tests/test_equivalencia_motores.py` não muda.
@@ -598,7 +598,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - **Testes que mudam:** só a fixture de publicação do teste de igualdade da coleta em `tests/test_tesouro.py`, para uma data anterior, e seu nome; a asserção de coleta inclusiva fica. Acrescentar fronteiras de fim do dia local e de data futura local no download.
   - **Aceite:** suíte/gates da fase, mutation ≥80% em `providers.tesouro`, golden inalterado. Nenhum outro módulo de produção ou método muda.
 
-- [!] **F2B-48** · fix · `fix: close audited unit dividend and Tesouro data gaps`
+- [x] **F2B-48** · fix · `fix: close audited unit dividend and Tesouro data gaps`
   Decisão do Marcos de 20/10/2026 após auditoria FASE Gemini em HEAD 60e61e2; os três primeiros grupos conferidos pelo Claude. Um fix único, regressões xfail estrito antes das correções (D27), sem push.
   - BUG-2B-17: unit inválida abstém em lpa_dos_metodos, market_engine._por_acao_cvm e series_cvm.exercicio; validar _unit_valida antes do fator.
   - BUG-2B-18: TTM e série anual preservam ausência comprovada das rubricas e recusam motivo inválido/desconhecido/ausente; alinhar proventos_do_documento e _acumulados_do_arquivo.
@@ -606,7 +606,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - BUG-2B-20: ler PU, contar sentinelas taxa/PU de aplicação zero no arquivo arquivado e representar sem oferta, nunca taxa 0%; manter regressão sintética.
   - Arquivos: sentinela/data/acoes_cvm.py, sentinela/data/series_cvm.py, sentinela/data/providers/tesouro.py, market_engine.py, cvm_provider.py; testes diretos dos caminhos e tests/regressao/, fila/diário/registro. Asserções antigas só mudam quando contradizem explicitamente estas correções, listadas no diário; golden não muda.
   - Aceite: regressões17–20 em PASS e registro corrigido; suíte e gates verdes, mutação ≥80% por módulo puro alterado e score V1 registrado. Destinos das ressalvas e dos oito bugs da 2C atualizados; regressão BTCI11/TRPL11 registrada sem correção.
-  - **Parada obrigatória [!]:** após as correções, aguardar Marcos revisar a matriz da ficha taxa-real para1.1 (zero válido versus sentinela sem oferta); não executar F2B-30 nem mudar a ficha por iniciativa do executor.
+  - **Revisão 1.1 aprovada pelo Marcos, 20/10/2026 (D21), concluída:** taxa zero/PU positivo válida; ambos zero sem oferta, excluir com contagem na proveniência; taxa não zero/PU zero ou PU negativo invalida aplicação; resgate inválido abstém somente a informação de resgate, com motivo. Referência escolhida antes das exclusões; todos sem oferta abstêm sem retroceder. Matriz, exemplo, provedor e regressões atualizados. Parada anterior resolvida; segue F2B-30.
 
 - [ ] **F2B-30** · feat · `feat: expose the real cost of equity with provenance` · **[TAXA]** **[ADR-0003]**
   A taxa real chega a quem a usa, com proveniência (D16). Nenhum motor a lê ainda: o consumidor é o F2B-1.
@@ -631,6 +631,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - gate da fase.
 
 - [ ] **F2B-1** · fix · `fix: discount Gordon at the real cost of equity` · **[golden]** **[TAXA]**
+  - **Complemento do parecer Gemini completo (20/10/2026):** nos helpers _acao/_processar da seção A, injetar custo real, inflação, teto PIB e proventos DVA necessários; preservar TODAS as asserções da seção A. lpa_basico_agregado abstém linhas conflitantes e inclui Abstencao na anotação; zero descartado da classe não autoriza usar agregado sem as conferências de espécie e escala da ficha1.1.
   Armadilha 1; F-4 e F-6; checkpoint, seção 4, item 2 (regime real); PLANO, F2B-1. Pré-condição: `docs/metodologia/taxa-real.md` e `docs/metodologia/gordon.md` aprovadas; sem isso, `[!]`.
   - **Aceite da auditoria Gemini HEAD60e61e2 (20/10/2026):** lpa_basico_agregado detecta linhas conflitantes, sem escolher a primeira; espécie única só é atestada depois de conferida na Composição do Capital, sem inferi-la só do FCA.
   - **Gordon 2.0.0.** Regime REAL. k = custo de capital real do F2B-30; ROE nominal=lucro anual/PL inicial dos controladores da mesma DFP; g nominal=ROE nominal×retenção DVA, Fisher com IPCA do exercício e depois teto PIB real Focus; sai teto nominal de 8%. D0 e payout DVA dos controladores, última DFP anual, mesma janela do LPA, JCP bruto; sem DY da cascata. D1 = D0 × (1 + g real); payout fora de (0,1] abstém, sem truncar a 95%; saem mínimos DY 4% e ROE 10%, ficam ROE>0 e k>g. `requires` sem `selic`; sem a taxa, "insumo ausente". Changelog.
@@ -714,6 +715,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - gate da fase.
 
 - [ ] **F2B-4** · fix · `fix: enforce method scope by asset class and statement model` · **[golden]** **[FINANCEIRAS]**
+  - **Complemento do parecer Gemini completo (20/10/2026):** helpers da seção A podem receber modelo, sem mudar asserções; correção de espécie exige ticker == codigo_na_fonte e recalcula classes_preferenciais depois da correção.
   - **Aceite da auditoria Gemini HEAD60e61e2 (20/10/2026):** após correção da espécie de MGLU3, recalcular classes_preferenciais a partir das espécies corrigidas, sem conservar classe espúria.
   PLANO, F2B-4; P7; armadilha 17; `sentinela/methods/registry.py` ("Aplicar e estreitar é o F2B-4").
   - **Contrato.** `MethodInputs` ganha a classe do ativo e o modelo da demonstração (enum novo em `sentinela/domain/enums.py`: empresa, banco, seguradora). `ValuationMethod.calcular` confere o escopo declarado e se abstém com o motivo ("classe <classe> fora do escopo do método", "modelo <modelo> fora do escopo do método"). Classe oficial é exigida para todos. **Modelo por BPP é exigido só para STOCK/UNIT**: sem modelo demonstrado, abstenção com motivo, sem presumir empresa em chamadas antigas. FII usa sua classe oficial e não exige BPP de companhia nem enum empresa/banco/seguradora; mantém os métodos de FII. A exceção antiga para ações sem modelo é substituída pela decisão do Marcos de 19/10/2026.
@@ -737,6 +739,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - gate da fase.
 
 - [ ] **F2B-44** · fix · `fix: record IF.data provenance and the reference instant`
+  - **Complemento do parecer Gemini completo (20/10/2026):** BUG-2A-20 recebe instante explícito além de sete dias e afirma nova consulta à fonte; bloquear apenas time.time não prova a correção e datetime.now não pode substituí-lo implicitamente.
   Corrige o BUG-2A-19 e o BUG-2A-20 (registrados no F2B-36), antes de a inadimplência contextual do IF.data aparecer no F2B-32; Basileia está fora da 2B por decisão de 19/10/2026.
   - Cada arquivo baixado do IF.data registra a proveniência da D16 por `proveniencia.registrar_sem_falhar`, como os outros provedores, e o `Capital` a carrega.
   - A validade do cache é medida contra o instante de referência recebido (parâmetro), não contra o relógio.
@@ -824,6 +827,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - `CLAUDE.md` e `AGENTS.md` sem contradição entre si.
 
 - [ ] **F2B-34** · levantamento · `docs: propose phase 2C queue`
+  - **Complemento do parecer Gemini completo (20/10/2026), F2B-8:** propor na 2C filtro de múltiplos nulos/inválidos na fronteira yfinance para não bloquear cache; F2C-3 separa prejuízo CVM de dado incompleto na confiança. Não aplicar neste item filtros genéricos que eliminem prejuízo legítimo.
   O `fable-architect` propõe a fila da 2C em `docs/loop/fila-fase2c-proposta.md`, no formato desta. Partes:
   - a seção "Fase 2C" do PLANO e a seção 15 (histerese, lentes e valuation reverso);
   - o checkpoint da Fase 0, seção 4, item 4 (janela por método), e o dossiê, pergunta 4;

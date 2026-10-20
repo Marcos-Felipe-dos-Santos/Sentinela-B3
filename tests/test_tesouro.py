@@ -10,8 +10,8 @@ from sentinela.data import proveniencia
 from sentinela.data.providers import tesouro
 from sentinela.domain.units import RateNominal, RateReal
 
-CABECALHO = "Tipo Titulo;Data Vencimento;Data Base;Taxa Compra Manha;Taxa Venda Manha\n"
-CSV = CABECALHO + "Tesouro IPCA+;15/05/2035;15/10/2026;6,84;6,96\n"
+CABECALHO = "Tipo Titulo;Data Vencimento;Data Base;Taxa Compra Manha;Taxa Venda Manha;PU Compra Manha;PU Venda Manha\n"
+CSV = CABECALHO + "Tesouro IPCA+;15/05/2035;15/10/2026;6,84;6,96;100;100\n"
 INSTANTE = datetime(2026, 10, 19, 18, tzinfo=UTC)
 
 
@@ -230,8 +230,10 @@ def test_publicacao_futura_e_recusada_mesmo_com_coleta_anterior(tmp_path):
 
 
 def test_taxa_de_resgate_invalida_nao_fica_oculta():
-    with pytest.raises(ValueError):
-        tesouro.ler_csv(CSV.replace("6,96", "inf"), as_of=INSTANTE.date())
+    (titulo,) = tesouro.ler_csv(CSV.replace("6,96", "inf"), as_of=INSTANTE.date())
+    assert titulo.taxa_resgate is None
+    assert "par de resgate inválido" in titulo.motivo_resgate
+    assert titulo.taxa_aplicacao.valor == 0.0684
 
 
 def test_bom_utf8_preservado_e_base_no_mesmo_dia_ainda_nao_elegivel():
@@ -357,9 +359,7 @@ def test_download_preserva_csv_mas_filtra_referencia_futura_local(
 
 @pytest.mark.parametrize("pu", ["NaN", "inf", "-1", "texto", ""])
 def test_pu_de_aplicacao_invalido_e_recusado(pu):
-    texto = CSV.replace("Taxa Venda Manha", "Taxa Venda Manha;PU Compra Manha").replace(
-        "6,84;6,96", f"6,84;6,96;{pu}"
-    )
+    texto = CSV.replace(";100;100\n", f";{pu};100\n")
     with pytest.raises(ValueError):
         tesouro.ler_csv(texto, as_of=INSTANTE.date())
 
