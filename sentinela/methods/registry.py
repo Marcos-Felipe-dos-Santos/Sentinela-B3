@@ -55,6 +55,12 @@ CHANGELOG["Gordon"] += (
         "com LPA não positivo, abstém-se; sai o payout de 50% do fallback da V1",
     ),
 )
+CHANGELOG["Gordon"] += (
+    Mudanca(
+        "2.0.0",
+        "ficha Gordon1.1: desconto real, DVA dos controladores, ROE sobre PL inicial, Fisher antes do teto PIB; saem Selic, mínimos de DY/ROE e truncamento do payout",
+    ),
+)
 CHANGELOG["Bazin"] += (
     Mudanca(
         "1.0.1",

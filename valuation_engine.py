@@ -1,9 +1,12 @@
 import logging
 import math
 import statistics
-from datetime import date
+from dataclasses import replace
+from datetime import UTC, date, datetime
+from zoneinfo import ZoneInfo
 
 from config import DISTRESSED_TICKERS, MACRO, _normalizar_dy, get_selic_atual
+from sentinela.data import gordon_cvm
 from sentinela.domain.enums import Perfil
 from sentinela.domain.units import BRL, RateNominal, Ratio
 from sentinela.methods.base import MethodInputs, MethodResult
@@ -68,7 +71,7 @@ class ValuationEngine:
             dy_confiavel=dy_confiavel,
         )
 
-    def _avaliar_metodos(self, inputs):
+    def _avaliar_metodos(self, inputs, inputs_gordon=None):
         """Resultado de cada método extraído, na ordem da V1."""
         return {
             "Graham": _GRAHAM.calcular(
@@ -98,18 +101,11 @@ class ValuationEngine:
                 ),
             ),
             "Gordon": _GORDON.calcular(
-                inputs,
-                GordonParams(
-                    dy_min=MACRO.GORDON_DY_MIN,
-                    roe_min=MACRO.GORDON_ROE_MIN,
-                    g_max=MACRO.GORDON_G_MAX,
-                    premio_risco=MACRO.GORDON_PREMIO_RISCO,
-                    payout_max=MACRO.GORDON_PAYOUT_MAX,
-                ),
+                inputs if inputs_gordon is None else inputs_gordon, GordonParams()
             ),
         }
 
-    def processar(self, dados):
+    def processar(self, dados, *, as_of: datetime | None = None):
         if not dados or not dados.get('preco_atual'):
             return None
 
@@ -203,25 +199,39 @@ class ValuationEngine:
         # Fórmula e condições em sentinela/methods/graham.py.
         # Se PL veio do Yahoo com flag de baixa confiabilidade (PL negativo ou >80),
         # Graham é ignorado mesmo dentro do limite — melhor não aplicar com dado suspeito
-        resultados = self._avaliar_metodos(
-            self._montar_inputs(
-                p,
-                pl,
-                pvp,
-                is_growth,
-                pl_confiavel,
-                dy=dy,
-                selic=selic,
-                dy_confiavel=dy_confiavel,
-                roe=roe,
-                lpa=lpa,
-            )
+        inputs = self._montar_inputs(
+            p,
+            pl,
+            pvp,
+            is_growth,
+            pl_confiavel,
+            dy=dy,
+            selic=selic,
+            dy_confiavel=dy_confiavel,
+            roe=roe,
+            lpa=lpa,
         )
+        instante = as_of if as_of is not None else datetime.now(UTC)
+        if instante.tzinfo is None or instante.utcoffset() is None:
+            entradas_gordon = gordon_cvm.Abstencao("as_of exige fuso horário")
+            dia_gordon = inputs.as_of
+        else:
+            dia_gordon = instante.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+            entradas_gordon = gordon_cvm.entradas(dados, instante)
+        if isinstance(entradas_gordon, gordon_cvm.Abstencao):
+            dados["gordon_diagnostico"] = entradas_gordon.motivo
+            inputs_gordon = inputs
+        else:
+            dados.pop("gordon_diagnostico", None)
+            inputs_gordon = replace(inputs, as_of=dia_gordon, **entradas_gordon)
+        resultados = self._avaliar_metodos(inputs, inputs_gordon)
         graham = resultados["Graham"]
         if isinstance(graham, MethodResult):
-            metodos['Graham'] = graham.valor.valor
+            metodos["Graham"] = graham.valor.valor
         elif not pl_confiavel:
-            logger.info(f"[{dados.get('ticker','?')}] Graham IGNORADO — pl_confiavel=False (PL via Yahoo suspeito)")
+            logger.info(
+                f"[{dados.get('ticker', '?')}] Graham IGNORADO — pl_confiavel=False (PL via Yahoo suspeito)"
+            )
 
         # ── 2. BAZIN ─────────────────────────────────────────────────────────
         # Fórmula e condições em sentinela/methods/bazin.py.
@@ -241,11 +251,14 @@ class ValuationEngine:
             metodos['Lynch'] = lynch.valor.valor
 
         # ── 4. GORDON ─────────────────────────────────────────────────────────
-        # Fórmula e condições em sentinela/methods/gordon.py (regime nominal; a troca
-        # por taxa real é o F2B-1).
+        # Fluxo da DVA e desconto real, na ficha Gordon1.0 (F2B-1).
+        for aviso in (dados.get("gordon_cvm") or {}).get("avisos", ()):
+            if aviso not in riscos:
+                riscos.append(aviso)
         gordon = resultados["Gordon"]
         if isinstance(gordon, MethodResult):
             metodos['Gordon'] = gordon.valor.valor
+            riscos.extend(a for a in gordon.alertas if a not in riscos)
 
         # ── CÁLCULO FINAL ─────────────────────────────────────────────────────
         valores_validos = list(metodos.values())

@@ -21,6 +21,7 @@ from sentinela.domain.units import (
     BRL,
     Inflacao,
     Percent,
+    ProventosControladores,
     QuantidadeAcoes,
     RateNominal,
     RateReal,
@@ -45,6 +46,8 @@ _TIPOS_CAMPOS: dict[str, type] = {
     "selic": RateNominal,
     "custo_capital_real": RateReal,
     "inflacao": Inflacao,
+    "teto_pib_real": RateReal,
+    "proventos_controladores": ProventosControladores,
     "vacancia": Ratio,
     "perfil": Perfil,
 }
@@ -69,6 +72,8 @@ class MethodInputs:
     dy_confiavel: bool = True
     custo_capital_real: RateReal | None = None
     inflacao: Inflacao | None = None
+    teto_pib_real: RateReal | None = None
+    proventos_controladores: ProventosControladores | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.as_of, date) or isinstance(self.as_of, datetime):

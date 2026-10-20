@@ -17,6 +17,7 @@ from unittest.mock import patch
 import numpy as np
 import pandas as pd
 import pytest
+from apoio_gordon import AS_OF_GORDON, DiaGordon, enriquecer_gordon
 
 import market_engine
 from config import _normalizar_dy
@@ -27,7 +28,7 @@ from valuation_engine import ValuationEngine
 SELIC = 0.10
 
 
-def _acao(**kw):
+def _acao(*, com_dva=True, **kw):
     base = {
         "ticker": "TST3",
         "preco_atual": 100.0,
@@ -37,12 +38,15 @@ def _acao(**kw):
         "dy": 0.06,
     }
     base.update(kw)
-    return base
+    return enriquecer_gordon(base, com_dva=com_dva)
 
 
 def _processar(dados, selic=SELIC):
-    with patch("valuation_engine.get_selic_atual", return_value=selic):
-        return ValuationEngine().processar(dados)
+    with (
+        patch("valuation_engine.get_selic_atual", return_value=selic),
+        patch("valuation_engine.date", DiaGordon),
+    ):
+        return ValuationEngine().processar(dados, as_of=AS_OF_GORDON)
 
 
 def _fii(selic=SELIC, **kw):
@@ -89,7 +93,7 @@ def test_a_fair_value_com_tres_metodos_e_a_mediana_nao_a_media(selic):
 def test_a_fair_value_com_dois_metodos_e_a_media_inclusive_com_divergencia(selic):
     # Com dois métodos, `statistics.median` devolve a média. É comportamento atual que
     # ninguém decidiu; a decisão é do F2C-5.
-    r = _processar(_acao(roe=0.08), selic=selic)
+    r = _processar(_acao(roe=0.08, com_dva=False), selic=selic)
     metodos = _metodos(r)
     assert set(metodos) == {"Graham", "Bazin"}
     assert r["fair_value"] == pytest.approx(sum(metodos.values()) / 2, abs=0.01)
@@ -127,7 +131,7 @@ def test_b_mediana_de_tres_metodos_pela_selic():
 def test_b_media_de_dois_metodos_pela_selic():
     # QUEBRA ESPERADA: F-5 — veio da seção A (F2B-7). Selic 10%: Graham 150,00 ·
     # Bazin 60,00 → 105,00, e a flag max/min > 2 dispara. Muda com o F2B-31.
-    r = _processar(_acao(roe=0.08))
+    r = _processar(_acao(roe=0.08, com_dva=False))
     assert set(_metodos(r)) == {"Graham", "Bazin"}
     assert r["fair_value"] == pytest.approx(105.0, abs=0.01)
     assert "Métodos divergentes" in r["riscos"]
@@ -156,21 +160,20 @@ def test_b_fii_compara_dy_com_a_selic_liquida_de_ir():
 @pytest.mark.quebra_esperada
 @pytest.mark.f4_gordon_nominal
 def test_b_gordon_desconta_pela_selic_nominal_mais_premio():
-    # QUEBRA ESPERADA: F-4 — Gordon usa k = Selic nominal + 7%, com g nominal.
-    # A Fase 2B troca por taxa real (NTN-B + prêmio) com k e g no mesmo regime.
-    # dy 6%, lpa 10 → payout 60%, g = 12% × 40% = 4,8%; k = 17%.
-    esperado = (6.0 * 1.048) / (0.10 + 0.07 - 0.048)
+    # resolvida no F2B-1: DVA3/ação, payout30%, ROE12%, Fisher e teto2%.
+    # g nominal8,4% -> real2,7488...%, limitado a2%; kreal12%.
+    esperado = 3.06 / 0.10
     assert _metodos(_processar(_acao()))["Gordon"] == pytest.approx(esperado, abs=0.01)
 
 
 @pytest.mark.quebra_esperada
 @pytest.mark.f4_gordon_nominal
 def test_b_gordon_acompanha_a_selic_um_para_um():
-    # QUEBRA ESPERADA: F-4 — a Selic é a taxa de desconto; subir 5 pontos reduz o Gordon.
+    # resolvida no F2B-1: Selic só move os métodos nominais remanescentes.
     baixa = _metodos(_processar(_acao(), selic=0.10))["Gordon"]
     alta = _metodos(_processar(_acao(), selic=0.15))["Gordon"]
-    assert alta == pytest.approx((6.0 * 1.048) / (0.15 + 0.07 - 0.048), abs=0.01)
-    assert alta < baixa
+    assert alta == pytest.approx(30.6, abs=0.01)
+    assert alta == baixa
 
 
 @pytest.mark.quebra_esperada

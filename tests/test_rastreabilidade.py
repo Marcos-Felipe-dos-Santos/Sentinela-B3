@@ -4,6 +4,7 @@ from datetime import date
 from unittest.mock import patch
 
 import pytest
+from apoio_gordon import AS_OF_GORDON, DiaGordon, enriquecer_gordon
 
 from fii_engine import FIIEngine
 from sentinela.methods import registry
@@ -63,7 +64,10 @@ def _acao(**kw):
         },
     }
     dados.update(kw)
-    return dados
+    enriquecidos = enriquecer_gordon(dados)
+    if "taxa_real" in kw:
+        enriquecidos["taxa_real"] = kw["taxa_real"]
+    return enriquecidos
 
 
 def _fii(**kw):
@@ -82,12 +86,16 @@ def _fii(**kw):
 
 
 def _contexto(dados, eh_fii=False, selic=0.145):
+    motor = ValuationEngine()
+    original = motor.processar
+    motor.processar = lambda dados: original(dados, as_of=AS_OF_GORDON)
     with (
         patch("valuation_engine.get_selic_atual", return_value=selic),
+        patch("valuation_engine.date", DiaGordon),
         patch("fii_engine.get_selic_atual", return_value=selic),
     ):
         return rastreabilidade.construir_contexto(
-            dados, eh_fii, HOJE, ValuationEngine(), FIIEngine()
+            dados, eh_fii, HOJE, motor, FIIEngine()
         )
 
 
@@ -335,5 +343,22 @@ def test_relatorio_mostra_a_taxa_real_e_a_fonte():
         "2025-01-01",
         "IBGE SIDRA 1737",
         "Selic usada",
+    ):
+        assert texto in html
+
+
+def test_gordon_real_exibe_versao_intermediarios_e_dva():
+    d = _acao()
+    d["gordon_cvm"]["proveniencia"] = {"fonte": "CVM DFP/DVA", "hash_sha256": "a" * 64}
+    d["taxa_real"]["fonte"] = "Tesouro Transparente"
+    html = _html(d)
+    for texto in (
+        "2.0.0",
+        "Gordon",
+        "REAL",
+        "12,00%",
+        "2,00%",
+        "CVM DFP/DVA",
+        "Tesouro Transparente",
     ):
         assert texto in html

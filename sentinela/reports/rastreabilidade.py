@@ -520,6 +520,10 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
             }
         )
 
+    if dados.get("gordon_diagnostico"):
+        for metodo in metodos:
+            if metodo["nome"] == "Gordon":
+                metodo["abstencao"] = dados["gordon_diagnostico"]
     flags = ("dados_parciais", "dados_cache", "dados_manual", "fundamentos_incompletos")
     fontes = [
         ("Fonte do preço", dados.get("fonte_preco") or "desconhecida"),
@@ -534,6 +538,18 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         ),
     ]
 
+    fonte_gordon = dados.get("gordon_cvm")
+    if fonte_gordon:
+        fontes.append(
+            (
+                "DVA do Gordon",
+                str(
+                    fonte_gordon.get("proveniencia")
+                    or fonte_gordon.get("abstencao")
+                    or "DFP anual dos controladores"
+                ),
+            )
+        )
     referencia = dados.get("referencia_oficial")
     if referencia:
         fontes.append(("Referência oficial", _texto_referencia(referencia)))

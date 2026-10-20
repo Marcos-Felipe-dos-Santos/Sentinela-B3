@@ -1,3 +1,4 @@
+import calendar
 import io
 import logging
 import math
@@ -6,7 +7,7 @@ import threading
 import zipfile
 from collections import OrderedDict
 from dataclasses import replace
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -17,6 +18,7 @@ from sentinela.data import (
     contas_cvm,
     controladores,
     divida_liquida,
+    gordon_cvm,
     proveniencia,
     series_cvm,
 )
@@ -194,9 +196,9 @@ def lpa_basico_por_classe(
     return resultado
 
 
-def lpa_basico_agregado(linhas_399: pd.DataFrame) -> dict[str, float | None]:
+def lpa_basico_agregado(linhas_399: pd.DataFrame) -> dict[str, float | acoes_cvm.Abstencao | None]:
     """Valores das linhas agregadas 3.99.01 e 3.99, sem espécie (ficha 1.1, 7.8); zero vira `None`."""
-    resultado: dict[str, float | None] = {}
+    resultado: dict[str, float | acoes_cvm.Abstencao | None] = {}
     for conta in ("3.99.01", "3.99"):
         linhas = linhas_399[linhas_399["CD_CONTA"] == conta] if not linhas_399.empty else linhas_399
         valores = pd.to_numeric(linhas["VL_CONTA"], errors="coerce") if not linhas.empty else []
@@ -204,7 +206,8 @@ def lpa_basico_agregado(linhas_399: pd.DataFrame) -> dict[str, float | None]:
             resultado[conta] = acoes_cvm.Abstencao(acoes_cvm.MOTIVO_LPA_INVALIDO)
             continue
         numeros = [float(v) for v in valores if pd.notna(v) and v != 0]
-        resultado[conta] = numeros[0] if numeros else None
+        resultado[conta] = (acoes_cvm.Abstencao(acoes_cvm.MOTIVO_LINHAS_CONFLITANTES)
+                            if len(set(numeros)) > 1 else numeros[0] if numeros else None)
     return resultado
 
 
@@ -693,6 +696,227 @@ class CVMProvider:
     # ------------------------------------------------------------------
     # Série de cinco anos e TTM (F2A-7)
     # ------------------------------------------------------------------
+
+    def composicao_mais_recente(self, cnpj: str, as_of: datetime, ano_dfp: int) -> dict:
+        """Última referência/versão ITR ou DFP entregue até o corte (Gordon1.1).
+
+        Data de entrega sem hora entra após o fim do dia de Brasília. A seleção
+        usa o índice de entregas, antes de ler a composição; falta na última
+        entrega elegível não permite voltar silenciosamente a documento antigo.
+        """
+        from zoneinfo import ZoneInfo
+
+        if as_of.tzinfo is None or as_of.utcoffset() is None:
+            return {"abstencao": "as_of exige fuso horário"}
+        dia = as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+        candidatos = []
+        for ano in range(ano_dfp, dia.year + 1):
+            for documento, baixar, url in (
+                ("DFP", self.baixar_dfp, _DFP_URL),
+                ("ITR", self.baixar_itr, _ITR_URL),
+            ):
+                try:
+                    caminho = baixar(ano)
+                    arquivo = proveniencia.registrar_arquivo(
+                        caminho, url.format(ano=ano), documento, str(ano)
+                    )
+                    if datetime.fromisoformat(arquivo.data_coleta) > as_of:
+                        return {
+                            "abstencao": "composição recente com coleta posterior ao as_of"
+                        }
+                    for linha in self._entregas(caminho):
+                        if linha.get("CNPJ_CIA") != cnpj:
+                            continue
+                        referencia = date.fromisoformat(linha["DT_REFER"])
+                        entrega = proveniencia.entrega_no_indice(
+                            [linha],
+                            {k: linha[k] for k in ("CNPJ_CIA", "DT_REFER", "VERSAO")},
+                        )
+                        if (
+                            entrega is None
+                            or date.fromisoformat(entrega) >= dia
+                            or referencia >= dia
+                        ):
+                            continue
+                        candidatos.append(
+                            (
+                                referencia,
+                                int(linha["VERSAO"]),
+                                caminho,
+                                arquivo.do_documento(
+                                    referencia.isoformat(),
+                                    linha["VERSAO"],
+                                    entrega,
+                                    proveniencia.MOTIVO_DOCUMENTO_FORA_DO_INDICE,
+                                ),
+                            )
+                        )
+                except OSError as erro:
+                    # 404 atesta ausência do arquivo anual, não falha de consulta.
+                    if (
+                        getattr(getattr(erro, "response", None), "status_code", None)
+                        == 404
+                    ):
+                        continue
+                    return {
+                        "abstencao": "não foi possível conferir a composição mais recente"
+                    }
+                except (
+                    StopIteration,
+                    KeyError,
+                    TypeError,
+                    ValueError,
+                    zipfile.BadZipFile,
+                ):
+                    return {"abstencao": "índice da composição mais recente inválido"}
+        if not candidatos:
+            return {"abstencao": "composição recente sem documento elegível"}
+        referencia, versao, caminho, prov = max(candidatos, key=lambda x: (x[0], x[1]))
+        try:
+            cc = self._read_raw(caminho, "composicao_capital")
+            composicao, motivo = composicao_do_documento(
+                cc, cnpj, referencia.isoformat(), str(versao)
+            )
+        except (OSError, KeyError, ValueError, zipfile.BadZipFile):
+            composicao, motivo = None, "composição recente indisponível"
+        if composicao is None:
+            return {"abstencao": motivo, "proveniencia": prov.para_dict()}
+        return {"composicao": composicao, "proveniencia": prov.para_dict()}
+
+    def gordon_do_documento(self, cd_cvm: int, ind: dict, as_of: datetime) -> dict:
+        """DVA anual e PL inicial do mesmo documento, com disponibilidade explícita.
+
+        Não certifica eventos entre a DFP e o preço; essa evidência chega separada
+        na fronteira de mercado. Ausência de prova não vira dado positivo.
+        """
+        from zoneinfo import ZoneInfo
+
+        try:
+            if as_of.tzinfo is None or as_of.utcoffset() is None:
+                return {"abstencao": "as_of exige fuso horário"}
+            dia = as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+            referencia = date.fromisoformat(ind["cvm_dt_refer"])
+            versao = ind["cvm_versao"]
+            caminho = self.baixar_dfp(referencia.year)
+            prov = self.proveniencia_do_documento(
+                caminho, referencia.year, ind["cnpj"], referencia.isoformat(), versao
+            )
+            if (
+                prov is None
+                or prov.get("data_entrega") is None
+                or date.fromisoformat(prov["data_entrega"]) >= dia
+                or datetime.fromisoformat(prov["data_coleta"]) > as_of
+            ):
+                return {"abstencao": "disponibilidade histórica da DFP não demonstrada"}
+
+            def linhas(tipo: str, ordem: str) -> pd.DataFrame:
+                bruto = self._read_raw(caminho, tipo)
+                doc = bruto[
+                    (pd.to_numeric(bruto["CD_CVM"], errors="coerce") == cd_cvm)
+                    & (bruto["DT_REFER"].astype(str) == referencia.isoformat())
+                    & (pd.to_numeric(bruto["VERSAO"], errors="coerce") == float(versao))
+                    & (bruto["ORDEM_EXERC"] == ordem)
+                ].copy()
+                if not doc.empty:
+                    doc["VL_CONTA"] = pd.to_numeric(doc["VL_CONTA"], errors="coerce")
+                    if (
+                        "ESCALA_MOEDA" not in doc
+                        or not doc["ESCALA_MOEDA"]
+                        .isin(["REAL", "MIL", "UNIDADE"])
+                        .all()
+                    ):
+                        raise ValueError("escala monetária da DFP indeterminada")
+                    doc.loc[doc["ESCALA_MOEDA"] == "MIL", "VL_CONTA"] *= 1000
+                return doc
+
+            dre = linhas("DRE_con", "ÚLTIMO")
+            bpp = linhas("BPP_con", "ÚLTIMO")
+            dva = linhas("DVA_con", "ÚLTIMO")
+            if dre.empty or bpp.empty or dva.empty:
+                return {"abstencao": "DFP anual sem DRE, BPP ou DVA consolidada"}
+            if isinstance(_ler(bpp, "pl_total", "banco"), contas_cvm.Leitura):
+                return {"abstencao": "modelo banco fora do escopo do Gordon"}
+            if not isinstance(_ler(bpp, "pl_total", "empresa"), contas_cvm.Leitura):
+                return {
+                    "abstencao": "modelo empresa não demonstrado no BPP consolidado"
+                }
+            janelas = set(
+                zip(dre["DT_INI_EXERC"].astype(str), dre["DT_FIM_EXERC"].astype(str))
+            )
+            janelas_dva = set(
+                zip(dva["DT_INI_EXERC"].astype(str), dva["DT_FIM_EXERC"].astype(str))
+            )
+            if len(janelas) != 1 or janelas_dva != janelas:
+                return {"abstencao": "DRE e DVA com janelas incompatíveis"}
+            inicio_texto, fim_texto = next(iter(janelas))
+            inicio, fim = (
+                date.fromisoformat(inicio_texto),
+                date.fromisoformat(fim_texto),
+            )
+            if fim != referencia:
+                return {"abstencao": "fim do exercício difere da referência da DFP"}
+            inicial = linhas("BPP_con", "PENÚLTIMO")
+            inicial = inicial[
+                inicial["DT_FIM_EXERC"].astype(str)
+                == (inicio - timedelta(days=1)).isoformat()
+            ]
+            if inicial.empty:
+                return {"abstencao": "PL inicial ausente do comparativo da mesma DFP"}
+            dre_inicial = linhas("DRE_con", "PENÚLTIMO")
+            dre_inicial = dre_inicial[
+                dre_inicial["DT_FIM_EXERC"].astype(str)
+                == (inicio - timedelta(days=1)).isoformat()
+            ]
+            pl_inicial = controladores.pl_dos_controladores(
+                _ler(inicial, "pl_total", "empresa"),
+                _ler(inicial, "pl_nao_controladores", "empresa"),
+                _ler(dre_inicial, "lucro_nao_controladores", "empresa"),
+            )
+            total = gordon_cvm.proventos_da_dva(
+                _ler(dva, "dividendos", "empresa"),
+                _ler(dva, "jcp", "empresa"),
+                _ler(dva, "dva_nao_controladores", "empresa"),
+                _ler(dre, "lucro_nao_controladores", "empresa"),
+                _ler(bpp, "pl_nao_controladores", "empresa"),
+            )
+            if isinstance(total, gordon_cvm.Abstencao):
+                return {"abstencao": total.motivo}
+            mencao_extraordinaria = (
+                dva["DS_CONTA"]
+                .astype(str)
+                .str.contains("extraordin", case=False, na=False)
+            )
+            if not dva.loc[mencao_extraordinaria, "VL_CONTA"].map(math.isfinite).all():
+                return {"abstencao": "distribuição extraordinária com valor inválido"}
+            extraordinario = mencao_extraordinaria & (dva["VL_CONTA"] != 0)
+            # A ficha §1 aceita a DVA anual como aproximação do fluxo recorrente.
+            # Isto é hipótese do modelo, não certificado de ausência de eventos.
+            # A guarda §3 exclui evento extraordinário ou estrutural identificado.
+            anual = (
+                inicio.day == 1
+                and fim.day == calendar.monthrange(fim.year, fim.month)[1]
+                and (fim.year - inicio.year) * 12 + fim.month - inicio.month == 11
+            )
+            mudanca_estrutural = ind.get("mudanca_estrutural_sem_reconciliacao") is True
+            return {
+                "modelo": "empresa",
+                "documento": "DFP",
+                "inicio": inicio_texto,
+                "fim": fim_texto,
+                "data_entrega": prov["data_entrega"],
+                "versao": str(versao),
+                "cnpj": ind["cnpj"],
+                "lucro_controladores": lucro_controladores_com_reserva(dre, bpp).valor,
+                "pl_inicial_controladores": pl_inicial.valor,
+                "proventos_controladores": total,
+                "hipotese_dva_anual": anual,
+                "distribuicao_extraordinaria_identificada": bool(extraordinario.any()),
+                "mudanca_estrutural_sem_reconciliacao": mudanca_estrutural,
+                "fundamento_fluxo": "hipótese de DVA anual como aproximação do fluxo recorrente (ficha Gordon1.1, §1)",
+                "proveniencia": prov,
+            }
+        except (KeyError, ValueError, TypeError, OSError, zipfile.BadZipFile) as erro:
+            return {"abstencao": f"DFP anual do Gordon indisponível: {erro}"}
 
     def proventos_do_documento(
         self,

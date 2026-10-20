@@ -1,11 +1,12 @@
-# Gordon no regime real — versão 1.0
+# Gordon no regime real — versão 1.1
 
-**Status:** aprovada pelo Marcos em 19/10/2026. Auditoria FICHA do Claude
-sobre a versão 0.3: **pode seguir** (D30); promovida a 1.0 sem mudança de regra
-ou número, conforme registro do marcador.
+**Status:** versão 1.1 aprovada pelo Marcos em 20/10/2026, com a regra de
+compatibilidade quantitativa da seção 3. A versão 1.0 foi aprovada em
+19/10/2026 após auditoria FICHA do Claude sobre a 0.3, “pode seguir” (D30).
 **Executor da revisão:** Codex.
 **Decisões:** [marcador 2B](../decisoes/marcador-2b.md), Marcos, 19/10/2026.
-**Implementação futura:** F2B-1, com insumos de F2B-29/F2B-30 e escopo F2B-4.
+**Implementação:** Gordon2.0.0 no F2B-1, com insumos de F2B-29/F2B-30;
+aplicação geral de escopo nos demais métodos no F2B-4.
 
 ## 1. Fórmula e referência
 
@@ -70,10 +71,30 @@ DVA, lucro e LPA têm início/fim idênticos; o PL do ROE é o estoque imediatam
 anterior ao início desse exercício, obtido no comparativo da mesma DFP/versão.
 Ações para D0 continuam sendo as do fim do período. Datas,
 idade máxima da DFP, preço e metadados no registro §2.2. Taxa até 5 dias úteis,
-cobertura IPCA até 2 meses; Focus última edição devida/publicada. Direitos e
-composição vigentes, com evidência não futura. Eventos entre a DFP e o preço
-exigem compatibilização oficial ou abstenção por base de ações incompatível;
-o alerta da ficha por-acao não prova que dividendos antigos continuam comparáveis.
+cobertura IPCA até 2 meses; Focus última edição devida/publicada. Direitos e composição vigentes, com evidência não futura.
+
+A compatibilidade quantitativa entre a DFP usada e o preço é demonstrada pela
+Composição do Capital do documento de referência mais recente (ITR ou DFP), na
+maior versão entregue até o as_of. Comparar os totais em circulação, líquidos
+de tesouraria, na mesma unidade: razão **Q_recente / Q_DFP ∈ (0,9; 1,1)**,
+com limites estritamente abertos. Fora do intervalo, inclusive 0,9 ou 1,1,
+abster por **base de ações incompatível**. Desdobramento e grupamento mudam
+a quantidade por fator inteiro e não são ajustados automaticamente.
+
+Quando houver `sharesOutstanding` válido do yfinance, comparar com a quantidade
+do documento mais recente da espécie do ticker, ou da unit pela composição,
+como na ficha por-acao §7.3: diferença absoluta relativa à CVM **até 5%** é
+aceita; acima disso emitir aviso, sem abstenção por essa divergência.
+O yfinance não altera a quantidade CVM nem a razão entre documentos.
+Ausência dessa conferência externa não substitui nem invalida a prova CVM.
+Sem composição/documento elegível ou com quantidade inválida, abster com motivo.
+Data de entrega sem hora só entra após o fim do respectivo dia de Brasília;
+referência, versão, entrega, coleta e hash ficam na proveniência.
+
+**Aviso fixo na saída:** “evento posterior ao último documento entregue não é
+detectado”. Esta hipótese operacional não demonstra a inexistência de evento
+posterior. As demais guardas de classe, direitos e composição de units continuam. O ITR
+serve somente à conferência de ações; o cálculo da lente continua só DFP anual.
 
 Histórico menor que um exercício anual completo: abstenção. Distribuição
 extraordinária identificada ou mudança estrutural sem reconciliação: não projetar
@@ -180,3 +201,7 @@ e inflação do Focus não alimentam o método. O teto é limite à extrapolaç�
 não demonstração de estabilidade da empresa. Pendências de referência e
 estrutura da DVA estão explicitadas e mantidas nos itens executores; aprovação
 da ficha registrada no cabeçalho, sem mudar as regras acima.
+
+**Decisão do Marcos de 20/10/2026 — [DECISÃO] decidida:** revisão1.1 aprovada;
+prova quantitativa pela composição mais recente/DFP em (0,9;1,1), conferência
+yfinance até5% só informativa e aviso fixo de eventos posteriores, conforme §3.

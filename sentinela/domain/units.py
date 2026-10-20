@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from datetime import date, datetime
 from enum import Enum
 
 
@@ -177,3 +178,28 @@ class QuantidadeAcoes:
             raise TypeError(
                 f"escala diferente: {self.escala.name} e {outro.escala.name}"
             )
+
+
+@dataclass(frozen=True, slots=True)
+class ProventosControladores:
+    """DVA dos controladores na janela anual comprovada, em moeda do fim dela.
+
+    A fronteira comprova código/descrição, perímetro e compatibilidade acionária;
+    registra a hipótese da DVA anual como aproximação do fluxo recorrente. D0 é por ação/unit; payout é a razão de totais do mesmo perímetro,
+    sem usar LPA médio como denominador. Domínios econômicos são do consumidor.
+    """
+
+    dividendo_anual: BRL
+    payout: Ratio
+    inicio: date
+    fim: date
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.dividendo_anual, BRL):
+            raise TypeError("dividendo_anual deve ser BRL")
+        if not isinstance(self.payout, Ratio):
+            raise TypeError("payout deve ser Ratio")
+        for nome in ("inicio", "fim"):
+            valor = getattr(self, nome)
+            if not isinstance(valor, date) or isinstance(valor, datetime):
+                raise TypeError(f"{nome} deve ser date")

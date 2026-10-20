@@ -1,8 +1,8 @@
-# Lente de bancos — versão 1.0
+# Lente de bancos — versão 1.1
 
-**Status:** aprovada pelo Marcos em 19/10/2026. Auditoria FICHA do Claude
-sobre a versão 0.3: **pode seguir** (D30); promovida a 1.0 sem mudança de regra
-ou número, conforme registro do marcador.
+**Status:** revisão 1.1 aprovada pelo Marcos em 20/10/2026, por extensão
+expressa da mesma exigência de compatibilidade de base do Gordon. A versão1.0
+foi aprovada em19/10/2026 após auditoria FICHA do Claude sobre a0.3, “pode seguir”.
 **Decisões:** [marcador](../decisoes/marcador-2b.md).
 **Implementação futura:** F2B-3 (método), F2B-32 (motor), F2B-4 (modelo/escopo).
 
@@ -94,9 +94,30 @@ mostrar "inadimplência IF.data não informada: <motivo>"; não bloquear a lente
 Conceito é o nome da conta do relatório 16, não afirmar equivalência automática
 a atraso >90 dias nem a “Ativos problemáticos” (148833). **Basileia fora da 2B**.
 
-Mudança estrutural, emissão, desdobramento ou direito de classe entre a DFP e
-preço: exigir reconciliação da base por título; sem ela, abster por base não
-comparável. Persistência de ROE é projeção, não reconciliação das movimentações
+A compatibilidade quantitativa entre a DFP usada e o preço é demonstrada pela
+Composição do Capital do documento de referência mais recente (ITR ou DFP), na
+maior versão entregue até o as_of. Comparar os totais em circulação, líquidos
+de tesouraria, na mesma unidade: razão **Q_recente / Q_DFP ∈ (0,9; 1,1)**,
+com limites estritamente abertos. Fora do intervalo, inclusive 0,9 ou 1,1,
+abster por **base de ações incompatível**. Desdobramento e grupamento mudam
+a quantidade por fator inteiro e não são ajustados automaticamente.
+
+Quando houver `sharesOutstanding` válido do yfinance, comparar com a quantidade
+do documento mais recente da espécie do ticker, ou da unit pela composição,
+como na ficha por-acao §7.3: diferença absoluta relativa à CVM **até 5%** é
+aceita; acima disso emitir aviso, sem abstenção por essa divergência.
+O yfinance não altera a quantidade CVM nem a razão entre documentos.
+Ausência dessa conferência externa não substitui nem invalida a prova CVM.
+Sem composição/documento elegível ou com quantidade inválida, abster com motivo.
+Data de entrega sem hora só entra após o fim do respectivo dia de Brasília;
+referência, versão, entrega, coleta e hash ficam na proveniência.
+
+**Aviso fixo na saída:** “evento posterior ao último documento entregue não é
+detectado”. Esta hipótese operacional não demonstra a inexistência de evento
+posterior. As demais guardas de classe, direitos e composição de units continuam. O ITR
+serve somente à conferência de ações; o cálculo da lente continua só DFP anual.
+
+Persistência de ROE é projeção, não reconciliação das movimentações
 patrimoniais reais. Não transformar diferenças históricas em lucro retido implícito.
 
 ## 4. Escopo e matriz de validade
@@ -221,3 +242,7 @@ payout em (0,1], k>g e g<ROE. A ponte do payout sob teto é exposta na seção 1
 para conferência da auditoria, não premissa escondida. Referências não acessíveis
 continuam marcadas como pendências não bloqueantes; aprovação expressa do Marcos
 registrada no cabeçalho, sem modificar as regras acima.
+
+**7.8 decidida — Marcos,20/10/2026:** a mesma regra de compatibilidade da
+revisão Gordon1.1 aplica-se à lente de bancos, conforme §3. Implementar e
+testar no F2B-3; ligar no F2B-32, sem antecipar código bancário neste item.

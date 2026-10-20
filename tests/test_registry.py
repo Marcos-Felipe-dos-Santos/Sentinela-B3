@@ -48,16 +48,7 @@ PARAMETROS_1_0_0 = {
             "pl_max": ("LYNCH_PL_MAX", 35.0),
         },
     ),
-    "Gordon": (
-        GordonParams,
-        {
-            "dy_min": ("GORDON_DY_MIN", 0.04),
-            "roe_min": ("GORDON_ROE_MIN", 0.10),
-            "g_max": ("GORDON_G_MAX", 0.08),
-            "premio_risco": ("GORDON_PREMIO_RISCO", 0.07),
-            "payout_max": ("GORDON_PAYOUT_MAX", 0.95),
-        },
-    ),
+    "Gordon": (GordonParams, {}),
     "Bazin FII": (FiiYieldParams, {"fator_ir": ("FII_FATOR_IR", 0.85)}),
     "P/VP do FII": (
         FiiNavParams,
@@ -125,7 +116,7 @@ def test_regime_coerente_com_a_taxa():
         "Graham": Regime.SEM_TAXA,
         "Bazin": Regime.NOMINAL,
         "Lynch": Regime.NOMINAL,
-        "Gordon": Regime.NOMINAL,
+        "Gordon": Regime.REAL,
         "Bazin FII": Regime.NOMINAL,
         "P/VP do FII": Regime.SEM_TAXA,
     }
@@ -134,7 +125,7 @@ def test_regime_coerente_com_a_taxa():
             assert e.regime is Regime.NOMINAL
         if e.regime is Regime.SEM_TAXA:
             assert "selic" not in e.requires
-    assert Regime.REAL not in set(regimes.values())
+    assert regimes["Gordon"] is Regime.REAL
 
 
 def test_applies_to_descreve_o_roteamento_da_v1_sem_aplicar():
@@ -171,7 +162,7 @@ def test_changelog_tem_a_1_0_0():
         esperado = {
             "Graham": ["1.0.0", "1.1.0"],
             "Bazin": ["1.0.0", "1.0.1"],
-            "Gordon": ["1.0.0", "1.1.0"],
+            "Gordon": ["1.0.0", "1.1.0", "2.0.0"],
             "P/VP do FII": ["1.0.0", "1.1.0"],
         }.get(nome, ["1.0.0"])  # F2A-21 e F2A-25
         assert [m.version for m in mudancas] == esperado

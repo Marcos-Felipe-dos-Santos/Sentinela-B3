@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+from apoio_gordon import AS_OF_GORDON, DiaGordon, enriquecer_gordon
 
 from fii_engine import FIIEngine
 from sentinela.data import normalizacao
@@ -282,13 +283,11 @@ def test_gordon_ignorado_k_menor_g() -> None:
         'pvp': 3.0,
         'dy': 0.05,
     }
-    # g_uncapped = roe * retencao -> 0.90 * ~0.9 = ~0.81
-    # g_capped = 0.08
-    # k = selic + 0.07 -> 0.01 + 0.07 = 0.08
-    # k <= g
-    with patch('valuation_engine.get_selic_atual', return_value=0.01):
-        resultado = ValuationEngine().processar(dados)
-    
+    # F2B-1: g real no teto2%, k real1%; Selic é independente desse desconto.
+    dados = enriquecer_gordon(dados,ntnb=-.04)
+    with patch('valuation_engine.get_selic_atual', return_value=0.01), patch('valuation_engine.date',DiaGordon):
+        resultado = ValuationEngine().processar(dados, as_of=AS_OF_GORDON)
+
     assert 'Gordon' not in resultado['metodos_usados']
 
 
@@ -432,8 +431,8 @@ def test_fair_value_usa_mediana_com_tres_metodos() -> None:
     Valores calculados manualmente com selic=0.05:
       Graham ≈ 106.07  (sqrt(22.5 * 10 * 50))
       Bazin  = 200.00  ((0.10 * 100) / 0.05)
-      Gordon ≈  89.56  (10.075 / 0.1125)
-    Mediana = 106.07 | Média ≈ 131.88
+      Gordon = 30.60 (DVA3/ação, kreal12%, greal2%)
+    Mediana = 106.07 | Média ≈ 112.22
     """
     dados = {
         'ticker': 'DIVG3',
@@ -443,8 +442,9 @@ def test_fair_value_usa_mediana_com_tres_metodos() -> None:
         'pvp': 2.0,
         'dy': 0.10,
     }
-    with patch('valuation_engine.get_selic_atual', return_value=0.05):
-        resultado = ValuationEngine().processar(dados)
+    dados = enriquecer_gordon(dados)
+    with patch('valuation_engine.get_selic_atual', return_value=0.05), patch('valuation_engine.date',DiaGordon):
+        resultado = ValuationEngine().processar(dados, as_of=AS_OF_GORDON)
 
     assert resultado['fair_value'] == pytest.approx(106.07, abs=0.5)
 

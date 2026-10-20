@@ -85,3 +85,8 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2B-23 | provedor macro reúne ausência/tipo/NaN/infinito/domínio no mesmo motivo, contra marcador §2.1 | sentinela/data/providers/macro.py (_numero) | revisão1 do F2B-30,20/10/2026, antes do commit | test_bug_2b_23_macro_motivos_distintos.py | F2B-30 | corrigido |
 
 | BUG-2B-24 | soma de taxas finitas excede o domínio de float e propaga OverflowError em vez de abstenção | sentinela/data/taxas.py (calcular) | conferência da matriz§4 no F2B-30,20/10/2026, antes do commit | test_bug_2b_24_taxa_real_soma_nao_finita.py | F2B-30 | corrigido |
+
+| BUG-2B-25 | LPA básico agregado conflitante escolhe a primeira linha | cvm_provider.py (lpa_basico_agregado) | ressalva Gemini, aceite F2B-1,20/10/2026 | test_bug_2b_25_lpa_agregado_conflitante.py | F2B-1 | corrigido |
+| BUG-2B-26 | espécie única inferida só do índice, contra Composição do Capital com ON e PN | market_engine.py (_por_acao_cvm) | ressalva Gemini, aceite F2B-1,20/10/2026 | test_bug_2b_26_especie_unica_composicao.py | F2B-1 | corrigido |
+| BUG-2B-27 | reprocessamento usa DFP/composição ou contexto macro com evidência posterior ao as_of | sentinela/data/gordon_cvm.py e valuation_engine.py | revisão1 do F2B-1,20/10/2026 | test_bug_2b_27_gordon_evidencia_futura.py | F2B-1 | corrigido |
+| BUG-2B-28 | valor extraordinário ilegível vira zero e deixa de impedir projeção | cvm_provider.py (gordon_do_documento) | conferência final do F2B-1,20/10/2026 | test_bug_2b_28_gordon_extraordinario_invalido.py | F2B-1 | corrigido |

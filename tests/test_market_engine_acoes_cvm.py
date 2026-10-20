@@ -996,7 +996,15 @@ def _duas_especies():
 
 def test_linha_agregada_vale_para_companhia_de_especie_unica(monkeypatch):
     # 3.99.01 = 2,0; lucro dos controladores 2.000 ÷ 1.000 ações → recalculado 2,0.
-    engine = _motor(monkeypatch, _so_agregada(2.0, 2.0), referencia=_especie_unica())
+    engine = _motor(
+        monkeypatch,
+        _so_agregada(
+            2.0,
+            2.0,
+            composicao_capital=_composicao(on=1100.0, pn=0.0, tes_on=100.0, tes_pn=0.0),
+        ),
+        referencia=_especie_unica(),
+    )
     dados = engine.buscar_dados_ticker("TSTA3")
     assert dados["lpa"] == pytest.approx(2.0)
     assert dados["lpa_cvm"]["origem"] == "divulgado"
@@ -1025,7 +1033,15 @@ def test_linha_agregada_nao_vale_com_mais_de_uma_especie(monkeypatch):
 def test_linha_399_vale_so_com_o_recalculado_a_ate_10_por_cento(
     monkeypatch, v399, vale
 ):
-    engine = _motor(monkeypatch, _so_agregada(0.0, v399), referencia=_especie_unica())
+    engine = _motor(
+        monkeypatch,
+        _so_agregada(
+            0.0,
+            v399,
+            composicao_capital=_composicao(on=1100.0, pn=0.0, tes_on=100.0, tes_pn=0.0),
+        ),
+        referencia=_especie_unica(),
+    )
     dados = engine.buscar_dados_ticker("TSTA3")
     if vale:
         assert dados["lpa"] == pytest.approx(v399)

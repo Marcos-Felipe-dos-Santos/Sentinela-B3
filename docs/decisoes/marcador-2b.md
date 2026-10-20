@@ -307,3 +307,27 @@ r_fii = D("13.240529645135538184")
 print(y, k, kn, vg, pvp, pvp * vpa, d_bazin / D("0.06"),
       r_fii / (y + D("0.02")))
 ```
+
+
+## Revisões Gordon 1.1 e bancos 1.1 — aprovação do Marcos, 20/10/2026
+
+**[DECISÃO] decidida e aprovada:** compatibilidade quantitativa da base entre
+DFP e preço pela Composição do Capital do ITR/DFP de referência mais recente
+entregue até as_of, na maior versão elegível: Q_recente/Q_DFP estritamente em
+(0,9;1,1), líquidos de tesouraria e na mesma unidade. Fora desse intervalo,
+abstenção por base de ações incompatível. Desdobramento/grupamento mudam a
+quantidade por fator inteiro; não se ajusta a quantidade por inferência.
+
+`sharesOutstanding`, quando disponível, só confere o documento mais recente
+na espécie/unit comparável: diferença até5%, como §7.3 da ficha por ação;
+acima, aviso sem abstenção. Aviso fixo na saída: “evento posterior ao último
+documento entregue não é detectado”. A regra substitui a exigência anterior
+de prova manual de reconciliação até a data do preço; as outras guardas ficam.
+Gordon1.1 no F2B-1; bancos1.1 no F2B-3 e sua ligação F2B-32. A revisão1.1
+é decisão aprovada do Marcos, não nova auditoria FICHA do Claude.
+
+**D27:** autorizado refazer a contraprova em ordem mediante stash da
+implementação, execução dos dois testes da seçãoB contra o código anterior
+com `--runxfail`, restauração por `stash pop`, PASS e fechamento do F2B-1.
+O desvio original permanece como nota no diário, junto à saída refeita.
+Pendências anteriores atribuídas aos demais itens/referências não são encerradas.

@@ -130,12 +130,14 @@ def test_ntnb_fallback_on_error(monkeypatch):
 
 
 def test_cost_of_equity_real(monkeypatch):
-    """cost_of_equity_real = ntnb_longa + GORDON_PREMIO_RISCO."""
-    m = MacroContext(selic=0.10)
-    monkeypatch.setattr(m, "_fetch_ntnb", lambda: 0.065)
+    """F2B-1: delega ao registro real, sem buscar NTN-B pela API antiga."""
+    import config
 
-    expected = 0.065 + m.GORDON_PREMIO_RISCO
-    assert m.cost_of_equity_real() == pytest.approx(expected)
+    m = MacroContext(selic=0.10)
+    monkeypatch.setattr(config, "get_taxa_real", lambda: {"custo_capital_real": 0.115})
+    assert m.cost_of_equity_real() == pytest.approx(0.115)
+    monkeypatch.setattr(config, "get_taxa_real", lambda: None)
+    assert m.cost_of_equity_real() is None
 
 
 # ---------------------------------------------------------------------------

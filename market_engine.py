@@ -14,6 +14,7 @@ from database import DatabaseManager
 from sentinela.data import (
     acoes_cvm,
     contas_cvm,
+    gordon_cvm,
     liquidez,
     normalizacao,
     rendimento_fii,
@@ -25,6 +26,7 @@ from sentinela.data.referencia.carga import ReferenciaOficial
 from sentinela.domain import ticker as ticker_b3
 from sentinela.domain.enums import AssetType
 from sentinela.domain.provenance import FieldProvenance, FieldValue
+from sentinela.domain.units import Escala
 from sentinela.services.asset_classifier import AssetClassifier
 
 logger = logging.getLogger("MarketEngine")
@@ -894,11 +896,72 @@ class MarketEngine:
                     'motivos': dict(ind.get('alavancagem_motivos') or {}),
                 }
                 for campo, motivo in dados['alavancagem_cvm']['motivos'].items():
-                    dados.setdefault('riscos_dados', []).append(
+                    dados.setdefault("riscos_dados", []).append(
                         f"{RISCO_ALAVANCAGEM_CVM} ({campo}): {motivo}"
                     )
             cvm_campos.update(self._por_acao_cvm(ticker, dados, ind))
-            if 'roe' in cvm_campos:
+            obter_gordon = getattr(cvm, "gordon_do_documento", None)
+            if callable(obter_gordon):
+                instante_gordon = datetime.now(UTC)
+                fato = obter_gordon(cd_cvm, ind, instante_gordon)
+                if "abstencao" not in fato:
+                    acoes = dados.get("acoes_cvm") or {}
+                    doc = acoes.get("documento") or {}
+                    mesmo_documento = (
+                        doc.get("cnpj") == fato.get("cnpj")
+                        and doc.get("dt_refer") == fato.get("fim")
+                        and str(doc.get("versao")) == str(fato.get("versao"))
+                    )
+                    obter_recente = getattr(cvm, "composicao_mais_recente", None)
+                    recente = (
+                        obter_recente(
+                            ind["cnpj"], instante_gordon, int(fato["fim"][:4])
+                        )
+                        if callable(obter_recente)
+                        else {"abstencao": "composição recente indisponível"}
+                    )
+                    base = {"compativel": False, "avisos": [gordon_cvm.AVISO_EVENTOS]}
+                    if (
+                        mesmo_documento
+                        and ind.get("composicao_capital") is not None
+                        and recente.get("composicao") is not None
+                        and acoes.get("escala")
+                    ):
+                        base = gordon_cvm.compatibilidade_base(
+                            ind["composicao_capital"],
+                            recente["composicao"],
+                            escala=Escala[acoes["escala"]],
+                            especie=dados.get("especie"),
+                            eh_unit=dados.get("classe_ativo") == "UNIT",
+                            acoes_por_unit=dados.get("acoes_por_unit"),
+                            shares_outstanding=_as_float(
+                                dados.get("_shares_outstanding")
+                            ),
+                        )
+                    base["proveniencia"] = recente.get("proveniencia")
+                    if recente.get("abstencao"):
+                        base["motivo"] = recente["abstencao"]
+                    dados["base_acionaria_gordon"] = base
+                    fato.update(
+                        acoes_base=acoes.get("acoes") if mesmo_documento else None,
+                        lpa=cvm_campos.get("lpa"),
+                        fator_unit=acoes.get("acoes_por_papel", 1),
+                        base_acionaria_compativel=base["compativel"],
+                        direitos_compativeis=(
+                            dados.get("classe_ativo") != "UNIT"
+                            or (
+                                acoes_cvm._unit_valida(dados.get("acoes_por_unit"))
+                                and len(dados["acoes_por_unit"]) == 1
+                            )
+                        ),
+                        avisos=base["avisos"],
+                    )
+                    dados["janela_contabil_cvm"] = (
+                        date.fromisoformat(fato["inicio"]),
+                        date.fromisoformat(fato["fim"]),
+                    )
+                dados["gordon_cvm"] = fato
+            if "roe" in cvm_campos:
                 # F2A-30: o ROE derivado da CVM passa pela mesma guarda.
                 cvm_campos['roe'] = self._roe_guardado(dados, 'cvm', cvm_campos['roe'])
                 if cvm_campos['roe'] is None:
@@ -1050,10 +1113,19 @@ class MarketEngine:
         acoes_por_unit = dados.get('acoes_por_unit')
         classe = dados.get('classe_preferencial') or dados.get('especie')
         composicao = ind.get('composicao_capital')
+        especies_confirmadas = None
+        if composicao is not None and all(
+            isinstance(q, (int,float)) and not isinstance(q,bool) and math.isfinite(q) and q >= 0
+            for q in (composicao.on, composicao.pn)
+        ):
+            presentes = {especie for especie, q in (('ON',composicao.on),('PN',composicao.pn)) if q > 0}
+            declaradas = set(dados.get('especies_da_companhia') or ())
+            if len(presentes) == 1 and presentes == declaradas and len(dados.get('classes_preferenciais') or ()) <= 1:
+                especies_confirmadas = sorted(presentes)
         linhas, linha_agregada = acoes_cvm.linhas_da_especie_unica(
             _linhas_de_lpa(ind),
             ind.get('lpa_basico_agregado'),
-            dados.get('especies_da_companhia'),
+            especies_confirmadas,
             lucro_controladores=ind.get('lucro_controladores'),
             acoes=composicao.total if composicao is not None else 0.0,
         )

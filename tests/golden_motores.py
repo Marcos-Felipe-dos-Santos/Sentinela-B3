@@ -12,6 +12,8 @@ import random
 from pathlib import Path
 from unittest.mock import patch
 
+from apoio_gordon import AS_OF_GORDON, enriquecer_gordon
+
 import fii_engine
 import valuation_engine
 from config import MACRO
@@ -31,13 +33,20 @@ def executar(caso):
     entrada = json.loads(json.dumps(caso["entrada"]))  # cópia, com NaN preservado
     try:
         if caso["motor"] == "acoes":
+            taxa = caso.get("taxa_real") or {"ntnb": 0.07, "inflacao": 0.055}
+            entrada = enriquecer_gordon(
+                entrada,
+                ntnb=taxa["ntnb"],
+                inflacao=taxa["inflacao"],
+                teto=caso.get("teto_pib_cenario", 0.02),
+            )
             with (
                 patch.object(
                     valuation_engine, "get_selic_atual", return_value=caso["selic"]
                 ),
                 patch.object(valuation_engine, "DISTRESSED_TICKERS", DISTRESSED),
             ):
-                return ValuationEngine().processar(entrada)
+                return ValuationEngine().processar(entrada, as_of=AS_OF_GORDON)
         with patch.object(fii_engine, "get_selic_atual", return_value=caso["selic"]):
             return FIIEngine().analisar(entrada)
     except Exception as exc:
@@ -502,6 +511,31 @@ def _fii_aleatorios(n=250):
     return casos
 
 
+def _acoes_gordon_real():
+    """Grade sintética da ficha: teto elevado só para testar k→g, identificado."""
+    casos = []
+    for ntnb in (0.04, 0.06, 0.08):
+        for ipca in (0.02, 0.04, 0.06):
+            for diferenca in (-0.001, 0, 0.00001, 0.001):
+                g = ntnb + 0.05 - diferenca
+                roe = ((1 + g) * (1 + ipca) - 1) / 0.7
+                caso = _acao(
+                    f"gordon_real_ntnb{ntnb}_ipca{ipca}_margem{diferenca}",
+                    {
+                        "ticker": "TST3",
+                        "preco_atual": 100.0,
+                        "pl": 10.0,
+                        "pvp": 1.0,
+                        "dy": 0.06,
+                        "roe": roe,
+                    },
+                )
+                caso["taxa_real"] = {"ntnb": ntnb, "inflacao": ipca}
+                caso["teto_pib_cenario"] = 0.15
+                casos.append(caso)
+    return casos
+
+
 def montar_casos():
     casos = (
         _acoes_fronteiras()
@@ -511,11 +545,15 @@ def montar_casos():
         + _acoes_aleatorias()
         + _acoes_classe_ativo()
         + _acoes_preco_nao_finito()
+        + _acoes_gordon_real()
         + _fii_fronteiras()
         + _fii_selic_e_vacancia()
         + _fii_aleatorios()
         + _fii_nao_finitos()
     )
+    for caso in casos:
+        if caso["motor"] == "acoes":
+            caso.setdefault("taxa_real", {"ntnb": 0.07, "inflacao": 0.055})
     vistos, unicos = set(), []
     for c in casos:
         chave = (c["motor"], c["id"])

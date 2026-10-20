@@ -273,9 +273,10 @@ class MacroContext:
             self._ntnb_longa = self._fetch_ntnb()
         return self._ntnb_longa
 
-    def cost_of_equity_real(self) -> float:
-        """Custo de capital próprio real = yield NTN-B longa + prêmio de risco."""
-        return self.ntnb_longa + self.GORDON_PREMIO_RISCO
+    def cost_of_equity_real(self) -> float | None:
+        """Custo real do F2B-30, sem contingência nem prêmio duplicado."""
+        registro = get_taxa_real()
+        return None if registro is None else registro['custo_capital_real']
 
     # ── Fetchers privados ──────────────────────────────────────────────────────
 
