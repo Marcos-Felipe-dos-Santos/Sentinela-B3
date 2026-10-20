@@ -278,3 +278,13 @@ def test_correcao_de_especie_na_proveniencia(tmp_path):
                                "correcao": registro.correcao})  # fmt: skip
     assert "espécie da tabela de correções, não do arquivo da fonte: ON" in texto
     assert "código da tabela" not in texto
+
+
+@pytest.mark.parametrize(
+    "ticker", ["INVALIDO", "tstc3", "TST3", "TSTC333", " TSTC3", "TSTC3\n", "3STC3"]
+)
+def test_correcao_rejeita_ticker_fora_do_formato_do_indice(ticker):
+    from dataclasses import replace
+
+    with pytest.raises(CorrecaoInvalida, match="Ticker inválido"):
+        validar_correcoes([replace(_correcao(), ticker=ticker)])

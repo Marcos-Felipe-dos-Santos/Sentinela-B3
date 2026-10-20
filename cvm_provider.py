@@ -1,5 +1,6 @@
 import io
 import logging
+import math
 import re
 import threading
 import zipfile
@@ -12,6 +13,7 @@ import pandas as pd
 
 from cvm_download import baixar_arquivo
 from sentinela.data import (
+    acoes_cvm,
     contas_cvm,
     controladores,
     divida_liquida,
@@ -78,11 +80,6 @@ _COLUNAS_COMPOSICAO = {
     "tesouraria_pn": "QT_ACAO_PREF_TESOURO",
     "tesouraria_total": "QT_ACAO_TOTAL_TESOURO",
 }
-
-
-def _numero(valor) -> float:
-    numero = pd.to_numeric(valor, errors="coerce")
-    return 0.0 if pd.isna(numero) else float(numero)
 
 
 def _ler(df: pd.DataFrame, campo: str, modelo: str):
@@ -173,7 +170,9 @@ def lpa_divulgado(linhas_399: pd.DataFrame) -> dict | None:
 _CLASSE_NA_DESCRICAO = re.compile(r"^(ON|PN[A-Z]?)$")
 
 
-def lpa_basico_por_classe(linhas_399: pd.DataFrame) -> dict[str, list[float]]:
+def lpa_basico_por_classe(
+    linhas_399: pd.DataFrame,
+) -> dict[str, list[float] | acoes_cvm.Abstencao]:
     """Valores das linhas de LPA básico (3.99.01.xx) por classe da descrição, sem zeros.
 
     Cada classe fica na sua chave (ON, PN, PNA, PNB…; F2A-36, D19, regra 3); linhas repetidas
@@ -184,9 +183,13 @@ def lpa_basico_por_classe(linhas_399: pd.DataFrame) -> dict[str, list[float]]:
     basico = linhas_399[linhas_399["CD_CONTA"].str.startswith("3.99.01.")]
     descricao = basico["DS_CONTA"].fillna("").str.strip().str.upper()
     valores = pd.to_numeric(basico["VL_CONTA"], errors="coerce")
-    resultado: dict[str, list[float]] = {}
+    resultado: dict[str, list[float] | acoes_cvm.Abstencao] = {}
     for classe, valor in zip(descricao, valores):
-        if _CLASSE_NA_DESCRICAO.match(classe) and pd.notna(valor) and valor != 0:
+        if not _CLASSE_NA_DESCRICAO.match(classe):
+            continue
+        if pd.isna(valor) or not math.isfinite(valor):
+            resultado[classe] = acoes_cvm.Abstencao(acoes_cvm.MOTIVO_LPA_INVALIDO)
+        elif valor != 0 and not isinstance(resultado.get(classe), acoes_cvm.Abstencao):
             resultado.setdefault(classe, []).append(float(valor))
     return resultado
 
@@ -197,6 +200,9 @@ def lpa_basico_agregado(linhas_399: pd.DataFrame) -> dict[str, float | None]:
     for conta in ("3.99.01", "3.99"):
         linhas = linhas_399[linhas_399["CD_CONTA"] == conta] if not linhas_399.empty else linhas_399
         valores = pd.to_numeric(linhas["VL_CONTA"], errors="coerce") if not linhas.empty else []
+        if any(pd.isna(v) or not math.isfinite(v) for v in valores):
+            resultado[conta] = acoes_cvm.Abstencao(acoes_cvm.MOTIVO_LPA_INVALIDO)
+            continue
         numeros = [float(v) for v in valores if pd.notna(v) and v != 0]
         resultado[conta] = numeros[0] if numeros else None
     return resultado
@@ -206,6 +212,7 @@ def lpa_divulgado_por_especie(linhas_399: pd.DataFrame) -> dict[str, float]:
     """Primeiro LPA básico divulgado de cada classe (ON, PN, PNA…), sem zeros (F2A-5)."""
     return {
         classe: valores[0] for classe, valores in lpa_basico_por_classe(linhas_399).items()
+        if not isinstance(valores, acoes_cvm.Abstencao)
     }
 
 
@@ -225,10 +232,23 @@ def composicao_do_documento(
     if mesmo.empty:
         return None, MOTIVO_DOCUMENTO_DIFERENTE
     linha = mesmo.iloc[0]
-    valores = {campo: _numero(linha.get(coluna)) for campo, coluna in _COLUNAS_COMPOSICAO.items()}
-    if pd.isna(pd.to_numeric(linha.get("QT_ACAO_TOTAL_TESOURO"), errors="coerce")):
+    valores = {}
+    for campo, coluna in _COLUNAS_COMPOSICAO.items():
+        bruto = linha.get(coluna)
+        if campo == "tesouraria_total" and (bruto is None or pd.isna(bruto)):
+            continue
+        numero = pd.to_numeric(bruto, errors="coerce")
+        if (
+            pd.api.types.is_bool(bruto) or pd.isna(numero) or not math.isfinite(numero)
+            or numero < 0 or numero % 1
+        ):
+            return None, f"quantidade de ações ausente ou inválida: {coluna}"
+        valores[campo] = float(numero)
+    if "tesouraria_total" not in valores:
         # Sem o total da tesouraria, vale a soma das espécies.
         valores["tesouraria_total"] = valores["tesouraria_on"] + valores["tesouraria_pn"]
+    if valores["tesouraria_on"] > valores["on"] or valores["tesouraria_pn"] > valores["pn"]:
+        return None, "Composição do Capital inválida: tesouraria maior que a espécie"
     return (
         Composicao(
             **valores,
@@ -735,10 +755,17 @@ class CVMProvider:
         trimestre isolado.
         """
         partes = []
+        dva_indisponivel = None
         for tipo in ("DRE_con", "DVA_con"):
-            df = self.parsear_demonstrativo(
-                zip_path, tipo, include_cd_cvm=True, include_versao=True, include_periodo=True
-            )
+            try:
+                df = self.parsear_demonstrativo(
+                    zip_path, tipo, include_cd_cvm=True, include_versao=True, include_periodo=True
+                )
+            except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
+                if tipo != "DVA_con":
+                    raise
+                dva_indisponivel = f"DVA indisponível ({exc})"
+                continue
             partes.append(df[df["CD_CVM"] == cd_cvm])
         linhas = pd.concat(partes, ignore_index=True)
         if linhas.empty:
@@ -760,6 +787,16 @@ class CVMProvider:
             for campo in series_cvm.CAMPOS_TTM:
                 leitura = _ler(doc, campo, modelo)
                 valores[campo] = leitura.valor if isinstance(leitura, contas_cvm.Leitura) else None
+                if campo in ("dividendos", "jcp") and isinstance(leitura, contas_cvm.Abstencao):
+                    if dva_indisponivel or leitura.motivo != contas_cvm.MOTIVO_LINHA_AUSENTE:
+                        motivos[campo] = dva_indisponivel or leitura.motivo
+                    if (
+                        dva_indisponivel is None
+                        and leitura.motivo == contas_cvm.MOTIVO_LINHA_AUSENTE
+                        and doc["CD_CONTA"].str.startswith("7.").any()
+                    ):
+                        # DVA do documento presente: ausência da rubrica não é falha de leitura.
+                        valores[campo] = 0.0
             # F2B-37: o lucro dos controladores pela mesma leitura com reservas da série anual
             # (D20 e decisão 7.2), com o balanço do mesmo documento.
             bpp_doc = bpp[

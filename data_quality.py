@@ -144,9 +144,25 @@ class DataQualityReport:
         cvm_ok = bool(d.get("cvm_disponivel"))
         field_prov: dict = d.get("field_provenance") or {}
         fonte_base = _best_fonte(fonte_fund) if fonte_fund else "unknown"
+        classe = str(d.get("classe_ativo") or "").strip().upper()
+        modelo = str(d.get("modelo") or "").strip().lower()
+        limitacoes = []
+        if classe == "FII":
+            esperados = ["preco_atual", "dy", "pvp", "vpa"]
+        elif modelo == "banco":
+            esperados = [c for c in _CAMPOS_ESPERADOS if c not in (
+                "receita_liquida", "margem_liquida", "divida_liq_ebitda"
+            )]
+        else:
+            esperados = _CAMPOS_ESPERADOS
+            if modelo != "empresa":
+                limitacoes.append(
+                    "modelo não demonstrado: percentual dos campos gerais, "
+                    "sem certificação de completude do modelo"
+                )
 
         campos: dict[str, dict] = {}
-        for campo in _CAMPOS_ESPERADOS:
+        for campo in esperados:
             valor = d.get(campo)
             presente = _is_present(valor)
 
@@ -166,7 +182,7 @@ class DataQualityReport:
             confianca = _FONTE_CONFIANCA.get(fonte, 10) if presente else 0
             campos[campo] = {"presente": presente, "fonte": fonte, "confianca": confianca}
 
-        n_total = len(_CAMPOS_ESPERADOS)
+        n_total = len(esperados)
         n_presente = sum(1 for v in campos.values() if v["presente"])
         completude_pct = round(n_presente / n_total * 100)
 
@@ -179,6 +195,8 @@ class DataQualityReport:
             "campos": campos,
             "completude_pct": completude_pct,
             "score_confianca": score_confianca,
+            "limitacoes": limitacoes,
+            "completude_do_modelo_determinada": not limitacoes,
         }
 
     def validacao_cruzada(self) -> list[str]:

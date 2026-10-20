@@ -21,7 +21,8 @@ Sem insumo, abstém-se com o motivo; nunca devolve número conservador.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from numbers import Real
 
 from sentinela.domain.units import Escala, QuantidadeAcoes
 
@@ -43,6 +44,7 @@ MOTIVO_ROE_SEM_LUCRO = "lucro dos controladores não identificado no documento"
 MOTIVO_SINAL_CONTROLADORES = "LPA divulgado com sinal oposto ao lucro dos controladores"
 MOTIVO_SINAL_CONSOLIDADO = "LPA divulgado com sinal oposto ao lucro consolidado"
 MOTIVO_LINHAS_CONFLITANTES = "LPA divulgado com linhas conflitantes para a espécie"
+MOTIVO_LPA_INVALIDO = "LPA divulgado inválido para a espécie"
 MOTIVO_LUCRO_ZERO = "LPA divulgado diferente de zero com lucro zero no documento"
 MOTIVO_SINAL_NAO_CONFERIVEL = (
     "sinal do LPA divulgado não conferível: lucro não identificado no documento"
@@ -53,6 +55,7 @@ MOTIVOS_DO_DIVULGADO = (
     MOTIVO_SINAL_CONTROLADORES,
     MOTIVO_SINAL_CONSOLIDADO,
     MOTIVO_LINHAS_CONFLITANTES,
+    MOTIVO_LPA_INVALIDO,
     MOTIVO_LUCRO_ZERO,
     MOTIVO_SINAL_NAO_CONFERIVEL,
     MOTIVO_CLASSES_PREFERENCIAIS,
@@ -105,6 +108,7 @@ class PorAcao:
     pl: float | None
     pvp: float | None
     escala_pelo_consolidado: dict | None = None
+    motivos: dict[str, str] = field(default_factory=dict)
 
     def detalhe(self, documento: dict) -> dict:
         return {
@@ -113,6 +117,7 @@ class PorAcao:
             "acoes": self.acoes.valor,
             "razao_lpa_calculado_sobre_divulgado": self.razao_lpa,
             "nota": NOTA_FIM_DO_PERIODO,
+            **({"motivos": self.motivos} if self.motivos else {}),
         }
 
 
@@ -191,13 +196,13 @@ class LpaDivulgado:
 
 
 def linhas_da_especie_unica(
-    linhas: dict[str, list[float]],
+    linhas: dict[str, list[float] | Abstencao],
     agregado: dict | None,
     especies: list[str] | None,
     *,
     lucro_controladores: float | None,
     acoes: float,
-) -> tuple[dict[str, list[float]], dict | None]:
+) -> tuple[dict[str, list[float] | Abstencao], dict | None]:
     """Linhas de LPA por classe, com a linha agregada na companhia de espécie única (7.8).
 
     Sem linha por espécie na DRE e com uma só espécie no FCA, a 3.99.01 é o LPA divulgado
@@ -210,6 +215,8 @@ def linhas_da_especie_unica(
         return linhas, None
     (especie,) = set(especies)
     base = agregado.get("3.99.01")
+    if isinstance(base, Abstencao):
+        return {especie: base}, None
     if base:
         return {especie: [base]}, {
             "conta": "3.99.01",
@@ -217,6 +224,8 @@ def linhas_da_especie_unica(
             "nota": NOTA_LINHA_AGREGADA,
         }
     titulo = agregado.get("3.99")
+    if isinstance(titulo, Abstencao):
+        return {especie: titulo}, None
     if not titulo:
         return linhas, None
     inferida = inferir_escala(lucro_controladores, acoes, titulo)
@@ -231,7 +240,7 @@ def linhas_da_especie_unica(
 
 
 def divulgados_coerentes(
-    linhas: dict[str, list[float]],
+    linhas: dict[str, list[float] | Abstencao],
     lucro_controladores: float | None,
     lucro_consolidado: float | None,
 ) -> dict[str, LpaDivulgado | Abstencao]:
@@ -256,6 +265,9 @@ def divulgados_coerentes(
         )
     resultado: dict[str, LpaDivulgado | Abstencao] = {}
     for classe, valores in linhas.items():
+        if isinstance(valores, Abstencao):
+            resultado[classe] = valores
+            continue
         distintos = set(valores)
         if len(distintos) != 1:
             resultado[classe] = Abstencao(MOTIVO_LINHAS_CONFLITANTES)
@@ -382,6 +394,19 @@ def _dividir(numerador: float | None, denominador: float | None) -> float | None
     return numerador / denominador
 
 
+def _finito(valor: object) -> bool:
+    """Número real finito, sem aceitar booleano como quantidade ou dado contábil."""
+    return (
+        isinstance(valor, Real) and not isinstance(valor, bool) and math.isfinite(valor)
+    )
+
+
+def _unit_valida(acoes_por_unit: dict | None) -> bool:
+    return bool(acoes_por_unit) and all(
+        _finito(q) and q > 0 and q % 1 == 0 for q in acoes_por_unit.values()
+    )
+
+
 def derivar_por_acao(
     *,
     lucro_controladores: float | None,
@@ -404,10 +429,35 @@ def derivar_por_acao(
     """
     if composicao is None:
         return Abstencao(motivo_composicao or MOTIVO_SEM_COMPOSICAO)
-    if eh_unit and not acoes_por_unit:
+    if eh_unit and not _unit_valida(acoes_por_unit):
         return Abstencao(MOTIVO_UNIT)
+    for nome, valor in (
+        ("lucro dos controladores", lucro_controladores),
+        ("LPA divulgado", lpa_divulgado),
+        ("lucro consolidado", lucro_consolidado),
+    ):
+        if valor is not None and not _finito(valor):
+            return Abstencao(f"insumo inválido: {nome}")
+    if any(
+        not _finito(q) or q < 0 or q % 1
+        for q in (
+            composicao.on,
+            composicao.pn,
+            composicao.tesouraria_on,
+            composicao.tesouraria_pn,
+            composicao.tesouraria_total,
+        )
+    ):
+        return Abstencao("Composição do Capital com quantidade inválida")
     if composicao.total <= 0:
         return Abstencao(MOTIVO_TOTAL)
+    if (
+        composicao.tesouraria_on > composicao.on
+        or composicao.tesouraria_pn > composicao.pn
+    ):
+        return Abstencao(
+            "Composição do Capital inválida: tesouraria maior que a espécie"
+        )
     confirmacao = None
     if lucro_controladores is None and lucro_consolidado is not None:
         inferida = inferir_escala(lucro_consolidado, composicao.total, lpa_divulgado)
@@ -430,10 +480,20 @@ def derivar_por_acao(
     acoes = QuantidadeAcoes(composicao.total, escala).em_unidades()
     fator = sum(acoes_por_unit.values()) if eh_unit else 1
     lpa = _dividir(lucro_controladores, acoes.valor)
-    vpa = _dividir(pl_controladores, acoes.valor)
+    motivos = {}
+    pl_valido = pl_controladores
+    if pl_controladores is not None and not _finito(pl_controladores):
+        pl_valido = None
+        motivos["vpa"] = "PL dos controladores inválido"
+        motivos["pvp"] = motivos["vpa"]
+    vpa = _dividir(pl_valido, acoes.valor)
     lpa = lpa * fator if lpa is not None else None
     vpa = vpa * fator if vpa is not None else None
-    preco_valido = preco if preco and preco > 0 else None
+    preco_valido = preco if _finito(preco) and preco > 0 else None
+    if preco_valido is None:
+        motivo = "preço ausente, não positivo ou inválido"
+        motivos["pl"] = motivo
+        motivos["pvp"] = motivo
     return PorAcao(
         acoes=acoes,
         escala=escala,
@@ -443,6 +503,7 @@ def derivar_por_acao(
         pl=_dividir(preco_valido, lpa),
         pvp=_dividir(preco_valido, vpa),
         escala_pelo_consolidado=confirmacao,
+        motivos=motivos,
     )
 
 
@@ -491,6 +552,11 @@ def roe_dos_controladores(
         return None, MOTIVO_ROE_SEM_LUCRO
     if pl_controladores is None:
         return None, MOTIVO_ROE_SEM_PL
+    if not _finito(lucro_controladores) or not _finito(pl_controladores):
+        return None, "ROE com insumo inválido"
     if pl_controladores <= 0:
         return None, MOTIVO_ROE_PL
-    return lucro_controladores / pl_controladores, None
+    roe = lucro_controladores / pl_controladores
+    if not math.isfinite(roe):
+        return None, "ROE não finito"
+    return roe, None

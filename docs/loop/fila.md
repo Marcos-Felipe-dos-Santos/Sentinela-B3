@@ -539,7 +539,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - [x] Aprovação expressa do Marcos em 19/10/2026; etapa 5 do ciclo cumprida. Loop liberado para F2B-46, etapa 4, sem push.
   - **Pendências atribuídas preservadas:** recalibração do spread FII (F2B-2); confirmação da relação B3 (F2B-31, [!] se não responder); mapeamento dos pares DVA (F2B-1/F2B-3); páginas das referências e localização dos 6% de Bazin. Nenhuma é declarada entregue por esta aprovação.
 
-- [ ] **F2B-46** · fix · `fix: enforce CVM input domains and completeness by statement model`
+- [x] **F2B-46** · fix · `fix: enforce CVM input domains and completeness by statement model`
   **Decisão do Marcos de 19/10/2026**, marcador 2B. Antes do F2B-27, corrige os bugs confirmados do F2B-43 necessários às lentes da fase. Não troca fórmula de valuation.
   - **BUG-2B-01:** ITR sem DVA preserva DRE no TTM; só os proventos ficam indisponíveis, com motivo.
   - **Proventos com uma única rubrica:** só dividendos ou só JCP não descartam o provento informado; distinguir ausência de rubrica de insumo ilegível e confirmar não ocorrência antes de tratar a parcela ausente. Criar regressão própria nos dois casos **antes** da correção, com próximo ID livre no registro.
@@ -548,7 +548,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - **BUG-2B-12:** validar_correcoes rejeita ticker inválido conforme formato da referência.
   - **Arquivos previstos:** `cvm_provider.py`, `sentinela/data/series_cvm.py`, `sentinela/data/acoes_cvm.py`, `data_quality.py`, `sentinela/data/referencia/correcoes.py`, testes de regressão e seus testes diretos nomeados abaixo. Nenhum método, motor, golden ou cache privado muda.
 
-  **Testes que mudam:** regressões nomeadas abaixo (retirada de xfail e destino); `tests/regressao/README.md`; testes diretos em `tests/test_acoes_cvm.py`, `tests/test_contas_cvm*.py`, `tests/test_data_quality*.py`, `tests/test_referencia_correcoes.py` e `tests/test_series_cvm.py`, apenas asserções do comportamento corrigido, listadas no diário. Arquivo inexistente só é criado se necessário ao aceite.
+  **Testes que mudam:** regressões nomeadas abaixo (retirada de xfail e destino); `tests/regressao/README.md`; testes diretos em `tests/test_acoes_cvm.py`, `tests/test_contas_cvm*.py`, `tests/test_data_quality*.py`, `tests/test_referencia_correcoes.py` e `tests/test_cvm_series.py`, apenas asserções do comportamento corrigido, listadas no diário. Arquivo inexistente só é criado se necessário ao aceite.
 
   **Aceite:**
   - BUG-2B-01: `tests/regressao/test_bug_2b_01_ttm_sem_dva_perde_a_dre.py` em PASS;

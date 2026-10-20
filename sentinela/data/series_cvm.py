@@ -28,6 +28,7 @@ from datetime import date, timedelta
 from itertools import pairwise
 
 from sentinela.data import acoes_cvm
+from sentinela.data.contas_cvm import MOTIVO_LINHA_AUSENTE
 
 MAX_EXERCICIOS = 5
 COMPETENCIA = (
@@ -84,11 +85,22 @@ class Trimestre:
     documentos: tuple[Acumulado, ...]
 
 
-def proventos(dividendos: float | None, jcp: float | None) -> float | None:
-    """Dividendos + JCP declarados; sem um dos dois, `None`."""
-    if dividendos is None or jcp is None:
+def proventos(
+    dividendos: float | None,
+    jcp: float | None,
+    *,
+    motivos: Mapping[str, str] | None = None,
+) -> float | None:
+    """Soma as rubricas informadas; motivo de falha difere de rubrica que não ocorre."""
+    if dividendos is None and jcp is None:
         return None
-    return dividendos + jcp
+    for campo, valor in (("dividendos", dividendos), ("jcp", jcp)):
+        motivo = (motivos or {}).get(campo)
+        if valor is None and motivo and not motivo.startswith(MOTIVO_LINHA_AUSENTE):
+            return None
+    return (dividendos if dividendos is not None else 0.0) + (
+        jcp if jcp is not None else 0.0
+    )
 
 
 def _por_acao(
@@ -186,7 +198,7 @@ def exercicio(
         **por_acao,
         "dividendos": dividendos,
         "jcp": jcp,
-        "proventos": proventos(dividendos, jcp),
+        "proventos": proventos(dividendos, jcp, motivos=ind.get("proventos_motivos")),
         "proventos_base": COMPETENCIA,
     }
 
@@ -292,7 +304,9 @@ def ttm(acumulados: Iterable[Acumulado], data_referencia: date) -> dict | Absten
             )
         else:
             valores[campo] = sum(parcelas)
-    valores["proventos"] = proventos(valores["dividendos"], valores["jcp"])
+    valores["proventos"] = proventos(
+        valores["dividendos"], valores["jcp"], motivos=motivos
+    )
     documentos: list[dict] = []
     for trimestre in ultimos:
         for documento in trimestre.documentos:

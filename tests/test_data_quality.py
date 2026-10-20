@@ -274,3 +274,37 @@ def test_fonte_cache_tem_confianca_propria():
     for campo in ("dy", "pl"):
         assert comp["campos"][campo]["fonte"] == "cache"
         assert comp["campos"][campo]["confianca"] == 30
+
+
+def test_completude_banco_por_modelo_exclui_campos_inaplicaveis():
+    dados = {**_dados_completos(), "modelo": "banco", "setor": "Outro"}
+    for campo in ("receita_liquida", "margem_liquida", "divida_liq_ebitda"):
+        dados.pop(campo)
+    comp = DataQualityReport(dados).completude()
+    assert comp["completude_pct"] == 100
+    assert comp["score_confianca"] == 80
+    assert len(comp["campos"]) == 7
+    assert comp["completude_do_modelo_determinada"]
+
+
+def test_fii_nao_exige_dre_de_companhia_na_completude():
+    dados = {"classe_ativo": "FII", "preco_atual": 100, "dy": 0.1,
+             "vpa": 100, "pvp": 1, "fonte_fundamentos": "brapi"}
+    comp = DataQualityReport(dados).completude()
+    assert comp["completude_pct"] == 100
+    assert comp["score_confianca"] == 80
+    assert set(comp["campos"]) == {"preco_atual", "dy", "vpa", "pvp"}
+
+
+def test_setor_sozinho_nao_demonstra_modelo_para_completude():
+    comp = DataQualityReport({**_dados_completos(), "setor": "Bancos"}).completude()
+    assert not comp["completude_do_modelo_determinada"]
+    assert "modelo não demonstrado" in comp["limitacoes"][0]
+    assert len(comp["campos"]) == 10
+
+
+def test_completude_empresa_explicitamente_demonstrada():
+    comp = DataQualityReport({**_dados_completos(), "modelo": "empresa"}).completude()
+    assert comp["completude_pct"] == 100
+    assert comp["limitacoes"] == []
+    assert comp["completude_do_modelo_determinada"]

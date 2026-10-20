@@ -14,6 +14,7 @@ só, a linha é rejeitada. Caso a caso, nunca automática.
 from __future__ import annotations
 
 import csv
+import re
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 
@@ -60,6 +61,8 @@ def validar_correcoes(correcoes) -> dict[tuple[str, str], Correcao]:
             raise CorrecaoInvalida(
                 f"Correção de {correcao.ticker or '?'} rejeitada: sem {', '.join(vazios)}"
             )
+        if not re.fullmatch(r"[A-Z][A-Z0-9]{3}\d{1,2}", correcao.ticker):
+            raise CorrecaoInvalida(f"Ticker inválido na correção: {correcao.ticker!r}")
         _validar_campo(correcao)
         chave = (correcao.cnpj, correcao.codigo_na_fonte)
         if chave in por_chave:

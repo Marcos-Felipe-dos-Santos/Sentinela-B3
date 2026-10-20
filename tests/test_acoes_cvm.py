@@ -602,3 +602,61 @@ def test_unit_com_componente_da_classe_usa_a_especie_para_a_linha_pn():
         "classe": "PN",
         "notas": [],
     }
+
+
+@pytest.mark.parametrize(
+    "valor", ["1", True, float("nan"), float("inf"), -float("inf")]
+)
+@pytest.mark.parametrize(
+    "campo",
+    ["lucro_controladores", "lpa_divulgado", "lucro_consolidado"],
+)
+def test_insumo_nao_numerico_ou_nao_finito_se_abstem(campo, valor):
+    resultado = _derivar(**{campo: valor})
+    assert isinstance(resultado, Abstencao)
+    assert "inválido" in resultado.motivo
+
+
+@pytest.mark.parametrize("q", [0, -1, 0.5, True, "1", float("nan"), float("inf")])
+def test_quantidade_da_unit_invalida_se_abstem(q):
+    assert isinstance(_derivar(eh_unit=True, acoes_por_unit={"ON": q}), Abstencao)
+
+
+@pytest.mark.parametrize("q", [-1, 0.5, True, "1", float("nan"), float("inf")])
+def test_composicao_com_quantidade_invalida_se_abstem(q):
+    assert isinstance(_derivar(composicao=_cc(on=q)), Abstencao)
+
+
+@pytest.mark.parametrize(
+    "lucro,pl", [(True, 10), ("1", 10), (10, "1"), (10, False), (1e308, 1e-308)]
+)
+def test_roe_invalido_ou_resultado_nao_finito_tem_motivo(lucro, pl):
+    valor, motivo = roe_dos_controladores(lucro, pl)
+    assert valor is None and motivo
+
+
+def test_roe_zero_e_prejuizo_sao_dados():
+    assert roe_dos_controladores(0, 10) == (0, None)
+    assert roe_dos_controladores(-2, 10) == (-0.2, None)
+
+
+@pytest.mark.parametrize(
+    "valor", ["1", True, float("nan"), float("inf"), -float("inf"), None, 0, -1]
+)
+def test_preco_invalido_preserva_numeros_que_nao_dependem_dele(valor):
+    resultado = _derivar(preco=valor)
+    assert isinstance(resultado, PorAcao)
+    assert resultado.lpa == 2.0 and resultado.vpa == 10.0
+    assert resultado.pl is None and resultado.pvp is None
+    assert "preço" in resultado.motivos["pl"]
+
+
+@pytest.mark.parametrize(
+    "valor", ["1", True, float("nan"), float("inf"), -float("inf")]
+)
+def test_pl_invalido_preserva_lpa_e_multiplo_de_lucro(valor):
+    resultado = _derivar(pl_controladores=valor)
+    assert isinstance(resultado, PorAcao)
+    assert resultado.lpa == 2.0 and resultado.pl == 10.0
+    assert resultado.vpa is None and resultado.pvp is None
+    assert "inválido" in resultado.motivos["vpa"]

@@ -13,10 +13,6 @@ from sentinela.data.referencia.correcoes import (
 )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG-2B-12 · ticker fora do formato aceito na correção · corrige: a decidir no marcador",
-)
 def test_ticker_fora_do_formato_e_rejeitado():
     correcao = Correcao(
         "INVALIDO", "11.111.111/0001-11", "X", "sintético", "oficial.csv", "codigo",

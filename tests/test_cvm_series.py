@@ -337,9 +337,9 @@ def test_exercicio_fora_do_ano_civil():
     assert resultado["inicio"] == "2025-03-01"
 
 
-def test_proventos_sem_jcp_ficam_ausentes():
-    assert series_cvm.proventos(1.0, None) is None
-    assert series_cvm.proventos(None, 1.0) is None
+def test_proventos_com_uma_rubrica_preservam_o_informado():
+    assert series_cvm.proventos(1.0, None) == 1.0
+    assert series_cvm.proventos(None, 1.0) == 1.0
     assert series_cvm.proventos(0.0, 0.0) == 0.0
 
 
@@ -706,3 +706,29 @@ def test_ttm_le_o_balanco_do_mesmo_documento_para_a_reserva(tmp_path):
     assert marco.motivos == {}
     assert junho.valores["lucro_controladores"] is None
     assert "não controladores no balanço" in junho.motivos["lucro_controladores"]
+
+
+def test_rubrica_ausente_difere_de_dva_indisponivel_ou_conta_invalida():
+    assert series_cvm.proventos(5, None, motivos={"jcp": "linha ausente no documento jcp"}) == 5
+    for motivo in ("DVA indisponível", "sem correspondência", "valor inválido"):
+        assert series_cvm.proventos(5, None, motivos={"jcp": motivo}) is None
+    assert series_cvm.proventos(None, None) is None
+
+
+def test_ttm_preserva_proventos_com_uma_rubrica_no_arquivo_real_sintetico(tmp_path):
+    for campo, codigo, descricao in (
+        ("jcp", "7.08.04.01", "Juros sobre o Capital Próprio"),
+        ("dividendos", "7.08.04.02", "Dividendos"),
+    ):
+        dre, dva = [], []
+        for trimestre, fim in enumerate(("2025-03-31", "2025-06-30", "2025-09-30", "2025-12-31"), 1):
+            dre.append((fim, "1", "ÚLTIMO", "2025-01-01", fim, "3.11", "Lucro/Prejuízo Consolidado do Período", 10 * trimestre))
+            dva.append((fim, "1", "ÚLTIMO", "2025-01-01", fim, codigo, descricao, trimestre))
+        itr = _zip(tmp_path / f"itr_{campo}.zip", "itr", 2025, dre[:3], dva[:3])
+        dfp = _zip(tmp_path / f"dfp_{campo}.zip", "dfp", 2025, dre[3:], dva[3:])
+        provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+        acumulados = provider._acumulados_do_arquivo(itr, "ITR", CD_CVM, "empresa")
+        acumulados += provider._acumulados_do_arquivo(dfp, "DFP", CD_CVM, "empresa")
+        resultado = series_cvm.ttm(acumulados, date(2026, 1, 1))
+        assert resultado["valores"][campo] == 4000
+        assert resultado["valores"]["proventos"] == 4000
