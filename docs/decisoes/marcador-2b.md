@@ -343,3 +343,18 @@ Bazin). O DY do perfil é o da relação de proventos da B3 (ficha Bazin 1.0) qu
 é válida; quando ela se abstém, o perfil usa o DY da cascata, com o aviso "perfil pelo DY da
 cascata: <motivo da B3>". A regra do perfil (ROE > 20% e DY < 4%) não muda. Rejeitadas: (b)
 perfis por fonte, aceitando os dois juntos; (c) perfis por fonte com outra regra.
+
+## Decisões do Marcos de 20/10/2026 — F2B-52 e F2B-2
+
+- **F2B-52:** o aviso da fonte do perfil fica fora de `riscos` (`dados['perfil_fonte']` e
+  relatório do F1-12). Série B3 válida sem provento na janela, com cobertura completa, conta
+  como série válida com DY = 0 (ficha Bazin 1.0), no F2B-53. O payout do Lynch pelo DY da
+  cascata e o ativo que perde Lynch e Bazin são ressalvas para a proposta da 2C (F2B-34).
+- **F2B-2:** permissão aditiva em `sentinela/methods/base.py` para o campo opcional
+  `ntnb_real: RateReal` em `MethodInputs` e `_TIPOS_CAMPOS`, validado como no F2B-29; só
+  método REAL pode exigi-lo.
+- **Ficha FII 1.1 aprovada:** (a) o rendimento oficial por cota da B3 é conferência, e a
+  divergência mês a mês gera aviso com os meses e as diferenças, sem abstenção; (b) critério
+  da regra "salto de VP incompatível, sem percentual arbitrário" (proposta do diário do
+  F2B-2): desdobramento ou grupamento oficial na janela abstém, e a fonte de eventos
+  indisponível também; sem limite percentual de salto de VP. Seção 3a da ficha FII 1.1.

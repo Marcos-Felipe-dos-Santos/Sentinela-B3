@@ -1,6 +1,8 @@
-# Rendimento do FII sobre NTN-B — versão 1.0
+# Rendimento do FII sobre NTN-B — versão 1.1
 
-**Status:** aprovada pelo Marcos em 19/10/2026. Auditoria FICHA do Claude
+**Status:** versão 1.1 aprovada pelo Marcos em 20/10/2026, com a conferência pelo
+rendimento oficial da B3 e a regra dos eventos de cota da seção 3a. A versão 1.0 foi
+aprovada em 19/10/2026. Auditoria FICHA do Claude
 sobre a versão 0.3: **pode seguir** (D30); promovida a 1.0 sem mudança de regra
 ou número, conforme registro do marcador.
 **Decisões:** [marcador](../decisoes/marcador-2b.md).
@@ -46,7 +48,7 @@ do fim do mês anterior; não confundir com fluxo pago nem com cotação.
 | y_real | Média NTN-B escolhida na taxa-real 0.3, taxa_aplicacao, sem prêmio das ações |
 | s | Mediana de 5 anos do grupo tijolo contra a mesma taxa_aplicacao e mesma definição de R e preço; constante datada, depois de recalibrada no F2B-2 |
 | Tipo | Informe CVM ativo_passivo; regra de composição de universo-inicial, seção de fontes: fração >50% da soma dos ativos imobiliários identificados |
-| Eventos | Cotas_Emitidas, VP e documentos oficiais de eventos da CVM/B3/administrador, disponíveis até as_of |
+| Eventos | Cotas_Emitidas, VP e documentos oficiais de eventos da CVM/B3/administrador, disponíveis até as_of; critério de abstenção pela §3a (B3, `fundsCall`) |
 | P/VP, Selic e vacância | Só contexto/score existente; não entram em R nem em V0 |
 
 Classificação: recebíveis (CRI/CRA, LCI/LCA, letras hipotecárias, LIG) = papel;
@@ -75,7 +77,8 @@ cota incompatível com a continuidade**. Não há ajuste desses eventos na 2B.
 quantidades e VP antes/depois. Alteração de Cotas_Emitidas sozinha não é veto:
 o rendimento é reconstruído por cota, não pelo total emitido. Conferir a série
 dos 13 VPs e documentos oficiais de eventos, sem criar percentual arbitrário
-como limite de salto. Um dado inválido ou continuidade não demonstrável ainda
+como limite de salto (pela §3a, o critério de abstenção é o evento oficial; a série
+de VPs fica como contexto). Um dado inválido ou continuidade não demonstrável ainda
 abstém por base incompatível; não confundir falta de prova com emissão constatada.
 Verificação cobre as 13 bases e o intervalo até o preço.
 Amortização/devolução de capital não é rendimento: não somar Percentual_Amortizacao;
@@ -83,13 +86,33 @@ se positiva na janela, ou liquidação/distribuição extraordinária não recor
 identificada, abster por fluxo não representativo. Contratos indexados não garantem
 constância real da distribuição; sustentabilidade permanece hipótese declarada.
 
+## 3a. Revisão 1.1 — conferência oficial e eventos de cota (Marcos, 20/10/2026)
+
+- **Rendimento oficial da B3 é conferência.** A B3 publica o rendimento por cota e mês
+  (`fundsProxy/fundsCall/GetListedSupplementFunds`, `cashDividends`: `rate`, `relatedTo`,
+  `lastDatePrior`). Ele é comparado, mês a mês, com o rendimento reconstruído do Informe
+  (DY_m × VP_(m−1)). Divergência gera aviso com os meses e as diferenças, **sem
+  abstenção**; o valor continua o do Informe. Levantamento de 20/10/2026: HGLG11,
+  setembro/2026, B3 R$ 1,17 por cota contra R$ 1,170289 reconstruídos.
+- **Eventos de cota.** Decisão sobre a proposta do diário do F2B-2 (20/10/2026) para a regra
+  "salto de VP incompatível, sem percentual arbitrário" da §3: o critério de abstenção pela
+  base de cotas é o evento oficial. Desdobramento ou grupamento oficial na janela (13 bases e
+  o intervalo até o preço) abstém; a fonte de eventos indisponível também abstém
+  ("continuidade não demonstrável"). Não há limite percentual de variação de VP. Onde as §3 a
+  §7 dizem "salto de VP incompatível", vale este critério. Emissão com VP contínuo segue
+  aceita, em contexto.
+- **XPML11**, o caso de controle: a anomalia observada não é desdobramento, e sim DY
+  mensal negativo declarado no Informe (−5,8778% em 01/2026), e a guarda de DY_m negativo
+  da seção 4 a abstém.
+
 ## 4. Escopo e matriz de validade
 
 Só classe oficial FII e tipo **tijolo**. Papel (KNCR11/MXRF11/HCTR11), fundos
 de fundos (CPTS11/HFOF11), tipo desconhecido/misto sem maioria: "tipo de FII
 fora do escopo na 2B" ou "classificação de FII desconhecida"; aguardam 2C.
 HGLG11/KNRI11 precisam ainda cumprir todas as guardas. XPML11 é caso de
-controle de salto de VP/desdobramento/grupamento, conforme a evidência do evento;
+controle de salto de VP/desdobramento/grupamento, conforme a evidência do evento (pela §3a, a
+evidência observada é DY mensal negativo, não evento de cota);
 emissão, isoladamente, não é motivo de exclusão.
 Ações, bancos, seguradoras, holdings, units, preferenciais, ETF, BDR e UNKNOWN
 não entram: "classe fora do escopo FII". Setor ou ticker não substitui a classe.
@@ -170,8 +193,9 @@ HGLG11: R=13,240529645135538184, y=74,38/1100, s=2 pp hipotéticos dão
 **R$ 151,116233758550**; emissão com VP contínuo preserva essa conta.
 Se s estiver ausente, houver desdobramento/grupamento ou salto de VP incompatível,
 o teste espera abstenção.
-Confronto com avisos do administrador para validar o rendimento é pendência
-expressa do F2B-2; o próprio Informe não é segunda fonte independente.
+Confronto com avisos oficiais para validar o rendimento: pela §3a, é a conferência com o
+rendimento oficial por cota da B3, com aviso; o próprio Informe não é segunda fonte
+independente.
 
 ## 6. Sensibilidade e recalibração
 
@@ -196,7 +220,7 @@ classificação e eventos à época, inclusive as bases anteriores às janelas.
 Mês sem fundos válidos é lacuna, não zero; sem 60 medianas válidas contíguas,
 spread indisponível, sem reduzir janela silenciosamente. Publicar número de
 fundos/meses antes e depois das exclusões por desdobramento/grupamento ou salto
-de VP incompatível, emissões contínuas mantidas como contexto, meses removidos, mudança da mediana,
+de VP incompatível (critério da §3a), emissões contínuas mantidas como contexto, meses removidos, mudança da mediana,
 p25/p75 e limites da amostra. Comparar 1/2/3 pp e mediana recalibrada sobre o
 mesmo rendimento, sem misturar DY da cascata com Informe. Seleção só de fundos
 atuais mantém viés de sobrevivência: declarar e medir cobertura; não dizer que
@@ -218,7 +242,7 @@ representa todos os listados. A composição atual não classifica todo o passad
 | 7.8 Tributação | spread bruto sobre bruto, sem desconto tributário adicional |
 
 **Complemento decidido pelo Marcos em 19/10/2026:** desdobramento/grupamento
-ou salto de VP incompatível abstêm; emissão com VP contínuo é aceita, em contexto.
+ou salto de VP incompatível abstêm (critério operacional na §3a, 20/10/2026); emissão com VP contínuo é aceita, em contexto.
 Crescimento **real** zero explicitamente derivado.
 As decisões não transformam a reconstrução do F2B-28 em fluxo validado nem
 aprovam uma constante ainda não calculada. Pendências autorizadas estão na seção 6.
