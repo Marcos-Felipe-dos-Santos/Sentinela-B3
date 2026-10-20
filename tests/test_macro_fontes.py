@@ -332,7 +332,7 @@ def test_orquestracao_nao_inventa_fontes_ausentes(tmp_path, monkeypatch):
     assert r["inflacao"] == {"abstencao": "fonte inválida"}
     assert r["pib"] == {"abstencao": "fonte inválida"}
     monkeypatch.setattr(provider, "calendario", falha)
-    assert provider.registro(AS_OF) is None
+    assert provider.registro(AS_OF) == {"abstencao": "fonte inválida"}
 
 
 def test_orquestracao_nao_contorna_abstencao_da_cesta(tmp_path, monkeypatch):
@@ -342,7 +342,7 @@ def test_orquestracao_nao_contorna_abstencao_da_cesta(tmp_path, monkeypatch):
     monkeypatch.setattr(
         taxas, "calcular", lambda *a, **kw: taxas.Abstencao("desatualizada")
     )
-    assert provider.registro(AS_OF) is None
+    assert provider.registro(AS_OF) == {"abstencao": "desatualizada"}
 
 
 @pytest.mark.parametrize("conteudo", ["sem datas", ">1/1/25<"])

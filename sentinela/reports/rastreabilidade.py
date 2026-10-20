@@ -394,6 +394,8 @@ def _taxa_real(dados: dict[str, Any]) -> list[tuple[str, str]]:
     registro = dados.get("taxa_real")
     if not registro:
         return []
+    if "abstencao" in registro:
+        return [("Taxa real", f"abstenção: {registro['abstencao']}")]
     inflacao = registro.get("inflacao") or {}
     return [
         ("NTN-B real", _formatar(units.RateReal(registro["ntnb"]))),

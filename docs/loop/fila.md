@@ -688,6 +688,18 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 - [x] **F2B-50** · test · `test: register the B3 trading-name search bug`
   Auditoria do Claude (chat) de 20/10/2026, sobre o F2B-31: a busca da B3 pelo nome de pregão com barra ("AMBEV S/A" devolve zero registros) é bug do coletor, não escolha de abstenção. BUG-2B-29 em xfail estrito em `tests/regressao/`, destino na proposta da 2C (a forma da correção não está decidida).
 
+- [x] **F2B-51** · fix · `fix: keep the real-rate abstention reason in the macro provider`
+  Auditoria do Claude (chat) do F2B-48/F2B-30, 20/10/2026, "pode seguir com condição" (achado 1 e ressalvas 2 e 3). A mensagem do Marcos citou F2B-49, ID já usado pelo `chore` do lint, fechado.
+  - **Achado 1.** `MacroProvider.registro` devolve `{"abstencao": motivo}` em vez de `None` quando a cesta se abstém (motivo da `Abstencao`) ou a fonte falha (motivo da exceção). O Gordon do F2B-1 mostra esse motivo; a ausência do registro tem motivo próprio. `config.get_taxa_real` não guarda a abstenção no cache; `cost_of_equity_real` e o relatório do F1-12 a tratam.
+  - **Ressalva 2.** O `except` separa falha de fonte ou formato (requisição, arquivo, valor) de erro de programação (`KeyError`, `TypeError`): este vai para o log como erro e vira abstenção com motivo próprio, sem se passar por falha da fonte.
+  - **Ressalva 3.** `data_divulgacao` do calendário do IBGE é lida no fuso de São Paulo.
+
+  **Aceite:**
+  - regressões em `tests/regressao/` por xfail estrito → correção → marca retirada → PASS, e o registro atualizado;
+  - mutation ≥ 80% em `sentinela.data.providers.macro*` e `sentinela.data.gordon_cvm*`;
+  - golden inalterado;
+  - gate da fase.
+
 - [ ] **F2B-2** · fix · `fix: compare FII yield with NTN-B plus the historical spread` · **[golden]** **[FII]**
   - **Aceite adicional Gemini HEAD60e61e2 (20/10/2026):** Data_Referencia NaN no cvm_fii_provider produz ausência/abstenção com motivo, sem seleção silenciosa nem exceção.
   PLANO, F2B-2; checkpoint, seção 4, item 3; F-9; pendência "DY do Informe Mensal de FII". Pré-condição: `docs/metodologia/fii.md` aprovada.

@@ -154,7 +154,12 @@ def entradas(dados: dict[str, Any], as_of: date | datetime) -> dict | Abstencao:
                 )
             ):
                 return Abstencao(f"evidência da {nome} posterior ao as_of")
-        macro = dados.get("taxa_real") or {}
+        macro = dados.get("taxa_real")
+        # F2B-51 (BUG-2B-30): a abstenção da taxa real chega com o motivo.
+        if not macro:
+            return Abstencao("insumo ausente: taxa real")
+        if "abstencao" in macro:
+            return Abstencao(f"taxa real indisponível: {macro['abstencao']}")
         if macro.get("as_of") is not None:
             corte_macro = datetime.fromisoformat(macro["as_of"])
             if corte_macro.tzinfo is None or corte_macro.utcoffset() is None:

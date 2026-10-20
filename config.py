@@ -150,7 +150,8 @@ def get_taxa_real(
         if 0 <= idade < _TAXA_REAL_TTL and not edicao_devida:
             return registro
     registro = _carregar_taxa_real(instante, janela)
-    if registro is not None:
+    # F2B-51: a abstenção não fica no cache; a próxima análise consulta de novo.
+    if registro is not None and "abstencao" not in registro:
         _taxa_real_cache[chave] = (instante, registro)
     return registro
 
@@ -276,7 +277,11 @@ class MacroContext:
     def cost_of_equity_real(self) -> float | None:
         """Custo real do F2B-30, sem contingência nem prêmio duplicado."""
         registro = get_taxa_real()
-        return None if registro is None else registro['custo_capital_real']
+        return (
+            None
+            if registro is None or "abstencao" in registro
+            else registro['custo_capital_real']
+        )
 
     # ── Fetchers privados ──────────────────────────────────────────────────────
 

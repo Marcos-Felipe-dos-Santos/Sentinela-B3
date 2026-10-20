@@ -5,6 +5,7 @@ from __future__ import annotations
 import calendar
 import hashlib
 import json
+import logging
 import math
 import re
 from dataclasses import dataclass
@@ -21,6 +22,28 @@ IBGE_CALENDARIO = "https://servicodados.ibge.gov.br/api/v3/calendario/9256"
 FOCUS = "https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/ExpectativasMercadoAnuais"
 ANBIMA = "https://www.anbima.com.br/feriados/fer_nacionais/{ano}.asp"
 TTL = 86400
+FUSO = ZoneInfo("America/Sao_Paulo")
+# Falha da fonte ou do formato vira abstenção com o motivo da exceção; KeyError e TypeError
+# são erro do código (F2B-51, BUG-2B-31): vão para o log e têm motivo próprio.
+FALHAS_DA_FONTE = (requests.RequestException, OSError, ValueError)
+ERROS_DO_CODIGO = (KeyError, TypeError)
+
+logger = logging.getLogger(__name__)
+
+
+def divulgacao_ibge(texto: str) -> datetime:
+    """Instante de divulgação do calendário do IBGE, no horário de Brasília (BUG-2B-32)."""
+    return datetime.strptime(texto, "%d/%m/%Y %H:%M:%S").replace(tzinfo=FUSO)
+
+
+def _falha_da_fonte(erro: Exception) -> dict:
+    """Abstenção com a mensagem da falha; sem mensagem, o tipo (o motivo nunca sai vazio)."""
+    return {"abstencao": str(erro) or type(erro).__name__}
+
+
+def _erro_do_codigo(erro: Exception) -> dict:
+    logger.error("erro inesperado no provedor macro", exc_info=erro)
+    return {"abstencao": f"erro inesperado no provedor macro: {type(erro).__name__}"}
 
 
 def _local(as_of: datetime) -> date:
@@ -233,9 +256,7 @@ class MacroProvider:
         for evento in json.loads(agenda.conteudo)["items"]:
             if evento.get("produto_id") == 9256:
                 mes = f"{int(evento['ano_referencia_inicio']):04}{int(evento['mes_referencia_inicio']):02}"
-                publicacoes[mes] = datetime.strptime(
-                    evento["data_divulgacao"] + "+0000", "%d/%m/%Y %H:%M:%S%z"
-                ).date()
+                publicacoes[mes] = divulgacao_ibge(evento["data_divulgacao"]).date()
         publicados = [mes for mes, entrega in publicacoes.items() if entrega < dia]
         if not publicados:
             raise ValueError("IPCA publicado ausente no calendário")
@@ -290,8 +311,12 @@ class MacroProvider:
 
     def registro(
         self, instante: datetime, janela: tuple[date, date] | None = None
-    ) -> dict | None:
-        """Orquestra fontes; dado sem prova não vira constante de contingência."""
+    ) -> dict:
+        """Orquestra fontes; dado sem prova não vira constante de contingência.
+
+        Sem a taxa real, `{"abstencao": motivo}`: o da `Abstencao` da cesta ou o da falha da
+        fonte; erro do código tem motivo próprio e vai para o log (F2B-51).
+        """
         from sentinela.data import taxas
         from sentinela.data.providers.tesouro import (
             TesouroProvider,
@@ -323,9 +348,11 @@ class MacroProvider:
                 else {},
             )
             if isinstance(resultado, taxas.Abstencao):
-                return None
-        except (requests.RequestException, OSError, ValueError, KeyError, TypeError):
-            return None
+                return {"abstencao": resultado.motivo}
+        except FALHAS_DA_FONTE as erro:
+            return _falha_da_fonte(erro)
+        except ERROS_DO_CODIGO as erro:
+            return _erro_do_codigo(erro)
         if janela is None:
             resultado["inflacao"] = {
                 "abstencao": "janela contábil anual não demonstrada"
@@ -333,22 +360,14 @@ class MacroProvider:
         else:
             try:
                 resultado["inflacao"] = self.inflacao(*janela, instante)
-            except (
-                requests.RequestException,
-                OSError,
-                ValueError,
-                KeyError,
-                TypeError,
-            ) as erro:
-                resultado["inflacao"] = {"abstencao": str(erro)}
+            except FALHAS_DA_FONTE as erro:
+                resultado["inflacao"] = _falha_da_fonte(erro)
+            except ERROS_DO_CODIGO as erro:
+                resultado["inflacao"] = _erro_do_codigo(erro)
         try:
             resultado["pib"] = self.pib(instante)
-        except (
-            requests.RequestException,
-            OSError,
-            ValueError,
-            KeyError,
-            TypeError,
-        ) as erro:
-            resultado["pib"] = {"abstencao": str(erro)}
+        except FALHAS_DA_FONTE as erro:
+            resultado["pib"] = _falha_da_fonte(erro)
+        except ERROS_DO_CODIGO as erro:
+            resultado["pib"] = _erro_do_codigo(erro)
         return resultado
