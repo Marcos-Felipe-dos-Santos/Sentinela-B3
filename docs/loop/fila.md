@@ -700,6 +700,9 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden inalterado;
   - gate da fase.
 
+- [!] **F2B-52** · decisão · perfil do Bazin pelo DY da B3 e de Graham e Lynch pelo DY da cascata
+  Auditoria do Claude (chat) de 20/10/2026, sobre o F2B-31: Lynch e Bazin podem entrar juntos na mediana porque o perfil usa DY de fontes diferentes, e é mudança de comportamento sem decisão. Motivo e contagem no diário. O loop para aqui, antes do F2B-2, até a decisão do Marcos.
+
 - [ ] **F2B-2** · fix · `fix: compare FII yield with NTN-B plus the historical spread` · **[golden]** **[FII]**
   - **Aceite adicional Gemini HEAD60e61e2 (20/10/2026):** Data_Referencia NaN no cvm_fii_provider produz ausência/abstenção com motivo, sem seleção silenciosa nem exceção.
   PLANO, F2B-2; checkpoint, seção 4, item 3; F-9; pendência "DY do Informe Mensal de FII". Pré-condição: `docs/metodologia/fii.md` aprovada.
