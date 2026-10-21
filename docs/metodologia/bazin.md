@@ -1,6 +1,7 @@
-# Critério de rendimento do Bazin — versão 1.0
+# Critério de rendimento do Bazin — versão 1.1
 
-**Status:** aprovada pelo Marcos em 19/10/2026. Auditoria FICHA do Claude
+**Status:** versão 1.1 aprovada pelo Marcos em 20/10/2026, com a linha "D e DY" da §4
+(DY = 0 com cobertura completa). A versão 1.0 foi aprovada em 19/10/2026. Auditoria FICHA do Claude
 sobre a versão 0.3: **pode seguir** (D30); promovida a 1.0 sem mudança de regra
 ou número, conforme registro do marcador.
 **Decisões:** [marcador](../decisoes/marcador-2b.md).
@@ -92,7 +93,7 @@ do registro §2.1. Para contexto, informar indisponibilidade sem bloquear o crit
 |---|---|---|---|
 | Preço | abstém: preço não positivo | abstém | unidade/direito divergente: preço incompatível |
 | Cada provento | válido se informado ou ausência comprovada | abstém: provento negativo | data ex fora da janela: não somar; natureza/bruto desconhecidos: série inválida |
-| D e DY | abstém: rendimento não positivo | abstém | DY >25%: não confiável; 0<DY<5%: abaixo do gate |
+| D e DY | com cobertura completa e ao menos um registro da espécie (ou de cada componente da unit) na relação B3, em qualquer data: DY = 0 é válido, o Bazin não calcula (abaixo do gate de 5%) e o perfil usa 0; sem cobertura completa ou sem registro da espécie: abstém, e o perfil cai na cascata, com aviso (1.1, 20/10/2026) | abstém | DY >25%: não confiável; 0<DY<5%: abaixo do gate |
 | Taxa fixa | abstém | abstém | diferente de 0,06: parâmetro fora da versão |
 | Ações por unit | abstém para componente necessário | abstém | não inteiro/composição desconhecida: unit sem composição válida |
 | Lucro/ROE contextual | válido; perfil indeterminado se não calculável | válido, aviso de prejuízo | seguir domínio da ficha por-acao 1.1; inválido não vira positivo |

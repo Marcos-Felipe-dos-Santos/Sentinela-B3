@@ -484,10 +484,6 @@ def test_entradas_com_unit():
             _dados(relacao={"fechamentos": {"2026-10-19": True}}),
             "insumo fora do domínio: preço, não positivo",
         ),
-        (
-            _dados(relacao={"registros": [_r("10/12/2025", "0,0"), ANTIGO]}),
-            "insumo fora do domínio: rendimento, não positivo",
-        ),
         (_dados(relacao={"total": 3}), pb.MOTIVO_INCOMPLETA),
         (_dados(relacao={"registros": None, "total": 0}), pb.MOTIVO_HISTORICO),
     ],
@@ -616,3 +612,63 @@ def test_coleta_depois_do_as_of_nao_prova_disponibilidade(coleta, valida):
         assert e["dy"] == pytest.approx(0.06)
     else:
         assert e == pb.Abstencao(pb.MOTIVO_COLETA)
+
+
+@pytest.mark.parametrize(
+    "registros",
+    [[ANTIGO], [_r("10/12/2025", "0,0"), ANTIGO]],
+)
+def test_serie_valida_sem_provento_conta_como_dy_zero(registros):
+    # Decisão do Marcos de 20/10/2026 e ficha Bazin 1.1, §4, linha "D e DY": com cobertura
+    # completa, DY = 0 é válido, não abstenção.
+    dados = _dados(relacao={"registros": registros, "total": len(registros)})
+    e = pb.entradas(dados, INSTANTE)
+    assert e["dy"] == 0.0
+    assert e["serie"]["d_bruto_12m"] == 0.0
+
+
+@pytest.mark.parametrize(
+    ("registros", "kw", "especie"),
+    [
+        # a relação só tem a PN: a ON do ticker não tem nenhum registro, em data alguma
+        ([_r("10/06/2020", especie="PN")], {"especie": "ON"}, "ON"),
+        # unit ON + PN: a PN, componente, não tem nenhum registro
+        (
+            [_r("10/06/2020", especie="ON")],
+            {"especie": None, "eh_unit": True, "acoes_por_unit": {"ON": 1, "PN": 2}},
+            "PN",
+        ),
+    ],
+)
+def test_especie_sem_registro_na_relacao_abstem(registros, kw, especie):
+    # Decisão do Marcos de 20/10/2026: a série válida sem provento exige ao menos um
+    # registro da espécie (ou de cada componente da unit) na relação B3, em qualquer data.
+    s = pb.serie_12_meses(
+        registros, total=len(registros), referencia=REF, dia_as_of=HOJE, **kw
+    )
+    assert isinstance(s, pb.Abstencao), s
+    assert s == pb.Abstencao(f"{pb.MOTIVO_ESPECIE_SEM_REGISTRO}: {especie}")
+
+
+@pytest.mark.parametrize(
+    "extras",
+    [
+        [],
+        # registros UNT da unit são só conferência: não comprovam o componente ausente
+        [_r("10/12/2025", "1,20", especie="UNT"), _r("10/06/2020", especie="UNT")],
+    ],
+)
+def test_unit_com_componente_sem_registro_abstem_mesmo_com_d_positivo(extras):
+    # Decisão do Marcos de 20/10/2026, depois da 5ª revisão do F2B-53: a guarda da espécie
+    # vale para toda série, também com D > 0; registros UNT não contam como registro.
+    registros = [_r("10/12/2025", "0,40"), ANTIGO, *extras]
+    s = pb.serie_12_meses(
+        registros,
+        total=len(registros),
+        referencia=REF,
+        dia_as_of=HOJE,
+        especie=None,
+        eh_unit=True,
+        acoes_por_unit={"ON": 1, "PN": 2},
+    )
+    assert s == pb.Abstencao(f"{pb.MOTIVO_ESPECIE_SEM_REGISTRO}: PN")

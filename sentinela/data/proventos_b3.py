@@ -65,6 +65,7 @@ MOTIVO_DISPONIBILIDADE = (
     "disponibilidade histórica não demonstrada: provento sem data de aprovação"
 )
 MOTIVO_ESPECIE = "insumo ausente: espécie do ticker"
+MOTIVO_ESPECIE_SEM_REGISTRO = "série B3 sem nenhum registro da espécie"
 MOTIVO_COLETA = (
     "disponibilidade histórica não demonstrada: relação B3 sem coleta até o as_of"
 )
@@ -292,6 +293,13 @@ def serie_12_meses(
         eventos.add(Evento(classe, natureza, valor, data_com, aprovacao))
     if not datas_com or min(datas_com) >= inicio:
         return Abstencao(MOTIVO_HISTORICO)
+    # F2B-53 (decisões do Marcos de 20/10/2026; ficha Bazin 1.1): toda série, com ou sem
+    # provento, exige ao menos um registro da espécie (ou de cada componente da unit) na
+    # relação, em qualquer data. Registros UNT são só conferência e não contam.
+    especies_na_relacao = {_texto(r.get("typeStock")) for r in registros}
+    for classe in componentes:
+        if classe not in especies_na_relacao:
+            return Abstencao(f"{MOTIVO_ESPECIE_SEM_REGISTRO}: {classe}")
     evento_acoes = _evento_de_acoes_na_janela(
         eventos_acoes, componentes, inicio, referencia
     )
@@ -416,8 +424,9 @@ def entradas(dados: Mapping, instante: datetime) -> dict | Abstencao:
         or preco <= 0
     ):
         return Abstencao("insumo fora do domínio: preço, não positivo")
-    if serie["d_bruto_12m"] <= 0:
-        return Abstencao("insumo fora do domínio: rendimento, não positivo")
+    # F2B-53 (decisão do Marcos de 20/10/2026; ficha Bazin 1.1, §4, linha "D e DY"): série
+    # válida sem provento na janela, com cobertura completa, é DY = 0. Provento negativo já
+    # abstém na série.
     return {
         "dy": serie["d_bruto_12m"] / preco,
         "preco_referencia": preco,

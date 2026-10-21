@@ -118,3 +118,52 @@ def test_perfil_fonte_de_analise_anterior_nao_fica():
     dados["classe_ativo"] = "ETF"
     _processar(dados)
     assert "perfil_fonte" not in dados
+
+
+def _motivo_do_bazin(dados, monkeypatch):
+    import valuation_engine
+
+    resultados = []
+    original = valuation_engine._BAZIN.calcular
+
+    def espiao(inputs, params):
+        resultados.append(original(inputs, params))
+        return resultados[-1]
+
+    monkeypatch.setattr(valuation_engine._BAZIN, "calcular", espiao)
+    r = _processar(dados)
+    return r, resultados[-1].motivo
+
+
+def test_serie_b3_sem_provento_da_perfil_pela_b3(monkeypatch):
+    # ROE de 30%, sem provento na janela pela B3 (DY = 0) e DY da cascata de 5% (renda):
+    # o perfil é crescimento pela B3; o Bazin testa o perfil antes do DY mínimo e se
+    # abstém por "perfil crescimento".
+    dados = _acao(0.30, 0.05, 0.0)
+    r, motivo = _motivo_do_bazin(dados, monkeypatch)
+    assert dados["perfil_fonte"] == {"fonte": "relação de proventos da B3"}
+    assert r["perfil"] == "CRESCIMENTO"
+    assert "Lynch: R$" in r["metodos_usados"]
+    assert motivo == "perfil crescimento"
+
+
+def test_serie_b3_sem_provento_com_roe_baixo_e_renda(monkeypatch):
+    # ROE de 12%: com DY = 0 pela B3 o perfil é renda, e o Bazin se abstém pelo DY mínimo.
+    dados = _acao(0.12, 0.05, 0.0)
+    r, motivo = _motivo_do_bazin(dados, monkeypatch)
+    assert dados["perfil_fonte"] == {"fonte": "relação de proventos da B3"}
+    assert r["perfil"] == "RENDA/VALOR"
+    assert motivo == "DY abaixo do mínimo"
+
+
+def test_especie_sem_registro_na_relacao_cai_no_perfil_da_cascata():
+    # A relação só tem a PN; o ticker é ON: a série se abstém e o perfil usa a cascata.
+    dados = _acao(0.30, 0.03, 0.0)
+    for registro in dados["proventos_b3"]["registros"]:
+        registro["typeStock"] = "PN"
+    r = _processar(dados)
+    assert dados["perfil_fonte"] == {
+        "fonte": "cascata",
+        "aviso": "perfil pelo DY da cascata: série B3 sem nenhum registro da espécie: ON",
+    }
+    assert r["perfil"] == "CRESCIMENTO"

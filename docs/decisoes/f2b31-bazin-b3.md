@@ -25,7 +25,8 @@ SHA-256 da página de proventos `03dccd4333fed8554f9be6e205b90177fae83aa869a9303
   982.199 mil ações do fim do ano, R$ 0,8494 (diferença do denominador, com recompras); o
   líquido de 15% seria R$ 0,7220.
 - `typeStock` separa ON, PN, PNA e PNB (USIMINAS: 55 ON, 48 PNA, 48 PNB nas três
-  primeiras páginas). A unit não tem linha própria: a TAEE11 sai como ON e PN.
+  primeiras páginas). A primeira página da TAEE11 sai como ON e PN; a relação também tem registros `UNT` das units
+  (correção de 20/10/2026, F2B-53), que a soma pelos componentes não usa.
 - `lastDatePriorEx` é o último dia com direito; a data ex é o pregão seguinte. Na Renner,
   as datas com 11/12/2025, 24/03/2026, 23/06/2026 e 22/09/2026 correspondem às datas ex
   12/12/2025, 25/03/2026, 24/06/2026 e 23/09/2026 da conferência do yfinance da ficha.

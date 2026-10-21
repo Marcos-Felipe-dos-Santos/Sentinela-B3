@@ -358,3 +358,22 @@ perfis por fonte, aceitando os dois juntos; (c) perfis por fonte com outra regra
   da regra "salto de VP incompatível, sem percentual arbitrário" (proposta do diário do
   F2B-2): desdobramento ou grupamento oficial na janela abstém, e a fonte de eventos
   indisponível também; sem limite percentual de salto de VP. Seção 3a da ficha FII 1.1.
+
+## Decisões do Marcos de 20/10/2026 — F2B-53 e complemento da ficha FII 1.1
+
+- **F2B-53:** 4ª rodada de revisão autorizada, depois de corrigir as citações (comentário do
+  teste e texto do item passam a citar a decisão de 20/10 e a ficha Bazin 1.1).
+- **Ficha Bazin 1.1 aprovada:** na matriz, linha "D e DY", coluna Zero: com cobertura
+  completa, DY = 0 é válido; o Bazin não calcula (abaixo do gate de 5%) e o perfil usa 0. Sem
+  cobertura completa, abstém. A "série válida sem provento" exige ao menos um registro da
+  espécie ou da unit na relação B3, em qualquer data; sem nenhum registro, a série se abstém
+  e o perfil cai na cascata, com aviso.
+- **Payout do Lynch:** continua para a 2C (F2B-34); o Lynch não tem ficha (D21).
+- **Ficha FII 1.1, complemento:** (a) a conferência compara o reconstruído arredondado a duas
+  casas com o valor da B3: igual é conferido, diferente gera aviso, sem tolerância
+  percentual; (b) a lista de eventos vazia só vale como "sem evento" se a resposta da B3 for
+  válida (sucesso e estrutura esperada); erro ou formato inesperado é fonte indisponível, e o
+  FII se abstém.
+- **F2B-53, depois da 5ª revisão:** 5ª rodada autorizada. A guarda da espécie vale para toda
+  série, também com D > 0: unit com um componente sem nenhum registro na relação B3 se abstém.
+  Registros `UNT` da relação são só conferência; não comprovam a cobertura de componente.
