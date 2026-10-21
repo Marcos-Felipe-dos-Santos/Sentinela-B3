@@ -19,10 +19,9 @@ from sentinela.data import (
     liquidez,
     normalizacao,
     proventos_b3,
-    rendimento_fii,
     series_cvm,
 )
-from sentinela.data.providers import b3_cotahist, b3_proventos
+from sentinela.data.providers import b3_cotahist, b3_fundos, b3_proventos
 from sentinela.data.providers.b3_cotahist import HistoricoRecente
 from sentinela.data.providers.ifdata import IFDataProvider
 from sentinela.data.referencia.carga import ReferenciaOficial
@@ -321,6 +320,7 @@ class MarketEngine:
         self.cvm_fii = CVMFIIProvider()
         self.cotahist = HistoricoRecente()
         self.b3_proventos = b3_proventos
+        self.b3_fundos = b3_fundos
         self.database = DatabaseManager()
         self.asset_classifier = asset_classifier or AssetClassifier()
         self.referencia = REFERENCIA_OFICIAL
@@ -696,12 +696,13 @@ class MarketEngine:
         return False
 
     def _buscar_rendimento_fii(self, ticker: str, dados: dict[str, Any]) -> None:
-        """Rendimento de 12 meses do FII pelo Informe Mensal (F2B-28), fora do prompt.
+        """Informe Mensal e complemento da B3 do FII, para a lente de rendimento (F2B-2).
 
-        Só mede: nenhum motor lê; o DY da cascata não muda. Grava `dados['rendimento_fii_cvm']`
-        (DY sobre o preço da cascata, meses, base e proveniência) ou a abstenção. O CNPJ vem
-        só do índice oficial; provedor e método por `getattr`. Sem eles, sem CNPJ ou com falha,
-        a chave fica de fora.
+        Grava, fora do prompt, `dados['informe_fii']` (linhas do complemento com a entrega e
+        o ISIN do `geral`, composições do `ativo_passivo`, ISIN e proveniência) e
+        `dados['b3_fundo']` (a resposta literal do `fundsCall` da B3, ou a abstenção). A conta,
+        com o as_of, é do motor (`rendimento_fii.entradas`). O CNPJ vem só do índice oficial;
+        provedores por `getattr`. Sem eles ou sem CNPJ, as chaves ficam de fora.
         """
         if not self._is_fii_ticker(ticker, dados):
             return
@@ -710,20 +711,23 @@ class MarketEngine:
         if ler is None or not cnpj:
             return
         try:
-            informe = ler(cnpj)
+            dados['informe_fii'] = ler(cnpj)
         except Exception as exc:
             logger.warning(
                 f"[{ticker}] Informe Mensal indisponível para o rendimento: {exc}"
             )
+            dados['informe_fii'] = {'abstencao': f"Informe Mensal indisponível: {exc}"}
             return
-        resultado = rendimento_fii.rendimento_12_meses(
-            informe['registros'], dados.get('preco_atual')
-        )
-        dados['rendimento_fii_cvm'] = (
-            {'abstencao': resultado.motivo}
-            if isinstance(resultado, rendimento_fii.Abstencao)
-            else {**resultado, 'proveniencia': informe.get('proveniencia')}
-        )
+        provedor = getattr(self, 'b3_fundos', None)
+        if provedor is None:
+            return
+        try:
+            dados['b3_fundo'] = provedor.coletar(cnpj, ticker, datetime.now(UTC))
+        except (OSError, ValueError) as exc:
+            logger.warning(f"[{ticker}] complemento da B3 do fundo indisponível: {exc}")
+            dados['b3_fundo'] = {
+                'abstencao': f"complemento da B3 do fundo indisponível: {exc}"
+            }
 
     def _buscar_taxa_real(self, dados: dict[str, Any]) -> None:
         """Registro aditivo, fora dos métodos e do prompt (F2B-30).
@@ -887,6 +891,11 @@ class MarketEngine:
             )
             return False
         if not informe:
+            return False
+        if informe.get('abstencao'):
+            dados.setdefault('riscos_dados', []).append(
+                f"Informe Mensal do FII não usado: {informe['abstencao']}"
+            )
             return False
         vpa = _as_float(informe.get('valor_cota'))
         if not vpa or vpa <= 0:

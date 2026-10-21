@@ -106,6 +106,10 @@ def test_mensagens_da_declaracao_do_metodo():
     assert _msg(TypeError, _metodo(regime=Regime.REAL, requires=("selic",))) == (
         "selic é taxa nominal: só método NOMINAL pode exigi-la"
     )
+    # F2B-2: a NTN-B real da lente do FII só serve a método REAL.
+    assert _msg(TypeError, _metodo(regime=Regime.NOMINAL, requires=("ntnb_real",))) == (
+        "ntnb_real: só método REAL pode exigi-la"
+    )
     assert _msg(TypeError, _metodo(applies_to=frozenset())) == (
         "applies_to deve ser frozenset não vazio de AssetType"
     )

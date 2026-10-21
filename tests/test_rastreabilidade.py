@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 from apoio_bazin import enriquecer_bazin
+from apoio_fii import enriquecer_fii
 from apoio_gordon import AS_OF_GORDON, DiaGordon, enriquecer_gordon
 
 from fii_engine import FIIEngine
@@ -83,20 +84,23 @@ def _fii(**kw):
         "field_provenance": {},
     }
     dados.update(kw)
-    return dados
+    return enriquecer_fii(dados)  # F2B-2: Informe e B3 sintéticos
 
 
 def _contexto(dados, eh_fii=False, selic=0.145):
     motor = ValuationEngine()
     original = motor.processar
     motor.processar = lambda dados: original(dados, as_of=AS_OF_GORDON)
+    motor_fii = FIIEngine()
+    analisar = motor_fii.analisar
+    motor_fii.analisar = lambda dados: analisar(dados, as_of=AS_OF_GORDON)
     with (
         patch("valuation_engine.get_selic_atual", return_value=selic),
         patch("valuation_engine.date", DiaGordon),
         patch("fii_engine.get_selic_atual", return_value=selic),
     ):
         return rastreabilidade.construir_contexto(
-            dados, eh_fii, HOJE, motor, FIIEngine()
+            dados, eh_fii, HOJE, motor, motor_fii
         )
 
 
@@ -125,13 +129,17 @@ def test_relatorio_mostra_cada_metodo_com_versao():
 
 def test_relatorio_do_fii_mostra_rendimento_e_lente_de_pvp():
     html = _html(_fii(pvp=0.8), eh_fii=True)
-    assert "Bazin FII" in html and "P/VP do FII" in html
+    assert "Rendimento do FII" in html and "P/VP do FII" in html
     assert (
-        "Bazin FII <small>versão 1.0.0" in html
+        "Rendimento do FII <small>versão 2.0.0" in html
         and "P/VP do FII <small>versão 1.1.0" in html
     )
     assert "desconto sobre o patrimônio" in html
-    assert "fator_ir" in html
+    # F2B-2: o spread datado e a NTN-B real formam a taxa; a Selic é só contexto
+    assert "<td><code>spread</code></td>" in html
+    assert "Taxa da lente do FII (F2B-2)" in html
+    assert "a Selic não forma o preço justo" in html
+    assert "selic_liquida (contexto e score)" in html
 
 
 def test_relatorio_mostra_motivo_da_abstencao():
@@ -213,8 +221,9 @@ def test_variacao_sobre_o_preco_esta_em_pontos_percentuais():
 
 
 def test_variacao_do_fii_esta_em_pontos_percentuais():
+    # F2B-2: 10 ÷ (7% + spread calibrado de 3,51%) = 95,19 contra o preço de 100.
     html = _html(_fii(), eh_fii=True)
-    assert "<th>Variação sobre o preço</th><td>-18,90%</td>" in html
+    assert "<th>Variação sobre o preço</th><td>-4,80%</td>" in html
 
 
 def test_dy_normalizado_aparece_ao_lado_do_bruto():

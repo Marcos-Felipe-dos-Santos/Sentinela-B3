@@ -18,10 +18,11 @@ import numpy as np
 import pandas as pd
 import pytest
 from apoio_bazin import enriquecer_bazin
+from apoio_fii import enriquecer_fii
 from apoio_gordon import AS_OF_GORDON, DiaGordon, enriquecer_gordon
 
 import market_engine
-from config import _normalizar_dy
+from config import MACRO, _normalizar_dy
 from fii_engine import FIIEngine
 from portfolio_engine import PortfolioEngine
 from valuation_engine import ValuationEngine
@@ -51,10 +52,12 @@ def _processar(dados, selic=SELIC):
 
 
 def _fii(selic=SELIC, **kw):
+    # F2B-2: só os insumos do novo contrato (Informe, B3 e NTN-B real sintéticos, as_of
+    # fixo), como a ressalva dos helpers do F2B-1; nenhuma asserção muda por isso.
     base = {"ticker": "TST11", "preco_atual": 100.0, "dy": 0.0935, "pvp": 1.0}
     base.update(kw)
     with patch("fii_engine.get_selic_atual", return_value=selic):
-        return FIIEngine().analisar(base)
+        return FIIEngine().analisar(enriquecer_fii(base), as_of=AS_OF_GORDON)
 
 
 def _metodos(resultado):
@@ -158,12 +161,14 @@ def test_b_bazin_no_limite_de_5_por_cento_pela_selic(selic):
 @pytest.mark.quebra_esperada
 @pytest.mark.f9_fii_selic
 def test_b_fii_compara_dy_com_a_selic_liquida_de_ir():
-    # QUEBRA ESPERADA: F-9 — veio da seção A (F2B-7); contraria o checkpoint da Fase 0
-    # (seção 4, item 3). Selic 10% → líquida 8,5%. DY 9,35% / 8,5% = 1,10 → preço justo
-    # 110,00. Com a Selic bruta o resultado seria 93,50. Muda com o F2B-2.
-    r = _fii()
-    assert r["fair_value"] == pytest.approx(110.0, abs=0.01)
-    assert r["upside"] == pytest.approx(10.0, abs=0.1)
+    # F-9, resolvida no F2B-2 (checkpoint da Fase 0, seção 4, item 3): o preço justo é o
+    # rendimento de 12 meses ÷ (NTN-B real + spread). Era DY 9,35% ÷ Selic líquida 8,5% =
+    # 110,00. Agora 9,35 ÷ (7% + spread calibrado), igual com qualquer Selic.
+    esperado = 9.35 / (0.07 + MACRO.FII_SPREAD_TIJOLO)
+    for selic in (0.05, 0.10, 0.15):
+        r = _fii(selic=selic)
+        assert r["fair_value"] == pytest.approx(esperado, abs=0.01)
+    assert r["upside"] == pytest.approx((esperado / 100 - 1) * 100, abs=0.1)
 
 
 @pytest.mark.quebra_esperada
@@ -188,11 +193,13 @@ def test_b_gordon_acompanha_a_selic_um_para_um():
 @pytest.mark.quebra_esperada
 @pytest.mark.f9_fii_selic
 def test_b_fii_nao_considera_o_patrimonio_no_fair_value():
-    # QUEBRA ESPERADA: F-9 — o preço justo do FII é só DY ÷ Selic líquida; P/VP entra
-    # apenas no score. Um FII a 0,5× e outro a 2× o patrimônio têm o mesmo fair value.
+    # QUEBRA ESPERADA: F-9 — o preço justo do FII não usa o patrimônio; P/VP entra apenas no
+    # score (contexto pelo checkpoint). Um FII a 0,5× e outro a 2× o patrimônio têm o mesmo
+    # fair value. F2B-2: o benchmark passou a NTN-B real + spread (era 110,00 pela Selic).
     barato = _fii(pvp=0.5)
     caro = _fii(pvp=2.0)
-    assert barato["fair_value"] == caro["fair_value"] == pytest.approx(110.0, abs=0.01)
+    esperado = 9.35 / (0.07 + MACRO.FII_SPREAD_TIJOLO)
+    assert barato["fair_value"] == caro["fair_value"] == pytest.approx(esperado, abs=0.01)
     assert barato["score_final"] > caro["score_final"]
 
 

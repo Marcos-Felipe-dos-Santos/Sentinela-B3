@@ -24,6 +24,7 @@ from jinja2 import Environment
 
 import fii_engine as modulo_fii
 import valuation_engine as modulo_valuation
+from config import MACRO
 from sentinela.domain import ticker as ticker_b3
 from sentinela.domain import units
 from sentinela.methods.base import Abstention, MethodResult
@@ -375,6 +376,29 @@ def _texto_liquidez(liquidez: dict[str, Any]) -> str:
     return f"{'; '.join(partes)}; até {liquidez['data_final']} ({liquidez['fonte']}){lacuna}"
 
 
+def _texto_taxa_fii(dados: dict[str, Any]) -> str:
+    """NTN-B real da taxa real e o spread datado da calibração (ficha FII 1.1, §6)."""
+    taxa = dados.get("taxa_real") or {}
+    calibracao = getattr(MACRO, "FII_SPREAD_CALIBRACAO", None) or {}
+    spread = getattr(MACRO, "FII_SPREAD_TIJOLO", None)
+    ntnb = taxa.get("ntnb")
+    texto_ntnb = (
+        f"NTN-B real {_numero(ntnb * 100)}% (data-base {taxa.get('data_base', 'n/d')}, "
+        f"{taxa.get('fonte') or 'fonte n/d'})"
+        if isinstance(ntnb, (int, float))
+        and not isinstance(ntnb, bool)
+        and math.isfinite(ntnb)
+        else f"NTN-B real indisponível ({taxa.get('abstencao', 'sem registro')})"
+    )
+    texto_spread = (
+        f"spread {_numero(spread * 100)}% (mediana dos tijolos, "
+        f"{'–'.join(calibracao.get('janela', ()))}, calibrado em {calibracao.get('data')})"
+        if isinstance(spread, (int, float))
+        else "spread indisponível"
+    )
+    return f"{texto_ntnb} + {texto_spread}; a Selic não forma o preço justo"
+
+
 def _texto_rendimento_fii(medida: dict[str, Any], dy_cascata: Any) -> str:
     if "abstencao" in medida:
         return f"não calculado: {medida['abstencao']}"
@@ -387,6 +411,12 @@ def _texto_rendimento_fii(medida: dict[str, Any], dy_cascata: Any) -> str:
         f"DY de 12 meses {_numero(medida['dy'] * 100)}% pelo Informe (até {medida['mes_final']}, "
         f"rendimento de R$ {_numero(medida['rendimento_12m'])} por cota, sobre o "
         f"{medida['base']}) contra {cascata} da cascata"
+        + (f"; tipo {medida['tipo']}" if medida.get("tipo") else "")
+        + "".join(
+            f"; emissão em {e['mes']} ({e['cotas_antes']} → {e['cotas_depois']} cotas)"
+            for e in medida.get("emissoes", ())
+        )
+        + "".join(f"; aviso: {a}" for a in medida.get("avisos", ()))
     )
 
 
@@ -534,6 +564,16 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
                 "proveniencia": PROVENIENCIA_DERIVADA["selic"],
             }
         )
+    if eh_fii and "selic_liquida" in analise:
+        # F2B-2: a Selic líquida é só contexto e score do FII; não forma o preço justo.
+        insumos.append(
+            {
+                "campo": "selic_liquida (contexto e score)",
+                "valor": _formatar(analise["selic_liquida"]),
+                "unidade": "taxa nominal a.a., líquida de IR",
+                "proveniencia": PROVENIENCIA_DERIVADA["selic"],
+            }
+        )
 
     if dados.get("bazin_diagnostico"):
         for metodo in metodos:
@@ -593,10 +633,12 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
     if rendimento:
         fontes.append(
             (
-                "Rendimento do FII pelo Informe (F2B-28, ainda sem uso nos métodos)",
+                "Rendimento do FII pelo Informe (F2B-2, lente de rendimento)",
                 _texto_rendimento_fii(rendimento, dados.get("dy")),
             )
         )
+    if eh_fii:
+        fontes.append(("Taxa da lente do FII (F2B-2)", _texto_taxa_fii(dados)))
     if not eh_fii:
         fontes.append(
             ("Proventos do Bazin (relação B3, F2B-31)", _texto_proventos_bazin(dados))

@@ -48,6 +48,7 @@ _TIPOS_CAMPOS: dict[str, type] = {
     "inflacao": Inflacao,
     "teto_pib_real": RateReal,
     "proventos_controladores": ProventosControladores,
+    "ntnb_real": RateReal,
     "vacancia": Ratio,
     "perfil": Perfil,
 }
@@ -74,6 +75,8 @@ class MethodInputs:
     inflacao: Inflacao | None = None
     teto_pib_real: RateReal | None = None
     proventos_controladores: ProventosControladores | None = None
+    # F2B-2 (decisão do Marcos de 20/10/2026): a NTN-B real da lente do FII, sem prêmio.
+    ntnb_real: RateReal | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.as_of, date) or isinstance(self.as_of, datetime):
@@ -201,6 +204,8 @@ class ValuationMethod(ABC):
             )
         if "custo_capital_real" in cls.requires and cls.regime is not Regime.REAL:
             raise TypeError("custo_capital_real: só método REAL pode exigi-lo")
+        if "ntnb_real" in cls.requires and cls.regime is not Regime.REAL:
+            raise TypeError("ntnb_real: só método REAL pode exigi-la")
         if "selic" in cls.requires and cls.regime is not Regime.NOMINAL:
             raise TypeError("selic é taxa nominal: só método NOMINAL pode exigi-la")
         if (

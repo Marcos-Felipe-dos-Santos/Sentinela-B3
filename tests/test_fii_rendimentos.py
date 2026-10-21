@@ -12,6 +12,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from market_engine import MarketEngine
 from sentinela.data import normalizacao, rendimento_fii
 from tests.test_market_engine_fii_cvm import INFORME, _cascata, _InformeFalso
 
@@ -287,6 +288,8 @@ def test_provedor_sem_o_fundo_devolve_lista_vazia(tmp_path, monkeypatch):
     monkeypatch.setattr(provedor, "baixar_informe", baixar)
     assert provedor.obter_rendimentos_fii(INFORME["cnpj_fundo"]) == {
         "registros": [],
+        "composicoes": [],
+        "isin": None,
         "proveniencia": None,
     }
 
@@ -308,33 +311,52 @@ class _InformeComRendimentos(_InformeFalso):
         }
 
 
-def test_cascata_grava_o_rendimento_fora_do_prompt(monkeypatch):
+class _B3Fundos:
+    def __init__(self, erro=None):
+        self.erro, self.chamadas = erro, []
+
+    def coletar(self, cnpj, ticker, agora):
+        self.chamadas.append((cnpj, ticker))
+        if self.erro:
+            raise self.erro
+        return {"resposta": {"code": ticker[:4]}, "codigo": ticker[:4]}
+
+
+def test_cascata_grava_o_informe_e_a_b3_fora_do_prompt(monkeypatch):
+    # F2B-2: a cascata guarda o Informe e a B3 crus; a conta, com o as_of, é do motor.
     from ai_core import SentinelaAI
 
+    b3 = _B3Fundos()
+    monkeypatch.setattr(MarketEngine, "b3_fundos", b3, raising=False)
     dados = _cascata(monkeypatch, _InformeComRendimentos(_registros()))
-    medida = dados["rendimento_fii_cvm"]
-    assert medida["dy"] == pytest.approx(
-        13.240530 / 90.0, abs=1e-6
-    )  # preço do yfinance
-    assert medida["proveniencia"] == {"documento": "Informe Mensal"}
-    assert dados["dy"] == pytest.approx(0.09)  # o DY da cascata não muda
-    assert "rendimento_fii_cvm" not in SentinelaAI._formatar_dados(None, dados)
-
-
-def test_cascata_grava_a_abstencao(monkeypatch):
-    dados = _cascata(monkeypatch, _InformeComRendimentos(_registros(HGLG[1:])))
-    assert dados["rendimento_fii_cvm"] == {
-        "abstencao": rendimento_fii.MOTIVO_MESES_INCOMPLETOS
-    }
-
-
-@pytest.mark.parametrize(
-    "informe",
-    [_InformeFalso(INFORME), _InformeComRendimentos(erro=OSError("sem rede"))],
-)
-def test_cascata_sem_rendimentos_deixa_a_chave_de_fora(monkeypatch, informe):
-    dados = _cascata(monkeypatch, informe)
+    assert dados["informe_fii"]["registros"] == _registros()
+    assert dados["informe_fii"]["proveniencia"] == {"documento": "Informe Mensal"}
+    assert dados["b3_fundo"]["codigo"] == "HGLG"
+    assert b3.chamadas == [("11.728.688/0001-47", "HGLG11")]
     assert "rendimento_fii_cvm" not in dados
+    assert dados["dy"] == pytest.approx(0.09)  # o DY da cascata não muda
+    texto = SentinelaAI._formatar_dados(None, dados)
+    assert "informe_fii" not in texto and "b3_fundo" not in texto
+
+
+def test_cascata_grava_as_abstencoes(monkeypatch):
+    monkeypatch.setattr(
+        MarketEngine, "b3_fundos", _B3Fundos(erro=OSError("sem rede")), raising=False
+    )
+    dados = _cascata(monkeypatch, _InformeComRendimentos(_registros()))
+    assert dados["b3_fundo"] == {
+        "abstencao": "complemento da B3 do fundo indisponível: sem rede"
+    }
+    dados = _cascata(monkeypatch, _InformeComRendimentos(erro=OSError("sem rede")))
+    assert dados["informe_fii"] == {
+        "abstencao": "Informe Mensal indisponível: sem rede"
+    }
+    assert "b3_fundo" not in dados
+
+
+def test_cascata_sem_o_provedor_de_rendimentos_deixa_as_chaves_de_fora(monkeypatch):
+    dados = _cascata(monkeypatch, _InformeFalso(INFORME))
+    assert "informe_fii" not in dados and "b3_fundo" not in dados
     assert dados["vpa"] == 100.0  # o resto do Informe fica
 
 
@@ -351,3 +373,92 @@ def test_relatorio_mostra_o_dy_do_informe_ao_lado_do_da_cascata():
     )
     assert _texto_rendimento_fii(medida, None).endswith("contra n/d da cascata")
     assert _texto_rendimento_fii({"abstencao": "x"}, 0.09) == "não calculado: x"
+
+
+def test_provedor_traz_entrega_isin_e_composicao(tmp_path, monkeypatch):
+    # F2B-2: a entrega e o ISIN vêm do `geral` da mesma referência e versão; a composição,
+    # do `ativo_passivo`.
+    import zipfile as zf
+
+    import pandas as pd
+
+    import cvm_fii_provider
+    from cvm_fii_provider import CVMFIIProvider
+
+    cnpj = INFORME["cnpj_fundo"]
+    caminho = tmp_path / "2026.zip"
+    tabelas = {
+        "complemento": [
+            {"CNPJ_Fundo_Classe": cnpj, "Data_Referencia": "2026-09-01", "Versao": "1"},
+            {"CNPJ_Fundo_Classe": cnpj, "Data_Referencia": "2026-08-01", "Versao": "2"},
+        ],
+        "geral": [
+            {
+                "CNPJ_Fundo_Classe": cnpj,
+                "Data_Referencia": "2026-09-01",
+                "Versao": "1",
+                "Data_Entrega": "2026-10-15",
+                "Codigo_ISIN": "BRHGLGCTF004",
+            },
+            {
+                "CNPJ_Fundo_Classe": "00.000.000/0001-00",
+                "Data_Referencia": "2026-08-01",
+                "Versao": "2",
+                "Data_Entrega": "2026-09-15",
+                "Codigo_ISIN": "BROUTRCTF000",
+            },
+        ],
+        "ativo_passivo": [
+            {
+                "CNPJ_Fundo_Classe": cnpj,
+                "Data_Referencia": "2026-09-01",
+                "Versao": "1",
+                "CRI": "1",
+            },
+            {"CNPJ_Fundo_Classe": "x", "Data_Referencia": "2026-09-01", "Versao": "1"},
+        ],
+    }
+    with zf.ZipFile(caminho, "w") as z:
+        for parte, linhas in tabelas.items():
+            z.writestr(
+                f"inf_mensal_fii_{parte}_2026.csv",
+                pd.DataFrame(linhas).to_csv(sep=";", index=False).encode("latin-1"),
+            )
+    provedor = CVMFIIProvider(cache_dir=str(tmp_path / "cache"))
+    monkeypatch.setattr(cvm_fii_provider, "date", _Hoje)
+    monkeypatch.setattr(
+        provedor,
+        "baixar_informe",
+        lambda ano: caminho if ano == 2026 else tmp_path / "x",
+    )
+    monkeypatch.setattr(provedor, "_proveniencia", lambda caminho, ano, linha: ano)
+    informe = provedor.obter_rendimentos_fii(cnpj)
+    por_mes = {r["Data_Referencia"]: r for r in informe["registros"]}
+    assert por_mes["2026-09-01"]["Data_Entrega"] == "2026-10-15"
+    assert "Data_Entrega" not in por_mes["2026-08-01"]  # par só de outro fundo
+    assert informe["isin"] == "BRHGLGCTF004"
+    assert [c["CRI"] for c in informe["composicoes"]] == ["1"]
+
+
+def test_linha_com_data_ilegivel_nao_vira_a_mais_recente(tmp_path, monkeypatch):
+    # Revisão do F2B-2: como texto, "nan" e "2024-13-01" ordenam depois de "2026-09-01".
+    import cvm_fii_provider
+    from cvm_fii_provider import CVMFIIProvider
+
+    cnpj = INFORME["cnpj_fundo"]
+    linhas = [
+        {"CNPJ_Fundo_Classe": cnpj, "Data_Referencia": "2026-09-01", "Versao": "1"},
+        {"CNPJ_Fundo_Classe": cnpj, "Data_Referencia": "2026-13-01", "Versao": "1"},
+        {"CNPJ_Fundo_Classe": cnpj, "Data_Referencia": "nan", "Versao": "1"},
+    ]
+    provedor = CVMFIIProvider(cache_dir=str(tmp_path / "cache"))
+    monkeypatch.setattr(cvm_fii_provider, "date", _Hoje)
+    monkeypatch.setattr(
+        provedor,
+        "baixar_informe",
+        lambda ano: _zip(tmp_path / f"{ano}.zip", ano, linhas if ano == 2026 else []),
+    )
+    monkeypatch.setattr(
+        provedor, "_proveniencia", lambda caminho, ano, linha: linha["Data_Referencia"]
+    )
+    assert provedor.obter_rendimentos_fii(cnpj)["proveniencia"] == "2026-09-01"

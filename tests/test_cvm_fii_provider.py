@@ -175,3 +175,18 @@ def test_versao_e_comparada_como_numero(tmp_path, monkeypatch):
     zip_path = _make_inf_zip(tmp_path / "inf_2024.zip", 2024, rows)
     monkeypatch.setattr(provider, "baixar_informe", lambda ano: zip_path)
     assert provider.obter_dados_fii(_CNPJ_HGLG)["valor_cota"] == pytest.approx(190.0)
+
+
+@pytest.mark.parametrize("ilegivel", ["", "2024-13-01", "nan"])
+def test_data_referencia_ilegivel_abstem_com_motivo(tmp_path, monkeypatch, ilegivel):
+    # Aceite da auditoria Gemini HEAD60e61e2 no F2B-2: sem seleção silenciosa nem exceção.
+    provider = CVMFIIProvider(cache_dir=str(tmp_path / "cache"))
+    rows = [
+        {**_ROW_BASE, "Data_Referencia": ilegivel, "Valor_Patrimonial_Cotas": "999.0"},
+        {**_ROW_BASE, "Valor_Patrimonial_Cotas": "180.0"},
+    ]
+    zip_path = _make_inf_zip(tmp_path / "inf_2024.zip", 2024, rows)
+    monkeypatch.setattr(provider, "baixar_informe", lambda ano: zip_path)
+    assert provider.obter_dados_fii(_CNPJ_HGLG) == {
+        "abstencao": "Informe Mensal com Data_Referencia ilegível"
+    }

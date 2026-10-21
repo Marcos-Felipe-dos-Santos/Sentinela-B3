@@ -17,7 +17,7 @@ from sentinela.methods.gordon import GordonParams
 from sentinela.methods.graham import FATOR_GRAHAM, GrahamParams
 from sentinela.methods.lynch import LynchParams
 
-NOMES = ["Graham", "Bazin", "Lynch", "Gordon", "Bazin FII", "P/VP do FII"]
+NOMES = ["Graham", "Bazin", "Lynch", "Gordon", "Rendimento do FII", "P/VP do FII"]
 
 # Valores da 1.0.0, lidos hoje do MacroContext: mudar uma constante sem criar versão
 # nova do método quebra este teste. campo do método -> (constante do MacroContext, valor)
@@ -48,7 +48,10 @@ PARAMETROS_1_0_0 = {
         },
     ),
     "Gordon": (GordonParams, {}),
-    "Bazin FII": (FiiYieldParams, {"fator_ir": ("FII_FATOR_IR", 0.85)}),
+    "Rendimento do FII": (
+        FiiYieldParams,
+        {"spread": ("FII_SPREAD_TIJOLO", 0.03505842448151178)},
+    ),
     "P/VP do FII": (
         FiiNavParams,
         {
@@ -116,7 +119,7 @@ def test_regime_coerente_com_a_taxa():
         "Bazin": Regime.NOMINAL,
         "Lynch": Regime.NOMINAL,
         "Gordon": Regime.REAL,
-        "Bazin FII": Regime.NOMINAL,
+        "Rendimento do FII": Regime.REAL,
         "P/VP do FII": Regime.SEM_TAXA,
     }
     for e in registry.entradas():
@@ -134,7 +137,7 @@ def test_applies_to_descreve_o_roteamento_da_v1_sem_aplicar():
         "Bazin": acoes,
         "Lynch": acoes,
         "Gordon": acoes,
-        "Bazin FII": frozenset({AssetType.FII}),
+        "Rendimento do FII": frozenset({AssetType.FII}),
         "P/VP do FII": frozenset({AssetType.FII}),
     }
     assert {e.nome: e.applies_to for e in registry.entradas()} == esperado
@@ -163,6 +166,7 @@ def test_changelog_tem_a_1_0_0():
             "Bazin": ["1.0.0", "1.0.1", "2.0.0"],
             "Gordon": ["1.0.0", "1.1.0", "2.0.0"],
             "P/VP do FII": ["1.0.0", "1.1.0"],
+            "Rendimento do FII": ["1.0.0", "2.0.0"],
         }.get(nome, ["1.0.0"])  # F2A-21 e F2A-25
         assert [m.version for m in mudancas] == esperado
         assert mudancas[0].descricao == (

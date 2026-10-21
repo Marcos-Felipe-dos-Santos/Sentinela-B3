@@ -1,32 +1,87 @@
-import math
+"""Motor de FII com a lente de rendimento sobre NTN-B + spread (F2B-2; ficha FII 1.1)."""
+
+from unittest.mock import patch
 
 import pytest
+from apoio_fii import enriquecer_fii
+from apoio_gordon import AS_OF_GORDON
 
+import fii_engine
+from config import MACRO
 from fii_engine import FIIEngine
-from sentinela.methods.base import Abstention, MethodResult
+
+SPREAD = 0.02
 
 
-def _rendimento(p=100.0, dy=0.10, vacancia=None, selic=0.145):
-    return FIIEngine()._calcular_rendimento(p, dy, vacancia, selic)
+def _fii(dados, selic=0.10, spread=SPREAD):
+    with (
+        patch.object(fii_engine, "get_selic_atual", return_value=selic),
+        patch.object(MACRO, "FII_SPREAD_TIJOLO", spread, create=True),
+    ):
+        return FIIEngine().analisar(dados, as_of=AS_OF_GORDON)
 
 
-def test_valores_finitos_delegam_ao_metodo():
-    r = _rendimento()
-    assert isinstance(r, MethodResult)
-    assert r.valor.valor == (100.0 * 0.10) / (0.145 * 0.85)
+def _base(**kw):
+    dados = {"ticker": "TSTI11", "preco_atual": 100.0, "dy": 0.09, "pvp": 1.0}
+    dados.update(kw)
+    return dados
 
 
-def test_vacancia_entra_no_dy_efetivo():
-    r = _rendimento(vacancia=0.2)
-    assert r.obter("dy_efetivo").valor == 0.10 * (1 - 0.2)
+def test_fii_tijolo_pela_ntnb_mais_spread():
+    dados = enriquecer_fii(_base(), ntnb=0.07)
+    r = _fii(dados)
+    assert r["fair_value"] == pytest.approx(round(9.0 / 0.09, 2))
+    assert r["metodos_usados"] == "Rendimento do FII: R$100.00"
+    assert dados["rendimento_fii_cvm"]["dy"] == pytest.approx(0.09)
+    assert dados["rendimento_fii_cvm"]["tipo"] == "tijolo"
 
 
-@pytest.mark.parametrize("ruim", [math.nan, math.inf, -math.inf])
-@pytest.mark.parametrize("campo", ["p", "dy", "vacancia", "selic"])
-def test_valor_nao_finito_nao_calcula_o_metodo(campo, ruim):
-    assert _rendimento(**{campo: ruim}) is None
+def test_selic_fica_no_score_e_nao_no_preco_justo():
+    dados = enriquecer_fii(_base(dy=0.09), ntnb=0.06)
+    baixa = _fii(dict(dados), selic=0.05)
+    alta = _fii(dict(dados), selic=0.20)
+    assert baixa["fair_value"] == alta["fair_value"] == pytest.approx(112.5)
+    # score inalterado na 2B (decisão de 19/10/2026): DY contra a Selic líquida
+    assert baixa["score_final"] - alta["score_final"] == 40
+    assert alta["selic_liquida"] == pytest.approx(0.20 * MACRO.FII_FATOR_IR)
 
 
-def test_selic_zero_vira_abstencao_e_nao_excecao():
-    r = _rendimento(selic=0.0)
-    assert isinstance(r, Abstention)
+@pytest.mark.parametrize(
+    ("ajuste", "motivo"),
+    [
+        (lambda d: d.update(taxa_real={"abstencao": "x"}), "insumo ausente: ntnb_real"),
+        (lambda d: d.pop("taxa_real"), "insumo ausente: ntnb_real"),
+        (lambda d: d.pop("informe_fii"), "insumo ausente: Informe Mensal do FII"),
+        (
+            lambda d: d["informe_fii"]["composicoes"][0].update(CRI="9000"),
+            "tipo de FII fora do escopo na 2B: papel",
+        ),
+        (
+            lambda d: d.update(b3_fundo={"abstencao": "sem rede"}),
+            "fonte de eventos de cota indisponível: continuidade não demonstrável",
+        ),
+    ],
+)
+def test_abstencoes_da_lente(ajuste, motivo):
+    dados = enriquecer_fii(_base())
+    ajuste(dados)
+    r = _fii(dados)
+    assert r["fair_value"] == 100.0
+    assert r["upside"] == 0.0
+    assert r["recomendacao"] == "NEUTRO"
+    assert r["metodos_usados"] == f"Dados insuficientes (Rendimento do FII: {motivo})"
+
+
+def test_sem_spread_abstem():
+    r = _fii(enriquecer_fii(_base()), spread=None)
+    assert (
+        r["metodos_usados"]
+        == "Dados insuficientes (Rendimento do FII: spread indisponível)"
+    )
+
+
+def test_avisos_da_conferencia_saem_com_o_resultado():
+    r = _fii(enriquecer_fii(_base()))
+    assert r["avisos_rendimento"][0].startswith(
+        "rendimento sem valor da B3 para conferir"
+    )

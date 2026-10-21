@@ -750,7 +750,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: universo inicial antes → depois (Bazin, perfil, Gordon) e os quatro papéis da base;
   - gate da fase.
 
-- [ ] **F2B-2** · fix · `fix: compare FII yield with NTN-B plus the historical spread` · **[golden]** **[FII]**
+- [x] **F2B-2** · fix · `fix: compare FII yield with NTN-B plus the historical spread` · **[golden]** **[FII]**
   - **Plano final:** docs/decisoes/plano-final-2b.md, seção 3.
   - **Definições da ficha 1.1, decididas pelo Marcos em 20/10/2026 (complemento):** (a) a conferência compara o rendimento reconstruído, arredondado a duas casas, com o valor da B3: igual é conferido, diferente gera aviso, sem tolerância percentual; (b) a lista de eventos vazia só vale como "sem evento" se a resposta da B3 for válida (sucesso e estrutura esperada); erro ou formato inesperado é fonte indisponível, e o FII se abstém.
   - **Bloqueio resolvido — decisões do Marcos de 20/10/2026:** permissão aditiva de `base.py` para o campo `ntnb_real` (lista de arquivos restritos). Ficha FII 1.1 aprovada: (a) o rendimento oficial por cota da B3 (`fundsProxy/fundsCall/GetListedSupplementFunds`) é conferência: divergência mês a mês contra o reconstruído do Informe gera aviso com os meses e as diferenças, sem abstenção; (b) critério da regra "salto de VP incompatível, sem percentual arbitrário" (proposta do diário do F2B-2): desdobramento ou grupamento oficial na janela abstém, e a fonte de eventos indisponível também; sem limite percentual de salto de VP. Rito D27 para os testes novos.

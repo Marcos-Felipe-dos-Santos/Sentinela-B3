@@ -231,6 +231,72 @@ mesmo rendimento, sem misturar DY da cascata com Informe. Seleção só de fundo
 atuais mantém viés de sobrevivência: declarar e medir cobertura; não dizer que
 representa todos os listados. A composição atual não classifica todo o passado.
 
+## 6a. Registro da calibração do spread (F2B-2, 21/10/2026)
+
+Executada por `scripts/calibrar_spread_fii.py --mes-final 2026-09`, pelas regras da seção 3
+do plano final da 2B (`docs/decisoes/plano-final-2b.md`), sobre os arquivos do levantamento
+do F2B-21 (`outputs/levantamento_cache/f2b21/`: Informes de 2019 a 2026, COTAHIST anuais de
+2020 a 2026 e o histórico do Tesouro, SHA-256 abaixo) e a resposta da B3 (`fundsCall`) de
+cada fundo candidato, coletada em 21/10/2026.
+
+- **Spread: 3,5058% ao ano** (0,03505842448151178), mediana das 60 medianas mensais de
+  outubro/2021 a setembro/2026. p25 3,1700%; p75 3,7734%. Constante datada em
+  `MacroContext.FII_SPREAD_TIJOLO`, com o registro em `FII_SPREAD_CALIBRACAO`; sem
+  recalibração em execução.
+- **Observação de cada mês:** a lente em produção num as_of no dia seguinte ao último pregão
+  do mês: linhas do Informe entregues até esse pregão, Informe de até 3 meses, guardas da §4,
+  tijolo pela composição do mês final, sem desdobramento ou grupamento da B3 na janela;
+  liquidez do F2A-10 (presença ≥ 80% e volume mediano ≥ R$ 100 mil em 63 pregões); preço
+  bruto do COTAHIST no último pregão do mês em que o fundo negociou; NTN-B pela média da
+  taxa de aplicação da cesta da taxa real (NTN-B e NTN-B Principal a partir de 2035) na
+  última data-base até o pregão (5,66% em outubro/2021; 7,15% em setembro/2026).
+- **Fundos por mês:** mínimo 30, mediana 36, máximo 41 (2.162 fundos-mês válidos).
+- **População e cobertura:** 1.712 fundos no Informe; 454 ligados a um ticker pelo ISIN do
+  `geral` igual ao do COTAHIST (mercado à vista, final 11); 175 sem ISIN no Informe, 1.046
+  sem ticker no COTAHIST e 37 com ISIN em mais de um ticker, fora. Só fundos com Informe e
+  negociação no período entram: o viés de sobrevivência que sobra não é medido além dessa
+  contagem.
+- **Exclusões, somadas nos 60 meses (fundo-mês):** sem negócio na janela de liquidez 8.782;
+  tipo fora do escopo 4.842; liquidez abaixo do mínimo 3.133; menos de 12 meses 2.247; cotas
+  emitidas inválidas 1.757 (quantidade não inteira, pela linha "Cotas_Emitidas" da §4); DY
+  mensal negativo 1.320; rendimento anual não positivo 1.035; amortização na janela 685;
+  Informe sem meses 389; Informe com mais de 3 meses 236; classificação desconhecida 182;
+  DY acima de 25% 168; amortização inválida 150; fonte de eventos indisponível 111; linhas
+  conflitantes 21; desdobramento 19; grupamento 1.
+- **Sensibilidade (não é a constante):** com as cotas fracionárias arredondadas, em vez de
+  inválidas, o spread seria 3,5124% (p25 3,1738%, p75 3,7345%; 30 a 44 fundos por mês).
+- **Medianas mensais (%, fundos):** 2021-10 2,24 (30); 2021-11 3,13 (32); 2021-12 2,68 (35);
+  2022-01 2,31 (37); 2022-02 2,82 (39); 2022-03 3,20 (36); 2022-04 2,80 (37); 2022-05 2,72
+  (37); 2022-06 2,99 (39); 2022-07 2,44 (38); 2022-08 2,02 (37); 2022-09 2,50 (34); 2022-10
+  2,52 (36); 2022-11 3,27 (36); 2022-12 3,50 (35); 2023-01 3,51 (33); 2023-02 3,52 (30);
+  2023-03 3,83 (30); 2023-04 3,51 (35); 2023-05 3,65 (36); 2023-06 3,52 (37); 2023-07 3,50
+  (38); 2023-08 3,57 (36); 2023-09 3,42 (40); 2023-10 3,49 (39); 2023-11 3,44 (36); 2023-12
+  3,50 (35); 2024-01 3,18 (39); 2024-02 3,30 (37); 2024-03 3,26 (38); 2024-04 3,58 (35);
+  2024-05 3,47 (33); 2024-06 3,63 (35); 2024-07 3,98 (34); 2024-08 3,70 (32); 2024-09 3,97
+  (33); 2024-10 4,09 (36); 2024-11 3,60 (33); 2024-12 3,73 (37); 2025-01 4,76 (41); 2025-02
+  4,45 (39); 2025-03 2,80 (38); 2025-04 3,14 (39); 2025-05 3,39 (37); 2025-06 4,11 (35);
+  2025-07 3,72 (37); 2025-08 3,35 (36); 2025-09 2,72 (38); 2025-10 3,24 (40); 2025-11 3,97
+  (41); 2025-12 3,76 (39); 2026-01 3,65 (37); 2026-02 3,71 (39); 2026-03 3,88 (37); 2026-04
+  3,81 (36); 2026-05 4,27 (36); 2026-06 4,47 (32); 2026-07 4,13 (33); 2026-08 4,62 (33);
+  2026-09 4,66 (34).
+- **SHA-256 das fontes** (os arquivos que o script lê):
+  - `fii_anual_2019.resposta`: `ba542efca10362e6ab5a49b56add4374748f6f4eb81c0a2bedb107d144e385b9`
+  - `fii_anual_2020.resposta`: `aec2dbc88d324d002517e96cc2cf74f404bfe038c1a254f6935ef0af5c411ba5`
+  - `fii_anual_2021.resposta`: `d7450231a77295b9f8a0daac94510062912f6ca8335b0dedc48571123526de0b`
+  - `fii_anual_2022.resposta`: `9ef1736d79eba7a0cbc1091bdb124ee8a196050df78dcf310d87f6f6a0d6d65c`
+  - `fii_anual_2023.resposta`: `0eab13e3e8ea63d54288fb4ab26898c64ce8cbc6aa15a9ae9f159eae7e8a65bd`
+  - `fii_anual_2024.resposta`: `2ff3ed063302576ef206097ab7978eb529d3e3c07d43869e3f9eba34fc37e3b5`
+  - `fii_anual_2025.resposta`: `0413308766b306a557bc19fa00fb5dd0ed63f8f3dffe760ee59c59682b0750ca`
+  - `fii_anual_2026.resposta`: `eac25b77664933c8b79a19056ea51c591f23e7fdc1c0c101a978d83d87f22fbb`
+  - `cotahist_anual_2020.resposta`: `86442168939b9da7b3cc1ec1662c333ee5ab4c75f2be1865b5bf55ba4c52168f`
+  - `cotahist_anual_2021.resposta`: `b0d4aed17d609c7ba615a23320c2fd513b580a251ae7d884a5015ef8a3fe4705`
+  - `cotahist_anual_2022.resposta`: `a4f9015b755f797d9c08b0d13f19dbfab18a6c75f379c0271a1cf1b5f6323cd8`
+  - `cotahist_anual_2023.resposta`: `ad1603788d78aaa1de806498572277f1d9443f88ae116452751b5800cb23523e`
+  - `cotahist_anual_2024.resposta`: `96a003d10fab0fa2ace0c64cdc2b892b4c111adf9da8e538aa0b28437bd2a172`
+  - `cotahist_anual_2025.resposta`: `6cc0ad851c8f605ca30418acac48be81f1767f6ed05b4f563772d06ae448047d`
+  - `cotahist_anual_2026.resposta`: `1a78ad7f46ced05c723a5b09089e48378dfc5b7fe9cb6558cbcae569c66e51ad`
+  - `tesouro_historico.resposta`: `f4f9b0fb9a1850da4cbca47d5b896464c04b21b302cf591de178726a426e2972`
+
 ## 7. Parâmetros e justificativa
 
 **Todas [DECISÃO] decididas pelo Marcos em 19/10/2026:**

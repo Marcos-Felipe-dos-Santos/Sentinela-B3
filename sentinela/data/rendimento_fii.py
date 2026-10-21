@@ -1,6 +1,6 @@
 """Rendimento de 12 meses do FII pelo Informe Mensal da CVM (F2B-28; insumo da [FII], F2B-2).
 
-Só mede: nenhum motor lê. O complemento do Informe não tem o valor distribuído por cota; o
+O motor de FII lê por `entradas` (F2B-2), com as guardas de `avaliar`. O complemento do Informe não tem o valor distribuído por cota; o
 rendimento do mês é reconstruído pelo DY do mês × valor patrimonial da cota do fim do mês
 anterior, a base que a norma define (Resolução CVM 175, anexo da 184; F2B-21, pergunta 4).
 `Percentual_Dividend_Yield_Mes` vem em razão (F2B-21, pergunta 4) e passa pela fronteira de
@@ -19,8 +19,11 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from datetime import date, datetime
+from itertools import pairwise
+from zoneinfo import ZoneInfo
 
-from sentinela.data import normalizacao
+from sentinela.data import fii_elegibilidade, normalizacao
 
 PROVEDOR = "cvm_fii"
 MESES = 12
@@ -109,7 +112,7 @@ def rendimento_12_meses(
     if preco_valor is None or preco_valor <= 0:
         return Abstencao(MOTIVO_PRECO)
     final = max(meses)
-    mes, rendimentos = final, []
+    mes, rendimentos, por_mes = final, [], {}
     for _ in range(MESES):  # `mes` sempre existe: o final, ou o `anterior` com cota
         anterior = _anterior(mes)
         dy = normalizacao.dy_na_fronteira(
@@ -122,6 +125,7 @@ def rendimento_12_meses(
             if usado in conflitos:
                 return Abstencao(f"{MOTIVO_CONFLITO}: {usado[0]:04d}-{usado[1]:02d}")
         rendimentos.append(dy * cota)
+        por_mes[f"{mes[0]:04d}-{mes[1]:02d}"] = dy * cota
         mes = anterior
     rendimento = sum(rendimentos)
     dy_12m = rendimento / preco_valor
@@ -131,8 +135,171 @@ def rendimento_12_meses(
     return {
         "dy": dy_12m,
         "rendimento_12m": rendimento,
+        "rendimentos": dict(sorted(por_mes.items())),
         "meses": MESES,
         "mes_final": f"{final[0]:04d}-{final[1]:02d}",
         "base": BASE,
         "conversao": normalizacao.proveniencia_dy(PROVEDOR),
     }
+
+
+# ── guardas da ficha FII 1.1 (F2B-2) ─────────────────────────────────────────
+
+MOTIVO_IDADE = "Informe mais recente com mais de 3 meses"
+MOTIVO_DY_NEGATIVO = "DY mensal negativo declarado no Informe"
+MOTIVO_AMORTIZACAO = (
+    "amortização na janela: devolução de capital, fluxo não representativo"
+)
+MOTIVO_AMORTIZACAO_INVALIDA = "amortização inválida no Informe"
+MOTIVO_COTAS = "cotas emitidas inválidas: base de cota incompatível"
+MOTIVO_SEM_COMPOSICAO = "composição do Informe do mês final indisponível"
+MOTIVO_EVENTOS_INDISPONIVEIS = (
+    "fonte de eventos de cota indisponível: continuidade não demonstrável"
+)
+MOTIVO_RENDIMENTO_NAO_POSITIVO = "rendimento anual não positivo"
+MOTIVO_DY_NAO_CONFIAVEL = "rendimento não confiável: DY de 12 meses acima de 25%"
+DY_MAXIMO = 0.25
+IDADE_MAXIMA_MESES = 3
+
+
+def _entregue(registro: Mapping, dia_as_of: date) -> bool:
+    """Data de entrega demonstrada e anterior ao dia do as_of (o dia só vale depois do fim)."""
+    try:
+        return date.fromisoformat(str(registro.get("Data_Entrega"))[:10]) < dia_as_of
+    except ValueError:
+        return False
+
+
+def _rotulo(mes: tuple[int, int]) -> str:
+    return f"{mes[0]:04d}-{mes[1]:02d}"
+
+
+def avaliar(
+    registros: Iterable[Mapping],
+    composicoes: Iterable[Mapping],
+    *,
+    b3: object,
+    codigo: str,
+    isin: str | None,
+    preco: object,
+    dia_as_of: date,
+) -> dict | Abstencao:
+    """Rendimento de 12 meses do FII com as guardas da ficha FII 1.1, ou a abstenção.
+
+    Só as linhas do Informe entregues antes do dia do as_of; janela terminada no último mês
+    elegível, até 3 meses civis antes do as_of; DY mensal negativo, amortização e cotas
+    inválidas abstêm; só tijolo pela composição do mês final; desdobramento ou grupamento
+    da B3 na janela (do primeiro VP ao as_of), ou a B3 sem resposta válida, abstêm. A
+    conferência com o rendimento da B3 só gera aviso. Emissões ficam em contexto.
+    """
+    elegiveis = [r for r in registros if _entregue(r, dia_as_of)]
+    meses, _ = _por_mes(elegiveis)
+    if not meses:
+        return Abstencao(MOTIVO_SEM_MESES)
+    final = max(meses)
+    if (dia_as_of.year * 12 + dia_as_of.month) - (final[0] * 12 + final[1]) > (
+        IDADE_MAXIMA_MESES
+    ):
+        return Abstencao(MOTIVO_IDADE)
+    janela = [final]
+    while len(janela) < MESES + 1:
+        janela.append(_anterior(janela[-1]))
+    cotas_por_mes = {}
+    for mes in janela:
+        linha = meses.get(mes)
+        if linha is None:
+            return Abstencao(MOTIVO_MESES_INCOMPLETOS)
+        cotas = _numero(linha.get("Cotas_Emitidas"))
+        if cotas is None or cotas <= 0 or cotas % 1:
+            return Abstencao(MOTIVO_COTAS)
+        cotas_por_mes[mes] = int(cotas)
+        if mes == janela[-1]:
+            continue  # o 13º mês só dá o VP
+        dy_mes = _numero(linha.get("Percentual_Dividend_Yield_Mes"))
+        if dy_mes is not None and dy_mes < 0:
+            return Abstencao(MOTIVO_DY_NEGATIVO)
+        amortizacao = linha.get("Percentual_Amortizacao_Cotas_Mes")
+        if not (
+            amortizacao is None
+            or (isinstance(amortizacao, float) and math.isnan(amortizacao))
+            or (isinstance(amortizacao, str) and not amortizacao.strip())
+        ):
+            valor = _numero(amortizacao)
+            if valor is None or valor < 0:
+                return Abstencao(MOTIVO_AMORTIZACAO_INVALIDA)
+            if valor > 0:
+                return Abstencao(MOTIVO_AMORTIZACAO)
+    medida = rendimento_12_meses(
+        [r for r in elegiveis if _mes(r) in set(janela)], preco
+    )
+    if isinstance(medida, Abstencao):
+        return medida
+    entregues = {(_mes(r), _versao(r)) for r in elegiveis if _mes(r) == final}
+    composicao = [c for c in composicoes if (_mes(c), _versao(c)) in entregues]
+    if not composicao:
+        return Abstencao(MOTIVO_SEM_COMPOSICAO)
+    tipo = fii_elegibilidade.tipo_pela_composicao(max(composicao, key=_versao))
+    if isinstance(tipo, fii_elegibilidade.Abstencao):
+        return Abstencao(tipo.motivo)
+    if tipo != "tijolo":
+        return Abstencao(f"tipo de FII fora do escopo na 2B: {tipo}")
+    if not fii_elegibilidade.resposta_b3_valida(b3, codigo):
+        return Abstencao(MOTIVO_EVENTOS_INDISPONIVEIS)
+    primeiro = janela[-1]
+    evento = fii_elegibilidade.evento_de_cota(
+        b3["stockDividends"], date(primeiro[0], primeiro[1], 1), dia_as_of
+    )
+    if evento is not None:
+        return Abstencao(evento)
+    if medida["rendimento_12m"] <= 0:
+        return Abstencao(MOTIVO_RENDIMENTO_NAO_POSITIVO)
+    if medida["dy"] > DY_MAXIMO:
+        return Abstencao(MOTIVO_DY_NAO_CONFIAVEL)
+    ordem = sorted(cotas_por_mes)
+    emissoes = [
+        {
+            "mes": _rotulo(depois),
+            "cotas_antes": cotas_por_mes[antes],
+            "cotas_depois": cotas_por_mes[depois],
+        }
+        for antes, depois in pairwise(ordem)
+        if cotas_por_mes[depois] != cotas_por_mes[antes]
+    ]
+    return {
+        **medida,
+        "tipo": tipo,
+        "emissoes": emissoes,
+        "avisos": fii_elegibilidade.conferencia_b3(
+            medida["rendimentos"], b3["cashDividends"], isin
+        ),
+    }
+
+
+MOTIVO_SEM_INFORME = "insumo ausente: Informe Mensal do FII"
+FUSO = ZoneInfo("America/Sao_Paulo")
+
+
+def entradas(dados: Mapping, instante: datetime) -> dict | Abstencao:
+    """`avaliar` sobre o que a cascata gravou (`informe_fii`, `b3_fundo`, preço), no as_of.
+
+    O dia do as_of é o de Brasília; as_of sem fuso abstém.
+    """
+    if instante.tzinfo is None or instante.utcoffset() is None:
+        return Abstencao("as_of exige fuso horário")
+    informe = dados.get("informe_fii")
+    if not isinstance(informe, Mapping) or "registros" not in informe:
+        motivo = informe.get("abstencao") if isinstance(informe, Mapping) else None
+        return Abstencao(
+            f"{MOTIVO_SEM_INFORME}: {motivo}" if motivo else MOTIVO_SEM_INFORME
+        )
+    b3 = dados.get("b3_fundo")
+    resposta = b3.get("resposta") if isinstance(b3, Mapping) else None
+    return avaliar(
+        informe.get("registros") or (),
+        informe.get("composicoes") or (),
+        b3=resposta,
+        codigo=str(dados.get("ticker") or "")[:4],
+        isin=informe.get("isin"),
+        preco=dados.get("preco_atual"),
+        dia_as_of=instante.astimezone(FUSO).date(),
+    )

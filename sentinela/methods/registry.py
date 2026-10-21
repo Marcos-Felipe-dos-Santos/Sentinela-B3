@@ -74,6 +74,12 @@ CHANGELOG["Bazin"] += (
 CHANGELOG["Graham"] += (
     Mudanca("1.1.0", "com VPA não positivo, abstém-se antes da raiz"),
 )
+CHANGELOG["Rendimento do FII"] += (
+    Mudanca(
+        "2.0.0",
+        "ficha FII 1.1: preço justo pelo rendimento de 12 meses do Informe sobre NTN-B real + spread calibrado dos tijolos, crescimento real zero; sai a Selic líquida; nome anterior: Bazin FII",
+    ),
+)
 CHANGELOG["P/VP do FII"] += (
     Mudanca(
         "1.1.0", "com P/VP não positivo, abstém-se em vez de classificar como desconto"

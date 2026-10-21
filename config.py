@@ -2,6 +2,7 @@ import logging
 import os
 import time
 from datetime import UTC, date, datetime
+from types import MappingProxyType
 from zoneinfo import ZoneInfo
 
 import requests
@@ -230,6 +231,18 @@ class MacroContext:
     FII_PVP_DESCONTO        = 0.85
     FII_UPSIDE_COMPRA       = 0.10
     FII_UPSIDE_VENDA        = -0.10
+    # F2B-2 (ficha FII 1.1, §6; plano final da 2B, seção 3): spread dos FIIs de tijolo sobre
+    # a NTN-B real, calibrado por `scripts/calibrar_spread_fii.py` em 21/10/2026. Constante
+    # datada, sem recalibração em execução: nova calibração é item novo da fila.
+    FII_SPREAD_TIJOLO       = 0.03505842448151178
+    FII_SPREAD_CALIBRACAO   = MappingProxyType({
+        "data": "2026-10-21",
+        "janela": ("2021-10", "2026-09"),
+        "fundos_por_mes": {"minimo": 30, "mediana": 36, "maximo": 41},
+        "p25": 0.03170004418948333,
+        "p75": 0.03773431291227301,
+        "registro": "docs/metodologia/fii.md, seção 6a",
+    })
 
     # ── Indicadores dinâmicos ──────────────────────────────────────────────────
 

@@ -13,6 +13,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from apoio_bazin import enriquecer_bazin
+from apoio_fii import enriquecer_fii
 from apoio_gordon import AS_OF_GORDON, enriquecer_gordon
 
 import fii_engine
@@ -50,8 +51,12 @@ def executar(caso):
                 patch.object(valuation_engine, "DISTRESSED_TICKERS", DISTRESSED),
             ):
                 return ValuationEngine().processar(entrada, as_of=AS_OF_GORDON)
+        # F2B-2: Informe, B3 e NTN-B real sintéticos (apoio_fii), no as_of fixo; a chave
+        # `sem_informe` deixa o caso sem eles.
+        if not caso.get("sem_informe"):
+            entrada = enriquecer_fii(entrada, ntnb=caso.get("taxa_real", {}).get("ntnb"))
         with patch.object(fii_engine, "get_selic_atual", return_value=caso["selic"]):
-            return FIIEngine().analisar(entrada)
+            return FIIEngine().analisar(entrada, as_of=AS_OF_GORDON)
     except Exception as exc:
         return {"__erro__": type(exc).__name__}
 
@@ -514,6 +519,22 @@ def _fii_aleatorios(n=250):
     return casos
 
 
+def _fii_ntnb():
+    """F2B-2: grade da NTN-B real (com q = NTN-B + spread de positivo a não positivo), sem
+    Informe e sem taxa real."""
+    casos = []
+    for ntnb in (-0.05, -0.04, 0.0, 0.04, 0.06, 0.07, 0.08):
+        for dy in (0.06, 0.09, 0.12):
+            caso = _fii(f"ntnb{ntnb}-dy{dy}", {**_FII, "dy": dy})
+            caso["taxa_real"] = {"ntnb": ntnb}
+            casos.append(caso)
+    sem = _fii("sem-informe", dict(_FII))
+    sem["sem_informe"] = True
+    sem_taxa = _fii("sem-taxa-real", dict(_FII))
+    sem_taxa["taxa_real"] = {"ntnb": None}
+    return [*casos, sem, sem_taxa]
+
+
 def _acoes_gordon_real():
     """Grade sintética da ficha: teto elevado só para testar k→g, identificado."""
     casos = []
@@ -576,10 +597,13 @@ def montar_casos():
         + _fii_selic_e_vacancia()
         + _fii_aleatorios()
         + _fii_nao_finitos()
+        + _fii_ntnb()
     )
     for caso in casos:
         if caso["motor"] == "acoes":
             caso.setdefault("taxa_real", {"ntnb": 0.07, "inflacao": 0.055})
+        else:
+            caso.setdefault("taxa_real", {"ntnb": 0.07})
     vistos, unicos = set(), []
     for c in casos:
         chave = (c["motor"], c["id"])

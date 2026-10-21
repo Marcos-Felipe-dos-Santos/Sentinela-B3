@@ -145,3 +145,17 @@ def test_fii_sem_cnpj_tem_o_aviso_do_informe(monkeypatch):
     assert RISCO_FII_FORA_DO_INFORME == "FII fora da cobertura do Informe Mensal"
     assert RISCO_FII_FORA_DO_INFORME in dados["riscos_dados"]
     assert RISCO_FORA_DA_CVM not in dados["riscos_dados"]
+
+
+def test_informe_com_data_ilegivel_vira_aviso_sem_numero(monkeypatch):
+    # F2B-2 (aceite Gemini HEAD60e61e2): a abstenção do provedor chega com o motivo.
+    informe = _InformeFalso(
+        {"abstencao": "Informe Mensal com Data_Referencia ilegível"}
+    )
+    dados = _cascata(monkeypatch, informe)
+    assert dados["pvp"] == 1.5
+    assert "vpa" not in dados
+    assert (
+        "Informe Mensal do FII não usado: Informe Mensal com Data_Referencia ilegível"
+        in dados["riscos_dados"]
+    )

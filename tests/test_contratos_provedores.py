@@ -262,7 +262,9 @@ def test_contrato_tesouro():
     assert real.taxa_resgate == RateReal(0.0694)
     assert por_nome["Tesouro IPCA+"].taxa_aplicacao == RateReal(0.0673)
     assert por_nome["Tesouro Prefixado"].taxa_aplicacao == RateNominal(0.1264)
-    assert por_nome["Tesouro Prefixado com Juros Semestrais"].taxa_resgate == RateNominal(0.1303)
+    assert por_nome[
+        "Tesouro Prefixado com Juros Semestrais"
+    ].taxa_resgate == RateNominal(0.1303)
 
 
 # ── B3: relação de proventos em dinheiro (F2B-31) ───────────────────────────
@@ -350,6 +352,43 @@ def test_contrato_proventos_b3():
                 "2026-06-24": 0.229299,
                 "2026-09-23": 0.240666,
             },
+        )
+        == []
+    )
+
+
+def test_contrato_fundos_b3():
+    # F2B-2 (ficha FII 1.1, §3a): a resposta real do HGLG11 tem o fundo, os rendimentos
+    # por ISIN e mês, e o desdobramento de 2018 (fator 900) nos eventos de cota.
+    from datetime import UTC, datetime
+
+    from sentinela.data import fii_elegibilidade
+    from sentinela.data.providers import b3_fundos
+
+    fixture = _fixture("b3_fundos_hglg_2026.json")
+    corpo = fixture["membros"]["GetListedSupplementFunds"]
+    endereco = b3_fundos.url("11.728.688/0001-47", "HGLG11")
+    assert endereco == fixture["fonte"]
+    coleta = b3_fundos.coletar(
+        "11.728.688/0001-47",
+        "HGLG11",
+        datetime(2026, 10, 21, 12, 41, tzinfo=UTC),
+        lambda u: (json.loads(corpo), {"url": u}),
+    )
+    resposta = coleta["resposta"]
+    assert coleta["codigo"] == "HGLG"
+    assert fii_elegibilidade.resposta_b3_valida(resposta, "HGLG")
+    assert {"rate", "relatedTo", "isinCode", "label", "lastDatePrior"} <= set(
+        resposta["cashDividends"][0]
+    )
+    assert [
+        (e["label"], e["lastDatePrior"], e["factor"])
+        for e in resposta["stockDividends"]
+    ] == [("DESDOBRAMENTO", "17/04/2018", "900,00000000000")]
+    # Ficha FII 1.1, §3a: setembro/2026, R$ 1,17 por cota contra R$ 1,170289 do Informe.
+    assert (
+        fii_elegibilidade.conferencia_b3(
+            {"2026-09": 1.170289}, resposta["cashDividends"], "BRHGLGCTF004"
         )
         == []
     )

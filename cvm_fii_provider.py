@@ -26,6 +26,17 @@ _INF_URL = (
 )
 
 
+MOTIVO_DATA_ILEGIVEL = "Informe Mensal com Data_Referencia ilegível"
+
+
+def _data_iso(value) -> bool:
+    try:
+        date.fromisoformat(str(value)[:10])
+    except ValueError:
+        return False
+    return True
+
+
 def _to_float(value) -> float | None:
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return None
@@ -132,6 +143,9 @@ class CVMFIIProvider:
           valor_cota (VPA oficial = PL/cotas),
           vacancia_fisica (sempre None — não disponível no informe mensal),
           proveniencia (F2A-32).
+
+        Com `Data_Referencia` ilegível numa linha do fundo, devolve
+        `{"abstencao": MOTIVO_DATA_ILEGIVEL}` (F2B-2, aceite Gemini HEAD60e61e2).
         """
         cnpj = cnpj_fundo.strip()
         ano_atual = date.today().year
@@ -147,6 +161,13 @@ class CVMFIIProvider:
                 fundo_df = df[mask]
                 if fundo_df.empty:
                     continue
+
+                # F2B-2 (aceite Gemini HEAD60e61e2): data de referência ilegível abstém, com
+                # motivo; a ordenação a deixaria escolher a linha errada em silêncio.
+                if "Data_Referencia" in fundo_df.columns and not all(
+                    _data_iso(v) for v in fundo_df["Data_Referencia"]
+                ):
+                    return {"abstencao": MOTIVO_DATA_ILEGIVEL}
 
                 # Registro mais recente; na mesma data, a reapresentação (maior `Versao`, F2B-38).
                 if "Data_Referencia" in fundo_df.columns:
@@ -186,20 +207,63 @@ class CVMFIIProvider:
 
         return None
 
-    def _linhas_do_fundo(self, cnpj: str, ano: int) -> tuple[Path, list[dict]] | None:
-        """Linhas do fundo no complemento do ano; `None` se o Informe não pôde ser lido."""
+    def _tabela(self, zip_path: Path, parte: str) -> pd.DataFrame:
+        """Um CSV do Informe (`geral`, `ativo_passivo`), em texto; vazio se não existe."""
+        with zipfile.ZipFile(zip_path) as zf:
+            nome = next(
+                (n for n in zf.namelist() if parte in n.lower() and n.endswith(".csv")),
+                None,
+            )
+            if nome is None:
+                return pd.DataFrame()
+            with zf.open(nome) as f:
+                return pd.read_csv(
+                    io.TextIOWrapper(f, encoding="latin-1"),
+                    sep=";",
+                    dtype=str,
+                    low_memory=False,
+                )
+
+    def _linhas_do_fundo(
+        self, cnpj: str, ano: int
+    ) -> tuple[Path, list[dict], list[dict]] | None:
+        """Linhas do fundo no complemento e no `ativo_passivo` do ano; `None` se ilegível.
+
+        Cada linha do complemento recebe a `Data_Entrega` e o `Codigo_ISIN` do `geral` da
+        mesma referência e versão (F2B-2: corte por entrega da ficha FII 1.1, §3); sem o par
+        no `geral`, ficam sem esses campos, e a entrega não está demonstrada.
+        """
         try:
             zip_path = self.baixar_informe(ano)
             df = self._parsear_complemento(zip_path, ano)
             if df.empty or "CNPJ_Fundo_Classe" not in df.columns:
-                return zip_path, []
+                return zip_path, [], []
             linhas = df[df["CNPJ_Fundo_Classe"].str.strip() == cnpj].to_dict("records")
+            geral = self._tabela(zip_path, "geral")
+            entregas = {}
+            if {"CNPJ_Fundo_Classe", "Data_Referencia", "Versao"} <= set(geral.columns):
+                do_fundo = geral[geral["CNPJ_Fundo_Classe"].str.strip() == cnpj]
+                for linha in do_fundo.to_dict("records"):
+                    entregas[(linha["Data_Referencia"], linha["Versao"])] = {
+                        "Data_Entrega": linha.get("Data_Entrega"),
+                        "Codigo_ISIN": linha.get("Codigo_ISIN"),
+                    }
+            for linha in linhas:
+                linha.update(
+                    entregas.get((linha.get("Data_Referencia"), linha.get("Versao")), {})
+                )
+            ativo = self._tabela(zip_path, "ativo_passivo")
+            composicoes = (
+                ativo[ativo["CNPJ_Fundo_Classe"].str.strip() == cnpj].to_dict("records")
+                if "CNPJ_Fundo_Classe" in ativo.columns
+                else []
+            )
         except (OSError, ValueError, KeyError, zipfile.BadZipFile) as exc:
             logger.warning(
                 "Erro ao ler rendimentos FII cnpj=%s ano=%d: %s", cnpj, ano, exc
             )
             return None
-        return zip_path, linhas
+        return zip_path, linhas, composicoes
 
     def obter_rendimentos_fii(self, cnpj_fundo: str) -> dict:
         """Meses do fundo nos Informes do ano e do anterior, para o rendimento de 12 meses (F2B-28).
@@ -207,12 +271,14 @@ class CVMFIIProvider:
         Sem meses do fundo no ano corrente (começo do ano, antes do Informe de janeiro, ou
         Informe do ano ilegível), o último mês é do ano anterior, e a janela precisa da cota
         de dois anos atrás: lê também esse Informe. Devolve todas as linhas do complemento
-        (todas as versões; a escolha da maior é da conta, `sentinela.data.rendimento_fii`) e
-        a proveniência da mais recente. Ano que falha fica de fora, com aviso no log.
+        (todas as versões; a escolha da maior é da conta, `sentinela.data.rendimento_fii`),
+        com a entrega e o ISIN do `geral`, as do `ativo_passivo` (F2B-2), o ISIN da linha
+        mais recente e a proveniência dela. Ano que falha fica de fora, com aviso no log.
         """
         cnpj = cnpj_fundo.strip()
         ano_atual = date.today().year
         registros: list[dict] = []
+        composicoes: list[dict] = []
         mais_recente = None
         anos = [ano_atual, ano_atual - 1]
         for ano in anos:
@@ -221,9 +287,13 @@ class CVMFIIProvider:
                 anos.append(ano_atual - 2)
             if lido is None:
                 continue
-            zip_path, linhas = lido
+            zip_path, linhas, do_ano = lido
             registros.extend(linhas)
+            composicoes.extend(do_ano)
             for linha in linhas:
+                # F2B-2: data ilegível ("nan", "2024-13-01") não vira a linha mais recente.
+                if not _data_iso(linha.get("Data_Referencia")):
+                    continue
                 chave = (
                     str(linha.get("Data_Referencia") or ""),
                     _to_float(linha.get("Versao")) or 0.0,
@@ -235,4 +305,10 @@ class CVMFIIProvider:
             if mais_recente
             else None
         )
-        return {"registros": registros, "proveniencia": proveniencia_recente}
+        isin = mais_recente[3].get("Codigo_ISIN") if mais_recente else None
+        return {
+            "registros": registros,
+            "composicoes": composicoes,
+            "isin": isin if isinstance(isin, str) and isin.strip() else None,
+            "proveniencia": proveniencia_recente,
+        }

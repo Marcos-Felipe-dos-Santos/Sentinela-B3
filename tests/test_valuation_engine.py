@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 from apoio_bazin import enriquecer_bazin
+from apoio_fii import enriquecer_fii
 from apoio_gordon import AS_OF_GORDON, DiaGordon, enriquecer_gordon
 
 from fii_engine import FIIEngine
@@ -184,8 +185,13 @@ def test_fii_score_penaliza_pvp_alto() -> None:
     }
 
     with patch('fii_engine.get_selic_atual', return_value=0.10):
-        fii_pvp_alto = FIIEngine().analisar({**dados_base, 'pvp': 1.2})
-        fii_pvp_neutro = FIIEngine().analisar({**dados_base, 'pvp': 0.95})
+        # F2B-2: o FII calcula com o Informe e a B3 sintéticos.
+        fii_pvp_alto = FIIEngine().analisar(
+            enriquecer_fii({**dados_base, 'pvp': 1.2}), as_of=AS_OF_GORDON
+        )
+        fii_pvp_neutro = FIIEngine().analisar(
+            enriquecer_fii({**dados_base, 'pvp': 0.95}), as_of=AS_OF_GORDON
+        )
 
     assert fii_pvp_alto['score_final'] < fii_pvp_neutro['score_final']
 
