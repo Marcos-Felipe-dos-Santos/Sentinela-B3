@@ -62,7 +62,7 @@ def test_sem_serie_b3_o_perfil_usa_a_cascata_com_aviso():
 def test_com_serie_b3_valida_o_perfil_registra_a_fonte():
     dados = _acao(0.30, 0.05, 0.03)
     _processar(dados)
-    assert dados["perfil_fonte"] == {"fonte": "relação de proventos da B3"}
+    assert dados["perfil_fonte"]["fonte"] == "relação de proventos da B3"
 
 
 def test_relatorio_mostra_a_fonte_do_perfil():
@@ -89,7 +89,7 @@ def test_serie_b3_valida_com_dy_acima_de_25_por_cento_nao_e_crescimento():
     dados = _acao(0.30, 0.01, 0.30)
     r = _processar(dados)
     assert r["perfil"] == "RENDA/VALOR"
-    assert dados["perfil_fonte"] == {"fonte": "relação de proventos da B3"}
+    assert dados["perfil_fonte"]["fonte"] == "relação de proventos da B3"
 
 
 def test_relatorio_com_serie_valida_e_sem_perfil():
@@ -106,7 +106,10 @@ def test_relatorio_com_serie_valida_e_sem_perfil():
             )
         return dict(contexto["fontes"])["DY do perfil (F2B-52)"]
 
-    assert fonte(_acao(0.30, 0.05, 0.03)) == "pela relação de proventos da B3"
+    assert fonte(_acao(0.30, 0.05, 0.03)) == (
+        "pela relação de proventos da B3; aviso: proventos de 12 meses podem incluir "
+        "distribuição extraordinária, não identificada nesta versão"
+    )
     fora = _acao(0.30, 0.05, 0.03)
     fora["classe_ativo"] = "ETF"
     assert fonte(fora) == "não calculado (sem detecção de perfil)"
@@ -141,7 +144,7 @@ def test_serie_b3_sem_provento_da_perfil_pela_b3(monkeypatch):
     # abstém por "perfil crescimento".
     dados = _acao(0.30, 0.05, 0.0)
     r, motivo = _motivo_do_bazin(dados, monkeypatch)
-    assert dados["perfil_fonte"] == {"fonte": "relação de proventos da B3"}
+    assert dados["perfil_fonte"]["fonte"] == "relação de proventos da B3"
     assert r["perfil"] == "CRESCIMENTO"
     assert "Lynch: R$" in r["metodos_usados"]
     assert motivo == "perfil crescimento"
@@ -151,7 +154,7 @@ def test_serie_b3_sem_provento_com_roe_baixo_e_renda(monkeypatch):
     # ROE de 12%: com DY = 0 pela B3 o perfil é renda, e o Bazin se abstém pelo DY mínimo.
     dados = _acao(0.12, 0.05, 0.0)
     r, motivo = _motivo_do_bazin(dados, monkeypatch)
-    assert dados["perfil_fonte"] == {"fonte": "relação de proventos da B3"}
+    assert dados["perfil_fonte"]["fonte"] == "relação de proventos da B3"
     assert r["perfil"] == "RENDA/VALOR"
     assert motivo == "DY abaixo do mínimo"
 
@@ -167,3 +170,33 @@ def test_especie_sem_registro_na_relacao_cai_no_perfil_da_cascata():
         "aviso": "perfil pelo DY da cascata: série B3 sem nenhum registro da espécie: ON",
     }
     assert r["perfil"] == "CRESCIMENTO"
+
+
+AVISO_FIXO = (
+    "proventos de 12 meses podem incluir distribuição extraordinária, "
+    "não identificada nesta versão"
+)
+
+
+def test_serie_valida_leva_o_aviso_fixo_fora_de_riscos():
+    # Ficha Bazin 1.2, §3 (decisão do Marcos de 20/10/2026): com o Bazin calculando, o aviso
+    # fixo fica no perfil e no relatório, não em `riscos`.
+    dados = _acao(0.12, 0.06, 0.06)
+    r = _processar(dados)
+    assert "Bazin: R$" in r["metodos_usados"]
+    assert AVISO_FIXO in dados["perfil_fonte"]["avisos"]
+    assert AVISO_FIXO not in r["riscos"]
+
+
+def test_avisos_da_serie_aparecem_com_o_bazin_abstendo():
+    # Decisão (c) do F2B-54: o Bazin abaixo do gate não mostra a conferência em `riscos`,
+    # mas a série que decide o perfil a mostra no perfil.
+    dados = _acao(0.12, 0.06, 0.03)
+    dados["proventos_b3"]["conferencia_yfinance"] = None
+    r = _processar(dados)
+    assert "Bazin" not in r["metodos_usados"]
+    assert dados["perfil_fonte"]["avisos"] == [
+        "conferência dos proventos no yfinance indisponível",
+        AVISO_FIXO,
+    ]
+    assert not any(a in r["riscos"] for a in dados["perfil_fonte"]["avisos"])

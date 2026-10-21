@@ -36,6 +36,7 @@ def test_base_oficial_explicita_e_documento_da_escala(
     if prova:
         motor.cvm.composicao_mais_recente = lambda cnpj, instante, ano: {
             "composicao": _ind()[2025]["composicao_capital"],
+            "escala": "UNIDADE",
             "proveniencia": {"fonte": "ITR sintético", "data_entrega": "2026-08-10"},
         }
     assert motor._buscar_cvm("TSTA3", dados)

@@ -5,6 +5,7 @@ from typing import Any
 
 import pandas as pd
 import yfinance as yf
+from yfinance.exceptions import YFException
 
 from brapi_provider import BrapiProvider
 from config import FII_MANUAL_FALLBACK, _normalizar_dy, get_taxa_real
@@ -560,6 +561,20 @@ class MarketEngine:
                 dados['preco_atual'] = hist['Close'].iloc[-1]
                 dados['fonte_preco'] = 'yfinance'
                 self._record_field_sources(dados, ('preco_atual',), 'yfinance')
+                # F2B-54 (BUG-2B-33): o DY da B3 usa o fechamento bruto (ficha Bazin, §2); o
+                # `historico` ajustado fica para retorno e técnico (armadilha 11).
+                # Leitura à parte: a falha dela não pode derrubar os fundamentos do `info`.
+                try:
+                    bruto = tk.history(period="1mo", auto_adjust=False, timeout=10)
+                except (OSError, ValueError, KeyError, YFException) as exc:
+                    logger.warning(f"[{ticker}] fechamento bruto do yfinance indisponível: {exc}")
+                    bruto = None
+                if bruto is not None and not bruto.empty and 'Close' in bruto:
+                    dados['fechamentos_brutos'] = {
+                        i.date().isoformat(): float(c)
+                        for i, c in bruto['Close'].tail(10).items()
+                        if isinstance(c, (int, float)) and math.isfinite(c) and c > 0
+                    }
 
             info = tk.info
             if info:
@@ -727,7 +742,7 @@ class MarketEngine:
         Só STOCK e UNIT do modelo empresa pelo BPP consolidado (ficha Bazin 1.0, §4). Grava em
         `dados['proventos_b3']` os registros literais, o total do serviço, os eventos em ações
         e os proventos em dinheiro do complemento (a conferência do emissor),
-        os últimos fechamentos do yfinance por data (o motor usa o último pregão encerrado
+        os últimos fechamentos brutos do yfinance por data (o motor usa o último pregão encerrado
         antes do as_of, marcador da 2B, §2.2), o calendário de pregões
         quando a data ex depende dele e os dividendos do yfinance, só para conferência; ou a
         abstenção. A conta, com o as_of, é do motor (`proventos_b3.entradas`). Provedor por
@@ -747,20 +762,18 @@ class MarketEngine:
             }
             return
         historico = dados.get('historico')
+        fechamentos = dados.get('fechamentos_brutos')
         if (
             dados.get('fonte_preco') != 'yfinance'
             or not isinstance(historico, pd.DataFrame)
             or historico.empty
+            or not isinstance(fechamentos, dict)
+            or not fechamentos
         ):
             dados['proventos_b3'] = {'abstencao': proventos_b3.MOTIVO_PRECO}
             return
         agora = datetime.now(UTC)
         hoje = agora.astimezone(proventos_b3.FUSO).date()
-        fechamentos = {
-            i.date().isoformat(): float(c)
-            for i, c in historico['Close'].tail(10).items()
-            if isinstance(c, (int, float)) and math.isfinite(c) and c > 0
-        }
         anteriores = [date.fromisoformat(d) for d in fechamentos if date.fromisoformat(d) < hoje]
         if not anteriores:
             dados['proventos_b3'] = {'abstencao': proventos_b3.MOTIVO_PRECO_NAO_ENCERRADO}
@@ -1043,6 +1056,11 @@ class MarketEngine:
                             ind["composicao_capital"],
                             recente["composicao"],
                             escala=Escala[acoes["escala"]],
+                            escala_recente=(
+                                Escala[recente["escala"]]
+                                if recente.get("escala")
+                                else None
+                            ),
                             especie=dados.get("especie"),
                             eh_unit=dados.get("classe_ativo") == "UNIT",
                             acoes_por_unit=dados.get("acoes_por_unit"),

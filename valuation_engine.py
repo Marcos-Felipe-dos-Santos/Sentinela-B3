@@ -185,10 +185,10 @@ class ValuationEngine:
 
         # ── DETECÇÃO DE PERFIL ────────────────────────────────────────────────
         # CRESCIMENTO: ROE alto + dividendos baixos (empresa reinveste lucros)
-        # ATENÇÃO: se DY foi zerado por falta de confiabilidade, NÃO classificar como
-        # crescimento só porque dy=0 — manter RENDA/VALOR por precaução.
+        # ATENÇÃO: DY não confiável (da B3 ou da cascata) não vira crescimento — manter
+        # RENDA/VALOR por precaução. O DY = 0 confiável da série B3 completa (F2B-53) pode.
         # F2B-52 (decisão do Marcos de 20/10/2026): um perfil só por ativo, para todos os
-        # métodos, pelo DY bruto de 12 meses da relação B3 (ficha Bazin 1.0) quando a série é
+        # métodos, pelo DY bruto de 12 meses da relação B3 (ficha Bazin 1.2) quando a série é
         # válida; sem ela, pelo DY da cascata, com o aviso e o motivo da B3.
         instante = as_of if as_of is not None else datetime.now(UTC)
         entradas_bazin = proventos_b3.entradas(dados, instante)
@@ -202,7 +202,12 @@ class ValuationEngine:
             }
         else:
             dy_perfil, dy_perfil_confiavel = _normalizar_dy(entradas_bazin["dy"])
-            dados["perfil_fonte"] = {"fonte": "relação de proventos da B3"}
+            # F2B-54, decisões (b) e (c): os avisos da série que decide o perfil, com o
+            # aviso fixo da ficha 1.2, ficam aqui e no relatório, fora de `riscos`.
+            dados["perfil_fonte"] = {
+                "fonte": "relação de proventos da B3",
+                "avisos": [*entradas_bazin["avisos"], proventos_b3.AVISO_EXTRAORDINARIA],
+            }
         if dy_perfil_confiavel:
             is_growth = (
                 roe > MACRO.ROE_CRESCIMENTO_MIN and dy_perfil < MACRO.DY_CRESCIMENTO_MAX
@@ -244,7 +249,7 @@ class ValuationEngine:
         else:
             dados.pop("gordon_diagnostico", None)
             inputs_gordon = replace(inputs, as_of=dia_gordon, **entradas_gordon)
-        # F2B-31 (ficha Bazin 1.0): o DY do Bazin é o bruto de 12 meses da relação B3; sem
+        # F2B-31 (ficha Bazin 1.2): o DY do Bazin é o bruto de 12 meses da relação B3; sem
         # ela, o Bazin se abstém, sem reserva no DY da cascata.
         avisos_bazin = ()
         if isinstance(entradas_bazin, proventos_b3.Abstencao):

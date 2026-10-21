@@ -1,4 +1,4 @@
-"""Proventos em dinheiro de 12 meses pela relação da B3 (F2B-31; ficha Bazin 1.0, §2 a §4).
+"""Proventos em dinheiro de 12 meses pela relação da B3 (F2B-31; ficha Bazin 1.2, §2 a §4).
 
 Soma de dividendos e JCP brutos por ação da espécie do ticker (ou dos componentes da unit),
 com data ex na janela (referência − 12 meses, referência], sobre os registros literais do
@@ -66,6 +66,7 @@ MOTIVO_DISPONIBILIDADE = (
 )
 MOTIVO_ESPECIE = "insumo ausente: espécie do ticker"
 MOTIVO_ESPECIE_SEM_REGISTRO = "série B3 sem nenhum registro da espécie"
+MOTIVO_ESPECIE_ILEGIVEL = "insumo inválido: espécie do provento"
 MOTIVO_COLETA = (
     "disponibilidade histórica não demonstrada: relação B3 sem coleta até o as_of"
 )
@@ -73,6 +74,11 @@ MOTIVO_CRUZAMENTO = (
     "relação B3 pelo nome de pregão sem provento do complemento do emissor"
 )
 AVISO_SEM_CONFERENCIA = "conferência dos proventos no yfinance indisponível"
+# Ficha Bazin 1.2, §3 (decisão do Marcos de 20/10/2026): fora de `riscos`.
+AVISO_EXTRAORDINARIA = (
+    "proventos de 12 meses podem incluir distribuição extraordinária, "
+    "não identificada nesta versão"
+)
 
 
 @dataclass(frozen=True)
@@ -264,6 +270,9 @@ def serie_12_meses(
             return Abstencao("insumo inválido: data com do provento, tipo ou unidade")
         datas_com.append(data_com)
         classe = _texto(registro.get("typeStock"))
+        if classe is None:
+            # F2B-54 (BUG-2B-34): espécie ilegível não comprova a série, nem com D zero.
+            return Abstencao(MOTIVO_ESPECIE_ILEGIVEL)
         if classe not in componentes:
             continue
         dentro = _na_janela(data_com, inicio, referencia, calendario)
@@ -340,13 +349,18 @@ def conferencia_yfinance(
 ) -> list[str]:
     """Avisos da conferência no yfinance (mesma janela, data ex dele, valor por papel).
 
-    Só conferência: nunca muda a série da B3 (ficha Bazin 1.0, §2).
+    Só conferência: nunca muda a série da B3 (ficha Bazin, §2). Compara a soma da janela e,
+    com ela igual, cada evento (F2B-54, BUG-2B-35): o evento da B3, somado por papel na data
+    com, casa com o primeiro dividendo livre do yfinance de data ex até 7 dias depois dela,
+    na ordem das datas com; evento sem par ou valores que só se compensam na soma geram
+    aviso. `None` (sem a coluna de dividendos) é conferência indisponível; `{}` é o
+    yfinance sem pagamento (BUG-2B-38).
     """
-    if not dividendos:
+    if dividendos is None:
         return [AVISO_SEM_CONFERENCIA]
     inicio = date.fromisoformat(serie["inicio_exclusivo"])
     referencia = date.fromisoformat(serie["referencia"])
-    soma, conferidos = 0.0, 0
+    do_yfinance: dict[date, float] = {}
     for dia, valor in dividendos.items():
         try:
             data_ex = date.fromisoformat(str(dia)[:10])
@@ -356,9 +370,9 @@ def conferencia_yfinance(
         if not math.isfinite(numero):
             return [AVISO_SEM_CONFERENCIA]
         if inicio < data_ex <= referencia:
-            soma += numero
-            conferidos += 1
-    tolerancia = TOLERANCIA_CONFERENCIA * max(1, conferidos)
+            do_yfinance[data_ex] = do_yfinance.get(data_ex, 0.0) + numero
+    soma = sum(do_yfinance.values())
+    tolerancia = TOLERANCIA_CONFERENCIA * max(1, len(do_yfinance))
     if abs(soma - serie["d_bruto_12m"]) > tolerancia:
         return [
             (
@@ -366,6 +380,40 @@ def conferencia_yfinance(
                 f"B3 R$ {serie['d_bruto_12m']:.6f}, yfinance R$ {soma:.6f}"
             )
         ]
+    da_b3: dict[date, float] = {}
+    componentes = serie.get("componentes") or {}
+    for evento in serie.get("eventos") or ():
+        data_com = date.fromisoformat(evento["data_com"])
+        da_b3[data_com] = da_b3.get(data_com, 0.0) + evento["valor"] * componentes.get(
+            evento["especie"], 1
+        )
+    divergencias, pares, usados = [], [], set()
+    for data_com, valor in sorted(da_b3.items()):
+        candidatos = sorted(
+            d
+            for d in do_yfinance
+            if data_com < d <= data_com + FOLGA_SEM_PREGAO and d not in usados
+        )
+        if not candidatos:
+            divergencias.append(
+                f"B3 data com {data_com.isoformat()} R$ {valor:.6f} sem par no yfinance"
+            )
+            continue
+        usados.add(candidatos[0])
+        pares.append((data_com, valor, do_yfinance[candidatos[0]]))
+    divergencias += [
+        f"yfinance data ex {d.isoformat()} R$ {v:.6f} sem par na B3"
+        for d, v in sorted(do_yfinance.items())
+        if d not in usados
+    ]
+    if not divergencias and sum(abs(b - y) for _, b, y in pares) > tolerancia:
+        divergencias = [
+            f"data com {d.isoformat()}: B3 R$ {b:.6f}, yfinance R$ {y:.6f}"
+            for d, b, y in pares
+            if abs(b - y) > TOLERANCIA_CONFERENCIA
+        ]
+    if divergencias:
+        return ["proventos divergem do yfinance por evento: " + "; ".join(divergencias)]
     return []
 
 

@@ -227,6 +227,7 @@ def entradas(dados: dict[str, Any], as_of: date | datetime) -> dict | Abstencao:
 
 
 AVISO_EVENTOS = "evento posterior ao último documento entregue não é detectado"
+MOTIVO_ESCALA_RECENTE = "escala das ações do documento mais recente indeterminada"
 
 
 def compatibilidade_base(
@@ -234,6 +235,7 @@ def compatibilidade_base(
     recente: acoes_cvm.Composicao,
     *,
     escala: Escala,
+    escala_recente: Escala | None,
     especie: str | None,
     eh_unit: bool,
     acoes_por_unit: dict | None,
@@ -241,11 +243,19 @@ def compatibilidade_base(
 ) -> dict:
     """Gordon1.1: composição recente/DFP em (0,9;1,1), yfinance só aviso.
 
-    As duas composições usam a quantidade documental, líquida de tesouraria.
-    A escala conferida na DFP só converte a conferência externa por ticker.
+    As duas composições usam a quantidade documental, líquida de tesouraria, cada uma
+    convertida para unidades pela escala do próprio documento (F2B-54): a do recente é
+    inferida pela regra da ficha por-ação 1.1 e, indeterminada, abstém.
     """
     avisos = [AVISO_EVENTOS]
-    anterior, atual = base.total, recente.total
+    if escala_recente is None:
+        return {
+            "compativel": False,
+            "motivo": MOTIVO_ESCALA_RECENTE,
+            "avisos": avisos,
+        }
+    anterior = base.total * escala.fator
+    atual = recente.total * escala_recente.fator
     if not all(math.isfinite(v) and v > 0 for v in (anterior, atual)):
         return {
             "compativel": False,
@@ -268,7 +278,7 @@ def compatibilidade_base(
     ):
         comparacao = acoes_cvm.divergencia_acoes(
             recente,
-            escala,
+            escala_recente,
             especie=especie,
             eh_unit=eh_unit,
             acoes_por_unit=acoes_por_unit,

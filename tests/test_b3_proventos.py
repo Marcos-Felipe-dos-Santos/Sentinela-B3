@@ -4,6 +4,7 @@ import base64
 import hashlib
 import json
 from datetime import UTC, date, datetime
+from typing import ClassVar
 
 import pandas as pd
 import pytest
@@ -215,6 +216,13 @@ def _cascata(dados, provedor=None, monkeypatch=None):
         "historico": _historico(["2026-10-16", "2026-10-19"], [0.0, 0.3]),
     }
     base.update(dados)
+    # F2B-54: os fechamentos brutos vêm do `_buscar_yfinance`; aqui, iguais ao histórico.
+    historico = base["historico"]
+    if "fechamentos_brutos" not in dados and isinstance(historico, pd.DataFrame):
+        base["fechamentos_brutos"] = {
+            i.date().isoformat(): float(c)
+            for i, c in historico.get("Close", {}).items()
+        }
     engine._buscar_proventos_b3("TSTE3", base)
     return base
 
@@ -291,12 +299,31 @@ def test_cascata_sem_provedor_nao_grava():
     assert "proventos_b3" not in dados
 
 
-def test_fechamento_invalido_fica_de_fora():
-    historico = _historico(["2026-10-15", "2026-10-16", "2026-10-19"])
-    historico.loc[historico.index[2], "Close"] = float("nan")
-    historico.loc[historico.index[1], "Close"] = 0.0
-    dados = _cascata({"historico": historico})
-    assert dados["proventos_b3"]["fechamentos"] == {"2026-10-15": 10.0}
+def test_fechamento_invalido_fica_de_fora(monkeypatch):
+    # F2B-54: o filtro passou para os fechamentos brutos do `_buscar_yfinance`.
+    bruto = _historico(["2026-10-15", "2026-10-16", "2026-10-19"])
+    bruto.loc[bruto.index[2], "Close"] = float("nan")
+    bruto.loc[bruto.index[1], "Close"] = 0.0
+
+    class _Ticker:
+        info: ClassVar[dict] = {}
+
+        def history(self, *args, auto_adjust=True, **kwargs):
+            return _historico(["2026-10-19"]) if auto_adjust else bruto
+
+    monkeypatch.setattr(market_engine.yf, "Ticker", lambda ticker: _Ticker())
+    engine = MarketEngine.__new__(MarketEngine)
+    dados = {}
+    engine._buscar_yfinance("TSTE3", dados)
+    assert dados["fechamentos_brutos"] == {"2026-10-15": 10.0}
+
+
+@pytest.mark.parametrize("brutos", [None, {}])
+def test_sem_fechamento_bruto_abstem(brutos):
+    provedor = _Provedor(RELACAO)
+    dados = _cascata({"fechamentos_brutos": brutos}, provedor)
+    assert dados["proventos_b3"] == {"abstencao": proventos_b3.MOTIVO_PRECO}
+    assert provedor.chamadas == []
 
 
 def test_calendario_so_quando_a_data_ex_depende_dele(monkeypatch):
@@ -390,3 +417,22 @@ def test_modelo_do_documento_pelo_bpp(tmp_path, monkeypatch):
     assert provedor.modelo_do_documento(9, {}) is None
     monkeypatch.setattr(provedor, "baixar_dfp", lambda ano: tmp_path / "nao-existe.zip")
     assert provedor.modelo_do_documento(9, ind) is None
+
+
+def test_falha_do_fechamento_bruto_nao_derruba_os_fundamentos(monkeypatch):
+    # Revisão do F2B-54: a leitura do bruto tem `try` próprio.
+    class _Ticker:
+        info: ClassVar[dict] = {"trailingPE": 8.0, "sharesOutstanding": 1000.0}
+
+        def history(self, *args, auto_adjust=True, **kwargs):
+            if not auto_adjust:
+                raise TimeoutError("limite de requisições")
+            return _historico(["2026-10-19"])
+
+    monkeypatch.setattr(market_engine.yf, "Ticker", lambda ticker: _Ticker())
+    engine = MarketEngine.__new__(MarketEngine)
+    dados = {}
+    assert engine._buscar_yfinance("TSTE3", dados)
+    assert dados["pl"] == 8.0
+    assert dados["_shares_outstanding"] == 1000.0
+    assert "fechamentos_brutos" not in dados

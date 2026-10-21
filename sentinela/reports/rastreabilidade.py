@@ -608,6 +608,7 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
                 perfil.get("aviso")
                 or (
                     f"pela {perfil['fonte']}"
+                    + "".join(f"; aviso: {a}" for a in perfil.get("avisos", ()))
                     if perfil.get("fonte")
                     else "não calculado (sem detecção de perfil)"
                 ),

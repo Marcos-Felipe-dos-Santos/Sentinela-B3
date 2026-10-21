@@ -8,8 +8,8 @@ anterior, a base que a norma define (Resolução CVM 175, anexo da 184; F2B-21, 
 
 Doze meses consecutivos terminando no último mês do Informe, cada um com o DY e com o valor
 da cota do mês anterior (13 valores de cota); mês com mais de uma versão usa a maior
-`Versao`. Faltou algum: abstenção, com o motivo. O DY de 12 meses é a soma dos rendimentos ÷
-o preço, que vem de outra fonte.
+`Versao` (duas linhas diferentes nela: abstenção). Faltou algum: abstenção, com o
+motivo. O DY de 12 meses é a soma dos rendimentos ÷ o preço, que vem de outra fonte.
 
 Função pura: sem rede, sem relógio, sem `config`.
 """
@@ -30,6 +30,9 @@ BASE = (
 MOTIVO_SEM_MESES = "Informe sem meses do fundo"
 MOTIVO_MESES_INCOMPLETOS = "menos de 12 meses com DY e valor da cota do mês anterior"
 MOTIVO_PRECO = "preço ausente ou não positivo"
+MOTIVO_NAO_FINITO = "resultado não finito: rendimento de 12 meses do FII"
+MOTIVO_CONFLITO = "Informe com linhas conflitantes da mesma versão"
+_COLUNAS_DA_CONTA = ("Percentual_Dividend_Yield_Mes", "Valor_Patrimonial_Cotas")
 
 
 @dataclass(frozen=True)
@@ -69,9 +72,17 @@ def _anterior(mes: tuple[int, int]) -> tuple[int, int]:
     return (ano - 1, 12) if m == 1 else (ano, m - 1)
 
 
-def _por_mes(registros: Iterable[Mapping]) -> dict[tuple[int, int], Mapping]:
-    """Um registro por mês: o de maior `Versao` (versão ilegível perde)."""
+def _por_mes(
+    registros: Iterable[Mapping],
+) -> tuple[dict[tuple[int, int], Mapping], set[tuple[int, int]]]:
+    """Um registro por mês, o de maior `Versao` (versão ilegível perde), e os meses em conflito.
+
+    Duas linhas da maior versão do mês com DY ou valor da cota diferentes são conflito
+    (F2B-54, BUG-2B-37): nenhuma vence pela ordem do arquivo. Duplicata nessas colunas não é
+    conflito, nem com célula vazia (as duas sem número).
+    """
     escolhidos: dict[tuple[int, int], Mapping] = {}
+    conflitos: set[tuple[int, int]] = set()
     for registro in registros:
         mes = _mes(registro)
         if mes is None:
@@ -79,14 +90,19 @@ def _por_mes(registros: Iterable[Mapping]) -> dict[tuple[int, int], Mapping]:
         atual = escolhidos.get(mes)
         if atual is None or _versao(registro) > _versao(atual):
             escolhidos[mes] = registro
-    return escolhidos
+            conflitos.discard(mes)
+        elif _versao(registro) == _versao(atual) and any(
+            _numero(registro.get(c)) != _numero(atual.get(c)) for c in _COLUNAS_DA_CONTA
+        ):
+            conflitos.add(mes)
+    return escolhidos, conflitos
 
 
 def rendimento_12_meses(
     registros: Iterable[Mapping], preco: object
 ) -> dict | Abstencao:
     """DY de 12 meses sobre o preço, com os meses, a base e a representação usada."""
-    meses = _por_mes(registros)
+    meses, conflitos = _por_mes(registros)
     if not meses:
         return Abstencao(MOTIVO_SEM_MESES)
     preco_valor = _numero(preco)
@@ -102,11 +118,18 @@ def rendimento_12_meses(
         cota = _numero(meses.get(anterior, {}).get("Valor_Patrimonial_Cotas"))
         if dy is None or cota is None or cota <= 0:
             return Abstencao(MOTIVO_MESES_INCOMPLETOS)
+        for usado in (mes, anterior):
+            if usado in conflitos:
+                return Abstencao(f"{MOTIVO_CONFLITO}: {usado[0]:04d}-{usado[1]:02d}")
         rendimentos.append(dy * cota)
         mes = anterior
     rendimento = sum(rendimentos)
+    dy_12m = rendimento / preco_valor
+    # F2B-54 (BUG-2B-36): entradas finitas podem transbordar no produto, na soma ou na divisão.
+    if not all(math.isfinite(v) for v in (*rendimentos, rendimento, dy_12m)):
+        return Abstencao(MOTIVO_NAO_FINITO)
     return {
-        "dy": rendimento / preco_valor,
+        "dy": dy_12m,
         "rendimento_12m": rendimento,
         "meses": MESES,
         "mes_final": f"{final[0]:04d}-{final[1]:02d}",

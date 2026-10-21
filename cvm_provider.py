@@ -781,7 +781,64 @@ class CVMProvider:
             composicao, motivo = None, "composição recente indisponível"
         if composicao is None:
             return {"abstencao": motivo, "proveniencia": prov.para_dict()}
-        return {"composicao": composicao, "proveniencia": prov.para_dict()}
+        return {
+            "composicao": composicao,
+            "escala": self._escala_da_composicao(
+                caminho, cnpj, referencia.isoformat(), str(versao), composicao
+            ),
+            "proveniencia": prov.para_dict(),
+        }
+
+    def _escala_da_composicao(
+        self,
+        caminho: Path,
+        cnpj: str,
+        dt_refer: str,
+        versao: str,
+        composicao: Composicao,
+    ) -> str | None:
+        """Escala da quantidade de ações do documento recente (ficha por-ação 1.1; F2B-54).
+
+        Pela regra da DFP (`acoes_cvm.inferir_escala`): lucro dos controladores do mesmo
+        documento e período, com as reservas da D20 (`lucro_controladores_com_reserva`, com
+        o BPP do mesmo documento), ÷ ações, contra o LPA divulgado. O período é o acumulado
+        do exercício (menor `DT_INI_EXERC`) da linha "ÚLTIMO". `None` quando indeterminada.
+        """
+
+        def do_documento(tipo: str) -> pd.DataFrame:
+            df = self._read_raw(caminho, tipo)
+            df = df[
+                (df["CNPJ_CIA"] == cnpj)
+                & (df["DT_REFER"].astype(str) == dt_refer)
+                & (df["VERSAO"].astype(str) == versao)
+            ]
+            if "ORDEM_EXERC" in df.columns:
+                df = df[df["ORDEM_EXERC"] == "ÚLTIMO"]
+            return df.assign(VL_CONTA=pd.to_numeric(df["VL_CONTA"], errors="coerce"))
+
+        def em_reais(df: pd.DataFrame) -> pd.DataFrame:
+            if "ESCALA_MOEDA" not in df.columns:
+                return df
+            mil = df["ESCALA_MOEDA"].astype(str).str.upper() == "MIL"
+            return df.assign(VL_CONTA=df["VL_CONTA"].where(~mil, df["VL_CONTA"] * 1000))
+
+        try:
+            dre = do_documento("DRE_con")
+            if "DT_INI_EXERC" in dre.columns and not dre.empty:
+                dre = dre[dre["DT_INI_EXERC"] == dre["DT_INI_EXERC"].min()]
+            try:
+                bpp = em_reais(do_documento("BPP_con"))
+            except FileNotFoundError:
+                bpp = pd.DataFrame(columns=["CD_CONTA", "DS_CONTA", "VL_CONTA"])
+        except (OSError, KeyError, ValueError, zipfile.BadZipFile):
+            return None
+        e_lpa = dre["CD_CONTA"].astype(str).str.startswith("3.99")
+        divulgado = lpa_divulgado(dre[e_lpa])
+        lucro = lucro_controladores_com_reserva(em_reais(dre[~e_lpa]), bpp).valor
+        inferida = acoes_cvm.inferir_escala(
+            lucro, composicao.total, divulgado["valor"] if divulgado else None
+        )
+        return None if inferida is None else inferida[0].name
 
     def gordon_do_documento(self, cd_cvm: int, ind: dict, as_of: datetime) -> dict:
         """DVA anual e PL inicial do mesmo documento, com disponibilidade explícita.

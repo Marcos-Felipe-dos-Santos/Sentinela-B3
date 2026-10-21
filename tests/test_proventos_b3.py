@@ -1,4 +1,4 @@
-"""Proventos de 12 meses pela relação da B3 (F2B-31; ficha Bazin 1.0, §2 a §4)."""
+"""Proventos de 12 meses pela relação da B3 (F2B-31; ficha Bazin 1.2, §2 a §4)."""
 
 from datetime import UTC, date, datetime
 
@@ -361,11 +361,24 @@ def test_soma_nao_finita_abstem():
 # ── conferência no yfinance ──────────────────────────────────────────────────
 
 
+def _evento(data_com, valor):
+    return {
+        "especie": "ON",
+        "natureza": "dividendo",
+        "valor": valor,
+        "data_com": data_com,
+    }
+
+
+# F2B-54: a série da conferência tem os eventos, como a de `serie_12_meses`.
 SERIE = {
     "d_bruto_12m": 0.6,
     "inicio_exclusivo": "2025-09-30",
     "referencia": "2026-09-30",
+    "componentes": {"ON": 1},
+    "eventos": [_evento("2025-12-10", 0.4), _evento("2026-06-10", 0.2)],
 }
+SERIE_UM = {**SERIE, "eventos": [_evento("2025-12-10", 0.6)]}
 
 
 def test_conferencia_igual_sem_aviso_e_fora_da_janela_ignorada():
@@ -383,8 +396,8 @@ def test_conferencia_tolera_o_arredondamento_por_evento():
         pb.conferencia_yfinance(SERIE, {"2025-12-11": 0.4000015, "2026-06-11": 0.2})
         == []
     )
-    assert pb.conferencia_yfinance(SERIE, {"2025-12-11": 0.6000009}) == []
-    divergente = pb.conferencia_yfinance(SERIE, {"2025-12-11": 0.6000011})
+    assert pb.conferencia_yfinance(SERIE_UM, {"2025-12-11": 0.6000009}) == []
+    divergente = pb.conferencia_yfinance(SERIE_UM, {"2025-12-11": 0.6000011})
     assert divergente == [
         (
             "proventos de 12 meses divergem do yfinance na mesma janela: "
@@ -395,7 +408,7 @@ def test_conferencia_tolera_o_arredondamento_por_evento():
 
 @pytest.mark.parametrize(
     "dividendos",
-    [None, {}, {"x": 0.6}, {"2025-12-11": "abc"}, {"2025-12-11": float("nan")}],
+    [None, {"x": 0.6}, {"2025-12-11": "abc"}, {"2025-12-11": float("nan")}],
 )
 def test_conferencia_indisponivel(dividendos):
     assert pb.conferencia_yfinance(SERIE, dividendos) == [pb.AVISO_SEM_CONFERENCIA]
@@ -672,3 +685,16 @@ def test_unit_com_componente_sem_registro_abstem_mesmo_com_d_positivo(extras):
         acoes_por_unit={"ON": 1, "PN": 2},
     )
     assert s == pb.Abstencao(f"{pb.MOTIVO_ESPECIE_SEM_REGISTRO}: PN")
+
+
+def test_conferencia_por_evento_com_datas_com_vizinhas():
+    # TIMS3 no universo inicial: dividendo com data com 19/12/2025 (data ex 22/12) e JCP com
+    # data com 22/12 (data ex 23/12): cada um casa com a primeira data ex livre.
+    serie = {
+        **SERIE,
+        "d_bruto_12m": 0.925,
+        "eventos": [_evento("2025-12-19", 0.749), _evento("2025-12-22", 0.176)],
+    }
+    assert (
+        pb.conferencia_yfinance(serie, {"2025-12-22": 0.749, "2025-12-23": 0.176}) == []
+    )

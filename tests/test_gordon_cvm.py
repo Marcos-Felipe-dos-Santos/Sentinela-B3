@@ -313,6 +313,7 @@ def test_gordon11_razao_aberta_da_composicao(total, compativel):
         base,
         recente,
         escala=Escala.UNIDADE,
+        escala_recente=Escala.UNIDADE,
         especie="ON",
         eh_unit=False,
         acoes_por_unit=None,
@@ -346,6 +347,7 @@ def test_gordon11_yfinance_so_avisa(shares, avisa):
         base,
         base,
         escala=Escala.UNIDADE,
+        escala_recente=Escala.UNIDADE,
         especie="ON",
         eh_unit=False,
         acoes_por_unit=None,
@@ -433,3 +435,58 @@ def test_contexto_macro_revalidado_quando_o_corte_e_so_data(corte_macro, aceita)
         assert isinstance(r, dict)
     else:
         assert r == gordon_cvm.Abstencao("contexto da taxa real posterior ao as_of")
+
+
+def _composicao(total, dt_refer):
+    from sentinela.data.acoes_cvm import Composicao
+
+    return Composicao(
+        on=total,
+        pn=0,
+        tesouraria_on=0,
+        tesouraria_pn=0,
+        tesouraria_total=0,
+        dt_refer=dt_refer,
+        versao="1",
+    )
+
+
+@pytest.mark.parametrize(
+    "escala_dfp,total_dfp,escala_recente,total_recente",
+    [("MIL", 1000, "UNIDADE", 1_010_000), ("UNIDADE", 1_000_000, "MIL", 1010)],
+)
+def test_escala_da_composicao_recente_converte_antes_da_razao(
+    escala_dfp, total_dfp, escala_recente, total_recente
+):
+    # F2B-54 (auditoria D30 do F2B-1): DFP e ITR em escalas diferentes não são evento.
+    from sentinela.domain.units import Escala
+
+    r = gordon_cvm.compatibilidade_base(
+        _composicao(total_dfp, "2025-12-31"),
+        _composicao(total_recente, "2026-06-30"),
+        escala=Escala[escala_dfp],
+        escala_recente=Escala[escala_recente],
+        especie="ON",
+        eh_unit=False,
+        acoes_por_unit=None,
+        shares_outstanding=None,
+    )
+    assert r["compativel"] is True
+    assert r["razao"] == pytest.approx(1.01)
+
+
+def test_escala_da_composicao_recente_indeterminada_abstem():
+    from sentinela.domain.units import Escala
+
+    r = gordon_cvm.compatibilidade_base(
+        _composicao(1000, "2025-12-31"),
+        _composicao(1000, "2026-06-30"),
+        escala=Escala.UNIDADE,
+        escala_recente=None,
+        especie="ON",
+        eh_unit=False,
+        acoes_por_unit=None,
+        shares_outstanding=None,
+    )
+    assert r["compativel"] is False
+    assert r["motivo"] == "escala das ações do documento mais recente indeterminada"
