@@ -377,3 +377,16 @@ perfis por fonte, aceitando os dois juntos; (c) perfis por fonte com outra regra
 - **F2B-53, depois da 5ª revisão:** 5ª rodada autorizada. A guarda da espécie vale para toda
   série, também com D > 0: unit com um componente sem nenhum registro na relação B3 se abstém.
   Registros `UNT` da relação são só conferência; não comprovam a cobertura de componente.
+
+## Decisões do Marcos de 20/10/2026 — plano final da 2B e achados das auditorias
+
+- **Plano de execução do restante da 2B aprovado:** `docs/decisoes/plano-final-2b.md` (cópia
+  literal do arquivo aprovado). Cada item pendente da fila cita a seção que o cobre; a decisão
+  escrita no item vale mais que o plano.
+- **Item novo F2B-54** (antes do F2B-2): BUG-2B-33 a 37 da 2ª auditoria FASE do Codex, mais a
+  escala da composição recente do Gordon (auditoria D30 do F2B-1 pelo Claude) e o BUG-2B-38
+  da revisão do F2B-53 (conferência com D = 0 e yfinance sem dividendos).
+- **Ficha Bazin 1.2:** distribuição extraordinária dispensada nesta versão, com aviso fixo
+  fora de `riscos`; identificação por evidência oficial na proposta da 2C.
+- **Avisos da série B3 usada no perfil:** fora de `riscos` (em `dados['perfil_fonte']` e no
+  relatório do F1-12), também quando o Bazin se abstém.

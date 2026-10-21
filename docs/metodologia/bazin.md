@@ -1,6 +1,7 @@
-# Critério de rendimento do Bazin — versão 1.1
+# Critério de rendimento do Bazin — versão 1.2
 
-**Status:** versão 1.1 aprovada pelo Marcos em 20/10/2026, com a linha "D e DY" da §4
+**Status:** versão 1.2 aprovada pelo Marcos em 20/10/2026: distribuição extraordinária
+dispensada nesta versão, com aviso fixo (§3). Versão 1.1, da mesma data: linha "D e DY" da §4
 (DY = 0 com cobertura completa). A versão 1.0 foi aprovada em 19/10/2026. Auditoria FICHA do Claude
 sobre a versão 0.3: **pode seguir** (D30); promovida a 1.0 sem mudança de regra
 ou número, conforme registro do marcador.
@@ -71,8 +72,12 @@ abstenção. Regras de classificação/vigência do registro §2.2. Lucro/ROE co
 usa última DFP exigível, sem alterar a janela dos proventos nem o critério.
 
 Evento de ações sem fator oficial ou direito de classe não reconciliado:
-abstenção por base incompatível. Distribuição extraordinária é identificada com
-aviso de não recorrência; não afirmar sustentabilidade. Mudança estrutural que
+abstenção por base incompatível. Distribuição extraordinária: **dispensada nesta versão**
+(1.2, decisão do Marcos de 20/10/2026). A relação B3 não marca o provento extraordinário, e
+não há fundamento para um percentual de excepcionalidade; toda série que o Bazin usa leva o
+aviso fixo "proventos de 12 meses podem incluir distribuição extraordinária, não
+identificada nesta versão", fora de `riscos`. A identificação por evidência oficial fica para
+a 2C. Não afirmar sustentabilidade. Mudança estrutural que
 impeça comparar os títulos na janela: abstenção. Não substituir série por DVA
 por competência: é outra medida e só serve ao teste aritmético separado.
 

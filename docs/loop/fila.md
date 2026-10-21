@@ -42,7 +42,7 @@ do C-C). B2, C-D e C-E não têm mais janela.
 **Comportamento.** Esta fase troca a taxa e o escopo dos métodos, então muda número e texto na saída.
 - Cada mudança tem um item `fix:` próprio, com teste xfail estrito antes (xfail estrito → correção → marca retirada → PASS; ADR-0003, D27), e nunca divide o commit com refactor. Nenhum item desta fila é `refactor:`.
 - Os itens `feat:` acrescentam dado, tipo ou método sem mudar a saída dos motores: F2B-27, F2B-28, F2B-29, F2B-30 e F2B-3.
-- Saída dos motores muda (e por isso o golden) só nos itens marcados **[golden]**: F2B-4 (escopo/modelo, inclusive alterações de casos existentes) e F2A-10 (só inclusões), F2B-20, F2B-1, F2B-31, F2B-53, F2B-2, F2B-32 e F2B-45 (o F2B-52 não mudou o golden). Nenhum item `chore:` muda o golden (auditoria externa da 2A).
+- Saída dos motores muda (e por isso o golden) só nos itens marcados **[golden]**: F2B-4 (escopo/modelo, inclusive alterações de casos existentes) e F2A-10 (só inclusões), F2B-20, F2B-1, F2B-31, F2B-53, F2B-54, F2B-2, F2B-32 e F2B-45 (o F2B-52 não mudou o golden). Nenhum item `chore:` muda o golden (auditoria externa da 2A).
 - **Bugs e regressão** (`tests/regressao/README.md`; ciclo, seção 4). Cada item que corrige um BUG registrado retira a marca do teste de regressão dele, que passa a PASS, e atualiza o registro. Bug novo que o loop confirmar vira teste de regressão no item em que aparece, ou no F2B-43, antes de qualquer correção.
 - Os demais itens mudam a cascata (`dados`), o índice, o relatório de qualidade ou o relatório do F1-12.
 
@@ -74,10 +74,11 @@ do C-C). B2, C-D e C-E não têm mais janela.
   - `get_selic_atual` e `SELIC_FALLBACK` ficam: contexto do FII, Markowitz até o F2C-9, E-6 no F3-1. `FII_MANUAL_FALLBACK` sai no F2C-10.
 - `app.py` (Fases 3 e 7) e `portfolio_engine.py` (F2C-9) não mudam. O que o app precisa mostrar chega pelos motores; a taxa real aparece no relatório do F1-12, não na tela (resíduo do F3-6).
 - Itens que podem mexer em cada arquivo restrito:
-  - `valuation_engine.py`: F2B-20, F2B-1, F2B-31, F2B-4, F2B-32, F2A-10, F2B-45 e F2B-5;
+  - `valuation_engine.py`: F2B-20, F2B-1, F2B-31, F2B-54, F2B-4, F2B-32, F2A-10, F2B-45 e F2B-5;
   - `fii_engine.py`: F2B-20, F2B-2 e F2A-10;
-  - `sentinela/methods/`: F2B-41 (`fii_nav.py`) e F2B-42 (`graham.py`), F2B-29 e F2B-4 (`base.py`), F2B-4 também nos módulos dos seis métodos (versão menor e escopo declarado em cada um), F2B-1 (Gordon), F2B-31 (Bazin), F2B-2 (rendimento do FII), F2B-3 (`bancos.py`), o `registry.py` em cada um deles, e F2B-5 (remoções). O contrato de pureza do F1-10 vale para tudo;
+  - `sentinela/methods/`: F2B-41 (`fii_nav.py`) e F2B-42 (`graham.py`), F2B-29 e F2B-4 (`base.py`), F2B-4 também nos módulos dos seis métodos (versão menor e escopo declarado em cada um), F2B-1 (Gordon), F2B-31 e F2B-54 (Bazin), F2B-2 (rendimento do FII), F2B-3 (`bancos.py`), o `registry.py` em cada um deles, e F2B-5 (remoções). O contrato de pureza do F1-10 vale para tudo;
   - **Decisão do Marcos de 20/10/2026 — contrato aditivo:** F2B-1 pode alterar `sentinela/methods/base.py` e, se precisar de tipo novo, `sentinela/domain/units.py`, apenas aditivamente: novos campos opcionais em `MethodInputs` e `_TIPOS_CAMPOS` para os insumos da ficha Gordon 1.0 (teto real do PIB e proventos/payout DVA com o perímetro dos controladores), cada um tipado e validado como no F2B-29. Nenhum campo existente muda de nome, tipo ou padrão. Estende-se aos F2B-3/F2B-32 se precisarem dos mesmos insumos, sempre de forma aditiva;
+  - **Decisão do Marcos de 20/10/2026 — plano final, seção 2:** qualquer item pendente pode alterar `sentinela/methods/base.py`, `sentinela/domain/units.py` e `sentinela/domain/enums.py`, só de forma aditiva (campos opcionais, tipos e enums novos, validados como no F2B-29); o F2B-5 mantém a permissão própria de remoção;
   - **Decisão do Marcos de 20/10/2026 — F2B-2:** pode alterar `sentinela/methods/base.py`, de forma aditiva, com o campo opcional `ntnb_real: RateReal` em `MethodInputs` e `_TIPOS_CAMPOS`, validado como no F2B-29; só método REAL pode exigi-lo. Nenhum campo existente muda de nome, tipo ou padrão;
   - `config.py`: F2B-30, F2B-1, F2B-31, F2B-2, F2B-32, F2A-10 e F2B-5;
   - `tests/conftest.py`: F2B-30 (semente da taxa real); `pytest.ini`: F2B-7;
@@ -723,7 +724,34 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - mutation ≥ 80% em `sentinela.data.proventos_b3*`;
   - gate da fase.
 
+- [ ] **F2B-54** · fix · `fix: close the audited Bazin, FII report and Gordon base gaps` · **[golden]** **[BAZIN]**
+  - **Plano final:** docs/decisoes/plano-final-2b.md, seção 1 (regras 4 e 6).
+  Achados da 2ª auditoria FASE do Codex (`auditoria-fase-2b-codex-2-relatorio.md`, 20/10/2026) e da auditoria D30 do F2B-1 pelo Claude (`auditoria-f2b1-claude-relatorio.md`, ressalva da escala), com as decisões do Marcos de 20/10/2026. Cada bug vira teste em `tests/regressao/`, xfail estrito com ID e este item, antes da correção (D27), e linha no registro.
+  - **BUG-2B-33 — preço ajustado no gate do Bazin.** O DY da B3 (gate, perfil e mediana) usa o fechamento do `history` com `auto_adjust=True`. O denominador passa a ser o fechamento **bruto** (sem ajuste de proventos) do pregão de referência; sem fechamento bruto, a série se abstém pelo motivo do preço. O `historico` ajustado continua para retorno e técnico (armadilha 11).
+  - **BUG-2B-34 — espécie ausente descartada.** Registro da relação sem `typeStock` legível não comprova cobertura: a série se abstém ("insumo inválido: espécie do provento"), com D positivo ou zero.
+  - **BUG-2B-35 — conferência só pela soma.** A conferência no yfinance passa a ser por evento (data ex e valor por papel), além da soma; diferenças que se compensam geram aviso com as datas. O cálculo continua pela B3. Junto, o caso da revisão do F2B-53 (BUG-2B-38): sem nenhum dividendo no yfinance e D = 0 pela B3, a conferência concorda, sem o aviso "conferência indisponível".
+  - **BUG-2B-36 — rendimento do FII não finito.** Em `rendimento_fii`, produto, soma ou divisão não finitos abstêm com motivo; nenhum infinito na saída.
+  - **BUG-2B-37 — Informe conflitante de mesma versão.** Duas linhas da mesma versão com valores diferentes abstêm, nas duas ordens; duplicata idêntica continua válida.
+  - **Escala da composição recente do Gordon** (auditoria D30 do F2B-1). `compatibilidade_base` infere a escala do documento recente pela regra da ficha 1.1 antes da razão; indeterminada, abstém com motivo próprio. Os quatro papéis do universo que se abstinham por "base incompatível" conferidos no diário.
+  - **Decisões do Marcos de 20/10/2026:** (a) unit com componente sem registro na B3 abstém também com D positivo, e registros `UNT` são só conferência (entregue no F2B-53, 50bff2a); (b) distribuição extraordinária do Bazin dispensada nesta versão, com aviso fixo (ficha Bazin 1.2, §3); a identificação por evidência oficial vai para a proposta da 2C (F2B-34); (c) os avisos da série B3 usada no perfil ficam fora de `riscos` (em `dados['perfil_fonte']` e no relatório do F1-12), também quando o Bazin se abstém.
+  - **Onde ficam os avisos (decisões (b) e (c)):** com a série B3 válida, `dados['perfil_fonte']['avisos']` traz os avisos da série (conferência no yfinance e o aviso fixo da ficha 1.2), com o Bazin calculando ou não, e o relatório do F1-12 os mostra na linha do DY do perfil. O aviso fixo nunca entra em `riscos`; os avisos da conferência continuam em `riscos` só quando o Bazin calcula, como hoje (ficha, §2).
+  - **Resíduos de texto do F2B-53 (revisões 5 e final):** as docstrings que citam "ficha Bazin 1.0" em `sentinela/data/proventos_b3.py` e `tests/test_proventos_b3.py`; o "Hoje" do texto do F2B-53 nesta fila; o comentário antigo do perfil em `valuation_engine.py` ("não classificar como crescimento só porque dy=0"), que passa a dizer que trata do DY da cascata não confiável.
+  - **Relatórios citados:** ficam fora do repositório (`C:\Users\marcos\Downloads\`, entregues pelo Marcos em 20/10/2026); os achados usados estão transcritos neste item.
+  - **Golden.** Alterados só casos do motor de ações em que o Bazin ou o Gordon mudam: `--onde "caso['motor'] == 'acoes'"`; FII só se a grade tiver rendimento não finito ou conflito (diário). Sem remoção.
+
+  **Testes que mudam:** em `tests/test_b3_proventos.py`, os que montam o `historico` sem o fechamento bruto; em `tests/test_proventos_b3.py`, os de conferência que fixam o aviso por soma; `tests/test_bazin_motor.py:102` (aviso da conferência quando o Bazin não calcula, agora no perfil); `tests/test_registry.py` se a versão do Bazin mudar. Lista no diário.
+
+  **Aceite:**
+  - `tests/regressao/test_bug_2b_33_*` a `test_bug_2b_38_*` por xfail estrito → correção → marca retirada → PASS, e o registro atualizado;
+  - teste da escala da composição recente (milhares × unidades), xfail estrito → correção → PASS;
+  - testes do aviso fixo (presente em `perfil_fonte['avisos']` e no relatório, ausente de `riscos`) e dos avisos da série com o Bazin abstendo (em `perfil_fonte['avisos']`), xfail estrito → correção → PASS;
+  - mutação ≥ 80% em `sentinela.data.proventos_b3*`, `sentinela.data.rendimento_fii*` e `sentinela.data.gordon_cvm*`; `sentinela.methods*` se o Bazin mudar;
+  - golden pela regra;
+  - diário: universo inicial antes → depois (Bazin, perfil, Gordon) e os quatro papéis da base;
+  - gate da fase.
+
 - [ ] **F2B-2** · fix · `fix: compare FII yield with NTN-B plus the historical spread` · **[golden]** **[FII]**
+  - **Plano final:** docs/decisoes/plano-final-2b.md, seção 3.
   - **Definições da ficha 1.1, decididas pelo Marcos em 20/10/2026 (complemento):** (a) a conferência compara o rendimento reconstruído, arredondado a duas casas, com o valor da B3: igual é conferido, diferente gera aviso, sem tolerância percentual; (b) a lista de eventos vazia só vale como "sem evento" se a resposta da B3 for válida (sucesso e estrutura esperada); erro ou formato inesperado é fonte indisponível, e o FII se abstém.
   - **Bloqueio resolvido — decisões do Marcos de 20/10/2026:** permissão aditiva de `base.py` para o campo `ntnb_real` (lista de arquivos restritos). Ficha FII 1.1 aprovada: (a) o rendimento oficial por cota da B3 (`fundsProxy/fundsCall/GetListedSupplementFunds`) é conferência: divergência mês a mês contra o reconstruído do Informe gera aviso com os meses e as diferenças, sem abstenção; (b) critério da regra "salto de VP incompatível, sem percentual arbitrário" (proposta do diário do F2B-2): desdobramento ou grupamento oficial na janela abstém, e a fonte de eventos indisponível também; sem limite percentual de salto de VP. Rito D27 para os testes novos.
   - **Aceite adicional Gemini HEAD60e61e2 (20/10/2026):** Data_Referencia NaN no cvm_fii_provider produz ausência/abstenção com motivo, sem seleção silenciosa nem exceção.
@@ -749,6 +777,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - gate da fase.
 
 - [ ] **F2A-39** · fix · `fix: map BTG Pactual unit through the source corrections table` · **[BTG]** **[CORREÇÕES]**
+  - **Plano final:** docs/decisoes/plano-final-2b.md, seção 4.
   Veio da 2A (decisão do Marcos de 13/10/2026). O COTAHIST liga o BPAC11 ao ISIN `BRBPACUNT006`, e o FCA traz a unit do BTG com o código `000000`. Pré-condição cumprida pela decisão do Marcos de 19/10/2026: aceito GetDetail da B3, código CVM 22616, CNPJ e ISIN BRBPACUNT006 no mesmo registro (fontes-fase2b, seção 6).
   - **Tabela de correções.** Linha do BPAC11: CNPJ 30.306.294/0001-45, código na fonte `000000`, a evidência do defeito (FCA 2025 e 2026, `valor_mobiliario`) e a da ligação (fonte da B3, campo e data). Se a tabela não tiver onde citar a evidência da ligação, o item a acrescenta: obrigatória quando a ligação não vem do próprio arquivo do defeito, e linha sem ela é rejeitada.
   - **Unit.** Composição "1 ON E 2 PNA". O diário registra `acoes_por_unit`, a classe PNA e o LPA da unit (nota do F2A-36: componente de classe única cai no recalculado com marca); composição não reconhecida, o motivo.
@@ -762,6 +791,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - gate da fase.
 
 - [ ] **F2B-4** · fix · `fix: enforce method scope by asset class and statement model` · **[golden]** **[FINANCEIRAS]**
+  - **Plano final:** docs/decisoes/plano-final-2b.md, seção 5.
   - **Complemento do parecer Gemini completo (20/10/2026):** helpers da seção A podem receber modelo, sem mudar asserções; correção de espécie exige ticker == codigo_na_fonte e recalcula classes_preferenciais depois da correção.
   - **Aceite da auditoria Gemini HEAD60e61e2 (20/10/2026):** após correção da espécie de MGLU3, recalcular classes_preferenciais a partir das espécies corrigidas, sem conservar classe espúria.
   PLANO, F2B-4; P7; armadilha 17; `sentinela/methods/registry.py` ("Aplicar e estreitar é o F2B-4").
@@ -786,6 +816,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - gate da fase.
 
 - [ ] **F2B-44** · fix · `fix: record IF.data provenance and the reference instant`
+  - **Plano final:** docs/decisoes/plano-final-2b.md, seção 6.
   - **Complemento do parecer Gemini completo (20/10/2026):** BUG-2A-20 recebe instante explícito além de sete dias e afirma nova consulta à fonte; bloquear apenas time.time não prova a correção e datetime.now não pode substituí-lo implicitamente.
   Corrige o BUG-2A-19 e o BUG-2A-20 (registrados no F2B-36), antes de a inadimplência contextual do IF.data aparecer no F2B-32; Basileia está fora da 2B por decisão de 19/10/2026.
   - Cada arquivo baixado do IF.data registra a proveniência da D16 por `proveniencia.registrar_sem_falhar`, como os outros provedores, e o `Capital` a carrega.
@@ -802,6 +833,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - **Aceite adicional Gemini HEAD60e61e2 (20/10/2026), BUG-2A-20:** instante de referência explícito em toda chamada e teste do cache, sem reserva de relógio implícito.
 
 - [ ] **F2B-3** · feat · `feat: add justified price-to-book lens for banks` · **[BANCOS]**
+  - **Plano final:** docs/decisoes/plano-final-2b.md, seção 7.
   - **Decisão do Marcos de20/10/2026:** cumprir a compatibilidade da base da ficha bancos1.1 (mesma regra Gordon1.1): composição recente ITR/DFP / DFP em (0,9;1,1), yfinance até5% só aviso, aviso fixo de eventos posteriores. Aceite com limites0,9/1,1, documento/versão elegível e divergência externa sem abstenção; ponte no F2B-32.
   PLANO, F2B-3 (a lente; a ligação no motor é o F2B-32); checkpoint, seção 4, item 5; D22. Pré-condição: `docs/metodologia/bancos.md` aprovada.
   - `sentinela/methods/bancos.py`: P/VP justificado = (ROE − g) ÷ (k − g), no regime da ficha; valor = P/VP justificado × VPA; escopo STOCK e UNIT com modelo banco; abstenções da ficha; versão 1.0.0 no `registry.py`, com changelog.
@@ -820,6 +852,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - gate da fase.
 
 - [ ] **F2B-32** · fix · `fix: value banks with the bank lens` · **[golden]** **[BANCOS]**
+  - **Plano final:** docs/decisoes/plano-final-2b.md, seção 7.
   Armadilha 17. Desde o F2B-4, bancos estão em abstenção.
   - **Motor de ações.** Modelo banco → a lente do F2B-3, com ROE dos controladores sobre PL inicial da última DFP anual, VPA CVM e payout DVA, k, IPCA da janela e teto PIB (F2B-30), pelas guardas da ficha 0.3. Preço justo, upside, score e rótulos pelas regras da V1 (o F2C as refaz); `metodos_usados` com a lente. Singleton novo e relatório do F1-12 no mesmo commit.
   - **Qualidade.** Basileia fora da 2B. Inadimplência IF.data só para leitura: conta 148834 / 24454 no mesmo relatório 16, conglomerado e data; não chamar de >90 dias sem comprovação nem de ativos problemáticos. Ausente/inválida: informar motivo sem alterar valor; datas de IF.data e DFP declaradas. O `divida_pl` não é lido.
@@ -833,6 +866,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - gate da fase.
 
 - [ ] **F2A-10** · fix · `fix: abstain below the liquidity threshold` · **[golden]** **[LIQUIDEZ]** **[D7]**
+  - **Plano final:** docs/decisoes/plano-final-2b.md, seção 8.
   Veio da 2A. Insumo: a distribuição do diário do F2A-26. **Regra decidida pelo Marcos em 18/10/2026 ([LIQUIDEZ]):**
   - **janela:** 63 pregões (a de 252 depende da série anual do COTAHIST, F3-4);
   - **métrica:** presença (pregões com negócio ÷ pregões da janela) e volume financeiro diário mediano, as duas condições juntas. Referência: o critério do NEFIN (FEA-USP) para os fatores de risco, "negociada em mais de 80% dos pregões do ano anterior, com volume diário acima de R$ 500 mil" (`nefin.com.br`, metodologia, seção 3);
@@ -856,6 +890,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - gate da fase.
 
 - [ ] **F2B-33** · docs · `docs: sync agent instructions with phase 2B rates and scope`
+  - **Plano final:** docs/decisoes/plano-final-2b.md, seção 1.
   Valida contra o código e corrige `CLAUDE.md`, `AGENTS.md` (menos a seção "Fase atual", que é do Marcos), a tabela da Fase 2B do `docs/PLANO.md` (IDs finais e a ordem desta fila) e, se o F2A-39 foi feito, a exclusão provisória do BTG em `docs/decisoes/universo-inicial.md`.
 
   **No `CLAUDE.md`:**
@@ -875,6 +910,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - `CLAUDE.md` e `AGENTS.md` sem contradição entre si.
 
 - [ ] **F2B-34** · levantamento · `docs: propose phase 2C queue`
+  - **Plano final:** docs/decisoes/plano-final-2b.md, seção 9.
   - **Ressalvas do F2B-52, decisão do Marcos de 20/10/2026:** propor na 2C (a) o Lynch, que decide pelo perfil da B3 e calcula o payout pelo DY da cascata; (b) o ativo que perde Lynch e Bazin (série B3 válida com DY abaixo de 4%, ROE acima de 20% e DY da cascata não confiável).
   - **Complemento do parecer Gemini completo (20/10/2026), F2B-8:** propor na 2C filtro de múltiplos nulos/inválidos na fronteira yfinance para não bloquear cache; F2C-3 separa prejuízo CVM de dado incompleto na confiança. Não aplicar neste item filtros genéricos que eliminem prejuízo legítimo.
   O `fable-architect` propõe a fila da 2C em `docs/loop/fila-fase2c-proposta.md`, no formato desta. Partes:
@@ -893,6 +929,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - **Ressalvas Gemini HEAD60e61e2 (20/10/2026) para 2C, sem correção no F2B-48:** reserva do TTM só com BPP do mesmo documento efetivamente lido (não basta BPP vazio); reforçar a barreira da regressão BUG-2B-09 para distinguir corrida de timeout. Demais ressalvas sem item 2B específico entram na proposta com evidência, aceite e destino; não declarar correção nem presumir classificação de BTCI11/TRPL11 sem fonte oficial.
 
 - [ ] **F2B-45** · fix · `fix: stop parsing Portuguese debt text in the stock engine` · **[golden]**
+  - **Plano final:** docs/decisoes/plano-final-2b.md, seção 9.
   Saiu do F2B-5: limpeza não muda golden (auditoria externa da 2A, correção 4). PLANO, seção 10 (texto de dívida). No motor de ações (`valuation_engine.py:278-291`), a conversão de `divida_liq_ebitda` em texto pt-BR ("1.234,56") não tem fonte desde o F2A-22. Sai a conversão. Hoje o texto inválido vira `0.0`, sem penalidade e sem aviso; depois do item, valor que não é número finito (texto inclusive) segue sem penalidade **e** com o aviso "alavancagem não avaliada". O teste cobre as duas partes: a ausência da penalidade, que já existe, e o aviso, que é novo.
 
   **Testes que mudam:** `tests/test_valuation_engine.py::test_divida_liq_ebitda_brazilian_format` e os outros que passam dívida em texto. A auditoria da 2A apontou que eles só conferiam `0 <= score_final <= 100`; passam a afirmar "alavancagem não avaliada" e a ausência da penalidade.
@@ -905,6 +942,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - gate da fase.
 
 - [ ] **F2B-5** · limpeza · `chore: clean up phase 2B residue`
+  - **Plano final:** docs/decisoes/plano-final-2b.md, seção 9.
   Faz só o que segue, conforme o PLANO (seção 10: texto de dívida; seção 11: "Selic como taxa de desconto"), o inventário (propriedades do `MacroContext` sem leitor) e a decisão de 5/10/2026 (script de invalidação):
   - **Selic como taxa de desconto,** sem leitor depois desta fase: `GORDON_PREMIO_RISCO` (`config.py:159`); `BAZIN_TAXA_MIN` (`:147`), se o F2B-31 foi feito; `FII_DY_SELIC_RATIO_MIN` (`:184`), se a [FII] trocou o benchmark do score; o campo `selic` do `MethodInputs` e a checagem dele no contrato, se nenhum método o exigir. Saem também os testes que só cobriam o que sai.
   - **NTN-B antiga:** `_fetch_ntnb` (`:271-301`), `ntnb_longa` e `NTNB_LONGA_FALLBACK` (`:122`), com os testes deles em `tests/test_macro_context.py`. `cdi`, `ipca_12m` e as contingências deles ficam para o F3-1, como o inventário prevê.
@@ -928,6 +966,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - lista para o Marcos apagar à mão: `data/tesouro/`, o cache do provedor de inflação (se houver) e os arquivos do F2B-21 em `outputs/levantamento_cache/`.
 
 - [ ] **F2B-6** · docs · `docs: add phase 2B summary and archive loop files`
+  - **Plano final:** docs/decisoes/plano-final-2b.md, seção 9.
   Nesta ordem:
   1. escrever `docs/loop/pr-fase-2b.md` a partir do diário, com:
      - itens e commits;
