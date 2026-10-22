@@ -16,7 +16,11 @@ def test_zip_vazio_vira_mes_ausente(tmp_path, monkeypatch):
     vazio = tmp_path / "COTAHIST_M092026.ZIP"
     with zipfile.ZipFile(vazio, "w"):
         pass
-    monkeypatch.setattr(b3_cotahist, "baixar_mes", lambda ano, mes, agora, pasta: vazio)
+    monkeypatch.setattr(
+        b3_cotahist,
+        "baixar_mes",
+        lambda ano, mes, agora, pasta, *, permitir_cache_antigo=True: vazio,
+    )
     historico = b3_cotahist.HistoricoRecente(cache_dir=tmp_path / "cache", meses=1)
     coleta = historico.coletar(datetime(2026, 10, 15, 12, tzinfo=UTC))
     assert coleta.cotacoes == []

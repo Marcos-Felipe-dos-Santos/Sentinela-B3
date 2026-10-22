@@ -846,8 +846,8 @@ class MarketEngine:
     def _buscar_liquidez(self, ticker: str, dados: dict[str, Any]) -> None:
         """Liquidez do ticker pelo COTAHIST (F2A-26), em `dados['liquidez']`, fora do prompt.
 
-        Só mede: nenhum motor lê. Provedor por `getattr`; sem ele ou com falha, a chave fica
-        de fora.
+        Provedor por `getattr`; sem ele, a chave fica de fora. Falha de coleta é
+        preservada no bloco para que os motores mostrem o aviso.
         """
         historico = getattr(self, 'cotahist', None)
         if historico is None:
@@ -856,6 +856,7 @@ class MarketEngine:
             coleta = historico.coletar(datetime.now(UTC))
         except Exception as exc:
             logger.warning(f"[{ticker}] COTAHIST indisponível para a liquidez: {exc}")
+            dados['liquidez'] = {'abstencao': f'falha de coleta: {exc}'}
             return
         resultado = liquidez.metricas(
             coleta.cotacoes, ticker, meses_ausentes=coleta.meses_ausentes
@@ -865,6 +866,12 @@ class MarketEngine:
             if isinstance(resultado, liquidez.Abstencao)
             else resultado
         )
+
+
+        if isinstance(resultado, liquidez.Abstencao) and resultado.motivo == liquidez.MOTIVO_TICKER_AUSENTE:
+            # A ausência do ticker só vale como zero se a coleta cobrir a janela.
+            pregoes = len({c.data for c in coleta.cotacoes})
+            dados['liquidez']['incompleta'] = pregoes < 63
 
     def _buscar_cvm_fii(self, ticker: str, dados: dict[str, Any]) -> bool:
         """VPA, P/VP, PL e cotas do FII pelo Informe Mensal da CVM (F2A-11; E-10, armadilha 9).

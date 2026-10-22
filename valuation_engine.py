@@ -6,7 +6,7 @@ from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
 from config import DISTRESSED_TICKERS, MACRO, _normalizar_dy, get_selic_atual
-from sentinela.data import gordon_cvm, proventos_b3
+from sentinela.data import gordon_cvm, liquidez, proventos_b3
 from sentinela.domain.enums import Perfil
 from sentinela.domain.units import BRL, RateNominal, Ratio
 from sentinela.methods.base import MethodInputs, MethodResult
@@ -133,6 +133,23 @@ class ValuationEngine:
                     'riscos':         [f"Classe {classe} fora do escopo dos métodos de ação"],
                 }
 
+        # F2A-10: classe já verificada; dado não medido produz aviso, não zero.
+        gate_liquidez = liquidez.avaliar(
+            dados.get("liquidez"), janela=MACRO.LIQUIDEZ_JANELA,
+            presenca_min=MACRO.LIQUIDEZ_PRESENCA_MIN,
+            volume_min=MACRO.LIQUIDEZ_VOLUME_ACOES_MIN,
+        ) if "liquidez" in dados else None
+        avisos_liquidez = []
+        if gate_liquidez:
+            if "abstencao" in gate_liquidez:
+                return {
+                    'recomendacao': ROTULO_FORA_DO_ESCOPO,
+                    'metodos_usados': '', 'perfil': 'LIQUIDEZ INSUFICIENTE',
+                    'pl_confiavel': False, 'dy_confiavel': False, 'confianca': 0,
+                    'riscos': [gate_liquidez["abstencao"]],
+                }
+            avisos_liquidez.append(gate_liquidez["aviso"])
+
         # ── GUARD: DISTRESSED TICKERS ────────────────────────────────────────
         # Empresas em recuperação judicial ou situação especial não devem
         # receber COMPRA ou COMPRA FORTE — valuation baseado em múltiplos
@@ -151,7 +168,7 @@ class ValuationEngine:
                 'pl_confiavel':  False,
                 'dy_confiavel':  False,
                 'confianca':     0,
-                'riscos':        ['Empresa em situação especial/distressed'],
+                'riscos':        ['Empresa em situação especial/distressed', *avisos_liquidez],
             }
         roe = float(dados.get('roe', 0) or 0)
         pl  = float(dados.get('pl',  0) or 0)
@@ -173,7 +190,7 @@ class ValuationEngine:
         selic = get_selic_atual()
 
         confianca = 100
-        riscos = []
+        riscos = list(avisos_liquidez)
 
         if dados.get("fundamentos_incompletos"):
             confianca -= 30

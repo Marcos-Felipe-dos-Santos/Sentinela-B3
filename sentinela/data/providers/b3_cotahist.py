@@ -140,7 +140,12 @@ def _completo(destino: Path, ano: int, mes: int) -> bool:
 
 
 def baixar_mes(
-    ano: int, mes: int, agora: datetime, cache_dir: str | Path = "data/cotahist"
+    ano: int,
+    mes: int,
+    agora: datetime,
+    cache_dir: str | Path = "data/cotahist",
+    *,
+    permitir_cache_antigo: bool = True,
 ) -> Path:
     """Baixa o ZIP do mês.
 
@@ -148,7 +153,8 @@ def baixar_mes(
     outra, inclusive a de um mês já fechado baixada com o mês em curso, expira em um
     dia, porque ainda lhe faltam pregões. `agora` é o instante de referência (sem
     leitura de relógio aqui; é lido no fuso da B3). Se a rede falha e há cópia antiga,
-    vale a cópia, com aviso.
+    vale a cópia, com aviso, quando `permitir_cache_antigo` é verdadeiro. O coletor
+    de liquidez recusa essa reserva para sinalizar falha de cobertura ao gate.
     """
     cache = Path(cache_dir)
     cache.mkdir(parents=True, exist_ok=True)
@@ -167,6 +173,8 @@ def baixar_mes(
         baixado = baixar_arquivo(url, destino)
     except (requests.RequestException, OSError, zipfile.BadZipFile):
         antigo.replace(destino)
+        if not permitir_cache_antigo:
+            raise
         logger.warning(
             "COTAHIST %02d/%d: falha no download, usando cópia antiga", mes, ano
         )
@@ -255,7 +263,9 @@ class HistoricoRecente:
                     continue
                 try:
                     cotacoes += ler_zip_em_cache(
-                        baixar_mes(ano, mes, agora, self.cache_dir)
+                        baixar_mes(
+                            ano, mes, agora, self.cache_dir, permitir_cache_antigo=False
+                        )
                     )
                 except (
                     requests.RequestException,

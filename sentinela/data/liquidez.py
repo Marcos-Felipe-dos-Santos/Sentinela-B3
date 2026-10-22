@@ -1,6 +1,6 @@
 """Liquidez pelo COTAHIST (F2A-26; insumo da [LIQUIDEZ] e do F2A-10, que são da 2B).
 
-Só mede: nenhum motor lê. Para cada janela (21 e 63 pregões), a partir das cotações do
+Mede e aplica a regra explícita do F2A-10, sem acessar os motores. Para cada janela (21 e 63 pregões), a partir das cotações do
 mercado à vista (F2A-18):
 - volume financeiro diário mediano e médio, somado por dia no código do ticker;
 - negócios por dia (mediana);
@@ -17,6 +17,7 @@ Função pura: sem rede, sem relógio, sem `config`.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Iterable
 from dataclasses import dataclass
 from statistics import mean, median
@@ -79,3 +80,54 @@ def metricas(
         "fonte": FONTE,
         "meses_ausentes": list(meses_ausentes),
     }
+
+
+def avaliar(
+    bloco: dict | None, *, janela: int, presenca_min: float, volume_min: float
+) -> dict[str, str] | None:
+    """Motivo, aviso ou nada; a regra entra por parâmetro, sem configuração global."""
+
+    def aviso(motivo: str) -> dict[str, str]:
+        return {"aviso": f"liquidez não medida: {motivo}"}
+
+    def abaixo(presenca: float, volume: float) -> dict[str, str]:
+        return {
+            "abstencao": (
+                "liquidez abaixo do mínimo para análise: "
+                f"presença de {presenca * 100}% e volume mediano de R$ {volume} "
+                f"nos últimos {janela} pregões "
+                f"(mínimo: {presenca_min * 100:g}% e R$ {volume_min:g})"
+            )
+        }
+
+    if not isinstance(bloco, dict) or not bloco:
+        return aviso("bloco sem dados")
+    if bloco.get("meses_ausentes"):
+        return aviso(
+            "mês ausente na coleta: " + ", ".join(map(str, bloco["meses_ausentes"]))
+        )
+    if bloco.get("incompleta"):
+        return aviso("janela incompleta")
+    if "abstencao" in bloco:
+        if bloco["abstencao"] == MOTIVO_TICKER_AUSENTE:
+            if bloco.get("incompleta") is not False:
+                return aviso("cobertura da janela não demonstrada")
+            return abaixo(0.0, 0.0)
+        return aviso(str(bloco["abstencao"]))
+    janelas = bloco.get("janelas")
+    j = janelas.get(str(janela)) if isinstance(janelas, dict) else None
+    if not isinstance(j, dict):
+        return aviso(f"janela de {janela} pregões ausente")
+    if j.get("incompleta") is not False or j.get("pregoes") != janela:
+        return aviso("janela incompleta")
+    presenca, volume = j.get("presenca"), j.get("volume_mediano")
+    if any(
+        isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v)
+        for v in (presenca, volume)
+    ):
+        return aviso("presença ou volume inválido")
+    if not 0 <= presenca <= 1 or volume < 0:
+        return aviso("presença ou volume fora do domínio")
+    if presenca < presenca_min or volume < volume_min:
+        return abaixo(presenca, volume)
+    return None

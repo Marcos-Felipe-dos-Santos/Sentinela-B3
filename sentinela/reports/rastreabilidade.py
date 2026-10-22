@@ -627,7 +627,7 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
     liquidez = dados.get("liquidez")
     if liquidez:
         fontes.append(
-            ("Liquidez (F2A-26, ainda sem uso nos métodos)", _texto_liquidez(liquidez))
+            ("Liquidez (63 pregões: presença ≥ 80%; mediana ≥ R$ 500 mil em ações/units e R$ 100 mil em FIIs)", _texto_liquidez(liquidez))
         )
     rendimento = dados.get("rendimento_fii_cvm")
     if rendimento:

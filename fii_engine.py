@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
 from config import MACRO, _normalizar_dy, get_selic_atual
-from sentinela.data import rendimento_fii
+from sentinela.data import liquidez, rendimento_fii
 from sentinela.domain.units import BRL, RateReal, Ratio
 from sentinela.methods.base import MethodInputs, MethodResult
 from sentinela.methods.fii_nav import (
@@ -77,6 +77,24 @@ class FIIEngine:
 
         ticker = dados.get("ticker", "")
 
+        gate_liquidez = liquidez.avaliar(
+            dados.get("liquidez"), janela=MACRO.LIQUIDEZ_JANELA,
+            presenca_min=MACRO.LIQUIDEZ_PRESENCA_MIN,
+            volume_min=MACRO.LIQUIDEZ_VOLUME_FII_MIN,
+        ) if "liquidez" in dados else None
+        if gate_liquidez and "abstencao" in gate_liquidez:
+            return {
+                "recomendacao": "FORA DO ESCOPO DOS MÉTODOS",
+                "metodos_usados": "", "perfil": "LIQUIDEZ INSUFICIENTE",
+                "pl_confiavel": False, "dy_confiavel": False, "confianca": 0,
+                "riscos": [gate_liquidez["abstencao"]],
+            }
+
+        def _com_aviso(resultado: dict) -> dict:
+            if gate_liquidez and "aviso" in gate_liquidez:
+                resultado.setdefault("riscos", []).append(gate_liquidez["aviso"])
+            return resultado
+
         # ── INVARIANTE DO DY ──────────────────────────────────────────────────
         # O DY chega em razão; a conversão é da fronteira do provedor (F2A-4).
         dy_raw = float(dados.get("dy", 0) or 0)
@@ -89,14 +107,14 @@ class FIIEngine:
 
         # ── FALLBACK: sem DY confiável não podemos calcular valuation ─────────
         if dy == 0 or not dy_confiavel:
-            return {
+            return _com_aviso({
                 "fair_value":     round(p, 2),
                 "upside":         0.0,
                 "score_final":    50,
                 "recomendacao":   "NEUTRO",
                 "perfil":         "FII",
                 "metodos_usados": "Dados insuficientes (DY ausente ou inválido)",
-            }
+            })
 
         # P/VP: o oficial da CVM chega pela cascata (F2A-11). Sem P/VP positivo e finito
         # (ausente, zero, negativo, NaN ou infinito; F2A-42), a lente não é calculada, não
@@ -118,14 +136,14 @@ class FIIEngine:
             # Lente não calculada (fora do escopo, sem Informe elegível, sem NTN-B ou spread,
             # resultado não finito): o resultado do DY inválido, com o motivo.
             motivo = rendimento.motivo
-            return {
+            return _com_aviso({
                 "fair_value":     round(p, 2),
                 "upside":         0.0,
                 "score_final":    50,
                 "recomendacao":   "NEUTRO",
                 "perfil":         "FII",
                 "metodos_usados": f"Dados insuficientes ({_FII_YIELD.nome}: {motivo})",
-            }
+            })
         upside = (preco_justo / p) - 1
 
         # ── Score ─────────────────────────────────────────────────────────────
@@ -160,7 +178,7 @@ class FIIEngine:
         if upside < MACRO.FII_UPSIDE_VENDA:
             rec = "VENDA"
 
-        return {
+        return _com_aviso({
             "fair_value":     round(preco_justo, 2),
             "upside":         round(upside * 100, 1),
             "score_final":    int(score),
@@ -173,4 +191,4 @@ class FIIEngine:
             "pvp":            pvp,
             "selic_liquida":  selic_liquida,
             "avisos_rendimento": list(dados["rendimento_fii_cvm"].get("avisos", ())),
-        }
+        })

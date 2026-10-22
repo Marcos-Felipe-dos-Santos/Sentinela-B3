@@ -728,3 +728,19 @@ def test_cvm_overrides_brapi_fundamentals(monkeypatch):
     # CVM sobrescreve o roe absurdo do brapi
     assert dados["roe"] == pytest.approx(0.20)
     assert dados["fonte_fundamentos"] == "CVM"
+
+
+def test_falha_do_coletor_de_liquidez_chega_como_aviso(monkeypatch):
+    from valuation_engine import ValuationEngine
+
+    class FonteIndisponivel:
+        def coletar(self, agora):
+            raise OSError("fonte indisponível")
+
+    engine = _engine(monkeypatch, info={"currentPrice": 100.0}, historico=_historico(100.0))
+    engine.cotahist = FonteIndisponivel()
+    dados = engine.buscar_dados_ticker("PETR4")
+    assert "falha de coleta" in dados["liquidez"]["abstencao"]
+    monkeypatch.setattr("valuation_engine.get_selic_atual", lambda: .145)
+    resultado = ValuationEngine().processar(dados)
+    assert any("liquidez não medida:" in r for r in resultado["riscos"])

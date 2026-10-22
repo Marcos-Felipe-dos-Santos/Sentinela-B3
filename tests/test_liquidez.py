@@ -118,7 +118,7 @@ def test_historico_recente_junta_os_meses_e_pula_o_que_falta(tmp_path, monkeypat
     }
     pedidos = []
 
-    def baixar(ano, mes, agora, cache_dir):
+    def baixar(ano, mes, agora, cache_dir, *, permitir_cache_antigo=True):
         pedidos.append((ano, mes))
         if (ano, mes) not in arquivos:
             raise OSError("sem arquivo")
@@ -187,7 +187,7 @@ def test_relatorio_mostra_a_liquidez():
         contexto = rastreabilidade.construir_contexto(
             dados, False, date(2026, 10, 13), ValuationEngine(), FIIEngine()
         )
-    texto = dict(contexto["fontes"])["Liquidez (F2A-26, ainda sem uso nos métodos)"]
+    texto = dict(contexto["fontes"])["Liquidez (63 pregões: presença ≥ 80%; mediana ≥ R$ 500 mil em ações/units e R$ 100 mil em FIIs)"]
     assert "21 pregões: volume mediano R$ 20.000,00/dia" in texto
     assert "63 pregões (incompleta)" in texto
     assert "presença 100,0%" in texto
@@ -222,7 +222,7 @@ def test_mes_que_falhou_nao_e_tentado_de_novo_por_uma_hora(tmp_path, monkeypatch
     arquivo = _zip(tmp_path / "out.zip", [_linha(DATA="20261001", CODNEG="ABCD3")])
     pedidos = []
 
-    def baixar(ano, mes, agora, cache_dir):
+    def baixar(ano, mes, agora, cache_dir, *, permitir_cache_antigo=True):
         pedidos.append((ano, mes))
         if mes == 9:
             raise OSError("fora do ar")
@@ -252,7 +252,7 @@ def test_trava_por_mes_nao_deixa_duas_threads_no_mesmo_arquivo(tmp_path, monkeyp
     arquivo = _zip(tmp_path / "out.zip", [_linha(DATA="20261001", CODNEG="ABCD3")])
     ativos, maximo, trava = [0], [0], threading.Lock()
 
-    def baixar(ano, mes, agora, cache_dir):
+    def baixar(ano, mes, agora, cache_dir, *, permitir_cache_antigo=True):
         with trava:
             ativos[0] += 1
             maximo[0] = max(maximo[0], ativos[0])
@@ -294,7 +294,7 @@ def test_threads_na_fila_nao_repetem_o_download_que_falhou(tmp_path, monkeypatch
 
     pedidos, trava = [], threading.Lock()
 
-    def baixar(ano, mes, agora, cache_dir):
+    def baixar(ano, mes, agora, cache_dir, *, permitir_cache_antigo=True):
         with trava:
             pedidos.append((ano, mes))
         time.sleep(0.01)

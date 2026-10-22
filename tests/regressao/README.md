@@ -104,3 +104,7 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2B-39 | classe com espaço nas pontas contorna a guarda de escopo e recebe valor de ação | valuation_engine.py (processar) | revisão do F2A-29 citada na fila; reprodução no F2B-4, 21/10/2026 | test_bug_2b_39_classe_com_espacos.py | F2B-4 | aberto |
 
 | BUG-2B-40 | ROE nominal vira zero por underflow de valores positivos e o payout projetado divide por zero com teto ativo | sentinela/methods/bancos.py | revisão do F2B-3 antes do commit, 21/10/2026 | test_bug_2b_40_banco_roe_underflow.py | F2B-3 | corrigido |
+
+| BUG-2B-41 | gate atribui presença zero a ticker ausente sem prova de cobertura da janela | sentinela/data/liquidez.py (avaliar) | revisão do F2A-10 antes do commit, 21/10/2026 | test_bug_2b_41_liquidez_cobertura_ausente.py | F2A-10 | corrigido |
+
+| BUG-2B-42 | download falha com cache antigo, coletor não sinaliza mês indisponível e aplica gate à janela desatualizada | sentinela/data/providers/b3_cotahist.py (baixar_mes, HistoricoRecente.coletar) | revisão1 F2A-10, 21/10/2026 | test_bug_2b_42_liquidez_cache_antigo.py | F2A-10 | corrigido |

@@ -54,7 +54,9 @@ def executar(caso):
         # F2B-2: Informe, B3 e NTN-B real sintéticos (apoio_fii), no as_of fixo; a chave
         # `sem_informe` deixa o caso sem eles.
         if not caso.get("sem_informe"):
-            entrada = enriquecer_fii(entrada, ntnb=caso.get("taxa_real", {}).get("ntnb"))
+            entrada = enriquecer_fii(
+                entrada, ntnb=caso.get("taxa_real", {}).get("ntnb")
+            )
         with patch.object(fii_engine, "get_selic_atual", return_value=caso["selic"]):
             return FIIEngine().analisar(entrada, as_of=AS_OF_GORDON)
     except Exception as exc:
@@ -582,9 +584,53 @@ def _acoes_taxa_bazin():
     return casos
 
 
+def _casos_liquidez():
+    """F2A-10: só inclusões, com a mesma regra explícita por classe."""
+    casos = []
+    for classe in ("STOCK", "UNIT", "FII"):
+        minimo = 100000 if classe == "FII" else 500000
+        for nome, presenca, volume, extra in (
+            ("acima", 1.0, 1000000.0, {}),
+            ("limite", 0.8, minimo, {}),
+            ("presenca-baixa", 0.79, minimo, {}),
+            ("volume-baixo", 0.8, minimo - 1, {}),
+            ("ambos-baixos", 0.1, 0, {}),
+            ("sem-negocio", 0.0, 0.0, {}),
+            ("incompleta", 0.1, 0, {"incompleta": True}),
+            ("mes-ausente", 0.1, 0, {"meses_ausentes": ["2026-09"]}),
+            (
+                "sem-dado",
+                0.0,
+                0.0,
+                {"abstencao": "falha de coleta: fonte indisponível"},
+            ),
+        ):
+            bloco = {
+                "janelas": {
+                    "63": {
+                        "pregoes": 63,
+                        "incompleta": extra.get("incompleta", False),
+                        "presenca": presenca,
+                        "volume_mediano": volume,
+                    }
+                },
+                "meses_ausentes": extra.get("meses_ausentes", []),
+                "fonte": "COTAHIST sintético",
+                "data_final": "2026-10-19",
+            }
+            if "abstencao" in extra:
+                bloco = {"abstencao": extra["abstencao"]}
+            entrada = {**_RENDA, "classe_ativo": classe, "liquidez": bloco}
+            entrada["ticker"] = "TSTU11" if classe in ("FII", "UNIT") else "TSTC3"
+            fabrica = _fii if classe == "FII" else _acao
+            casos.append(fabrica(f"liquidez-{classe}-{nome}", entrada))
+    return casos
+
+
 def montar_casos():
     casos = (
         _acoes_fronteiras()
+        + _casos_liquidez()
         + _acoes_especiais()
         + _acoes_chaves_e_extremos()
         + _acoes_varredura_classificacao()

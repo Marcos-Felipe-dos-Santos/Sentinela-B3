@@ -168,6 +168,12 @@ NTNB_LONGA_FALLBACK = 0.070 # Yield real NTN-B vencimento >= 2035 (Tesouro Diret
 # Altere aqui para tunar o comportamento sem caçar literais no código.
 
 class MacroContext:
+    # F2A-10: regra do Marcos de 18/10/2026, em pregões, razão e BRL/dia.
+    LIQUIDEZ_JANELA = 63
+    LIQUIDEZ_PRESENCA_MIN = 0.80
+    LIQUIDEZ_VOLUME_ACOES_MIN = 500_000.0
+    LIQUIDEZ_VOLUME_FII_MIN = 100_000.0
+
     PREMIO_ACOES_REAL = _taxas.PREMIO_ACOES_REAL
     NTNB_VENCIMENTO_MIN = _taxas.ANO_MIN_NTNB
 

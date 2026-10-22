@@ -855,6 +855,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - gate da fase.
 
 - [ ] **F2B-32** · fix · `fix: value banks with the bank lens` · **[golden]** **[BANCOS]**
+  - **Ordem de execução, 21/10/2026:** aguarda o F2B-4 (modelo/evidência no harness e casos de banco, exigidos pelo próprio predicado abaixo). Mantido pendente ao prosseguir pelos itens independentes, conforme autorização do Marcos; não presumir esse preparo entregue.
   - **Plano final:** docs/decisoes/plano-final-2b.md, seção 7.
   Armadilha 17. Desde o F2B-4, bancos estão em abstenção.
   - **Motor de ações.** Modelo banco → a lente do F2B-3, com ROE dos controladores sobre PL inicial da última DFP anual, VPA CVM e payout DVA, k, IPCA da janela e teto PIB (F2B-30), pelas guardas da ficha 0.3. Preço justo, upside, score e rótulos pelas regras da V1 (o F2C as refaz); `metodos_usados` com a lente. Singleton novo e relatório do F1-12 no mesmo commit.
@@ -868,7 +869,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: os bancos do universo inicial, com P/VP de mercado, P/VP justificado, preço justo, upside e classificação agrupada, com prêmio de 4%, 5% e 7%;
   - gate da fase.
 
-- [ ] **F2A-10** · fix · `fix: abstain below the liquidity threshold` · **[golden]** **[LIQUIDEZ]** **[D7]**
+- [x] **F2A-10** · fix · `fix: abstain below the liquidity threshold` · **[golden]** **[LIQUIDEZ]** **[D7]**
   - **Plano final:** docs/decisoes/plano-final-2b.md, seção 8.
   Veio da 2A. Insumo: a distribuição do diário do F2A-26. **Regra decidida pelo Marcos em 18/10/2026 ([LIQUIDEZ]):**
   - **janela:** 63 pregões (a de 252 depende da série anual do COTAHIST, F3-4);
