@@ -10,6 +10,7 @@ from config import MACRO
 from sentinela.domain.enums import AssetType, Regime
 from sentinela.methods import registry
 from sentinela.methods.base import ValuationMethod
+from sentinela.methods.bancos import BancosParams
 from sentinela.methods.bazin import BazinParams
 from sentinela.methods.fii_nav import FiiNavParams
 from sentinela.methods.fii_yield import FiiYieldParams
@@ -17,11 +18,20 @@ from sentinela.methods.gordon import GordonParams
 from sentinela.methods.graham import FATOR_GRAHAM, GrahamParams
 from sentinela.methods.lynch import LynchParams
 
-NOMES = ["Graham", "Bazin", "Lynch", "Gordon", "Rendimento do FII", "P/VP do FII"]
+NOMES = [
+    "Graham",
+    "Bazin",
+    "Lynch",
+    "Gordon",
+    "Rendimento do FII",
+    "P/VP do FII",
+    "Bancos",
+]
 
 # Valores da 1.0.0, lidos hoje do MacroContext: mudar uma constante sem criar versão
 # nova do método quebra este teste. campo do método -> (constante do MacroContext, valor)
 PARAMETROS_1_0_0 = {
+    "Bancos": (BancosParams, {}),
     "Graham": (
         GrahamParams,
         {
@@ -71,7 +81,7 @@ def test_registro_tem_os_seis_metodos():
         assert e.requires
         assert e.assumptions
         assert e.applies_to
-    assert len(registry.METODOS) == 6
+    assert len(registry.METODOS) == 7
 
 
 def test_entrada_reflete_o_metodo():
@@ -109,12 +119,13 @@ def test_todo_modulo_de_metodo_esta_registrado():
                 classes.add(obj)
     registradas = {type(m) for m in registry.METODOS}
     assert classes == registradas
-    assert len(classes) == 6
+    assert len(classes) == 7
 
 
 def test_regime_coerente_com_a_taxa():
     regimes = {e.nome: e.regime for e in registry.entradas()}
     assert regimes == {
+        "Bancos": Regime.REAL,
         "Graham": Regime.SEM_TAXA,
         "Bazin": Regime.NOMINAL,
         "Lynch": Regime.NOMINAL,
@@ -133,6 +144,7 @@ def test_regime_coerente_com_a_taxa():
 def test_applies_to_descreve_o_roteamento_da_v1_sem_aplicar():
     acoes = frozenset({AssetType.STOCK, AssetType.UNIT})
     esperado = {
+        "Bancos": acoes,
         "Graham": acoes,
         "Bazin": acoes,
         "Lynch": acoes,
@@ -170,7 +182,9 @@ def test_changelog_tem_a_1_0_0():
         }.get(nome, ["1.0.0"])  # F2A-21 e F2A-25
         assert [m.version for m in mudancas] == esperado
         assert mudancas[0].descricao == (
-            "comportamento da V1, extraído na Fase 1, sem mudança de número"
+            "ficha bancos1.1: lente nova de P/VP justificado em regime real; sem consumidor no motor"
+            if nome == "Bancos"
+            else "comportamento da V1, extraído na Fase 1, sem mudança de número"
         )
         assert registry.obter(nome).version == mudancas[-1].version
 

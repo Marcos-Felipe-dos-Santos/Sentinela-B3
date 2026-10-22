@@ -1,8 +1,8 @@
 """Registro dos métodos de valuation: catálogo e changelog.
 
-Fixa a 1.0.0 de cada método ao comportamento da V1; as versões seguintes ficam no
-changelog. O `applies_to` é declarado, mas não aplicado: descreve o roteamento da V1 (ações para STOCK e UNIT, FII para FII; o
-classificador atual nunca devolve ETF nem BDR). Aplicar e estreitar é o F2B-4.
+Os métodos extraídos da V1 mantêm seu histórico no changelog. O escopo dos seis
+métodos preexistentes ainda é aplicado pelo F2B-4; a lente nova Bancos já confere
+classe e modelo banco, sem consumidor nos motores até o F2B-32.
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 from sentinela.domain.enums import AssetType, Regime
 from sentinela.methods.base import ValuationMethod
+from sentinela.methods.bancos import Bancos
 from sentinela.methods.bazin import Bazin
 from sentinela.methods.fii_nav import FiiNav
 from sentinela.methods.fii_yield import FiiYield
@@ -25,6 +26,7 @@ METODOS: tuple[ValuationMethod, ...] = (
     Gordon(),
     FiiYield(),
     FiiNav(),
+    Bancos(),
 )
 
 DESCRICAO_1_0_0 = "comportamento da V1, extraído na Fase 1, sem mudança de número"
@@ -83,6 +85,13 @@ CHANGELOG["Rendimento do FII"] += (
 CHANGELOG["P/VP do FII"] += (
     Mudanca(
         "1.1.0", "com P/VP não positivo, abstém-se em vez de classificar como desconto"
+    ),
+)
+
+CHANGELOG["Bancos"] = (
+    Mudanca(
+        "1.0.0",
+        "ficha bancos1.1: lente nova de P/VP justificado em regime real; sem consumidor no motor",
     ),
 )
 

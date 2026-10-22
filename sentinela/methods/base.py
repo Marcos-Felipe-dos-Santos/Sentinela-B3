@@ -16,7 +16,13 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
 
-from sentinela.domain.enums import AssetType, Perfil, Regime
+from sentinela.domain.enums import (
+    AssetType,
+    DocumentoContabil,
+    ModeloDemonstracao,
+    Perfil,
+    Regime,
+)
 from sentinela.domain.units import (
     BRL,
     Inflacao,
@@ -51,6 +57,12 @@ _TIPOS_CAMPOS: dict[str, type] = {
     "ntnb_real": RateReal,
     "vacancia": Ratio,
     "perfil": Perfil,
+    "classe_ativo": AssetType,
+    "modelo": ModeloDemonstracao,
+    "documento_contabil": DocumentoContabil,
+    "base_acionaria_compativel": bool,
+    "lucro_anual_controladores": BRL,
+    "pl_inicial_controladores": BRL,
 }
 _FLAGS = ("pl_confiavel", "dy_confiavel")
 _VERSAO = re.compile(r"\d+\.\d+\.\d+")
@@ -77,6 +89,13 @@ class MethodInputs:
     proventos_controladores: ProventosControladores | None = None
     # F2B-2 (decisão do Marcos de 20/10/2026): a NTN-B real da lente do FII, sem prêmio.
     ntnb_real: RateReal | None = None
+
+    classe_ativo: AssetType | None = None
+    modelo: ModeloDemonstracao | None = None
+    documento_contabil: DocumentoContabil | None = None
+    base_acionaria_compativel: bool | None = None
+    lucro_anual_controladores: BRL | None = None
+    pl_inicial_controladores: BRL | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.as_of, date) or isinstance(self.as_of, datetime):

@@ -25,3 +25,18 @@ class Perfil(str, Enum):
 
     RENDA = "RENDA"
     CRESCIMENTO = "CRESCIMENTO"
+
+
+class ModeloDemonstracao(str, Enum):
+    """Modelo comprovado no BPP consolidado; não é classificação por setor."""
+
+    EMPRESA = "empresa"
+    BANCO = "banco"
+    SEGURADORA = "seguradora"
+
+
+class DocumentoContabil(str, Enum):
+    """Origem contábil comprovada dos insumos anuais, distinta da janela."""
+
+    DFP = "DFP"
+    ITR = "ITR"
