@@ -932,7 +932,8 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   - **Ressalvas Gemini HEAD60e61e2 (20/10/2026) para 2C, sem correção no F2B-48:** reserva do TTM só com BPP do mesmo documento efetivamente lido (não basta BPP vazio); reforçar a barreira da regressão BUG-2B-09 para distinguir corrida de timeout. Demais ressalvas sem item 2B específico entram na proposta com evidência, aceite e destino; não declarar correção nem presumir classificação de BTCI11/TRPL11 sem fonte oficial.
 
-- [ ] **F2B-45** · fix · `fix: stop parsing Portuguese debt text in the stock engine` · **[golden]**
+- [!] **F2B-45** · fix · `fix: stop parsing Portuguese debt text in the stock engine` · **[golden]**
+  - **Bloqueio de 22/10/2026:** o aviso para dívida não numérica/não finita também afeta ausências e NaN/infinito já cobertos pelo golden; o predicado abaixo permite só texto. Experimento isolado em memória: 1.630 saídas mudariam, 1.611 fora do predicado (1.607 ausências, 4 não finitos), com 246 rótulos alterados pela lógica de riscos vigente. Código e golden preservados. Pergunta de ampliação enviada ao Marcos, ainda sem resposta; ver `docs/loop/revisao-pendentes-2b.md`.
   - **Plano final:** docs/decisoes/plano-final-2b.md, seção 9.
   Saiu do F2B-5: limpeza não muda golden (auditoria externa da 2A, correção 4). PLANO, seção 10 (texto de dívida). No motor de ações (`valuation_engine.py:278-291`), a conversão de `divida_liq_ebitda` em texto pt-BR ("1.234,56") não tem fonte desde o F2A-22. Sai a conversão. Hoje o texto inválido vira `0.0`, sem penalidade e sem aviso; depois do item, valor que não é número finito (texto inclusive) segue sem penalidade **e** com o aviso "alavancagem não avaliada". O teste cobre as duas partes: a ausência da penalidade, que já existe, e o aviso, que é novo.
 
@@ -945,8 +946,9 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden: só mudam casos com dívida em texto, `--onde "isinstance(entrada.get('divida_liq_ebitda'), str)"`;
   - gate da fase.
 
-- [ ] **F2B-5** · limpeza · `chore: clean up phase 2B residue`
+- [!] **F2B-5** · limpeza · `chore: clean up phase 2B residue`
   - **Plano final:** docs/decisoes/plano-final-2b.md, seção 9.
+  - **Bloqueio de 22/10/2026:** `scripts/levantamento_fase2b.py:533,539` ainda lê BAZIN_TAXA_MIN/GORDON_PREMIO_RISCO por AST. A exceção do aceite cita só os levantamentos anteriores (dossie_fase2/levantamento_fase2a); preservar este script como reprodução histórica precisa definição equivalente, ou permissão/escopo para atualizá-lo. Pergunta enviada, sem resposta. Nenhuma remoção executada; inventário inicial medido e registrado para revisão.
   Faz só o que segue, conforme o PLANO (seção 10: texto de dívida; seção 11: "Selic como taxa de desconto"), o inventário (propriedades do `MacroContext` sem leitor) e a decisão de 5/10/2026 (script de invalidação):
   - **Selic como taxa de desconto,** sem leitor depois desta fase: `GORDON_PREMIO_RISCO` (`config.py:159`); `BAZIN_TAXA_MIN` (`:147`), se o F2B-31 foi feito; `FII_DY_SELIC_RATIO_MIN` (`:184`), se a [FII] trocou o benchmark do score; o campo `selic` do `MethodInputs` e a checagem dele no contrato, se nenhum método o exigir. Saem também os testes que só cobriam o que sai.
   - **NTN-B antiga:** `_fetch_ntnb` (`:271-301`), `ntnb_longa` e `NTNB_LONGA_FALLBACK` (`:122`), com os testes deles em `tests/test_macro_context.py`. `cdi`, `ipca_12m` e as contingências deles ficam para o F3-1, como o inventário prevê.
@@ -969,8 +971,9 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - inventário atualizado;
   - lista para o Marcos apagar à mão: `data/tesouro/`, o cache do provedor de inflação (se houver) e os arquivos do F2B-21 em `outputs/levantamento_cache/`.
 
-- [ ] **F2B-6** · docs · `docs: add phase 2B summary and archive loop files`
+- [!] **F2B-6** · docs · `docs: add phase 2B summary and archive loop files`
   - **Plano final:** docs/decisoes/plano-final-2b.md, seção 9.
+  - **Bloqueio de 22/10/2026:** F2B-4/F2B-32 não entregues e F2B-45/F2B-5 sem aceite. Não arquivar fila/diário nem declarar fase encerrada enquanto essas pendências persistem. O pedido de anotações para revisão foi atendido em `docs/loop/revisao-pendentes-2b.md`, sem substituir o resumo final deste item.
   Nesta ordem:
   1. escrever `docs/loop/pr-fase-2b.md` a partir do diário, com:
      - itens e commits;

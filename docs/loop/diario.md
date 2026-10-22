@@ -1209,3 +1209,16 @@ FAILED tests/test_financeiro_pre_refactor.py::test_b_gordon_acompanha_a_selic_um
 - **Resíduos:** nenhum removido; script auxiliar de escrita em /tmp, fora do git. Sem .env, rede, stage, commit ou push nesta subtarefa.
 - **Decisões que ficaram para o Marcos:** ativação da 2C e marcadores de janelas, qualidade/classificação/histerese, Lynch, escopos, reverso, proventos/eventos e compatibilidade; bloqueio F2B-4 e dependência F2B-32 preservados.
 - **Para o Marcos revisar:** proposta e rastreabilidade; ler primeiro condições de ativação, mudanças de janela frente às fichas 2B e distinção entre bug encaminhado e corrigido. Destinos F2C-29/32 exigem contratos e futuros subitens verificáveis antes de implementação; nenhum trabalho metodológico considerado aprovado por este documento.
+
+
+### Pendências F2B-45/F2B-5/F2B-6 — registro para revisão, 22/10/2026
+- **Status:** bloqueado; itens não entregues, nenhum código/golden removido ou alterado.
+- **Executor:** codex.
+- **O que foi feito:** pedido de execução de toda lista conferido item a item; F2B-34 entregue em 1ef0dc1 após revisão PODE COMMITAR e gates repetidos. Produzido `docs/loop/revisao-pendentes-2b.md` com feito, evidências, decisões e prioridades para revisão. F4/F32 preservados como pendentes; encerramento F6 não executado.
+- **F2B-45:** BUG-2A-23 reproduzido em --runxfail (1 failed esperado); texto “9,5” ainda penalizado. Experimento isolado em memória, sem gravar código/golden: aviso para todos inválidos/ausência muda 1630 saídas, sendo 1611 fora do predicado texto (1607 ausências e 4 não finitos); 246 rótulos mudam pela regra vigente de riscos. Não contornar predicado com correção parcial. Pergunta de ampliação enviada ao Marcos, sem resposta até este registro.
+- **F2B-5:** script histórico levantamento_fase2b.py:533,539 ainda cita as duas constantes. Exceções do aceite só enumeram dossiê/levantamento2A; solicitada definição para exceção histórica 2B ou atualização com escopo próprio, ainda sem resposta. Nenhuma remoção feita. Inventário inicial: Ruff completo166, vulture80%7, deptry33; débitos preservados, sem código novo.
+- **F2B-6:** arquivar agora declararia encerrados itens sem aceite. Marcado bloqueado por dependências; relatório solicitado é parcial e não substitui resumo/arquivamento final.
+- **Testes:** baseline e F34 2429 passed,1 skipped,21 xfailed,1aviso antigo; gates obrigatórios verdes e golden intacto. Experimento não é medição de produção nem correção entregue. Registro final só documental, validado antes do commit.
+- **Resíduos:** artefatos /tmp listados no relatório; nenhum arquivo apagado, sem push.
+- **Decisões que ficaram para o Marcos:** distinção seguradora/empresa; predicado/comportamento dos inválidos de dívida; exceção de reprodução do levantamento2B. Próximo código depende dessas definições.
+- **Para revisar:** relatório parcial, proposta2C e os pontos sensíveis já registrados no diário. Nenhuma aprovação inferida do silêncio à pergunta assíncrona.
