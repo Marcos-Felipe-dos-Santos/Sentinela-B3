@@ -835,6 +835,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - **Aceite adicional Gemini HEAD60e61e2 (20/10/2026), BUG-2A-20:** instante de referência explícito em toda chamada e teste do cache, sem reserva de relógio implícito.
 
 - [x] **F2B-3** · feat · `feat: add justified price-to-book lens for banks` · **[BANCOS]**
+  - **Entrega:** 48d01e4; complemento do gate Ruff em 21/10/2026: ordenação de import no registry, sem mudança de comportamento; desvio do safe-commit registrado no diário.
   - **Plano final:** docs/decisoes/plano-final-2b.md, seção 7.
   - **Decisão do Marcos de20/10/2026:** cumprir a compatibilidade da base da ficha bancos1.1 (mesma regra Gordon1.1): composição recente ITR/DFP / DFP em (0,9;1,1), yfinance até5% só aviso, aviso fixo de eventos posteriores. Aceite com limites0,9/1,1, documento/versão elegível e divergência externa sem abstenção; ponte no F2B-32.
   PLANO, F2B-3 (a lente; a ligação no motor é o F2B-32); checkpoint, seção 4, item 5; D22. Pré-condição: `docs/metodologia/bancos.md` aprovada.

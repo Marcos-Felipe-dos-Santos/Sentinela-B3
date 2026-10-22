@@ -10,8 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from sentinela.domain.enums import AssetType, Regime
-from sentinela.methods.base import ValuationMethod
 from sentinela.methods.bancos import Bancos
+from sentinela.methods.base import ValuationMethod
 from sentinela.methods.bazin import Bazin
 from sentinela.methods.fii_nav import FiiNav
 from sentinela.methods.fii_yield import FiiYield
