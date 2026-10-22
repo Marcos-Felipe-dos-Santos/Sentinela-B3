@@ -2,6 +2,7 @@ import logging
 import math
 from datetime import UTC, date, datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import yfinance as yf
@@ -485,7 +486,7 @@ class MarketEngine:
         if not dados.get('fonte_preco'):
             return None
 
-        self._buscar_ifdata(dados)
+        self._buscar_ifdata(dados, as_of=datetime.now(UTC))
         self._buscar_cvm_fii(ticker, dados)
         self._buscar_rendimento_fii(ticker, dados)
         self._buscar_proventos_b3(ticker, dados)
@@ -1161,7 +1162,7 @@ class MarketEngine:
         dados['cvm_disponivel'] = False
         return False
 
-    def _buscar_ifdata(self, dados: dict[str, Any]) -> None:
+    def _buscar_ifdata(self, dados: dict[str, Any], *, as_of: datetime) -> None:
         """Basileia e inadimplência do IF.data para banco (F2A-9), com a fonte e a data-base.
 
         Só para o setor de banco (F2A-2). O que falta vira limitação declarada em `riscos_dados`.
@@ -1174,7 +1175,7 @@ class MarketEngine:
             riscos.append(f"{RISCO_LIMITACAO_BANCO}: Basileia e inadimplência sem fonte (IF.data não consultado)")
             return
         try:
-            capital = ifdata.capital(dados.get('cnpj'), date.today())
+            capital = ifdata.capital(dados.get('cnpj'), as_of.astimezone(ZoneInfo('America/Sao_Paulo')).date(), as_of=as_of)
         except Exception as exc:
             riscos.append(f"{RISCO_LIMITACAO_BANCO}: Basileia e inadimplência sem fonte (IF.data indisponível: {exc})")
             return
@@ -1184,6 +1185,7 @@ class MarketEngine:
             'fonte': capital.fonte,
             'data_base': capital.data_base,
             'codinst': capital.codinst,
+            'proveniencia': capital.proveniencia,
         }
         for campo, motivo in capital.motivos.items():
             riscos.append(f"{RISCO_LIMITACAO_BANCO} ({campo}): {motivo}")

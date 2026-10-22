@@ -6,7 +6,7 @@ devolvido não carrega proveniência. Origem: 2ª passada do Gemini (15/10/2026)
 Claude no código em 18/10/2026.
 """
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -30,19 +30,14 @@ def _get_falso(url, timeout):
     return _Resposta(CAPITAL_BB if "IfDataValores" in url else CADASTRO_BB)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG-2A-19 · arquivos do IF.data sem a proveniência da D16, e o Capital sem ela "
-        "· corrige: F2B-44"
-    ),
-)
 def test_arquivo_do_ifdata_tem_registro_lateral_e_capital_a_carrega(
     tmp_path, monkeypatch
 ):
     monkeypatch.setattr(ifdata.requests, "get", _get_falso)
     capital = ifdata.IFDataProvider(cache_dir=str(tmp_path)).capital(
-        "00.000.000/0001-91", date(2026, 10, 13)
+        "00.000.000/0001-91",
+        date(2026, 10, 13),
+        as_of=datetime(2026, 10, 13, 12, tzinfo=UTC),
     )
     assert capital.basileia == pytest.approx(0.151297835513664)
     baixados = [

@@ -817,7 +817,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: os tickers do índice e do universo inicial que passam a se abster, por setor;
   - gate da fase.
 
-- [ ] **F2B-44** · fix · `fix: record IF.data provenance and the reference instant`
+- [x] **F2B-44** · fix · `fix: record IF.data provenance and the reference instant`
   - **Plano final:** docs/decisoes/plano-final-2b.md, seção 6.
   - **Complemento do parecer Gemini completo (20/10/2026):** BUG-2A-20 recebe instante explícito além de sete dias e afirma nova consulta à fonte; bloquear apenas time.time não prova a correção e datetime.now não pode substituí-lo implicitamente.
   Corrige o BUG-2A-19 e o BUG-2A-20 (registrados no F2B-36), antes de a inadimplência contextual do IF.data aparecer no F2B-32; Basileia está fora da 2B por decisão de 19/10/2026.

@@ -392,3 +392,37 @@ def test_contrato_fundos_b3():
         )
         == []
     )
+
+
+def test_contrato_ifdata_com_proveniencia(tmp_path, monkeypatch):
+    # Recorte público do controle BB, F2A-16, fontes-fase2a §5. Unidade: razão.
+    from datetime import UTC, datetime
+
+    from sentinela.data import proveniencia
+    from sentinela.data.providers import ifdata
+    from tests.regressao.test_bug_2a_19_ifdata_sem_proveniencia import _get_falso
+
+    monkeypatch.setattr(ifdata.requests, "get", _get_falso)
+    capital = ifdata.IFDataProvider(str(tmp_path)).capital(
+        "00.000.000/0001-91",
+        date(2026, 10, 13),
+        as_of=datetime(2026, 10, 13, 12, tzinfo=UTC),
+    )
+    assert capital.codinst == "C0080329"
+    assert capital.basileia == pytest.approx(0.151297835513664)
+    assert len(capital.proveniencia) == 2
+    for registro in capital.proveniencia:
+        assert registro["documento"] == "IF.data"
+        assert registro["periodo_referencia"] == "202609"
+        assert registro["data_entrega"] is None
+        assert (
+            registro["motivo_sem_entrega"] == proveniencia.MOTIVO_SEM_ENTREGA_NA_FONTE
+        )
+        assert registro["versao"] is None
+        assert registro["fonte"].startswith(ifdata.URL_BASE)
+        caminho = registro["fonte"].removeprefix(ifdata.URL_BASE + "/")
+        arquivo = tmp_path / (hashlib.sha256(caminho.encode()).hexdigest() + ".json")
+        assert (
+            registro["hash_sha256"] == hashlib.sha256(arquivo.read_bytes()).hexdigest()
+        )
+        assert registro["data_coleta"] == proveniencia.data_da_coleta(arquivo)

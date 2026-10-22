@@ -21,7 +21,16 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 DOCUMENTOS = frozenset(
-    {"DFP", "ITR", "FCA", "Informe Mensal", "COTAHIST", "Cadastro", "Tesouro Direto"}
+    {
+        "DFP",
+        "ITR",
+        "FCA",
+        "Informe Mensal",
+        "COTAHIST",
+        "Cadastro",
+        "Tesouro Direto",
+        "IF.data",
+    }
 )
 SUFIXO = ".proveniencia.json"
 MOTIVO_ARQUIVO_AGREGADO = (
