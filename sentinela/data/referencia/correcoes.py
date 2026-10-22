@@ -9,6 +9,11 @@ Correção de espécie (F2B-13; ficha por ação 1.1, decisão 7.10): `campo` = 
 `valor` = a espécie correta (ON ou PN), para o ticker do `codigo_na_fonte`. Exige as duas
 evidências do mesmo documento citadas em `arquivo`: a Composição do Capital e a DRE; com uma
 só, a linha é rejeitada. Caso a caso, nunca automática.
+
+Evidência da ligação (F2A-39, [BTG]): quando a ligação do ticker ao CNPJ não vem do próprio
+arquivo do defeito, a linha cita a fonte dela (`ligacao_fonte`, `ligacao_campo`,
+`ligacao_data`). É obrigatória com código na fonte sem identidade (só zeros, como o
+`000000` da unit do BTG no FCA); preenchida em parte, a linha é rejeitada.
 """
 
 from __future__ import annotations
@@ -36,17 +41,25 @@ class Correcao:
     data: str
     campo: str = ""
     valor: str = ""
+    ligacao_fonte: str = ""
+    ligacao_campo: str = ""
+    ligacao_data: str = ""
 
     def para_dict(self) -> dict:
-        """Os campos da linha; `campo` e `valor` só na correção de espécie."""
+        """Os campos da linha; `campo` e `valor` só na correção de espécie, e a ligação só
+        quando citada."""
         dados = asdict(self)
         if not self.campo:
             dados.pop("campo")
             dados.pop("valor")
+        if not self.ligacao_fonte:
+            for chave in _LIGACAO:
+                dados.pop(chave)
         return dados
 
 
-_OPCIONAIS = ("campo", "valor")
+_LIGACAO = ("ligacao_fonte", "ligacao_campo", "ligacao_data")
+_OPCIONAIS = ("campo", "valor", *_LIGACAO)
 _CAMPOS = tuple(f.name for f in fields(Correcao) if f.name not in _OPCIONAIS)
 CAMPOS_CORRIGIVEIS = {"especie": ("ON", "PN")}
 _EVIDENCIAS_DA_ESPECIE = ("composicao_capital", "dre")
@@ -64,11 +77,28 @@ def validar_correcoes(correcoes) -> dict[tuple[str, str], Correcao]:
         if not re.fullmatch(r"[A-Z][A-Z0-9]{3}\d{1,2}", correcao.ticker):
             raise CorrecaoInvalida(f"Ticker inválido na correção: {correcao.ticker!r}")
         _validar_campo(correcao)
+        _validar_ligacao(correcao)
         chave = (correcao.cnpj, correcao.codigo_na_fonte)
         if chave in por_chave:
             raise CorrecaoInvalida(f"Correção repetida para {chave}")
         por_chave[chave] = correcao
     return por_chave
+
+
+def _validar_ligacao(correcao: Correcao) -> None:
+    """Evidência da ligação: obrigatória com código sem identidade; nunca pela metade."""
+    preenchidos = [c for c in _LIGACAO if str(getattr(correcao, c) or "").strip()]
+    sem_identidade = set(correcao.codigo_na_fonte.strip()) == {"0"}
+    if (
+        preenchidos
+        and len(preenchidos) < len(_LIGACAO)
+        or (sem_identidade and not preenchidos)
+    ):
+        faltando = [c for c in _LIGACAO if c not in preenchidos]
+        raise CorrecaoInvalida(
+            f"Correção de {correcao.ticker} rejeitada: evidência da ligação sem "
+            f"{', '.join(faltando)}"
+        )
 
 
 def _validar_campo(correcao: Correcao) -> None:

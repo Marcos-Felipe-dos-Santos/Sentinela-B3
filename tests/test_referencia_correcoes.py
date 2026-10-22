@@ -288,3 +288,58 @@ def test_correcao_rejeita_ticker_fora_do_formato_do_indice(ticker):
 
     with pytest.raises(CorrecaoInvalida, match="Ticker inválido"):
         validar_correcoes([replace(_correcao(), ticker=ticker)])
+
+
+# ── F2A-39: ligação por fonte externa ao arquivo do defeito ([BTG]) ───────────
+
+LIGACAO_B3 = dict(
+    ligacao_fonte="B3, GetDetail da companhia (listedCompaniesProxy/CompanyCall)",
+    ligacao_campo='cnpj, codeCVM e otherCodes {"code": "BPAC11", "isin": "BRBPACUNT006"}',
+    ligacao_data="2026-10-19",
+)
+
+
+def _correcao_unit(**campos):
+    return _correcao(
+        ticker="TSTU11",
+        codigo_na_fonte="000000",
+        motivo="unit com o código de negociação zerado no FCA",
+        **{**LIGACAO_B3, **campos},
+    )
+
+
+def _fca_unit():
+    return _fca(
+        {
+            "Valor_Mobiliario": "Units",
+            "Codigo_Negociacao": "000000",
+            "Composicao_BDR_Unit": "1 ON E 2 PNA",
+        }
+    )
+
+
+def test_unit_entra_pela_tabela_com_a_evidencia_da_ligacao(tmp_path):
+    linha = (
+        f"TSTU11;{CNPJ_A};000000;unit com o código de negociação zerado no FCA;"
+        "fca_cia_aberta_valor_mobiliario_2026.csv;Codigo_Negociacao;2026-01-01;;;"
+        f"{LIGACAO_B3['ligacao_fonte']};{LIGACAO_B3['ligacao_campo']};"
+        f"{LIGACAO_B3['ligacao_data']}"
+    )
+    cabecalho = f"{CABECALHO};campo;valor;ligacao_fonte;ligacao_campo;ligacao_data"
+    correcoes = ler_correcoes(_tabela(tmp_path, linha, cabecalho=cabecalho))
+    indice = _montar(fca=_fca_unit(), correcoes=correcoes)
+    registro = indice.registros["TSTU11"]
+    assert (registro.classe, registro.regra) == ("UNIT", "correcao")
+    assert registro.acoes_por_unit == {"ON": 1, "PNA": 2}
+    assert registro.correcao["ligacao_fonte"] == LIGACAO_B3["ligacao_fonte"]
+    assert registro.correcao["ligacao_campo"] == LIGACAO_B3["ligacao_campo"]
+    assert registro.correcao["ligacao_data"] == "2026-10-19"
+    assert indice.excecoes == []
+
+
+@pytest.mark.parametrize("campo", ["ligacao_fonte", "ligacao_campo", "ligacao_data"])
+def test_ligacao_sem_evidencia_e_rejeitada(campo):
+    # Código na fonte sem identidade (só zeros): a ligação não vem do arquivo do defeito, e
+    # a evidência dela é obrigatória.
+    with pytest.raises(CorrecaoInvalida, match="ligação"):
+        validar_correcoes([_correcao_unit(**{campo: ""})])

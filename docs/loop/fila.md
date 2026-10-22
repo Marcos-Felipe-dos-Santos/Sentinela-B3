@@ -776,7 +776,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: antes → depois nos FIIs atuais do universo inicial (preço justo, upside, score e classificação agrupada), com o spread da ficha e os de sensibilidade;
   - gate da fase.
 
-- [ ] **F2A-39** · fix · `fix: map BTG Pactual unit through the source corrections table` · **[BTG]** **[CORREÇÕES]**
+- [x] **F2A-39** · fix · `fix: map BTG Pactual unit through the source corrections table` · **[BTG]** **[CORREÇÕES]**
   - **Plano final:** docs/decisoes/plano-final-2b.md, seção 4.
   Veio da 2A (decisão do Marcos de 13/10/2026). O COTAHIST liga o BPAC11 ao ISIN `BRBPACUNT006`, e o FCA traz a unit do BTG com o código `000000`. Pré-condição cumprida pela decisão do Marcos de 19/10/2026: aceito GetDetail da B3, código CVM 22616, CNPJ e ISIN BRBPACUNT006 no mesmo registro (fontes-fase2b, seção 6).
   - **Tabela de correções.** Linha do BPAC11: CNPJ 30.306.294/0001-45, código na fonte `000000`, a evidência do defeito (FCA 2025 e 2026, `valor_mobiliario`) e a da ligação (fonte da B3, campo e data). Se a tabela não tiver onde citar a evidência da ligação, o item a acrescenta: obrigatória quando a ligação não vem do próprio arquivo do defeito, e linha sem ela é rejeitada.
