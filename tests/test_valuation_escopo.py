@@ -77,3 +77,24 @@ def test_relatorio_mostra_a_abstencao_e_o_motivo():
     motivo = "Classe ETF fora do escopo dos métodos de ação"
     assert all(m["nao_calculado"] == motivo for m in contexto["metodos"])
     assert contexto["sintese"] == [("Abstenção do motor", motivo)]
+
+
+@pytest.mark.xfail(strict=True, reason="F2B-4: escopo pelo BPP consolidado")
+@pytest.mark.parametrize("modelo", ["banco", "seguradora", None])
+def test_banco_e_seguradora_nao_recebem_metodos_de_empresa(modelo):
+    resultado = _processar(classe_ativo="STOCK", modelo_bpp=modelo)
+    assert not {"fair_value", "upside", "score_final"} & set(resultado)
+    assert resultado["metodos_usados"] == ""
+    assert resultado["riscos"]
+
+
+@pytest.mark.xfail(strict=True, reason="F2B-4: normalizar espaços da classe")
+def test_classe_com_espacos_e_reconhecida():
+    resultado = _processar(classe_ativo=" ETF")
+    assert not {"fair_value", "upside", "score_final"} & set(resultado)
+
+
+@pytest.mark.xfail(strict=True, reason="F2B-4: modelo ausente não presume empresa")
+def test_abstencao_por_escopo_nao_traz_numero():
+    resultado = _processar(classe_ativo="STOCK")
+    assert not {"fair_value", "upside", "score_final"} & set(resultado)

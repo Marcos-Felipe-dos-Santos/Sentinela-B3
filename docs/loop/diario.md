@@ -1098,3 +1098,22 @@ FAILED tests/test_financeiro_pre_refactor.py::test_b_gordon_acompanha_a_selic_um
 - **Resíduos:** nenhum versionado; índice reconstruído e saídas de cobertura/mutação são locais, fora do git. Não houve push nem leitura de credenciais.
 - **Decisões que ficaram para o Marcos:** nenhuma nova neste item.
 - **Para o Marcos revisar:** ligação oficial e composição PNA; a inclusão no índice não resolve a escala indeterminada do LPA nem antecipa a lente banco.
+
+
+### F2B-4 — bloqueio: distinguir a estrutura seguradora no BPP
+- **Status:** bloqueado, antes de qualquer alteração de produção.
+- **Executor:** codex, 21/10/2026.
+- **O que foi feito:** árvore limpa no HEAD 88596f2; leitura do item, protocolo, plano final §5 e ficha bancos §3. Novos testes de aceite com `xfail(strict=True)` antes da implementação: `test_banco_e_seguradora_nao_recebem_metodos_de_empresa` (banco, seguradora e modelo ausente), `test_classe_com_espacos_e_reconhecida` e `test_abstencao_por_escopo_nao_traz_numero`. Contraprova `python -m pytest tests/test_valuation_escopo.py -q --runxfail -k 'banco_e_seguradora or classe_com_espacos or abstencao_por_escopo'`: **5 failed, 12 deselected**, todos porque a saída ainda contém fair_value/upside/score_final. Saída local em `/tmp/f2b4-red.txt`. Nenhuma asserção existente mudou.
+- **Bug registrado:** BUG-2B-39, espaço na classe ETF contorna a guarda. Regressão permanente em `tests/regressao/test_bug_2b_39_classe_com_espacos.py`, estrita e ainda não corrigida, destino F2B-4.
+- **Dificuldade que exige decisão:** a fila exige identificar seguradora pelas contas-raiz e descrições do BPP consolidado, sem setor; o plano final §5 manda abster seguradoras e aceitar holding com BPP empresa. Na DFP 2025 local (`data/cvm/dfp_2025.zip`, BPP_con, ORDEM_EXERC = ÚLTIMO), IRB - Brasil Resseguros, Porto Seguro, BB Seguridade, Caixa Seguridade e Qualicorp trazem exatamente os mesmos pares-raiz: `2 / Passivo Total`, `2.01 / Passivo Circulante`, `2.02 / Passivo Não Circulante`, `2.03 / Patrimônio Líquido Consolidado`. A tabela `sentinela/data/referencia/contas_cvm.csv` repete o par 2.03 e as raízes de passivo para empresa e seguradora, com Qualicorp como evidência do segundo modelo. Portanto esses pares não distinguem seguradora de empresa ou holding. O helper atual do provedor escolhe empresa para todos esses BPPs; classificá-los todos como conflito também excluiria empresas comuns.
+- **Como resolvi:** não inventei código/descrição de seguradora nem usei setor contra a decisão. A questão altera o escopo econômico, portanto se enquadra no plano final §1, regra 4(a), e não na escolha provisória sobre dado faltante da regra 3. Fila [!], sem avançar ao F2B-44.
+- **Testes:** base do HEAD: 2310 passed, 1 skipped, 18 xfailed. Testes novos seguem estritos e vermelhos com --runxfail; a regressão BUG-2B-39 também deu 1 failed antes da correção. Suíte completa: 2310 passed, 1 skipped, 24 xfailed, um aviso antigo do Pydantic, em 8,58 s. Gates Ruff CI e data/methods verdes; git diff --check verde. Golden e implementação inalterados; sem regeneração nem mutação, pois não há correção implementada.
+- **Resíduos:** nenhum removido; alterações não commitadas são só fila/diário, testes de aceite e registro/regressão do bug.
+- **Decisão que ficou para o Marcos:** definir evidência operacional do BPP que separa seguradora de empresa/holding quando as raízes e o par do PL coincidem; por exemplo, autorizar pares específicos adicionais de subcontas, com o tratamento das holdings. A escolha dos pares e do efeito no escopo não cabe ao executor.
+- **Para revisar:** contraprova preservada antes da implementação; nenhum número, taxa, fórmula ou escopo foi alterado. Revisão PODE COMMITAR do F2A-39 anterior em `/tmp/f2a39-review.txt` e corpo do commit 88596f2.
+
+
+### Continuação autorizada — F2B-4 pendente, 21/10/2026
+- **Executor:** codex.
+- **Decisão do Marcos:** “deixe essa decisão de lado e prosiga para as proximas, deixe essa como pendente”. F2B-4 permanece [!] e sem implementação; a passagem e os testes estritos preservam a pendência, que não autoriza presumir modelo seguradora/empresa. Seguir pelo F2B-44 e pelos itens independentes.
+- **Registro isolado:** este commit conserva os cinco testes de aceite estritos, a regressão BUG-2B-39 e o bloqueio já descritos; não entrega nem fecha o F2B-4. Nenhuma asserção anterior ou arquivo de produção muda. Suíte 2310 passed, 1 skipped, 24 xfailed; gates Ruff verdes; golden inalterado, conforme execução imediatamente anterior.

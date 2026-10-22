@@ -100,3 +100,5 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2B-36 | rendimento de 12 meses do FII infinito com entradas finitas | sentinela/data/rendimento_fii.py (rendimento_12_meses) | mesma auditoria | test_bug_2b_36_rendimento_fii_nao_finito.py | F2B-54 | corrigido |
 | BUG-2B-37 | duas linhas do Informe da mesma versão e valores diferentes: a primeira vence pela ordem | sentinela/data/rendimento_fii.py (_por_mes) | mesma auditoria | test_bug_2b_37_informe_conflitante_mesma_versao.py | F2B-54 | corrigido |
 | BUG-2B-38 | com D = 0 pela B3 e o yfinance sem dividendos (`{}`), a conferência diz "indisponível" | sentinela/data/proventos_b3.py (conferencia_yfinance) | revisão final do F2B-53, 21/10/2026 | test_bug_2b_38_conferencia_dy_zero.py | F2B-54 | corrigido |
+
+| BUG-2B-39 | classe com espaço nas pontas contorna a guarda de escopo e recebe valor de ação | valuation_engine.py (processar) | revisão do F2A-29 citada na fila; reprodução no F2B-4, 21/10/2026 | test_bug_2b_39_classe_com_espacos.py | F2B-4 | aberto |

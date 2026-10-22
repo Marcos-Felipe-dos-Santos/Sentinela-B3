@@ -790,8 +790,10 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: cobertura (`python -m sentinela.data.referencia --cobertura`) antes → depois, o registro do BPAC11 e o LPA da unit;
   - gate da fase.
 
-- [ ] **F2B-4** · fix · `fix: enforce method scope by asset class and statement model` · **[golden]** **[FINANCEIRAS]**
+- [!] **F2B-4** · fix · `fix: enforce method scope by asset class and statement model` · **[golden]** **[FINANCEIRAS]**
   - **Plano final:** docs/decisoes/plano-final-2b.md, seção 5.
+  - **Decisão do Marcos de 21/10/2026:** manter a distinção seguradora/empresa pendente e prosseguir pelos próximos itens independentes; este item continua [!], sem implementação e sem aceite. Itens dependentes não presumem a decisão resolvida.
+  - **Bloqueio de 21/10/2026 (Codex):** os pares das contas-raiz do BPP e o PL 2.03 são idênticos em empresas, holdings e seguradoras (inclusive IRB e Porto Seguro); a tabela atual repete esses pares para empresa e seguradora. Falta definir qual evidência distingue a estrutura seguradora sem usar setor, respeitando a regra das holdings. Ver diário. Nenhuma regra de classificação nova foi implementada. BUG-2B-39 registrado com regressão estrita para a guarda de classe com espaços.
   - **Complemento do parecer Gemini completo (20/10/2026):** helpers da seção A podem receber modelo, sem mudar asserções; correção de espécie exige ticker == codigo_na_fonte e recalcula classes_preferenciais depois da correção.
   - **Aceite da auditoria Gemini HEAD60e61e2 (20/10/2026):** após correção da espécie de MGLU3, recalcular classes_preferenciais a partir das espécies corrigidas, sem conservar classe espúria.
   PLANO, F2B-4; P7; armadilha 17; `sentinela/methods/registry.py` ("Aplicar e estreitar é o F2B-4").
