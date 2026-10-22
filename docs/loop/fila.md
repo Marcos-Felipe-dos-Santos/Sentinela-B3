@@ -893,7 +893,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: ativos do índice e do universo inicial abaixo da regra, por classe e por condição (presença, volume, as duas);
   - gate da fase.
 
-- [ ] **F2B-33** · docs · `docs: sync agent instructions with phase 2B rates and scope`
+- [x] **F2B-33** · docs · `docs: sync agent instructions with phase 2B rates and scope`
   - **Plano final:** docs/decisoes/plano-final-2b.md, seção 1.
   Valida contra o código e corrige `CLAUDE.md`, `AGENTS.md` (menos a seção "Fase atual", que é do Marcos), a tabela da Fase 2B do `docs/PLANO.md` (IDs finais e a ordem desta fila) e, se o F2A-39 foi feito, a exclusão provisória do BTG em `docs/decisoes/universo-inicial.md`.
 

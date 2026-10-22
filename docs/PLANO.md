@@ -244,16 +244,66 @@ Ordem da fila, não a numérica. O F2A-10 (gate de liquidez) e o F2A-39 (correç
 
 Decisão do Marcos item a item, com o dossiê do F0-6. Cada método alterado muda de versão, com changelog.
 
-| Item | Entrega |
-|---|---|
-| F2B-1 | Taxa de desconto: NTN-B longa (real) + prêmio de risco, via `cost_of_equity_real`, com k e g no mesmo regime. A Selic deixa de ser taxa de desconto. Prêmio e vértice decididos com o dossiê |
-| F2B-2 | Benchmarks por classe: FII comparado com a NTN-B (spread) e com a Selic líquida; cada método documenta a taxa que usa |
-| F2B-3 | Lente de bancos: P/VP justificado pelo ROE e pelo custo de capital do F2B-1; Basileia e inadimplência como qualidade. Holdings de banco pelo desconto sobre as participações (opcional) |
-| F2B-4 | `applies_to`: métodos de empresa não financeira se abstêm em bancos e seguradoras; ETFs e BDRs ficam fora do escopo dos métodos, com o motivo exibido |
-| F2B-5 | Limpeza: constantes e caminhos que usavam a Selic como taxa de desconto |
-| F2A-10 | Gate de liquidez com volume e negócios do COTAHIST (medidos no F2A-26); abaixo do limiar, abstenção [D7] [LIQUIDEZ]. Veio da 2A |
-| F2A-39 | Unit do BTG (BPAC11) pela tabela de correções, com fonte oficial da B3 que traga ISIN e CNPJ juntos. Veio da 2A (decisão de 13/10/2026) |
-| F2B-6 | Resumo e arquivamento |
+Ordem e IDs finais da fila ativa (`docs/loop/fila.md`); títulos de commit delimitam
+as entregas. F2B-4 permanece bloqueado, e F2B-32 depende dele. Por decisão de 21/10,
+os itens independentes prosseguem; a fase não está encerrada. A lente pura Bancos
+não tem consumidor no motor; Basileia/inadimplência não entram na fórmula.
+
+| Item | Entrega (título da fila) | Estado em 22/10/2026 |
+|---|---|---|
+| F2B-35 | docs: sync agent instructions after the phase 2A closure | entregue |
+| F2B-36 | test: register the IF.data audit bugs and point open bugs to their items | entregue |
+| F2B-7 | test: move rate-dependent section A checks to section B | entregue |
+| F2B-8 | fix: keep non-positive CVM figures over stale positive values | entregue |
+| F2B-10 | fix: infer share scale from consolidated earnings when controlling earnings abstain | entregue |
+| F2B-11 | fix: read the aggregate EPS line as the EPS of a single-class company | entregue |
+| F2B-12 | fix: apply one preferred-class rule to units and standalone shares | entregue |
+| F2B-13 | fix: correct share species through the source corrections table | entregue |
+| F2B-14 | fix: cross-check recalculated EPS only against coherent reported EPS | entregue |
+| F2B-16 | fix: record FII figures per source for the cross-checks | entregue |
+| F2B-17 | fix: stop flagging FIIs as outside CVM company coverage | entregue |
+| F2B-18 | fix: discard implausible negative ROE at the provider boundary | entregue |
+| F2B-20 | fix: refuse non-positive prices in both engines | entregue |
+| F2B-37 | fix: apply the controlling-interest rule to the trailing twelve months | entregue |
+| F2B-38 | fix: pick the latest version of a restated FII monthly report | entregue |
+| F2B-39 | fix: keep a valid dividend yield over an out-of-range later source | entregue |
+| F2B-40 | fix: treat an empty COTAHIST archive as a failed download | entregue |
+| F2B-41 | fix: abstain the FII book-value lens on non-positive P/VP | entregue |
+| F2B-42 | fix: abstain Graham on non-positive book value per share | entregue |
+| F2B-21 | docs: survey rates, FII yields and bank sources for phase 2B | entregue |
+| F2B-43 | test: register bugs confirmed by the phase 2B survey | entregue |
+| F2B-22 | docs: add methodology sheet for the real cost of equity | entregue |
+| F2B-23 | docs: add methodology sheet for Gordon in the real regime | entregue |
+| F2B-24 | docs: add methodology sheet for the Bazin rate | entregue |
+| F2B-25 | docs: add methodology sheet for FII yield against NTN-B | entregue |
+| F2B-26 | docs: add methodology sheet for the bank lens | entregue |
+| F2B-28 | feat: add FII trailing distributions from the monthly report | entregue |
+| F2B-46 | fix: enforce CVM input domains and completeness by statement model | entregue |
+| F2B-27 | feat: add Tesouro Nacional bond rates provider | entregue |
+| F2B-29 | feat: add real-rate inputs and Fisher conversion to the method contract | entregue |
+| F2B-47 | fix: enforce the approved local cutoff for Tesouro snapshots | entregue |
+| F2B-48 | fix: close audited unit dividend and Tesouro data gaps | entregue |
+| F2B-30 | feat: expose the real cost of equity with provenance | entregue |
+| F2B-49 | chore: satisfy the macro provider lint gate | entregue |
+| F2B-1 | fix: discount Gordon at the real cost of equity | entregue |
+| F2B-31 | fix: take the Selic out of the Bazin rate | entregue |
+| F2B-50 | test: register the B3 trading-name search bug | entregue |
+| F2B-51 | fix: keep the real-rate abstention reason in the macro provider | entregue |
+| F2B-52 | fix: use one profile per asset from the B3 dividend yield | entregue |
+| F2B-53 | fix: count a fully covered B3 series without dividends as zero yield | entregue |
+| F2B-54 | fix: close the audited Bazin, FII report and Gordon base gaps | entregue |
+| F2B-2 | fix: compare FII yield with NTN-B plus the historical spread | entregue |
+| F2A-39 | fix: map BTG Pactual unit through the source corrections table | entregue |
+| F2B-4 | fix: enforce method scope by asset class and statement model | bloqueado |
+| F2B-44 | fix: record IF.data provenance and the reference instant | entregue |
+| F2B-3 | feat: add justified price-to-book lens for banks | entregue |
+| F2B-32 | fix: value banks with the bank lens | pendente |
+| F2A-10 | fix: abstain below the liquidity threshold | entregue |
+| F2B-33 | docs: sync agent instructions with phase 2B rates and scope | entregue |
+| F2B-34 | docs: propose phase 2C queue | pendente |
+| F2B-45 | fix: stop parsing Portuguese debt text in the stock engine | pendente |
+| F2B-5 | chore: clean up phase 2B residue | pendente |
+| F2B-6 | docs: add phase 2B summary and archive loop files | pendente |
 
 **Gate:** seção A muda só no F2B-7 ([SEÇÃO A] em (c), decisão de 18/10/2026); seção B virou exatamente onde marcada; mutation ≥ 80%; os resultados antes e depois da taxa real estão comparados no diário.
 

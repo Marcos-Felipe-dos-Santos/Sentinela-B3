@@ -8,7 +8,7 @@
 Plataforma educacional de análise de ações e FIIs da B3.
 Python 3.13 + Streamlit (interface FastAPI + HTMX prevista para a Fase 7), local-first, SQLite.
 **Não é consultoria financeira.**
-Suíte: ~1.380 testes, 94 módulos em `tests/`, ~10 s.
+Suíte em 22/10/2026: 2.429 passed, 1 skipped, 21 xfailed (~10 s).
 
 ---
 
@@ -155,8 +155,16 @@ verificá-lo. Reporte a divergência; não a "conserte".
 
 - Os IDs de achado (E-*, F-*) citados nos tickets vêm de `docs/auditoria/2026-09-red-team.md`
 - Cascata de dados: `índice oficial → yfinance → brapi → CVM`, depois IF.data (bancos), Informe
-  Mensal (FII), liquidez (COTAHIST) e cache. O Fundamentus saiu. Preço do yfinance (brapi só se
+  Mensal/rendimento do FII, proventos B3, liquidez (COTAHIST), taxa real e cache. O Fundamentus saiu. Preço do yfinance (brapi só se
   o yfinance falhar), fechamento D-1. O README descreve outra ordem e está errado
+- Gordon usa DVA dos controladores e taxa/crescimento reais (Fisher, teto PIB); a taxa real
+  vem de NTN-B/Principal ≥ 2035, pesos iguais, mais 5 pp das ações, sem contingência numérica.
+  Bazin usa proventos brutos B3 de 12 meses e critério nominal fixo de 6%, DY mínimo de 5%.
+  FII de tijolo elegível usa rendimento do Informe ÷ (NTN-B real + spread versionado); Selic fica no score/contexto.
+- Lente pura de bancos entregue (F2B-3), sem ligação ao motor: F2B-4 está bloqueado por
+  distinção seguradora/empresa pelo BPP, e F2B-32 depende dele. Não presumir escopo resolvido.
+- Liquidez: 63 pregões, presença ≥ 80%, volume mediano diário ≥ R$ 500 mil (ações/units)
+  ou R$ 100 mil (FII). Incompletude/falha de coleta produz aviso, sem tratar ausência como zero.
 - Duas camadas de orquestração: `app.py` (roda) e `sentinela/services/`
   (implementada, não conectada). Não adicione a mesma feature nas duas
 - Importar `config` dispara uma chamada HTTP ao Banco Central. A suíte só fica sem
