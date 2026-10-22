@@ -913,7 +913,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - cada linha citada conferida com `grep -n` e listada no diário;
   - `CLAUDE.md` e `AGENTS.md` sem contradição entre si.
 
-- [ ] **F2B-34** · levantamento · `docs: propose phase 2C queue`
+- [x] **F2B-34** · levantamento · `docs: propose phase 2C queue`
   - **Plano final:** docs/decisoes/plano-final-2b.md, seção 9.
   - **Ressalvas do F2B-52, decisão do Marcos de 20/10/2026:** propor na 2C (a) o Lynch, que decide pelo perfil da B3 e calcula o payout pelo DY da cascata; (b) o ativo que perde Lynch e Bazin (série B3 válida com DY abaixo de 4%, ROE acima de 20% e DY da cascata não confiável).
   - **Complemento do parecer Gemini completo (20/10/2026), F2B-8:** propor na 2C filtro de múltiplos nulos/inválidos na fronteira yfinance para não bloquear cache; F2C-3 separa prejuízo CVM de dado incompleto na confiança. Não aplicar neste item filtros genéricos que eliminem prejuízo legítimo.

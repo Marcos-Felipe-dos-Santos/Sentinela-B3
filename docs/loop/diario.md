@@ -1198,3 +1198,14 @@ FAILED tests/test_financeiro_pre_refactor.py::test_b_gordon_acompanha_a_selic_um
 - **Para revisar:** texto não promete integração bancária ou gate de modelo; contagens antigas do universo mantidas como históricas.
 
 - **Revisão interna:** PODE COMMITAR na primeira rodada, sem achados impeditivos. Incorporada sugestão textual de explicitar FII de tijolo elegível, comprovada em rendimento_fii.py:241–245; demais conteúdo e escopo preservados. Gate final executado com set -e e exits conferidos antes do commit.
+
+
+### F2B-34 — docs: propose phase 2C queue
+- **Status:** sucesso; proposta escrita, sujeita à auditoria DOCUMENTO e ativação pelo Marcos.
+- **Executor:** codex, 22/10/2026 (planejamento delegado ao perfil fable-architect, sem execução de métodos).
+- **O que foi feito:** proposta não ativa em `docs/loop/fila-fase2c-proposta.md`, preservando F2C-1 a 11 e detalhando F2C-12 a 32. Matriz liga PLANO, ADRs, checkpoint/dossiê, pendências 2A/2B, regressões e ressalvas às entregas ou ao fechamento 2B/Fase 3. Destinos de BUG-2B-02/03/05/07/08/09/10/11/21/29 atualizados no README para IDs concretos propostos; estados abertos e marcas xfail intactos.
+- **Dificuldades / como resolvi:** ainda faltam decisões econômicas e auditoria final da 2B; janelas históricas divergem das fichas anuais/B3 aprovadas. Transformadas em marcadores de ativação e levantamentos antes dos fixes, sem decidir parâmetro, regra seguradora, suporte individual ou nova lente. Provisórias do F2B-54/F2B-2 e divergências da calibração ficam primeiro para revisão 2B, sem aprovação implícita na 2C.
+- **Testes:** somente documentação e coluna de destinos; código, testes executáveis e golden inalterados. Baseline confirmado pelo executor principal: 2429 passed, 1 skipped, 21 xfailed (9,54 s); gates Ruff CI/data/methods do último commit verdes. Gate final repetido pelo executor principal antes do commit e revisão do stage registrada no fechamento; mutação não aplicável.
+- **Resíduos:** nenhum removido; script auxiliar de escrita em /tmp, fora do git. Sem .env, rede, stage, commit ou push nesta subtarefa.
+- **Decisões que ficaram para o Marcos:** ativação da 2C e marcadores de janelas, qualidade/classificação/histerese, Lynch, escopos, reverso, proventos/eventos e compatibilidade; bloqueio F2B-4 e dependência F2B-32 preservados.
+- **Para o Marcos revisar:** proposta e rastreabilidade; ler primeiro condições de ativação, mudanças de janela frente às fichas 2B e distinção entre bug encaminhado e corrigido. Destinos F2C-29/32 exigem contratos e futuros subitens verificáveis antes de implementação; nenhum trabalho metodológico considerado aprovado por este documento.
