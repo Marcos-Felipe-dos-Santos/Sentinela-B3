@@ -38,7 +38,7 @@ Branch: `v2/fase-2b` · Protocolo: `docs/loop/protocolo.md` · Diário: `docs/lo
   - **BUG-2B-49:** amortização ausente aceita como "sem amortização" fora das condições da ficha 1.3 (decisão 4): vazio vale zero só dentro de um registro de complemento válido da mesma versão; NaN, texto ou negativo abstém.
   - **Aceite:** regressão estrita → correção → PASS, com um caso para cada leitura: célula vazia (vale zero), literal `NaN` declarado, texto e negativo (abstêm); a leitura do CSV distingue o vazio do `NaN` literal (revisão do F2B-56); golden do FII; mutação ≥ 80%; gate.
 
-- [ ] **F2B-62** · fix · `fix: return no number when the FII lens abstains` · **[golden]**
+- [x] **F2B-62** · fix · `fix: return no number when the FII lens abstains` · **[golden]**
   - **BUG-2B-50:** a abstenção do FII devolve `fair_value = preço` e `upside = 0`. Sem valor e sem upside numéricos, com o motivo; o score contextual fica como decidido em 25/10/2026 (`docs/decisoes/marcador-2b.md`, seção de 25/10/2026, item 3: 50, neutro, exceção à decisão de 19/10).
   - **Aceite:** regressão estrita → correção → PASS; golden `--onde "caso['motor'] == 'fii'"` (alterados só os casos de lente abstida, nas chaves `fair_value` e `upside`, e o que a regra vigente de rótulo derivar disso; conferência campo a campo no diário); gate.
 

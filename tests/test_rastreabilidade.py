@@ -284,7 +284,9 @@ def test_analise_vazia_vira_erro_claro():
 
 def test_sintese_do_fii_sem_dy_nao_chama_o_preco_de_preco_justo():
     html = _html(_fii(dy=None), eh_fii=True)
-    assert "Nenhum método calculou" in html
+    # F2B-62 (BUG-2B-50): a abstenção do FII aparece como tal, sem o preço como valor.
+    assert "Abstenção da lente" in html
+    assert "Nenhum método calculou" not in html
     assert "Preço justo do rendimento" not in html
 
 

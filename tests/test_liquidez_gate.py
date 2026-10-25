@@ -68,7 +68,7 @@ def test_sem_chave_nada_muda(fii):
 @pytest.mark.parametrize("fii", [False, True])
 def test_falha_de_coleta_segue_com_aviso(fii):
     r = _analisar(fii, liquidez={"abstencao": "falha de coleta: fonte indisponível"})
-    assert "fair_value" in r
+    assert _seguiu(r)
     assert r["aviso_liquidez"].startswith("liquidez não medida:")  # F2B-45
 
 
@@ -83,10 +83,16 @@ def test_recem_listado_com_presenca_baixa_se_abstem():
     )
 
 
+def _seguiu(r):
+    # F2B-62: o FII sem Informe se abstém da lente sem número; "seguiu" é não ter a abstenção
+    # de liquidez (rótulo e perfil dela), não ter o valor.
+    return r["recomendacao"] != "FORA DO ESCOPO DOS MÉTODOS"
+
+
 def test_limiar_por_classe():
-    assert "fair_value" not in _analisar(liquidez=_bloco(0.8, 100000))
-    assert "fair_value" in _analisar(True, liquidez=_bloco(0.8, 100000))
-    assert "fair_value" in _analisar(liquidez=_bloco(0.8, 500000))
+    assert not _seguiu(_analisar(liquidez=_bloco(0.8, 100000)))
+    assert _seguiu(_analisar(True, liquidez=_bloco(0.8, 100000)))
+    assert _seguiu(_analisar(liquidez=_bloco(0.8, 500000)))
 
 
 def test_abstencao_sem_numero():
@@ -247,14 +253,14 @@ def test_aviso_de_liquidez_fora_de_riscos_no_distressed():
     ("presenca", "volume", "minimo", "texto"),
     [
         (0.7936507936507937, 64290.123, 500000,
-         "presença de 79,4% e volume mediano de R$ 64.290,12 nos últimos 63 pregões "
-         "(mínimo: 80,0% e R$ 500.000,00)"),
+         ("presença de 79,4% e volume mediano de R$ 64.290,12 nos últimos 63 pregões "
+          "(mínimo: 80,0% e R$ 500.000,00)")),
         (0.0, 0.0, 100000,
-         "presença de 0,0% e volume mediano de R$ 0,00 nos últimos 63 pregões "
-         "(mínimo: 80,0% e R$ 100.000,00)"),
+         ("presença de 0,0% e volume mediano de R$ 0,00 nos últimos 63 pregões "
+          "(mínimo: 80,0% e R$ 100.000,00)")),
         (0.95, 1234567.891, 2000000,
-         "presença de 95,0% e volume mediano de R$ 1.234.567,89 nos últimos 63 pregões "
-         "(mínimo: 80,0% e R$ 2.000.000,00)"),
+         ("presença de 95,0% e volume mediano de R$ 1.234.567,89 nos últimos 63 pregões "
+          "(mínimo: 80,0% e R$ 2.000.000,00)")),
     ],
 )  # fmt: skip
 def test_texto_da_abstencao_em_pt_br(presenca, volume, minimo, texto):

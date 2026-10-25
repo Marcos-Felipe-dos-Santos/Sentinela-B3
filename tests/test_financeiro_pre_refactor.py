@@ -316,4 +316,10 @@ def test_c_fair_value_e_preco_estao_na_mesma_escala():
         assert 0.1 <= r["fair_value"] / preco <= 20, (pl, pvp, roe, dy, selic)
     for dy, pvp, selic in _GRADE_FII:
         r = _fii(selic=selic, preco_atual=preco, dy=dy, pvp=pvp)
+        # F2B-62 (BUG-2B-50): a abstenção do FII não traz número; quem tem valor, na escala.
+        if "fair_value" not in r:
+            assert "upside" not in r and r["metodos_usados"].startswith(
+                "Dados insuficientes ("
+            ), (dy, pvp, selic)
+            continue
         assert 0.1 <= r["fair_value"] / preco <= 20, (dy, pvp, selic)

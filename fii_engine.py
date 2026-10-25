@@ -104,10 +104,10 @@ class FIIEngine:
             )
 
         # ── FALLBACK: sem DY confiável não podemos calcular valuation ─────────
+        # F2B-62 (BUG-2B-50): abstenção sem valor nem upside numéricos; o score contextual
+        # fica 50, neutro (decisão do Marcos de 25/10/2026, marcador, item 3).
         if dy == 0 or not dy_confiavel:
             return _com_aviso({
-                "fair_value":     round(p, 2),
-                "upside":         0.0,
                 "score_final":    50,
                 "recomendacao":   "NEUTRO",
                 "perfil":         "FII",
@@ -135,8 +135,6 @@ class FIIEngine:
             # resultado não finito): o resultado do DY inválido, com o motivo.
             motivo = rendimento.motivo
             return _com_aviso({
-                "fair_value":     round(p, 2),
-                "upside":         0.0,
                 "score_final":    50,
                 "recomendacao":   "NEUTRO",
                 "perfil":         "FII",

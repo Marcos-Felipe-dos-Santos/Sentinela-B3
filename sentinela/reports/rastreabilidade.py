@@ -715,6 +715,12 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
     sintese.append(("Métodos usados", str(analise.get("metodos_usados") or "nenhum")))
     if fora_do_escopo:
         sintese = [("Abstenção do motor", motivo_ausente)]
+    elif "fair_value" not in analise:
+        # F2B-62 (BUG-2B-50): a lente do FII se absteve; sem valor, sem variação.
+        sintese = [
+            ("Abstenção da lente", str(analise.get("metodos_usados") or "")),
+            *[(nome, valor) for nome, valor in sintese[2:] if nome != "Métodos usados"],
+        ]
     # F2B-45: avisos que saíram de `riscos` (não mudam a classificação), em linha própria.
     for chave, rotulo in (
         ("aviso_liquidez", "Aviso de liquidez (fora dos riscos)"),

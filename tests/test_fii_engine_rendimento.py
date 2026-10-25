@@ -67,8 +67,9 @@ def test_abstencoes_da_lente(ajuste, motivo):
     dados = enriquecer_fii(_base())
     ajuste(dados)
     r = _fii(dados)
-    assert r["fair_value"] == 100.0
-    assert r["upside"] == 0.0
+    # F2B-62 (BUG-2B-50): sem valor nem upside numéricos; score contextual 50, neutro.
+    assert not {"fair_value", "upside"} & set(r)
+    assert r["score_final"] == 50
     assert r["recomendacao"] == "NEUTRO"
     assert r["metodos_usados"] == f"Dados insuficientes (Rendimento do FII: {motivo})"
 
