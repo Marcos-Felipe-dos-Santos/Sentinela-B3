@@ -1,6 +1,6 @@
 # Fase 2B — Taxa real, bancos e escopo
 
-Branch `v2/fase-2b`, de `895fe0a` (ativação) a `f40c123` (F2B-5), mais o commit deste resumo. Fonte: o diário da fase (`docs/loop/historico/fase-2b/diario.md`), que traz o detalhe de cada item; os números abaixo são os de lá. Sem push pelo loop.
+Branch `v2/fase-2b`, de `895fe0a` (ativação) a `f40c123` (F2B-5), mais o commit deste resumo (`e75ebe7`) e a fila de fechamento da auditoria externa (`4ee5bec` a F2B-68; seção "Fechamento da auditoria externa", abaixo). Fonte: o diário da fase (`docs/loop/historico/fase-2b/diario.md`) e o do fechamento (`docs/loop/historico/fase-2b/diario-fechamento.md`), que trazem o detalhe de cada item; os números abaixo são os de lá. Sem push pelo loop.
 
 ## O que revisar primeiro (plano final, §9, nesta ordem)
 
@@ -96,12 +96,42 @@ Branch `v2/fase-2b`, de `895fe0a` (ativação) a `f40c123` (F2B-5), mais o commi
 | F2B-32 | `e2f33a3` | fix: value banks with the bank lens |
 | F2B-45 | `c922e4c` | fix: stop parsing Portuguese debt text in the stock engine |
 | F2B-5 | `f40c123` | chore: clean up phase 2B residue |
-| F2B-6 | este commit | docs: add phase 2B summary and archive loop files |
+| F2B-6 | `e75ebe7` | docs: add phase 2B summary and archive loop files |
+
+## Fechamento da auditoria externa (25/10/2026)
+
+Fila de fechamento montada a partir de `docs/loop/historico/fase-2b/auditoria-externa.md`, com as cinco decisões do Marcos de 25/10/2026 (registradas no `docs/decisoes/marcador-2b.md`): (1) decisões provisórias restantes ratificadas: exceções de proveniência nas chamadas diretas, IF.data pelo setor (pelo BPP na 2C, F2C-36), inadimplência sem o calendário oficial (calendário na 2C, F2C-37) e banco abstido sem número; (2) BRSR3 mantido em abstenção da companhia inteira, separação da ON na 2C (F2C-38); (3) célula vazia da composição do Informe vale zero só em registro da mesma versão com ao menos uma posição preenchida; (4) amortização vazia em complemento válido vale zero, `NaN`, texto ou negativo abstêm; (5) contraprova D27 refeita, sem dispensa genérica. Fila e diário em `docs/loop/historico/fase-2b/fila-fechamento.md` e `diario-fechamento.md`.
+
+| Item | Entrega | Commit |
+|---|---|---|
+| ativação | chore: activate the phase 2B closing queue | `4ee5bec` |
+| F2B-56 | docs: approve the FII sheet 1.3 on empty composition and amortization cells | `ed1ebfb`, `178b5fe` (complemento da edição parcial; desvio no diário) |
+| F2B-57 | fix: treat any conflicting field of a same-version FII report as a conflict (BUG-2B-37 reaberto) | `e771323` |
+| F2B-58 | fix: hold the FII lens to the same time cut as the real rate and the reports (BUG-2B-46) | `8ac69a9` |
+| F2B-59 | fix: take the FII composition from the selected report version (BUG-2B-47) | `eadc9c4` |
+| F2B-60 | fix: validate every book value in the FII window (BUG-2B-48) | `72d0938` |
+| F2B-61 | fix: read empty FII amortization by the sheet 1.3 rule (BUG-2B-49) | `feff0b4` |
+| F2B-62 | fix: return no number when the FII lens abstains (BUG-2B-50) | `c26f444` |
+| F2B-63 | fix: read the statement model where the cascade writes it in the completeness check (BUG-2B-06 reaberto) | `8a69c3d` |
+| F2B-64 | test: redo the D27 counterproof for F2B-54 and F2B-2 | `b548b08` |
+| F2B-65 | docs: remeasure the FII spread after the closing fixes | `54ab5d6` |
+| F2B-66 | docs: sync CLAUDE.md and the plan with the phase 2B delivery | `5e584ba` |
+| F2B-67 | docs: add the phase 2B closing caveats to the phase 2C proposal | `e6d7da3` |
+| F2B-68 | docs: record the phase 2B closing and archive the closing queue | commit deste registro |
+
+- **Testes:** 2.517 passed, 1 skipped, 14 xfailed → **2.568 passed, 1 skipped, 14 xfailed**. Cada `fix:` registrou o bug em `tests/regressao/` com xfail estrito, mostrou o vermelho pelo motivo econômico com `--runxfail`, retirou a marca e atualizou o registro (D27).
+- **Golden** (`--onde "caso['motor'] == 'fii'"`): F2B-58, 1 alterado, só o texto do motivo de `fii/sem-taxa-real`; F2B-62, 77 alterados, todos abstenções, só nas chaves `fair_value` e `upside` (saem; eram o preço e 0,0), sem mudança de rótulo ou score; os demais itens, idêntico. Nenhum caso fora do predicado.
+- **Mutação:** `sentinela.data.rendimento_fii` 508/558 (91,0%) no F2B-60; `sentinela.data.fii_elegibilidade` 176/205 (85,9%); `cvm_fii_provider` (V1, sem meta) 445/545 (81,7%); `data_quality` (V1, sem meta) 437/531.
+- **Ficha FII 1.3** (F2B-56): célula vazia da composição vale zero só em registro da mesma versão com ao menos uma posição preenchida; amortização vazia dentro de complemento válido vale zero, e `NaN` declarado, texto ou negativo abstêm; a leitura do CSV separa o vazio do `NaN` literal (F2B-61).
+- **Contraprova D27** (F2B-64, `docs/loop/historico/fase-2b/contraprova-d27/`): a mesma entrada no commit pai e no do item, teste a teste. F2B-54: o pai falha nos 3 cenários da escala pelo valor, o item passa; dispensas escritas só para os dois avisos do perfil (sem número). F2B-2: no pai, todos os cenários dão R$ 97,36 pela Selic; no item, R$ 114,22 pela NTN-B + spread, e cada regra de elegibilidade abstém com o próprio motivo.
+- **Spread medido** (F2B-65, só medição): **3,5124%** (p25 3,1738%, p75 3,7345%; 30 a 44 fundos por mês; 2.351 fundos-mês válidos), os mesmos números do F2B-55; a constante datada de 3,5058% fica (decisão de 25/10/2026). Só os motivos das exclusões se redistribuem (VP inválido 0 → 105).
+- **Desvios e decisões provisórias para o Marcos:** (1) F2B-56, commit complementar `178b5fe`; (2) F2B-58: registro da taxa do mesmo dia local da análise; sem resposta da B3, a abstenção é a dos eventos indisponíveis; (3) F2B-63: a regressão passa por `_buscar_cvm`, não por `buscar_dados_ticker` inteira (o teste pela cascata inteira está no F2C-43); (4) revisões reprovadas e corrigidas antes do commit: F2B-57 (comparação de formas; depois só a contagem de testes), F2B-58 (taxa antes do escopo, validade da taxa, motivos), F2B-59 (import sem uso), F2B-64 (3 rodadas; a 3ª só por texto), F2B-66 (texto), F2B-67 (cobertura e texto) e F2B-68 (texto); as reprovações só por texto foram corrigidas e commitadas sem nova parada (plano final, §1, regra 5).
+- **Resíduos:** `app.py:271` mostra "Valor Justo R$ 0.00" para o FII e o banco abstidos (F3-6); `auditoria.py:868/880` usa o preço como valor justo do FII abstido (F2C-8); demais na proposta da 2C (F2C-33 a F2C-47). Fora do git: `outputs/f2b65_spread*` e as worktrees temporárias da contraprova (removidas).
 
 ## Testes antes → depois
 
 - **Início da fase:** 1.362 passed, 1 skipped, 18 xfailed (F2B-35).
-- **Fim:** **2.517 passed, 1 skipped, 14 xfailed**, depois do F2B-5, que tirou os testes do que saiu.
+- **Fim da fila da fase:** **2.517 passed, 1 skipped, 14 xfailed** (depois da fila de fechamento, 2.568), depois do F2B-5, que tirou os testes do que saiu.
 - **Gates:** Ruff CI e completo em `sentinela/methods` e `sentinela/data` verdes. O `ruff check .` completo terminou em 169 (era 170 antes do F2B-5).
 - **Bugs:** registrados na fase com regressão em `tests/regressao/`, de BUG-2B-01 a BUG-2B-45, e corrigidos conforme o registro; a fase também corrigiu BUG-2A-01 e BUG-2A-10 a BUG-2A-23. Abertos com xfail estrito e destino na proposta da 2C: BUG-2B-02, 03, 05, 07, 08, 09, 10, 11, 21 e 29.
 
@@ -157,26 +187,26 @@ Para cada item: predicado → alterados / incluídos / removidos / fora do predi
 
 ## Fichas aprovadas e auditorias
 
-- **Fichas:** taxa real 1.1 e Gordon 1.1 (20/10/2026), Bazin 1.2 (20/10), FII 1.2 (25/10), bancos 1.1 (20/10).
+- **Fichas:** taxa real 1.1 e Gordon 1.1 (20/10/2026), Bazin 1.2 (20/10), FII 1.2 (25/10) e 1.3 (25/10, F2B-56), bancos 1.1 (20/10).
   - As versões 1.0 vieram das auditorias FICHA do Claude sobre as versões 0.2 e 0.3 (D30), com o veredito "pode seguir" na 0.3.
   - O registro está em `docs/decisoes/marcador-2b.md`.
 - **Auditorias de item:**
   - Gemini, parecer completo e HEAD `60e61e2`, com os aceites incorporados à fila.
   - Codex, 2ª auditoria FASE (BUG-2B-33 a 37, no F2B-54).
   - Claude, D30 sobre os commits do Codex de 21 e 22/10: "pode seguir com 2 ressalvas", fechadas no F2B-45.
-- **Pendente no fechamento:** auditoria de fase do Codex (commits do Claude Code desde `c64d020`) e do Gemini, consolidada pelo Claude (plano final, §10).
+- **Auditoria de fechamento (25/10/2026):** Codex, modo FASE, "não pode seguir"; Gemini, modo FASE, "aprovado com ressalvas"; consolidação do Claude (chat) com as decisões do Marcos da mesma data em `docs/loop/historico/fase-2b/auditoria-externa.md`. Bloqueios corrigidos na fila de fechamento (abaixo).
 
 ## Decisões pendentes
 
 - **Desvios declarados para o aceite do Marcos:**
-  - rito D27 nos testes da escala do F2B-54 e nos testes do método e da seção B do F2B-2 (escritos antes, mas com falha de coleta, não por xfail estrito);
+  - rito D27 nos testes da escala do F2B-54 e nos testes do método e da seção B do F2B-2: contraprova refeita no F2B-64 (decisão 5 de 25/10/2026; seção "Fechamento da auditoria externa"); ficam para o aceite do Marcos só as dispensas escritas teste a teste em `contraprova-d27/README.md`;
   - BUG-2B-33 a 38 do F2B-54, fora da regra de 15/10/2026 (registrados no próprio item);
   - F2B-43: dois pontos confirmados sem teste (BTCI11/TRPL11 e proventos com um só componente), a conferir no marcador;
   - F2B-2, diferenças (i) a (vi): ligação pelo ISIN do `geral`, não pelo índice; calibração sem o limite de 5 dias úteis da NTN-B; preço do último pregão em que o fundo negociou; grade do spread fora do golden; `FII_SPREAD_CALIBRACAO` sem as exclusões (estão na ficha); preço justo e score com DYs de fontes diferentes (2C);
   - F2B-3: desvio do safe-commit (I001 oculto, corrigido em `ba04b53`).
-- Confirmar ou reverter as decisões provisórias da seção "O que revisar primeiro".
+- Decisões provisórias da seção "O que revisar primeiro": as restantes foram ratificadas pela decisão 1 de 25/10/2026 (seção "Fechamento da auditoria externa"); ficam abertas só as provisórias da fila de fechamento, listadas lá.
 - Escopo de seguradora pelo critério ampliado: HAPV3, RDOR3 e SAUD3 (saúde) e QUAL3 (administradora de benefícios) ficam sem os métodos de empresa.
-- Proposta da 2C (`docs/loop/fila-fase2c-proposta.md`), ainda não auditada nem ativada. Ela recebe os resíduos registrados nos diários do F2B-4, F2B-32, F2B-45 e F2B-5:
+- Proposta da 2C (`docs/loop/fila-fase2c-proposta.md`), ainda não auditada nem ativada. Os resíduos abaixo e as ressalvas da auditoria de fechamento já têm destino nela (F2B-67: F2C-33 a F2C-47 e aceites adicionais no F2C-8, F2C-10 e F3-6):
   - classe vazia;
   - `as_of` sem fuso no motivo do BPP;
   - `Bancos.requires` com classe e modelo;
@@ -187,7 +217,7 @@ Para cada item: predicado → alterados / incluídos / removidos / fora do predi
   - `caso["selic"]` do golden de ações;
   - `monkeypatch` sem uso no BUG-2B-27;
   - constantes `GORDON_*` sem leitor.
-- **A sincronizar:** a `CLAUDE.md` e o `AGENTS.md` ainda descrevem o F2B-4 e o F2B-32 como pendentes (armadilha 17, regras econômicas, camada de dados). A seção "Fase atual" do `AGENTS.md`, que é do Marcos, ainda lista `tests/test_invalidar_cache_cvm.py`.
+- **Sincronizado no F2B-66:** a `CLAUDE.md`, o `docs/PLANO.md` e o `AGENTS.md` (fora da "Fase atual") descrevem o F2B-4 e o F2B-32 como entregues. A seção "Fase atual" do `AGENTS.md`, que é do Marcos, ainda lista `tests/test_invalidar_cache_cvm.py`.
 
 ## Resíduos para o Marcos
 
