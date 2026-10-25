@@ -1,7 +1,8 @@
-# Rendimento do FII sobre NTN-B — versão 1.1
+# Rendimento do FII sobre NTN-B — versão 1.2
 
-**Status:** versão 1.1 aprovada pelo Marcos em 20/10/2026, com a conferência pelo
-rendimento oficial da B3 e a regra dos eventos de cota da seção 3a. A versão 1.0 foi
+**Status:** versão 1.2 aprovada pelo Marcos em 25/10/2026: a quantidade de cotas
+fracionária do Informe é aceita (seção 3b). A versão 1.1 foi aprovada em 20/10/2026, com a
+conferência pelo rendimento oficial da B3 e a regra dos eventos de cota da seção 3a. A versão 1.0 foi
 aprovada em 19/10/2026. Auditoria FICHA do Claude
 sobre a versão 0.3: **pode seguir** (D30); promovida a 1.0 sem mudança de regra
 ou número, conforme registro do marcador.
@@ -110,6 +111,18 @@ constância real da distribuição; sustentabilidade permanece hipótese declara
   mensal negativo declarado no Informe (−5,8778% em 01/2026), e a guarda de DY_m negativo
   da seção 4 a abstém.
 
+## 3b. Revisão 1.2 — cotas fracionárias (Marcos, 25/10/2026)
+
+- **Quantidade de cotas.** `Cotas_Emitidas` do Informe vale se for positiva e finita, com ou
+  sem fração; a quantidade não inteira deixa de ser dado inválido. Motivo: 35% das linhas do
+  Informe de 2026 trazem fração (por exemplo 1.324.930,00003248), e a regra da 1.1 tirava da
+  lente fundos sem evento de cota (VISC11, XPLG11 e RBRP11 no universo inicial).
+- **Uso.** A quantidade só serve à detecção de eventos de cota: as emissões ficam em contexto
+  e o critério de abstenção continua o evento oficial da B3 (§3a). Ela não entra no
+  rendimento, no VP nem no preço justo.
+- **Spread.** A constante de 3,5058% fica (decisão de 25/10/2026, constante datada); a
+  calibração refeita com a regra 1.2 é registrada na §6a, sem trocar a constante.
+
 ## 4. Escopo e matriz de validade
 
 Só classe oficial FII e tipo **tijolo**. Papel (KNCR11/MXRF11/HCTR11), fundos
@@ -130,7 +143,7 @@ NaN e infinito do registro §2.1; contexto inválido é indicado sem alterar o v
 | Preço e cada VP | abstém: não positivo | abstém | unidade/base divergente: base de cota incompatível |
 | Cada DY_m | válido como mês sem rendimento, se informado | abstém | >25% mensal: fora da faixa da fronteira atual; não confundir com validação de recorrência |
 | DY_12m e R | abstém: rendimento anual não positivo | abstém | DY_12m>25%: rendimento não confiável; 25% é teto de domínio existente, não parâmetro de valor |
-| Cotas_Emitidas | abstém: cotas não positivas | abstém | quantidade não inteira: dado inválido; desdobramento/grupamento ou salto de VP incompatível: abstém; emissão com VP contínuo: contexto, sem veto |
+| Cotas_Emitidas | abstém: cotas não positivas | abstém | quantidade fracionária positiva e finita: válida (1.2, §3b); desdobramento/grupamento ou salto de VP incompatível: abstém; emissão com VP contínuo: contexto, sem veto |
 | Amortização | válida sem amortização | abstém: dado inválido | positiva: devolução de capital na janela, abstenção |
 | Cada posição da classificação | válido | abstém | soma zero, maioria ausente ou fração >1: tipo desconhecido |
 | y_real | válido | válido se >−1 e q>0 | ≤−1 ou fonte/idade inválida: taxa indisponível |
@@ -258,7 +271,7 @@ cada fundo candidato, coletada em 21/10/2026.
   contagem.
 - **Exclusões, somadas nos 60 meses (fundo-mês):** sem negócio na janela de liquidez 8.782;
   tipo fora do escopo 4.842; liquidez abaixo do mínimo 3.133; menos de 12 meses 2.247; cotas
-  emitidas inválidas 1.757 (quantidade não inteira, pela linha "Cotas_Emitidas" da §4); DY
+  emitidas inválidas 1.757 (quantidade não inteira, pela linha "Cotas_Emitidas" da §4 na versão 1.1); DY
   mensal negativo 1.320; rendimento anual não positivo 1.035; amortização na janela 685;
   Informe sem meses 389; Informe com mais de 3 meses 236; classificação desconhecida 182;
   DY acima de 25% 168; amortização inválida 150; fonte de eventos indisponível 111; linhas

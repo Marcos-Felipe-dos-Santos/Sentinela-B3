@@ -390,3 +390,41 @@ perfis por fonte, aceitando os dois juntos; (c) perfis por fonte com outra regra
   fora de `riscos`; identificação por evidência oficial na proposta da 2C.
 - **Avisos da série B3 usada no perfil:** fora de `riscos` (em `dados['perfil_fonte']` e no
   relatório do F1-12), também quando o Bazin se abstém.
+
+## Decisões do Marcos de 25/10/2026 — bloqueios da 2B e auditoria do Claude
+
+Base: `docs/loop/revisao-pendentes-2b.md` (bloqueios de 22/10/2026) e a auditoria D30 do
+Claude sobre os commits do Codex de 21 a 22/10 (`88596f2` a `2d3d1d0`), veredito **pode
+seguir com 2 ressalvas**.
+
+1. **Spread do FII:** 3,5058% (0,03505842448151178) aceito como constante datada da
+   calibração de outubro/2021 a setembro/2026. A recalibração com a regra do item 2 é
+   registrada, sem trocar a constante.
+2. **Ficha FII 1.2, aprovada:** a quantidade de cotas do Informe pode ser fracionária; vale
+   se for positiva e finita. A quantidade só serve à detecção de eventos de cota (emissões em
+   contexto). Reaplicar a regra e registrar se VISC11, XPLG11 e RBRP11 voltam à lente e o
+   spread recalculado (item F2B-55).
+3. **Score do FII com a lente abstida:** aceita a decisão provisória (5) do F2B-2 (score 50,
+   neutro, sem número), registrada como **exceção à decisão de 19/10/2026** ("score e
+   pontos de P/VP inalterados").
+4. **F2B-4, seguradora:** BPP consolidado com contas cuja descrição tenha "Provisões
+   Técnicas" (seguros, previdência ou capitalização); sem elas, modelo empresa (holdings).
+   **Complemento do mesmo dia, depois da medição na DFP 2025:** "Provisões Técnicas" só
+   aparece em Bradesco (banco), Bradsaúde, Hapvida e Qualicorp; IRB, Porto Seguro, BB
+   Seguridade e Aliança da Bahia usam o leiaute do IFRS 17. O critério fica **ampliado**:
+   seguradora é o BPP consolidado com descrição que contenha "Provisões Técnicas",
+   "contrato(s) de seguro/resseguro" ou "Atividade Seguradora". O PL em 2.07/2.08 (banco)
+   tem precedência: Itaú e Bradesco seguem banco. Caixa Seguridade, sem essas contas, fica
+   empresa (holding). Executar o F2B-4 e depois o F2B-32.
+5. **F2B-45, dívida:** o aviso "alavancagem não avaliada" vai num campo próprio da saída,
+   fora de `riscos`. O predicado do golden se amplia aos casos de dívida ausente ou não
+   finita, com mudança só nesse campo novo; score e rótulo mudam só nos casos de texto.
+6. **F2B-5:** `scripts/levantamento_fase2b.py` entra nas exceções históricas do `git grep`,
+   reproduzível no commit `4881b83`.
+7. **F2B-45, liquidez (ressalvas 1 e 2 da auditoria do Claude):** o aviso "liquidez não
+   medida" sai de `riscos` para um campo próprio, como o `perfil_fonte`; o texto da
+   abstenção de liquidez formata o percentual com uma casa e o volume em R$ com duas casas,
+   no padrão pt-BR. Rito D27.
+
+Seguir o plano final (`docs/decisoes/plano-final-2b.md`, seção 1) até o F2B-6 e parar no
+[DECISÃO] "Fim da Fase 2B". Sem push.

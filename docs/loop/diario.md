@@ -1222,3 +1222,12 @@ FAILED tests/test_financeiro_pre_refactor.py::test_b_gordon_acompanha_a_selic_um
 - **Resíduos:** artefatos /tmp listados no relatório; nenhum arquivo apagado, sem push.
 - **Decisões que ficaram para o Marcos:** distinção seguradora/empresa; predicado/comportamento dos inválidos de dívida; exceção de reprodução do levantamento2B. Próximo código depende dessas definições.
 - **Para revisar:** relatório parcial, proposta2C e os pontos sensíveis já registrados no diário. Nenhuma aprovação inferida do silêncio à pergunta assíncrona.
+
+
+### Decisões do Marcos de 25/10/2026 — bloqueios da 2B e auditoria do Claude
+- **Executor:** claude-code (claude-opus-5-5).
+- **Retomada:** v2/fase-2b @ 2d3d1d0, árvore limpa; suíte 2429 passed, 1 skipped, 21 xfailed (`which python` na venv).
+- **Registro:** as sete decisões estão no marcador (`docs/decisoes/marcador-2b.md`, última seção), na ficha FII 1.2 (§3b e a linha `Cotas_Emitidas` da §4) e na fila: F2B-2, já [x], ganha a nota do spread e do score com a lente abstida; F2B-55 é item novo (cotas fracionárias, antes do F2B-4); F2B-4, F2B-45, F2B-5 e F2B-6 passam de [!] a [ ].
+- **Medição antes do F2B-4, e pergunta ao Marcos na mesma sessão:** no BPP consolidado da DFP 2025 (`data/cvm/dfp_2025.zip`, ORDEM_EXERC ÚLTIMO), a descrição "Provisões Técnicas" só aparece em Bradesco (PL 2.07, banco), Bradsaúde, Hapvida e Qualicorp. IRB, Porto Seguro, BB Seguridade e Aliança da Bahia trazem "Passivos da Atividade Seguradora/Resseguradora" ou "Passivos de contratos de seguros/resseguros" (leiaute do IFRS 17). Pela regra literal, IRB e Porto receberiam os métodos de empresa. Resposta do Marcos: **critério ampliado** ("Provisões Técnicas", "contrato(s) de seguro/resseguro" ou "Atividade Seguradora"), com precedência do banco; registrado no marcador e no F2B-4.
+- **Testes:** sem código; suíte inalterada.
+- **Revisão:** PODE COMMITAR na 1ª rodada. Ajustes de texto antes do commit (plano final, seção 1, regra 5): o aceite do golden do F2B-45 reescrito com as decisões (a) a (c), incluindo o efeito da saída do aviso de liquidez de `riscos` no rótulo; a decisão de 21/10 do F2B-4 marcada como superada; a §6a da ficha FII cita a regra da versão 1.1; teste de variação só na fração no aceite do F2B-55; esta entrada separa F2B-2, F2B-55 e os itens que saem de [!]. Pontos do revisor para o F2B-4 (comparação sem caixa e acento, ausência de BPP consolidado, consequência por ticker para Hapvida, Bradsaúde e Qualicorp) entram no diário do item.

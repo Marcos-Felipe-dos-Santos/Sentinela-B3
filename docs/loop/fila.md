@@ -751,6 +751,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - gate da fase.
 
 - [x] **F2B-2** · fix · `fix: compare FII yield with NTN-B plus the historical spread` · **[golden]** **[FII]**
+  - **Decisões do Marcos de 25/10/2026:** spread de 3,5058% aceito como constante datada; a decisão provisória (5), score 50 e neutro sem número com a lente abstida, fica aceita como exceção à decisão de 19/10/2026; cotas fracionárias pela ficha FII 1.2 no F2B-55.
   - **Plano final:** docs/decisoes/plano-final-2b.md, seção 3.
   - **Definições da ficha 1.1, decididas pelo Marcos em 20/10/2026 (complemento):** (a) a conferência compara o rendimento reconstruído, arredondado a duas casas, com o valor da B3: igual é conferido, diferente gera aviso, sem tolerância percentual; (b) a lista de eventos vazia só vale como "sem evento" se a resposta da B3 for válida (sucesso e estrutura esperada); erro ou formato inesperado é fonte indisponível, e o FII se abstém.
   - **Bloqueio resolvido — decisões do Marcos de 20/10/2026:** permissão aditiva de `base.py` para o campo `ntnb_real` (lista de arquivos restritos). Ficha FII 1.1 aprovada: (a) o rendimento oficial por cota da B3 (`fundsProxy/fundsCall/GetListedSupplementFunds`) é conferência: divergência mês a mês contra o reconstruído do Informe gera aviso com os meses e as diferenças, sem abstenção; (b) critério da regra "salto de VP incompatível, sem percentual arbitrário" (proposta do diário do F2B-2): desdobramento ou grupamento oficial na janela abstém, e a fonte de eventos indisponível também; sem limite percentual de salto de VP. Rito D27 para os testes novos.
@@ -790,9 +791,23 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: cobertura (`python -m sentinela.data.referencia --cobertura`) antes → depois, o registro do BPAC11 e o LPA da unit;
   - gate da fase.
 
-- [!] **F2B-4** · fix · `fix: enforce method scope by asset class and statement model` · **[golden]** **[FINANCEIRAS]**
+- [ ] **F2B-55** · fix · `fix: accept fractional FII quota counts from the Informe` · **[golden]** **[FII]**
+  - **Decisão do Marcos de 25/10/2026 (ficha FII 1.2, §3b):** `Cotas_Emitidas` positiva e finita vale, com ou sem fração; a quantidade só serve à detecção de eventos (emissões em contexto). O spread de 3,5058% fica como constante datada.
+  - `rendimento_fii.avaliar`: sai a guarda de quantidade não inteira; cotas não positivas, ausentes ou não finitas continuam abstendo com `MOTIVO_COTAS`. As emissões comparam as quantidades como vieram, sem arredondar.
+  - Calibração refeita com `scripts/calibrar_spread_fii.py` (mesmo mês final, 2026-09): spread, quartis, fundos por mês e exclusões registrados na ficha FII, §6a, como recalibração informativa; `MacroContext.FII_SPREAD_TIJOLO` não muda.
+  - **Golden:** só casos de FII com cotas fracionárias, se houver: `--onde "caso['motor'] == 'fii'"`, com a contagem e a explicação de cada alteração no diário.
+
+  **Aceite:**
+  - BUG-2B-43 (cotas fracionárias tiram o FII da lente) em `tests/regressao/`, xfail estrito → correção → marca retirada → PASS, e o registro atualizado;
+  - `tests/test_fii_rendimento_elegivel.py`: o caso "10.5" deixa de ser abstenção; zero, negativo, ausente e não finito continuam; variação só na fração entre meses não abstém e aparece como emissão em contexto (revisão de 25/10/2026);
+  - mutation ≥ 80% em `sentinela.data.rendimento_fii*`;
+  - diário: se VISC11, XPLG11 e RBRP11 voltam à lente (preço justo, upside e classificação agrupada) e o spread recalculado;
+  - gate da fase.
+
+- [ ] **F2B-4** · fix · `fix: enforce method scope by asset class and statement model` · **[golden]** **[FINANCEIRAS]**
+  - **Decisão do Marcos de 25/10/2026:** seguradora é o BPP consolidado com conta cuja descrição contenha "Provisões Técnicas" (seguros, previdência ou capitalização); sem elas, modelo empresa (holdings). **Complemento do mesmo dia, depois da medição na DFP 2025** (só Bradesco, Bradsaúde, Hapvida e Qualicorp têm "Provisões Técnicas"; IRB, Porto Seguro, BB Seguridade e Aliança da Bahia usam o leiaute do IFRS 17): critério **ampliado** para descrições com "Provisões Técnicas", "contrato(s) de seguro/resseguro" ou "Atividade Seguradora". PL em 2.07/2.08 (banco) tem precedência; Caixa Seguridade, sem essas contas, fica empresa. Bloqueio de 21/10/2026 resolvido; executar e depois o F2B-32.
   - **Plano final:** docs/decisoes/plano-final-2b.md, seção 5.
-  - **Decisão do Marcos de 21/10/2026:** manter a distinção seguradora/empresa pendente e prosseguir pelos próximos itens independentes; este item continua [!], sem implementação e sem aceite. Itens dependentes não presumem a decisão resolvida.
+  - **Decisão do Marcos de 21/10/2026 (superada em 25/10/2026):** manter a distinção seguradora/empresa pendente e prosseguir pelos próximos itens independentes; este item continua [!], sem implementação e sem aceite. Itens dependentes não presumem a decisão resolvida.
   - **Bloqueio de 21/10/2026 (Codex):** os pares das contas-raiz do BPP e o PL 2.03 são idênticos em empresas, holdings e seguradoras (inclusive IRB e Porto Seguro); a tabela atual repete esses pares para empresa e seguradora. Falta definir qual evidência distingue a estrutura seguradora sem usar setor, respeitando a regra das holdings. Ver diário. Nenhuma regra de classificação nova foi implementada. BUG-2B-39 registrado com regressão estrita para a guarda de classe com espaços.
   - **Complemento do parecer Gemini completo (20/10/2026):** helpers da seção A podem receber modelo, sem mudar asserções; correção de espécie exige ticker == codigo_na_fonte e recalcula classes_preferenciais depois da correção.
   - **Aceite da auditoria Gemini HEAD60e61e2 (20/10/2026):** após correção da espécie de MGLU3, recalcular classes_preferenciais a partir das espécies corrigidas, sem conservar classe espúria.
@@ -932,7 +947,8 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
 
   - **Ressalvas Gemini HEAD60e61e2 (20/10/2026) para 2C, sem correção no F2B-48:** reserva do TTM só com BPP do mesmo documento efetivamente lido (não basta BPP vazio); reforçar a barreira da regressão BUG-2B-09 para distinguir corrida de timeout. Demais ressalvas sem item 2B específico entram na proposta com evidência, aceite e destino; não declarar correção nem presumir classificação de BTCI11/TRPL11 sem fonte oficial.
 
-- [!] **F2B-45** · fix · `fix: stop parsing Portuguese debt text in the stock engine` · **[golden]**
+- [ ] **F2B-45** · fix · `fix: stop parsing Portuguese debt text in the stock engine` · **[golden]**
+  - **Decisões do Marcos de 25/10/2026 (resolvem o bloqueio de 22/10):** (a) o aviso "alavancagem não avaliada" vai num campo próprio da saída, fora de `riscos`; (b) o predicado do golden se amplia aos casos de dívida ausente ou não finita, só com esse campo novo; score e rótulo mudam só nos casos de texto; (c) ressalvas 1 e 2 da auditoria D30 do Claude: o aviso "liquidez não medida" sai de `riscos` para um campo próprio, como o `perfil_fonte`, e o texto da abstenção de liquidez formata o percentual com uma casa e o volume em R$ com duas casas, no padrão pt-BR. Rito D27 para as três mudanças.
   - **Bloqueio de 22/10/2026:** o aviso para dívida não numérica/não finita também afeta ausências e NaN/infinito já cobertos pelo golden; o predicado abaixo permite só texto. Experimento isolado em memória: 1.630 saídas mudariam, 1.611 fora do predicado (1.607 ausências, 4 não finitos), com 246 rótulos alterados pela lógica de riscos vigente. Código e golden preservados. Pergunta de ampliação enviada ao Marcos, ainda sem resposta; ver `docs/loop/revisao-pendentes-2b.md`.
   - **Plano final:** docs/decisoes/plano-final-2b.md, seção 9.
   Saiu do F2B-5: limpeza não muda golden (auditoria externa da 2A, correção 4). PLANO, seção 10 (texto de dívida). No motor de ações (`valuation_engine.py:278-291`), a conversão de `divida_liq_ebitda` em texto pt-BR ("1.234,56") não tem fonte desde o F2A-22. Sai a conversão. Hoje o texto inválido vira `0.0`, sem penalidade e sem aviso; depois do item, valor que não é número finito (texto inclusive) segue sem penalidade **e** com o aviso "alavancagem não avaliada". O teste cobre as duas partes: a ausência da penalidade, que já existe, e o aviso, que é novo.
@@ -943,10 +959,11 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - `tests/regressao/test_bug_2a_23_*` (BUG-2A-23) com a marca retirada, em PASS, e o registro atualizado;
   - `tests/test_valuation_engine.py::test_divida_em_texto_nao_e_avaliada` passa por xfail estrito → correção → marca retirada → PASS;
   - diário: `git grep` confirma que nenhuma fonte da cascata entrega texto nesse campo;
-  - golden: só mudam casos com dívida em texto, `--onde "isinstance(entrada.get('divida_liq_ebitda'), str)"`;
+  - golden (redação de 25/10/2026, pelas decisões (a) a (c)): dívida em texto pode mudar qualquer campo; dívida ausente ou não finita muda só o campo novo do aviso de alavancagem; casos com liquidez não medida (`liquidez-*-incompleta`, `-mes-ausente`, `-sem-dado`) mudam `riscos`, o campo novo do aviso e, pela regra vigente que rebaixa o rótulo quando há riscos, rótulo e score; casos com liquidez abaixo do mínimo mudam só o texto da abstenção. Predicado: `--onde "caso['motor'] in ('acoes', 'fii')"` com a conferência campo a campo dessas regras no diário (contagem por grupo; nenhuma alteração fora delas);
   - gate da fase.
 
-- [!] **F2B-5** · limpeza · `chore: clean up phase 2B residue`
+- [ ] **F2B-5** · limpeza · `chore: clean up phase 2B residue`
+  - **Decisão do Marcos de 25/10/2026 (resolve o bloqueio de 22/10):** `scripts/levantamento_fase2b.py` entra nas exceções históricas do `git grep`, reproduzível no commit `4881b83`.
   - **Plano final:** docs/decisoes/plano-final-2b.md, seção 9.
   - **Bloqueio de 22/10/2026:** `scripts/levantamento_fase2b.py:533,539` ainda lê BAZIN_TAXA_MIN/GORDON_PREMIO_RISCO por AST. A exceção do aceite cita só os levantamentos anteriores (dossie_fase2/levantamento_fase2a); preservar este script como reprodução histórica precisa definição equivalente, ou permissão/escopo para atualizá-lo. Pergunta enviada, sem resposta. Nenhuma remoção executada; inventário inicial medido e registrado para revisão.
   Faz só o que segue, conforme o PLANO (seção 10: texto de dívida; seção 11: "Selic como taxa de desconto"), o inventário (propriedades do `MacroContext` sem leitor) e a decisão de 5/10/2026 (script de invalidação):
@@ -971,7 +988,8 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - inventário atualizado;
   - lista para o Marcos apagar à mão: `data/tesouro/`, o cache do provedor de inflação (se houver) e os arquivos do F2B-21 em `outputs/levantamento_cache/`.
 
-- [!] **F2B-6** · docs · `docs: add phase 2B summary and archive loop files`
+- [ ] **F2B-6** · docs · `docs: add phase 2B summary and archive loop files`
+  - **Decisão do Marcos de 25/10/2026:** bloqueios resolvidos; executar depois do F2B-5 e parar no [DECISÃO] "Fim da Fase 2B". O resumo inclui a auditoria D30 do Claude (pode seguir com 2 ressalvas, fechadas no F2B-45).
   - **Plano final:** docs/decisoes/plano-final-2b.md, seção 9.
   - **Bloqueio de 22/10/2026:** F2B-4/F2B-32 não entregues e F2B-45/F2B-5 sem aceite. Não arquivar fila/diário nem declarar fase encerrada enquanto essas pendências persistem. O pedido de anotações para revisão foi atendido em `docs/loop/revisao-pendentes-2b.md`, sem substituir o resumo final deste item.
   Nesta ordem:
