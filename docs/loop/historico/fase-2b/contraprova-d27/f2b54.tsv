@@ -1,0 +1,24 @@
+tests/regressao/test_bug_2b_33_bazin_gate_preco_ajustado.py::test_dy_da_b3_usa_o_fechamento_bruto	econômica	assert 99.0 == 100.0
+tests/regressao/test_bug_2b_34_provento_sem_especie_descartado.py::test_especie_ausente_ou_ilegivel_abstem	econômica	AssertionError: assert {'componentes': {'ON': 1}, 'd_bruto_12m': 0.4, 'eventos': [{'aprovacao': '2025-01-01', 
+tests/regressao/test_bug_2b_35_conferencia_b3_soma_igual.py::test_divergencia_por_evento_com_soma_igual_gera_aviso	econômica	assert ([])
+tests/regressao/test_bug_2b_35_conferencia_b3_soma_igual.py::test_eventos_iguais_nao_geram_aviso	passa no pai	
+tests/regressao/test_bug_2b_35_conferencia_b3_soma_igual.py::test_unit_soma_os_componentes_do_mesmo_evento	passa no pai	
+tests/regressao/test_bug_2b_36_rendimento_fii_nao_finito.py::test_resultado_nao_finito_abstem	econômica	AssertionError: {'base': 'valor patrimonial da cota do fim do mês anterior (Resolução CVM 175, anexo da 184)',
+tests/regressao/test_bug_2b_37_informe_conflitante_mesma_versao.py::test_conflito_de_mesma_versao_abstem_nas_duas_ordens	econômica	AssertionError: assert {'base': 'valor patrimonial da cota do fim do mês anterior (Resolução CVM 175, anexo da
+tests/regressao/test_bug_2b_37_informe_conflitante_mesma_versao.py::test_duplicata_identica_continua_valida	passa no pai	
+tests/regressao/test_bug_2b_37_informe_conflitante_mesma_versao.py::test_duplicata_com_celula_vazia_continua_valida	passa no pai	
+tests/regressao/test_bug_2b_38_conferencia_dy_zero.py::test_zero_nas_duas_fontes_confere	econômica	AssertionError: assert ['conferência...indisponível'] == []
+tests/regressao/test_bug_2b_38_conferencia_dy_zero.py::test_sem_coluna_de_dividendos_continua_indisponivel	passa no pai	
+tests/test_b3_proventos.py::test_fechamento_invalido_fica_de_fora	interface	KeyError: 'fechamentos_brutos'
+tests/test_b3_proventos.py::test_sem_fechamento_bruto_abstem	econômica	AssertionError: assert {'coleta': '2...oes': [], ...} == {'abstencao':...e referência'}
+tests/test_b3_proventos.py::test_falha_do_fechamento_bruto_nao_derruba_os_fundamentos	passa no pai	
+tests/test_gordon_composicao_recente.py::test_escala_do_documento_recente_pela_regra_da_dfp	interface	KeyError: 'escala'
+tests/test_gordon_composicao_recente.py::test_escala_do_documento_recente_indeterminada	interface	KeyError: 'escala'
+tests/test_gordon_composicao_recente.py::test_escala_sem_lucro_dos_controladores_separado_fica_indeterminada	interface	KeyError: 'escala'
+tests/test_gordon_composicao_recente.py::test_escala_com_controladores_zerados_sem_minoritarios_usa_o_consolidado	interface	KeyError: 'escala'
+tests/test_gordon_composicao_recente.py::test_escala_com_moeda_em_unidade	interface	KeyError: 'escala'
+tests/test_gordon_cvm.py::test_escala_da_composicao_recente_converte_antes_da_razao	interface	TypeError: compatibilidade_base() got an unexpected keyword argument 'escala_recente'
+tests/test_gordon_cvm.py::test_escala_da_composicao_recente_indeterminada_abstem	interface	TypeError: compatibilidade_base() got an unexpected keyword argument 'escala_recente'
+tests/test_perfil_unico.py::test_serie_valida_leva_o_aviso_fixo_fora_de_riscos	interface	KeyError: 'avisos'
+tests/test_perfil_unico.py::test_avisos_da_serie_aparecem_com_o_bazin_abstendo	interface	KeyError: 'avisos'
+tests/test_proventos_b3.py::test_conferencia_por_evento_com_datas_com_vizinhas	passa no pai	

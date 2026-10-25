@@ -46,7 +46,7 @@ Branch: `v2/fase-2b` · Protocolo: `docs/loop/protocolo.md` · Diário: `docs/lo
   - **BUG-2B-06 (reaberto):** a completude lê `modelo`, e a cascata grava `modelo_bpp`: um banco completo sai com 70%. Alinhar produtor e consumidor; regressão pela saída real da cascata (dublê do provedor, `buscar_dados_ticker`), não por dicionário montado à mão.
   - **Aceite:** regressão estrita → correção → PASS; golden inalterado; mutação de `data_quality` registrada (V1, sem meta); gate.
 
-- [ ] **F2B-64** · test · `test: redo the D27 counterproof for F2B-54 and F2B-2`
+- [x] **F2B-64** · test · `test: redo the D27 counterproof for F2B-54 and F2B-2`
   - Decisão 5 de 25/10/2026: para os testes do F2B-54 e do F2B-2 cuja falha registrada foi de importação, interface ou coleta, refazer a contraprova contra o código anterior (worktree temporária no commit pai do item) com a falha econômica, ou escrever no diário a dispensa com o motivo, caso a caso, quando a contraprova correta for impossível. Sem dispensa genérica.
   - **Aceite:** diário com a lista de testes, o commit da contraprova, a saída (ou a dispensa e o motivo); nenhum teste existente enfraquecido; gate.
 

@@ -1,0 +1,38 @@
+código: pai (sem as_of)
+C1 tijolo elegível: R de 12 meses ÷ (NTN-B + spread): fair_value=97.36 | Bazin FII: R$97.36
+C4a sem NTN-B: fair_value=97.36 | Bazin FII: R$97.36
+C4c FII de papel pela composição do mês final: fair_value=97.36 | Bazin FII: R$97.36
+C4d composição sem maioria estrita: fair_value=97.36 | Bazin FII: R$97.36
+C4e desdobramento oficial na janela: fair_value=97.36 | Bazin FII: R$97.36
+C4f fonte de eventos da B3 indisponível: fair_value=97.36 | Bazin FII: R$97.36
+C4g Informe do mês final entregue no dia do as_of: fair_value=97.36 | Bazin FII: R$97.36
+C4i DY mensal negativo declarado: fair_value=97.36 | Bazin FII: R$97.36
+C4i' amortização na janela: fair_value=97.36 | Bazin FII: R$97.36
+C4i'' cotas não positivas: fair_value=97.36 | Bazin FII: R$97.36
+C4k sem Informe: fair_value=97.36 | Bazin FII: R$97.36
+C4b sem spread calibrado: fair_value=97.36 | Bazin FII: R$97.36
+C4h Informe com mais de 3 meses: fair_value=97.36 | Bazin FII: R$97.36
+C4j rendimento anual zero: fair_value=97.36 | Bazin FII: R$97.36
+C2 Selic 5%: fair_value=282.35
+C2 Selic 10%: fair_value=141.18
+C2 Selic 15%: fair_value=94.12
+C3 exemplo da ficha (R = 13.240530, NTN-B 74,38/1100): fair_value=107.43
+código: item (com as_of)
+C1 tijolo elegível: R de 12 meses ÷ (NTN-B + spread): fair_value=114.22 | Rendimento do FII: R$114.22
+C4a sem NTN-B: fair_value=100.0 | Dados insuficientes (Rendimento do FII: insumo ausente: ntnb_real)
+C4c FII de papel pela composição do mês final: fair_value=100.0 | Dados insuficientes (Rendimento do FII: tipo de FII fora do escopo na 2B: papel)
+C4d composição sem maioria estrita: fair_value=100.0 | Dados insuficientes (Rendimento do FII: classificação de FII desconhecida: sem maioria estrita)
+C4e desdobramento oficial na janela: fair_value=100.0 | Dados insuficientes (Rendimento do FII: desdobramento oficial na janela (2026-03-10): base de cota incompatível)
+C4f fonte de eventos da B3 indisponível: fair_value=100.0 | Dados insuficientes (Rendimento do FII: fonte de eventos de cota indisponível: continuidade não demonstrável)
+C4g Informe do mês final entregue no dia do as_of: fair_value=100.0 | Dados insuficientes (Rendimento do FII: menos de 12 meses com DY e valor da cota do mês anterior)
+C4i DY mensal negativo declarado: fair_value=100.0 | Dados insuficientes (Rendimento do FII: DY mensal negativo declarado no Informe)
+C4i' amortização na janela: fair_value=100.0 | Dados insuficientes (Rendimento do FII: amortização na janela: devolução de capital, fluxo não representativo)
+C4i'' cotas não positivas: fair_value=100.0 | Dados insuficientes (Rendimento do FII: cotas emitidas inválidas: base de cota incompatível)
+C4k sem Informe: fair_value=100.0 | Dados insuficientes (Rendimento do FII: insumo ausente: Informe Mensal do FII)
+C4b sem spread calibrado: fair_value=100.0 | Dados insuficientes (Rendimento do FII: spread indisponível)
+C4h Informe com mais de 3 meses: fair_value=100.0 | Dados insuficientes (Rendimento do FII: Informe mais recente com mais de 3 meses)
+C4j rendimento anual zero: fair_value=100.0 | Dados insuficientes (Rendimento do FII: rendimento anual não positivo)
+C2 Selic 5%: fair_value=114.22
+C2 Selic 10%: fair_value=114.22
+C2 Selic 15%: fair_value=114.22
+C3 exemplo da ficha (R = 13.240530, NTN-B 74,38/1100): fair_value=128.95

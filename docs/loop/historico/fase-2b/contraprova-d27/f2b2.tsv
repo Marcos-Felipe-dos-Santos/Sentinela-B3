@@ -1,0 +1,55 @@
+tests/test_contratos_provedores.py::test_contrato_fundos_b3	interface	ImportError: cannot import name 'fii_elegibilidade' from 'sentinela.data' (<worktree>
+tests/test_cvm_fii_provider.py::test_data_referencia_ilegivel_abstem_com_motivo	econômica	AssertionError: assert {'cnpj_fundo'...000000.0, ...} == {'abstencao':...cia ilegível'}
+tests/test_fii_elegibilidade.py::test_tipo_pela_maioria_estrita	coleta	módulo inexistente no pai
+tests/test_fii_elegibilidade.py::test_tipo_desconhecido_abstem	coleta	módulo inexistente no pai
+tests/test_fii_elegibilidade.py::test_caixa_e_renda_fixa_nao_entram_na_base	coleta	módulo inexistente no pai
+tests/test_fii_elegibilidade.py::test_celula_vazia_conta_como_zero	coleta	módulo inexistente no pai
+tests/test_fii_elegibilidade.py::test_resposta_invalida_e_fonte_indisponivel	coleta	módulo inexistente no pai
+tests/test_fii_elegibilidade.py::test_resposta_valida_com_listas_vazias	coleta	módulo inexistente no pai
+tests/test_fii_elegibilidade.py::test_evento_de_cota_na_janela_abstem	coleta	módulo inexistente no pai
+tests/test_fii_elegibilidade.py::test_conferencia_igual_em_duas_casas_sem_aviso	coleta	módulo inexistente no pai
+tests/test_fii_elegibilidade.py::test_conferencia_diferente_gera_aviso_com_mes_e_valores	coleta	módulo inexistente no pai
+tests/test_fii_elegibilidade.py::test_conferencia_ignora_outro_isin_e_avisa_mes_sem_b3	coleta	módulo inexistente no pai
+tests/test_fii_elegibilidade.py::test_conferencia_soma_pagamentos_do_mesmo_mes	coleta	módulo inexistente no pai
+tests/test_fii_elegibilidade.py::test_conferencia_sem_resposta_da_b3	coleta	módulo inexistente no pai
+tests/test_fii_engine.py::test_fii_preco_justo_pela_ntnb_e_spread_sem_selic	interface	TypeError: FIIEngine.analisar() got an unexpected keyword argument 'as_of'
+tests/test_fii_engine_rendimento.py::test_fii_tijolo_pela_ntnb_mais_spread	interface	TypeError: FIIEngine.analisar() got an unexpected keyword argument 'as_of'
+tests/test_fii_engine_rendimento.py::test_selic_fica_no_score_e_nao_no_preco_justo	interface	TypeError: FIIEngine.analisar() got an unexpected keyword argument 'as_of'
+tests/test_fii_engine_rendimento.py::test_abstencoes_da_lente	interface	TypeError: FIIEngine.analisar() got an unexpected keyword argument 'as_of'
+tests/test_fii_engine_rendimento.py::test_sem_spread_abstem	interface	TypeError: FIIEngine.analisar() got an unexpected keyword argument 'as_of'
+tests/test_fii_engine_rendimento.py::test_avisos_da_conferencia_saem_com_o_resultado	interface	TypeError: FIIEngine.analisar() got an unexpected keyword argument 'as_of'
+tests/test_fii_rendimento_elegivel.py::test_tijolo_elegivel_soma_doze_meses	coleta	módulo inexistente no pai
+tests/test_fii_rendimento_elegivel.py::test_entrega_no_dia_do_as_of_ainda_nao_vale	coleta	módulo inexistente no pai
+tests/test_fii_rendimento_elegivel.py::test_versao_entregue_depois_do_as_of_tira_o_mes	coleta	módulo inexistente no pai
+tests/test_fii_rendimento_elegivel.py::test_entrega_ilegivel_nao_e_demonstrada	coleta	módulo inexistente no pai
+tests/test_fii_rendimento_elegivel.py::test_informe_com_mais_de_tres_meses_abstem	coleta	módulo inexistente no pai
+tests/test_fii_rendimento_elegivel.py::test_informe_com_tres_meses_vale	coleta	módulo inexistente no pai
+tests/test_fii_rendimento_elegivel.py::test_guardas_da_matriz	coleta	módulo inexistente no pai
+tests/test_fii_rendimento_elegivel.py::test_mes_sem_rendimento_vale_como_zero	coleta	módulo inexistente no pai
+tests/test_fii_rendimento_elegivel.py::test_emissao_com_vp_continuo_fica_em_contexto	coleta	módulo inexistente no pai
+tests/test_fii_rendimento_elegivel.py::test_so_tijolo_pela_composicao_do_mes	coleta	módulo inexistente no pai
+tests/test_fii_rendimento_elegivel.py::test_evento_de_base_na_janela_abstem	coleta	módulo inexistente no pai
+tests/test_fii_rendimento_elegivel.py::test_evento_antes_da_janela_nao_abstem	coleta	módulo inexistente no pai
+tests/test_fii_rendimento_elegivel.py::test_fonte_de_eventos_indisponivel_abstem	coleta	módulo inexistente no pai
+tests/test_fii_rendimento_elegivel.py::test_preco_e_dy_anual	coleta	módulo inexistente no pai
+tests/test_fii_rendimento_elegivel.py::test_rendimento_anual_zero_abstem	coleta	módulo inexistente no pai
+tests/test_fii_rendimento_elegivel.py::test_conferencia_divergente_vira_aviso_sem_abster	coleta	módulo inexistente no pai
+tests/test_fii_rendimentos.py::test_cascata_grava_o_informe_e_a_b3_fora_do_prompt	interface	KeyError: 'informe_fii'
+tests/test_fii_rendimentos.py::test_cascata_grava_as_abstencoes	interface	KeyError: 'b3_fundo'
+tests/test_fii_rendimentos.py::test_cascata_sem_o_provedor_de_rendimentos_deixa_as_chaves_de_fora	passa no pai	
+tests/test_fii_rendimentos.py::test_provedor_traz_entrega_isin_e_composicao	interface	KeyError: 'Data_Entrega'
+tests/test_fii_rendimentos.py::test_linha_com_data_ilegivel_nao_vira_a_mais_recente	econômica	AssertionError: assert nan == '2026-09-01'
+tests/test_market_engine_fii_cvm.py::test_informe_com_data_ilegivel_vira_aviso_sem_numero	econômica	AssertionError: assert 'Informe Mensal do FII não usado: Informe Mensal com Data_Referencia ilegível' in []
+tests/test_methods_fii_yield.py::test_preco_justo_pela_ntnb_mais_spread	coleta	TypeError: FiiYieldParams.__init__() got an unexpected keyword argument 'spread' (coleta do módulo)
+tests/test_methods_fii_yield.py::test_selic_liquida_nao_forma_o_preco_justo	coleta	TypeError: FiiYieldParams.__init__() got an unexpected keyword argument 'spread' (coleta do módulo)
+tests/test_methods_fii_yield.py::test_sem_ntnb_abstem	coleta	TypeError: FiiYieldParams.__init__() got an unexpected keyword argument 'spread' (coleta do módulo)
+tests/test_methods_fii_yield.py::test_exemplo_da_ficha	coleta	TypeError: FiiYieldParams.__init__() got an unexpected keyword argument 'spread' (coleta do módulo)
+tests/test_methods_fii_yield.py::test_sensibilidade_da_ficha	coleta	TypeError: FiiYieldParams.__init__() got an unexpected keyword argument 'spread' (coleta do módulo)
+tests/test_methods_fii_yield.py::test_matriz_de_validade	coleta	TypeError: FiiYieldParams.__init__() got an unexpected keyword argument 'spread' (coleta do módulo)
+tests/test_methods_fii_yield.py::test_spread_negativo_com_taxa_positiva_calcula	coleta	TypeError: FiiYieldParams.__init__() got an unexpected keyword argument 'spread' (coleta do módulo)
+tests/test_spread_fii.py::test_mediana_das_sessenta_medianas_mensais	coleta	módulo inexistente no pai
+tests/test_spread_fii.py::test_cada_mes_pesa_igual_independente_do_numero_de_fundos	coleta	módulo inexistente no pai
+tests/test_spread_fii.py::test_meses_fora_da_janela_nao_entram	coleta	módulo inexistente no pai
+tests/test_spread_fii.py::test_mes_sem_fundo_valido_e_lacuna	coleta	módulo inexistente no pai
+tests/test_spread_fii.py::test_quartis_e_contagens	coleta	módulo inexistente no pai
+tests/test_spread_fii.py::test_mediana_do_mes_ignora_nao_finitos	coleta	módulo inexistente no pai
