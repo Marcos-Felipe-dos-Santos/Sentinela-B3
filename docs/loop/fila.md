@@ -8,7 +8,7 @@ Branch: `v2/fase-2b` · Protocolo: `docs/loop/protocolo.md` · Diário: `docs/lo
 
 ## Itens
 
-- [ ] **F2B-56** · docs · `docs: approve the FII sheet 1.3 on empty composition and amortization cells`
+- [x] **F2B-56** · docs · `docs: approve the FII sheet 1.3 on empty composition and amortization cells`
   - Decisões 3 e 4 do Marcos de 25/10/2026, na ficha `docs/metodologia/fii.md` (versão 1.3, §3c e matriz da §4):
     - **composição:** célula vazia vale zero só quando o registro de composição do fundo-mês existe, é da mesma versão do complemento selecionado e tem ao menos uma posição preenchida; registro ausente, ou todo vazio, é tipo desconhecido e abstém;
     - **amortização:** vazia dentro de um registro de complemento válido, da mesma versão, vale amortização zero (campo do formulário preenchido só quando há evento); NaN, texto ou negativo abstém. Se houver especificação oficial em sentido contrário, `[!]`.

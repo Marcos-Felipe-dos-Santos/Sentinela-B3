@@ -8,3 +8,11 @@ Diário da fila de fechamento (`docs/loop/fila.md`). O diário da fase está em 
 - **Testes:** 2517 passed, 1 skipped, 14 xfailed (sem código).
 - **Regressões:** os bugs da auditoria (BUG-2B-37 e 06 reabertos, 46 a 50) ganham o teste estrito em `tests/regressao/` no próprio item `fix:`, hoje, antes da correção de cada um (regra de 15/10/2026, "no mesmo dia"); até lá, o registro de BUG-2B-06 e BUG-2B-37 continua "corrigido" e muda para "reaberto" no item.
 - **Revisão:** PODE COMMITAR; ajustes de texto antes do commit: modo 644 no arquivo da auditoria; o F2B-56 registra as cinco decisões no marcador; o F2B-62 cita o item 3 do marcador; a descrição do BUG-2B-37 segue a reprodução do Codex (cotas e amortização); a meta de mutação do F2B-58 inclui `sentinela/methods/`. O relatório do Codex (`auditoria-fase-2b-codex-3-relatorio.md`) fica fora do repositório, como a consolidação registra.
+
+
+### F2B-56 — docs: approve the FII sheet 1.3 on empty composition and amortization cells
+- **Executor:** claude-code (claude-opus-5-5).
+- **Status:** sucesso.
+- **O que foi feito:** ficha `docs/metodologia/fii.md` na versão 1.3 (status, §3c e as linhas de amortização e de classificação da matriz da §4), com as decisões 3 e 4 do Marcos de 25/10/2026 e o conflito de mesma versão em qualquer campo usado; marcador com as cinco decisões da auditoria de fechamento.
+- **Especificação oficial (decisão 4):** dicionário de dados da CVM do Informe Mensal (`meta_inf_mensal_fii.zip`, coletado em 25/10/2026, SHA-256 `4db505e6…48ef55`, citado por inteiro na ficha): `Percentual_Amortizacao_Cotas_Mes` é "Percentual de amortizações de cotas do Mês de Referência", domínio numérico, sem regra para o vazio. Nada em sentido contrário; sem `[!]`.
+- **Testes:** sem código; 2517 passed, 1 skipped, 14 xfailed.

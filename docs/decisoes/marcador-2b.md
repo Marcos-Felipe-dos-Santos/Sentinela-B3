@@ -428,3 +428,23 @@ seguir com 2 ressalvas**.
 
 Seguir o plano final (`docs/decisoes/plano-final-2b.md`, seção 1) até o F2B-6 e parar no
 [DECISÃO] "Fim da Fase 2B". Sem push.
+
+## Decisões do Marcos de 25/10/2026 — auditoria de fechamento da 2B
+
+Base: `docs/loop/historico/fase-2b/auditoria-externa.md` (Codex "não pode seguir", Gemini
+"aprovado com ressalvas"; consolidação do Claude), perguntas do Codex. Aprovadas pelo Marcos
+na mesma data; executadas pela fila de fechamento (F2B-56 a F2B-68).
+
+1. **Decisões provisórias restantes, ratificadas:** exceções de proveniência nas chamadas
+   diretas; IF.data escolhido pelo setor (só leitura, sem efeito no valor; a escolha pelo BPP
+   vai para a 2C); inadimplência sem o calendário oficial de publicação (data-base declarada;
+   o calendário vai para a 2C); banco abstido sem valor numérico.
+2. **BRSR3:** mantida a abstenção da companhia inteira; separar a ON das preferenciais exige
+   demonstrar direitos e atribuição dos insumos e vai para a 2C.
+3. **Células vazias na composição do Informe:** vazio = zero só quando o registro de
+   composição do fundo-mês existe, é da mesma versão e tem ao menos uma posição preenchida;
+   registro ausente, ou todo vazio, é tipo desconhecido e abstém (ficha FII 1.3, §3c).
+4. **Amortização vazia (ficha FII 1.3):** vazio dentro de um registro de complemento válido,
+   da mesma versão, vale amortização zero; NaN, texto ou negativo abstém. O dicionário de
+   dados da CVM não diz o contrário (ficha, §3c).
+5. **Desvios da D27:** contraprovas refeitas (F2B-64), sem dispensa genérica.
