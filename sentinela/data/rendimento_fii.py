@@ -246,8 +246,12 @@ def avaliar(
     )
     if isinstance(medida, Abstencao):
         return medida
-    entregues = {(_mes(r), _versao(r)) for r in elegiveis if _mes(r) == final}
-    composicao = [c for c in composicoes if (_mes(c), _versao(c)) in entregues]
+    # F2B-59 (BUG-2B-47; ficha 1.3, §3c): só a composição da versão do complemento
+    # selecionado no mês final; de outra versão não classifica o fundo.
+    selecionada = _versao(meses[final])
+    composicao = [
+        c for c in composicoes if _mes(c) == final and _versao(c) == selecionada
+    ]
     if not composicao:
         return Abstencao(MOTIVO_SEM_COMPOSICAO)
     maior = max(map(_versao, composicao))

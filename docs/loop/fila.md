@@ -25,7 +25,7 @@ Branch: `v2/fase-2b` · Protocolo: `docs/loop/protocolo.md` · Diário: `docs/lo
   - Mesmo corte do F2B-30 e do Gordon: registro da taxa com as_of ≤ análise e idade válida (data-base e dias úteis do registro); coleta e entrega do Informe e da B3 até o as_of. Sem prova, a lente abstém com o motivo.
   - **Aceite:** regressão estrita → correção → PASS; golden `--onde "caso['motor'] == 'fii'"` com a conferência de cada alteração no diário; mutação ≥ 80% nos módulos de `sentinela/data/` e `sentinela/methods/` tocados; `fii_engine.py` (V1) registrado, sem meta; gate.
 
-- [ ] **F2B-59** · fix · `fix: take the FII composition from the selected report version` · **[golden]**
+- [x] **F2B-59** · fix · `fix: take the FII composition from the selected report version` · **[golden]**
   - **BUG-2B-47:** composição de outra versão, ou conflitante, autoriza a lente.
   - A composição precisa ser da mesma versão do complemento selecionado (o conflito de composições da mesma versão já é do F2B-57). Inclui a regra de células vazias da ficha 1.3 (F2B-56): vazio vale zero só em registro da mesma versão com ao menos uma posição preenchida; registro ausente ou todo vazio é tipo desconhecido.
   - **Aceite:** regressão estrita → correção → PASS; golden do FII; mutação de `sentinela.data.fii_elegibilidade` e `rendimento_fii` ≥ 80%; gate.

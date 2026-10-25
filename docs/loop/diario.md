@@ -46,3 +46,15 @@ Diário da fila de fechamento (`docs/loop/fila.md`). O diário da fase está em 
 - **Testes:** 2528 passed, 1 skipped, 14 xfailed → 2545 passed, 1 skipped, 14 xfailed (medida sem o teste não rastreado do item seguinte). Gates verdes.
 - **2ª revisão:** PODE COMMITAR. Ficam registrados, sem mudança: a docstring de `entradas` não cita as conferências de coleta e taxa nem a chave `ntnb_real`; sem teste para `proveniencia` igual a `None` e para registro em UTC que cai no dia anterior em Brasília; o motivo "idade da NTN-B" junta idade inválida e acima de 5 dias úteis.
 - **Decisões provisórias (plano final, §1, regra 3):** (1) o registro da taxa precisa ser do mesmo dia local da análise; (2) sem a resposta da B3, a abstenção continua a dos eventos indisponíveis (a coleta só é conferida quando há resposta).
+
+
+### F2B-59 — fix: take the FII composition from the selected report version
+- **Executor:** claude-code (claude-opus-5-5).
+- **Status:** sucesso.
+- **O que foi feito:** BUG-2B-47. `rendimento_fii.avaliar` usa só a composição do mês final na versão do complemento selecionado (a maior versão entregue até o as_of); antes, valia a composição de qualquer versão entregue do mês, e com o complemento na versão 2 e a composição só na 1 a lente classificava pela antiga. O conflito de composições da mesma versão já é do F2B-57. A regra das células vazias da ficha 1.3 (§3c) já era a do código (vazio pulado na soma; registro todo vazio dá base zero e "classificação de FII desconhecida"); dois testes de guarda passam a fixá-la.
+- **Rito D27:** `tests/regressao/test_bug_2b_47_fii_composicao_de_outra_versao.py` com `xfail(strict=True)` antes da correção; `--runxfail`: **1 failed** pelo motivo econômico (a lente calculava `dy` 0,12 com a composição da versão 1), em `f2b59-vermelho.txt` no scratchpad. Marca retirada: PASS. Guardas sem marca (passam antes e depois): composição da versão selecionada autoriza; composição toda vazia é tipo desconhecido; vazio ao lado de posição preenchida vale zero.
+- **Testes existentes que mudam:** nenhum.
+- **Golden:** regenerado, idêntico (a grade usa uma versão só).
+- **Mutação:** `sentinela.data.rendimento_fii` 497/546 (91,0%); `sentinela.data.fii_elegibilidade` 176/205 (85,9%).
+- **Testes:** 2545 passed, 1 skipped, 14 xfailed → 2549 passed, 1 skipped, 14 xfailed. Gates verdes.
+- **Revisão:** 1ª rodada reprovada por `import pytest` sem uso no teste novo (sobra da marca retirada; o `ruff check .` completo acusa F401, o gate do CI não). Removido e commitado, como a revisão indica. Registrados, sem mudança: `maior`/`da_maior` em `avaliar` ficaram redundantes depois do filtro pela versão selecionada (limpeza de refactor, para a 2C); versão ilegível nos dois lados (`-inf`) ainda casa, como já casava; a data de entrega da composição continua implícita na do complemento da mesma versão.
