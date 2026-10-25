@@ -1,15 +1,16 @@
 # Rendimento do FII sobre NTN-B — versão 1.3
 
 **Status:** versão 1.3 aprovada pelo Marcos em 25/10/2026, depois da auditoria de
-fechamento da 2B: células vazias da composição e da amortização (seção 3c). A versão 1.2,
-da mesma data, aceita a quantidade de cotas fracionária do Informe (seção 3b). A versão 1.1 foi aprovada em 20/10/2026, com a
-conferência pelo rendimento oficial da B3 e a regra dos eventos de cota da seção 3a. A versão 1.0 foi
+fechamento da 2B: células vazias da composição e da amortização, e conflito de mesma
+versão em qualquer campo usado (seção 3c). A versão 1.2, da mesma data, aceita a
+quantidade de cotas fracionária do Informe (seção 3b). A versão 1.1 foi aprovada em
+20/10/2026, com a conferência pelo rendimento oficial da B3 e a regra dos eventos de cota da seção 3a. A versão 1.0 foi
 aprovada em 19/10/2026. Auditoria FICHA do Claude
 sobre a versão 0.3: **pode seguir** (D30); promovida a 1.0 sem mudança de regra
 ou número, conforme registro do marcador.
 **Decisões:** [marcador](../decisoes/marcador-2b.md).
-**Implementação futura:** F2B-2; F2B-28 fornece reconstrução inicial, ainda sem
-todas as guardas temporais, de eventos e de atualidade desta ficha.
+**Implementação:** F2B-2 (F2B-28 deu a reconstrução inicial); a 1.2 no F2B-55; a 1.3 nos
+F2B-57 (conflito), F2B-59 (composição) e F2B-61 (amortização).
 
 ## 1. Fórmula e referência
 
@@ -171,7 +172,7 @@ composição nas condições da §3c; contexto inválido é indicado sem alterar
 | DY_12m e R | abstém: rendimento anual não positivo | abstém | DY_12m>25%: rendimento não confiável; 25% é teto de domínio existente, não parâmetro de valor |
 | Cotas_Emitidas | abstém: cotas não positivas | abstém | quantidade fracionária positiva e finita: válida (1.2, §3b); desdobramento/grupamento ou salto de VP incompatível: abstém; emissão com VP contínuo: contexto, sem veto |
 | Amortização | válida sem amortização; vazia vale zero em complemento válido da mesma versão (1.3, §3c) | abstém: dado inválido | positiva: devolução de capital na janela, abstenção; NaN ou texto: dado inválido |
-| Cada posição da classificação | válido; vazia vale zero só em registro da mesma versão com posição preenchida (1.3, §3c) | abstém | soma zero, maioria ausente, fração >1, registro ausente, de outra versão ou todo vazio: tipo desconhecido |
+| Cada posição da classificação | válido; vazia vale zero só em registro da mesma versão com posição preenchida (1.3, §3c) | abstém | soma zero, sem maioria estrita, fração >1, registro ausente, de outra versão ou todo vazio: tipo desconhecido |
 | y_real | válido | válido se >−1 e q>0 | ≤−1 ou fonte/idade inválida: taxa indisponível |
 | s | zero matematicamente válido, só se mediana comprovada | permitido se mediana comprovada e q>0 | não recalibrado/sem versão: spread indisponível |
 | q=y+s | abstém: taxa não positiva | abstém | não finito: taxa inválida |

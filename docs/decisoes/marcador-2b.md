@@ -433,7 +433,7 @@ Seguir o plano final (`docs/decisoes/plano-final-2b.md`, seção 1) até o F2B-6
 
 Base: `docs/loop/historico/fase-2b/auditoria-externa.md` (Codex "não pode seguir", Gemini
 "aprovado com ressalvas"; consolidação do Claude), perguntas do Codex. Aprovadas pelo Marcos
-na mesma data; executadas pela fila de fechamento (F2B-56 a F2B-68).
+na mesma data; a executar pela fila de fechamento (F2B-56 a F2B-68).
 
 1. **Decisões provisórias restantes, ratificadas:** exceções de proveniência nas chamadas
    diretas; IF.data escolhido pelo setor (só leitura, sem efeito no valor; a escolha pelo BPP
