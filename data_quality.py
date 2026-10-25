@@ -109,6 +109,8 @@ def _is_present(v) -> bool:
 
 _LIMIAR_ACOES = 0.05  # checkpoint da Fase 0, seção 4, item 1
 _LIMIAR_LPA = 0.10  # o mesmo dos checks 2 e 3
+_LIMIAR_PVP_FII = 0.10  # F2B-16: o mesmo dos checks 2 e 3 ([AUDITORIA], 18/10/2026)
+_FONTES_DE_MERCADO = ("yfinance", "brapi")
 _FOLGA = 1e-9
 
 
@@ -142,9 +144,26 @@ class DataQualityReport:
         cvm_ok = bool(d.get("cvm_disponivel"))
         field_prov: dict = d.get("field_provenance") or {}
         fonte_base = _best_fonte(fonte_fund) if fonte_fund else "unknown"
+        classe = str(d.get("classe_ativo") or "").strip().upper()
+        # F2B-63 (BUG-2B-06, reaberto): o modelo que a cascata grava (F2B-4).
+        modelo = str(d.get("modelo_bpp") or "").strip().lower()
+        limitacoes = []
+        if classe == "FII":
+            esperados = ["preco_atual", "dy", "pvp", "vpa"]
+        elif modelo == "banco":
+            esperados = [c for c in _CAMPOS_ESPERADOS if c not in (
+                "receita_liquida", "margem_liquida", "divida_liq_ebitda"
+            )]
+        else:
+            esperados = _CAMPOS_ESPERADOS
+            if modelo != "empresa":
+                limitacoes.append(
+                    "modelo não demonstrado: percentual dos campos gerais, "
+                    "sem certificação de completude do modelo"
+                )
 
         campos: dict[str, dict] = {}
-        for campo in _CAMPOS_ESPERADOS:
+        for campo in esperados:
             valor = d.get(campo)
             presente = _is_present(valor)
 
@@ -164,7 +183,7 @@ class DataQualityReport:
             confianca = _FONTE_CONFIANCA.get(fonte, 10) if presente else 0
             campos[campo] = {"presente": presente, "fonte": fonte, "confianca": confianca}
 
-        n_total = len(_CAMPOS_ESPERADOS)
+        n_total = len(esperados)
         n_presente = sum(1 for v in campos.values() if v["presente"])
         completude_pct = round(n_presente / n_total * 100)
 
@@ -177,6 +196,8 @@ class DataQualityReport:
             "campos": campos,
             "completude_pct": completude_pct,
             "score_confianca": score_confianca,
+            "limitacoes": limitacoes,
+            "completude_do_modelo_determinada": not limitacoes,
         }
 
     def validacao_cruzada(self) -> list[str]:
@@ -243,6 +264,7 @@ class DataQualityReport:
                 )
 
         alertas += self._alertas_fontes_independentes(lpa)
+        alertas += self._alertas_pvp_do_fii()
         return alertas
 
     def _mesma_fonte(self, multiplo: str, por_acao: str) -> bool:
@@ -261,6 +283,29 @@ class DataQualityReport:
         entregue = (d.get("valores_por_fonte") or {}).get(fonte_multiplo) or {}
         do_mesmo = _safe_float(entregue.get(por_acao))
         return do_mesmo is not None and abs(do_mesmo - valor) <= _FOLGA * max(1.0, abs(valor))
+
+    def _alertas_pvp_do_fii(self) -> list[str]:
+        """P/VP do Informe Mensal (CVM) × P/VP de cada fonte de mercado (F2B-16; BUG-2A-12).
+
+        O P/VP da CVM é preço ÷ VPA do próprio Informe, e a checagem 3 é identidade; a
+        conferência independente é contra o P/VP que o yfinance ou a brapi entregaram.
+        """
+        por_fonte = self.dados.get("valores_por_fonte") or {}
+        cvm = _safe_float((por_fonte.get("CVM") or {}).get("pvp"))
+        if not self.dados.get("cvm_fii_dt_referencia") or not cvm or cvm <= 0:
+            return []
+        alertas: list[str] = []
+        for fonte in _FONTES_DE_MERCADO:
+            mercado = _safe_float((por_fonte.get(fonte) or {}).get("pvp"))
+            if mercado is None or mercado <= 0:
+                continue
+            divergencia = abs(mercado - cvm) / cvm
+            if divergencia > _LIMIAR_PVP_FII + _FOLGA:
+                alertas.append(
+                    f"P/VP da CVM {_numero_br(cvm)} × P/VP do {fonte} {_numero_br(mercado)}: "
+                    f"divergência {divergencia:.0%}"
+                )
+        return alertas
 
     def _alertas_fontes_independentes(self, lpa: float | None) -> list[str]:
         """Ações da CVM × yfinance e LPA recalculado × LPA básico divulgado (F2A-5, E-2)."""

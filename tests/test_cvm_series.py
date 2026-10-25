@@ -217,7 +217,6 @@ def test_proventos_declaram_competencia(monkeypatch):
         "ttm_cvm": ttm,
     }
     with (
-        patch("valuation_engine.get_selic_atual", return_value=0.145),
         patch("fii_engine.get_selic_atual", return_value=0.145),
     ):
         contexto = rastreabilidade.construir_contexto(
@@ -275,6 +274,49 @@ def test_campo_ausente_num_documento_abstem_so_o_campo():
     assert resultado["valores"]["proventos"] is None
 
 
+def test_ttm_abstem_quando_um_documento_se_abstem():
+    # F2B-37 (BUG-2A-10): o lucro dos controladores abstido num documento (decisão 7.2)
+    # abstém o TTM do campo, com o motivo daquele documento.
+    motivo = "lucro dos controladores não separado no documento, com não controladores no balanço"
+    acumulados = [
+        _acumulado(
+            "ITR",
+            "2025-01-01",
+            "2025-03-31",
+            lucro_liquido=1.0,
+            lucro_controladores=1.0,
+        ),
+        _acumulado(
+            "ITR",
+            "2025-01-01",
+            "2025-06-30",
+            lucro_liquido=2.0,
+            lucro_controladores=None,
+        ),
+        _acumulado(
+            "ITR",
+            "2025-01-01",
+            "2025-09-30",
+            lucro_liquido=3.0,
+            lucro_controladores=3.0,
+        ),
+        _acumulado(
+            "DFP",
+            "2025-01-01",
+            "2025-12-31",
+            lucro_liquido=4.0,
+            lucro_controladores=4.0,
+        ),
+    ]
+    acumulados[1] = Acumulado(
+        **{**acumulados[1].__dict__, "motivos": {"lucro_controladores": motivo}}
+    )
+    resultado = series_cvm.ttm(acumulados, date(2026, 1, 1))
+    assert resultado["valores"]["lucro_liquido"] == 4.0
+    assert resultado["valores"]["lucro_controladores"] is None
+    assert motivo in resultado["motivos"]["lucro_controladores"]
+
+
 def test_trimestre_depois_da_data_de_referencia_fica_de_fora():
     resultado = series_cvm.ttm(EXERCICIO_2025 + EXERCICIO_2026, date(2026, 6, 29))
     assert resultado["fim"] == "2026-03-31"
@@ -294,9 +336,9 @@ def test_exercicio_fora_do_ano_civil():
     assert resultado["inicio"] == "2025-03-01"
 
 
-def test_proventos_sem_jcp_ficam_ausentes():
-    assert series_cvm.proventos(1.0, None) is None
-    assert series_cvm.proventos(None, 1.0) is None
+def test_proventos_com_uma_rubrica_preservam_o_informado():
+    assert series_cvm.proventos(1.0, None, motivos={"jcp": "linha ausente no documento"}) == 1.0
+    assert series_cvm.proventos(None, 1.0, motivos={"dividendos": "linha ausente no documento"}) == 1.0
     assert series_cvm.proventos(0.0, 0.0) == 0.0
 
 
@@ -315,6 +357,25 @@ def test_lpa_incoerente_se_abstem_no_exercicio():
     assert exercicio["lpa"] is None
     assert exercicio["lpa_origem"] is None
     assert "sinal oposto" in exercicio["motivos"]["lpa"]
+
+
+def test_serie_nao_usa_a_confirmacao_do_yfinance():
+    # Ficha 1.1, 7.7: a `sharesOutstanding` é de hoje e não confirma exercícios passados; sem
+    # o lucro dos controladores, a escala da série segue indeterminada (D17).
+    composicao = Composicao(
+        on=1_000.0, pn=0.0, tesouraria_on=0.0, tesouraria_pn=0.0,
+        tesouraria_total=0.0, dt_refer="2025-12-31", versao="1",
+    )  # fmt: skip
+    ind = {
+        **_ind(2025),
+        "lucro_controladores": None,
+        "composicao_capital": composicao,
+        "composicao_motivo": None,
+    }
+    exercicio = series_cvm.serie_anual({2025: ind}, 2025, especie="ON")[0]
+    assert exercicio["acoes"] is None
+    assert exercicio["vpa"] is None
+    assert exercicio["motivos"]["vpa"] == acoes_cvm.MOTIVO_ESCALA
 
 
 # ── provedor: DVA e ITR sintéticos ───────────────────────────────────────────
@@ -601,3 +662,72 @@ def test_indicadores_da_serie_juntam_os_proventos_de_cada_exercicio(
     assert indicadores[2025]["dividendos"] == 7_000.0
     assert indicadores[2025]["jcp"] == 3_000.0
     assert indicadores[2025]["proventos_motivos"] == {}
+
+
+def test_ttm_le_o_balanco_do_mesmo_documento_para_a_reserva(tmp_path):
+    # F2B-37 (decisão 7.2): 3.11.01 e 3.11.02 zeradas. No ITR de junho, o balanço do mesmo
+    # documento tem não controladores: abstenção. No de março (versão 1), não tem: reserva pelo
+    # lucro total. A versão 2 do balanço de março, com não controladores, não vale para a 1.
+    provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+    consolidado = "Lucro/Prejuízo Consolidado do Período"
+
+    def _dre(dt):
+        return [
+            (dt, "1", "ÚLTIMO", "2025-01-01", dt, "3.11", consolidado, 100),
+            (dt, "1", "ÚLTIMO", "2025-01-01", dt, "3.11.01",
+             "Atribuído a Sócios da Empresa Controladora", 0),
+            (dt, "1", "ÚLTIMO", "2025-01-01", dt, "3.11.02",
+             "Atribuído a Sócios Não Controladores", 0),
+        ]  # fmt: skip
+
+    nao_controladores = "Participação dos Acionistas Não Controladores"
+    bpp = [
+        ("2025-03-31", "1", "ÚLTIMO", "2025-03-31", "2025-03-31", "2.03.09", nao_controladores, 0),
+        ("2025-03-31", "2", "ÚLTIMO", "2025-03-31", "2025-03-31", "2.03.09", nao_controladores, 50),
+        ("2025-06-30", "1", "ÚLTIMO", "2025-06-30", "2025-06-30", "2.03.09", nao_controladores, 50),
+    ]  # fmt: skip
+    caminho = _zip(
+        tmp_path / "itr.zip", "itr", 2025, _dre("2025-03-31") + _dre("2025-06-30"), []
+    )
+    corpo = [
+        [CNPJ, dt, v, CD_CVM, "DF Consolidado", "MIL", ordem, ini, fim, c, d, x]
+        for dt, v, ordem, ini, fim, c, d, x in bpp
+    ]
+    texto = (
+        ";".join(COLUNAS)
+        + "\n"
+        + "\n".join(";".join(map(str, linha)) for linha in corpo)
+    )
+    with zipfile.ZipFile(caminho, "a") as zf:
+        zf.writestr("itr_cia_aberta_BPP_con_2025.csv", texto.encode("latin-1"))
+    marco, junho = provider._acumulados_do_arquivo(caminho, "ITR", CD_CVM, "empresa")
+    assert marco.valores["lucro_controladores"] == 100_000.0
+    assert marco.motivos == {"dividendos": "DVA indisponível no documento", "jcp": "DVA indisponível no documento"}
+    assert junho.valores["lucro_controladores"] is None
+    assert "não controladores no balanço" in junho.motivos["lucro_controladores"]
+
+
+def test_rubrica_ausente_difere_de_dva_indisponivel_ou_conta_invalida():
+    assert series_cvm.proventos(5, None, motivos={"jcp": "linha ausente no documento jcp"}) == 5
+    for motivo in ("DVA indisponível", "sem correspondência", "valor inválido"):
+        assert series_cvm.proventos(5, None, motivos={"jcp": motivo}) is None
+    assert series_cvm.proventos(None, None) is None
+
+
+def test_ttm_preserva_proventos_com_uma_rubrica_no_arquivo_real_sintetico(tmp_path):
+    for campo, codigo, descricao in (
+        ("jcp", "7.08.04.01", "Juros sobre o Capital Próprio"),
+        ("dividendos", "7.08.04.02", "Dividendos"),
+    ):
+        dre, dva = [], []
+        for trimestre, fim in enumerate(("2025-03-31", "2025-06-30", "2025-09-30", "2025-12-31"), 1):
+            dre.append((fim, "1", "ÚLTIMO", "2025-01-01", fim, "3.11", "Lucro/Prejuízo Consolidado do Período", 10 * trimestre))
+            dva.append((fim, "1", "ÚLTIMO", "2025-01-01", fim, codigo, descricao, trimestre))
+        itr = _zip(tmp_path / f"itr_{campo}.zip", "itr", 2025, dre[:3], dva[:3])
+        dfp = _zip(tmp_path / f"dfp_{campo}.zip", "dfp", 2025, dre[3:], dva[3:])
+        provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
+        acumulados = provider._acumulados_do_arquivo(itr, "ITR", CD_CVM, "empresa")
+        acumulados += provider._acumulados_do_arquivo(dfp, "DFP", CD_CVM, "empresa")
+        resultado = series_cvm.ttm(acumulados, date(2026, 1, 1))
+        assert resultado["valores"][campo] == 4000
+        assert resultado["valores"]["proventos"] == 4000

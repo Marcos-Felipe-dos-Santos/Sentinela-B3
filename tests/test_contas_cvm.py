@@ -288,3 +288,83 @@ def test_codigo_com_espacos_e_reconhecido():
 def test_tabela_do_repositorio_e_lida_uma_vez():
     assert cc.tabela() is cc.tabela()
     assert cc.tabela() == TABELA
+
+
+@pytest.mark.parametrize(
+    "coluna",
+    [
+        "QT_ACAO_ORDIN_CAP_INTEGR",
+        "QT_ACAO_PREF_CAP_INTEGR",
+        "QT_ACAO_ORDIN_TESOURO",
+        "QT_ACAO_PREF_TESOURO",
+    ],
+)
+@pytest.mark.parametrize(
+    "valor", [None, "texto", float("nan"), float("inf"), -1, 0.5, True]
+)
+def test_composicao_recusa_quantidade_ausente_ou_invalida(coluna, valor):
+    import pandas as pd
+
+    from cvm_provider import composicao_do_documento
+
+    linha = {
+        "CNPJ_CIA": "11.111.111/0001-11",
+        "DT_REFER": "2025-12-31",
+        "VERSAO": "1",
+        "QT_ACAO_ORDIN_CAP_INTEGR": 1000,
+        "QT_ACAO_PREF_CAP_INTEGR": 0,
+        "QT_ACAO_ORDIN_TESOURO": 0,
+        "QT_ACAO_PREF_TESOURO": 0,
+        "QT_ACAO_TOTAL_TESOURO": 0,
+    }
+    linha[coluna] = valor
+    comp, motivo = composicao_do_documento(
+        pd.DataFrame([linha]), linha["CNPJ_CIA"], linha["DT_REFER"], "1"
+    )
+    assert comp is None and coluna in motivo
+
+
+@pytest.mark.parametrize("especie", ["ORDIN", "PREF"])
+def test_tesouraria_nao_pode_superar_capital_da_especie(especie):
+    import pandas as pd
+
+    from cvm_provider import composicao_do_documento
+
+    linha = {
+        "CNPJ_CIA": "11.111.111/0001-11",
+        "DT_REFER": "2025-12-31",
+        "VERSAO": "1",
+        "QT_ACAO_ORDIN_CAP_INTEGR": 100,
+        "QT_ACAO_PREF_CAP_INTEGR": 100,
+        "QT_ACAO_ORDIN_TESOURO": 0,
+        "QT_ACAO_PREF_TESOURO": 0,
+        "QT_ACAO_TOTAL_TESOURO": 101,
+    }
+    linha[f"QT_ACAO_{especie}_TESOURO"] = 101
+    comp, motivo = composicao_do_documento(
+        pd.DataFrame([linha]), linha["CNPJ_CIA"], linha["DT_REFER"], "1"
+    )
+    assert comp is None and "tesouraria" in motivo
+
+
+@pytest.mark.parametrize("valor", ["ilegível", float("nan"), float("inf")])
+@pytest.mark.parametrize("ordem", [False, True])
+def test_lpa_por_classe_preserva_abstencao_da_linha_invalida(valor, ordem):
+    import pandas as pd
+
+    from cvm_provider import lpa_basico_por_classe, lpa_divulgado_por_especie
+    from sentinela.data.acoes_cvm import Abstencao, divulgados_coerentes
+
+    linhas = [
+        {"CD_CONTA": "3.99.01.01", "DS_CONTA": "ON", "VL_CONTA": v}
+        for v in [valor, 1.0]
+    ]
+    if ordem:
+        linhas.reverse()
+    linhas.append({"CD_CONTA": "3.99.01.02", "DS_CONTA": "PN", "VL_CONTA": 2.0})
+    dados = pd.DataFrame(linhas)
+    lidos = lpa_basico_por_classe(dados)
+    coerentes = divulgados_coerentes(lidos, 10.0, 10.0)
+    assert isinstance(coerentes["ON"], Abstencao)
+    assert coerentes["PN"].valor == 2.0
+    assert lpa_divulgado_por_especie(dados) == {"PN": 2.0}

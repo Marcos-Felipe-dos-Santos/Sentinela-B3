@@ -8,6 +8,7 @@ básico divulgado pela companhia, por espécie.
 import pytest
 
 from data_quality import DataQualityReport
+from sentinela.data.acoes_cvm import MOTIVO_SINAL_CONTROLADORES
 from tests.test_market_engine_acoes_cvm import _ind, _motor
 from tests.test_market_engine_referencia import FakeReferencia, _indice, _registro
 
@@ -153,3 +154,101 @@ def test_caminho_da_cvm_nao_compara_pl_com_preco_sobre_lpa(monkeypatch):
     dados["valores_por_fonte"]["CVM"]["lpa"] = 1.0
     del dados["valores_coletados"]
     assert not [a for a in _alertas(dados) if a.startswith("pl=")]
+
+
+# ── conferência só contra o divulgado coerente (F2B-14; BUG-2A-11; ficha, 7.3 e 7.5) ──
+
+
+def test_divulgado_incoerente_nao_entra_na_conferencia(monkeypatch):
+    # Lucro dos controladores positivo (2.000); a PN divulgada negativa é incoerente (7.5).
+    dados = _cvm(
+        monkeypatch,
+        lpa_basico_por_classe={"ON": [2.1], "PN": [-2.0]},
+        lpa_divulgado_por_especie={"ON": 2.1, "PN": -2.0},
+    )
+    assert dados["acoes_cvm"]["lpa_divulgado_comparado"] is None
+    assert not [a for a in _alertas(dados) if "LPA básico divulgado" in a]
+    assert (
+        f"CVM sem LPA: {MOTIVO_SINAL_CONTROLADORES}" in dados["riscos_dados"]
+    )  # o alerta é só o da incoerência
+
+
+def test_divulgado_coerente_segue_conferido(monkeypatch):
+    dados = _cvm(
+        monkeypatch,
+        lpa_basico_por_classe={"ON": [2.5], "PN": [2.5]},
+        lpa_divulgado_por_especie={"ON": 2.5, "PN": 2.5},
+    )
+    assert dados["acoes_cvm"]["lpa_divulgado_comparado"] == {
+        "especie": "PN",
+        "valor": 2.5,
+    }
+    (alerta,) = [a for a in _alertas(dados) if "LPA básico divulgado" in a]
+    assert "2,00" in alerta and "2,50" in alerta and "(PN)" in alerta
+
+
+# ── FII: P/VP da CVM × fonte de mercado (F2B-16; BUG-2A-12; armadilha 2) ──────
+
+
+def _fii(monkeypatch, price_to_book):
+    from tests.test_market_engine import ReferenciaDosMapas, _engine, _historico
+    from tests.test_market_engine_fii_cvm import INFO, INFORME, _InformeFalso
+
+    info = {**INFO, "priceToBook": price_to_book}
+    engine = _engine(monkeypatch, info=info, historico=_historico(90.0))
+    engine.cvm_fii = _InformeFalso(INFORME)
+    engine.referencia = ReferenciaDosMapas()
+    return engine.buscar_dados_ticker("HGLG11")  # P/VP da CVM: 90 ÷ 100 = 0,9
+
+
+def test_identidade_do_fii_e_reconhecida(monkeypatch):
+    # O P/VP do FII é preço ÷ VPA do próprio Informe: a checagem 3 é identidade (F2A-5).
+    report = DataQualityReport(_fii(monkeypatch, 0.9))
+    assert report._mesma_fonte("pvp", "vpa") is True
+
+
+@pytest.mark.parametrize(
+    ("price_to_book", "alerta"),
+    [
+        (1.5, True),  # 66,7% acima do P/VP da CVM
+        (0.999, True),  # 11,0%
+        (0.8, True),  # 11,1% abaixo
+        (0.99, False),  # 10,0%: até o limiar, sem alerta
+        (0.95, False),  # 5,6%
+    ],
+)
+def test_pvp_do_fii_divergente_da_fonte_de_mercado_gera_alerta(
+    monkeypatch, price_to_book, alerta
+):
+    alertas = [
+        a for a in _alertas(_fii(monkeypatch, price_to_book)) if "P/VP da CVM" in a
+    ]
+    assert bool(alertas) is alerta
+    if alerta:
+        (texto,) = alertas
+        assert "yfinance" in texto and "0,90" in texto
+
+
+def _pvp_fii(cvm=0.9, informe="2026-08-01", **mercado):
+    dados = {
+        "cvm_fii_dt_referencia": informe,
+        "valores_por_fonte": {
+            "CVM": {"pvp": cvm},
+            **{f: {"pvp": v} for f, v in mercado.items()},
+        },
+    }
+    return [a for a in _alertas(dados) if "P/VP da CVM" in a]
+
+
+def test_alerta_do_pvp_do_fii_so_com_o_informe_e_valores_validos():
+    assert len(_pvp_fii(yfinance=1.5)) == 1
+    assert _pvp_fii(informe=None, yfinance=1.5) == []  # sem o Informe aplicado
+    assert _pvp_fii(cvm=-0.5, yfinance=1.5) == []  # P/VP da CVM ≤ 0
+    assert _pvp_fii(cvm=0.0, yfinance=1.5) == []
+    assert _pvp_fii(yfinance=0.0) == []  # P/VP de mercado ≤ 0 não é comparado
+
+
+def test_alerta_do_pvp_do_fii_confere_cada_fonte_de_mercado():
+    (so_brapi,) = _pvp_fii(yfinance=0.0, brapi=1.2)
+    assert "brapi" in so_brapi and "1,20" in so_brapi and "33%" in so_brapi
+    assert len(_pvp_fii(yfinance=1.5, brapi=1.2)) == 2

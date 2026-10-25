@@ -159,6 +159,16 @@ class BacktestEngine:
                 "campos_faltantes": dados["campos_faltantes"],
             }
 
+        if "score_final" not in resultado:
+            # F2B-4 (BUG-2B-44): abstenção de escopo do motor, sem número para validar.
+            return {
+                "ticker": ticker_base,
+                "data_analise": data_trade,
+                "status": "FORA_DO_ESCOPO",
+                "motivo": (resultado.get("riscos") or ["abstenção do motor"])[0],
+                "preco_analise": preco,
+            }
+
         return {
             "ticker": ticker_base,
             "data_analise": data_trade,

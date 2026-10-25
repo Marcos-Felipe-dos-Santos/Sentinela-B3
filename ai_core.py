@@ -71,6 +71,12 @@ class SentinelaAI:
                 'divergencia_acoes', 'valores_coletados', 'valores_por_fonte',
                 'proveniencia', 'lpa_cvm', 'classe_preferencial', 'classes_preferenciais',
                 'serie_cvm', 'ttm_cvm', 'alavancagem_cvm', 'ifdata', 'liquidez',
+                'rendimento_fii_cvm', 'taxa_real', 'janela_contabil_cvm',
+                'gordon_cvm', 'gordon_diagnostico', 'base_acionaria_gordon',
+                'proventos_b3', 'bazin_proventos', 'bazin_diagnostico', 'modelo_bpp',
+                'perfil_fonte', 'fechamentos_brutos', 'informe_fii', 'b3_fundo',
+                'escala_pelo_consolidado', 'especies_da_companhia',
+                'modelo_bpp_proveniencia', 'bancos_diagnostico',
             }
             return "\n".join(
                 [f"- {k}: {v}" for k, v in dados.items()

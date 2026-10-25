@@ -1,215 +1,260 @@
+"""Ficha Gordon1.0: referência independente, domínios e regime real."""
+
+from dataclasses import replace
 from datetime import date
 
 import pytest
 
-from sentinela.domain.enums import AssetType, Perfil, Regime
-from sentinela.domain.units import BRL, RateNominal, Ratio
+from sentinela.domain.enums import AssetType, ModeloDemonstracao, Perfil, Regime
+from sentinela.domain.units import (
+    BRL,
+    Inflacao,
+    ProventosControladores,
+    RateReal,
+    Ratio,
+)
 from sentinela.methods.base import Abstention, MethodInputs, MethodResult
-from sentinela.methods.gordon import (
-    MOTIVO_DY_ABAIXO_DO_MINIMO,
-    MOTIVO_DY_NAO_CONFIAVEL,
-    MOTIVO_K_NAO_MAIOR_QUE_G,
-    MOTIVO_ROE_ABAIXO_DO_MINIMO,
-    Gordon,
-    GordonParams,
-)
+from sentinela.methods.gordon import MOTIVO_K_NAO_MAIOR_QUE_G, Gordon, GordonParams
 
-PARAMS = GordonParams(
-    dy_min=0.04, roe_min=0.10, g_max=0.08, premio_risco=0.07, payout_max=0.95
-)
+# F2B-4: escopo de companhia (STOCK, modelo empresa pelo BPP consolidado).
+ESCOPO = {"classe_ativo": AssetType.STOCK, "modelo": ModeloDemonstracao.EMPRESA}
+
+PARAMS = GordonParams()
 
 
-def _inputs(preco=100.0, lpa=10.0, roe=0.15, dy=0.06, selic=0.145, **kw):
-    return MethodInputs(
-        as_of=date(2026, 10, 2),
-        preco=BRL(preco),
-        lpa=None if lpa is None else BRL(lpa),
-        roe=Ratio(roe),
-        dy=Ratio(dy),
-        selic=RateNominal(selic),
-        perfil=Perfil.RENDA,
-        **kw,
-    )
+# F2B-1: ficha Gordon1.0, valores independentes da fórmula antiga.
+def _inputs_ficha(**kw):
+    base = {
+        "as_of": date(2026, 10, 20),
+        "preco": BRL(15.36),
+        "lpa": BRL(0.9926913764),
+        "roe": Ratio(15503400 / 98642139),
+        "dy": Ratio(0.06),
+        "custo_capital_real": RateReal(74.38 / 1100 + 0.05),
+        "inflacao": Inflacao(0.0426),
+        "teto_pib_real": RateReal(0.02),
+        "proventos_controladores": ProventosControladores(
+            BRL(10903280 / 15616526),
+            Ratio(10903280 / 15503400),
+            date(2025, 1, 1),
+            date(2025, 12, 31),
+        ),
+    }
+    base.update(kw)
+    return MethodInputs(**(ESCOPO | base))
 
 
-def _gordon(**kw):
-    return Gordon().calcular(_inputs(**kw), PARAMS)
+def test_k_e_o_custo_de_capital_real():
+    r = Gordon().calcular(_inputs_ficha(), PARAMS)
+    assert r.obter("k") == RateReal(74.38 / 1100 + 0.05)
 
 
-def _v1(p, lpa, roe, dy, selic):
-    """A conta da V1, na mesma ordem de operações. None quando k ≤ g."""
-    payout_ratio_g = min((dy * p) / lpa, 0.95) if lpa > 0 else 0.5
-    retencao_g = 1 - payout_ratio_g
-    g = roe * retencao_g
-    g = min(g, 0.08)
-    k = selic + 0.07
-    if k > g:
-        div_prox = (dy * p) * (1 + g)
-        return div_prox / (k - g)
-    return None
+def test_g_nominal_vira_real_por_fisher():
+    r = Gordon().calcular(_inputs_ficha(), PARAMS)
+    assert r.obter("g").valor == pytest.approx(0.00386958636840, abs=1e-12)
 
 
-def test_formula_igual_a_da_v1():
-    r = _gordon(preco=100.0, lpa=10.0, roe=0.15, dy=0.06, selic=0.145)
+def test_sem_taxa_real_abstem():
+    r = Gordon().calcular(_inputs_ficha(custo_capital_real=None), PARAMS)
+    assert isinstance(r, Abstention)
+    assert "custo_capital_real" in r.motivo
+
+
+def test_exemplo_da_ficha():
+    r = Gordon().calcular(_inputs_ficha(), PARAMS)
     assert isinstance(r, MethodResult)
-    assert r.valor.valor == _v1(100.0, 10.0, 0.15, 0.06, 0.145)
-    assert (r.metodo, r.versao) == ("Gordon", Gordon.version)
+    assert r.valor.valor == pytest.approx(6.161748819933, abs=1e-10)
 
 
-@pytest.mark.parametrize(
-    ("p", "lpa", "roe", "dy", "selic"),
-    [
-        (37.19, 4.31, 0.1873, 0.0613, 0.1375),
-        (12.5, 1.1, 0.4, 0.09, 0.0525),
-        (80.0, 0.5, 0.25, 0.05, 0.145),
-    ],
-)
-def test_mesma_ordem_de_operacoes_da_v1(p, lpa, roe, dy, selic):
-    assert _gordon(preco=p, lpa=lpa, roe=roe, dy=dy, selic=selic).valor.valor == _v1(
-        p, lpa, roe, dy, selic
-    )
-
-
-def test_intermediarios_nomeados():
-    r = _gordon(preco=100.0, lpa=10.0, roe=0.15, dy=0.06, selic=0.145)
-    payout = (0.06 * 100.0) / 10.0
-    g = min(0.15 * (1 - payout), 0.08)
-    assert r.obter("payout") == Ratio(payout)
-    assert r.obter("g") == RateNominal(g)
-    assert r.obter("k") == RateNominal(0.145 + 0.07)
-    assert r.obter("dividendo_proximo") == BRL((0.06 * 100.0) * (1 + g))
-
-
-def test_g_limitado_a_8_por_cento():
-    r = _gordon(roe=0.9, lpa=10.0, dy=0.06)
-    assert r.obter("g") == RateNominal(0.08)
-
-
-def test_g_abaixo_do_teto_nao_e_limitado():
-    r = _gordon(roe=0.11, lpa=10.0, dy=0.06)
-    assert r.obter("g") == RateNominal(0.11 * (1 - 0.6))
-    assert r.obter("g").valor < 0.08
-
-
-def test_payout_limitado_a_95_por_cento():
-    r = _gordon(preco=100.0, lpa=1.0, dy=0.06)
-    assert r.obter("payout") == Ratio(0.95)
-    assert r.valor.valor == _v1(100.0, 1.0, 0.15, 0.06, 0.145)
+def test_real_e_nominal_dao_o_mesmo_valor():
+    i = _inputs_ficha()
+    r = Gordon().calcular(i, PARAMS)
+    g = (1 + (15503400 / 98642139) * (1 - 10903280 / 15503400)) / 1.0426 - 1
+    d1n = (10903280 / 15616526) * (1 + g) * 1.0426
+    kn = (1 + 74.38 / 1100 + 0.05) * 1.0426 - 1
+    gn = (1 + g) * 1.0426 - 1
+    assert r.valor.valor == pytest.approx(d1n / (kn - gn), abs=1e-10)
 
 
 @pytest.mark.parametrize("lpa", [0.0, -2.0])
 def test_lpa_nao_positivo_abstem(lpa):
-    # 1.0.0 usava payout de 50% (fallback da V1): número degradado, contra o contrato.
-    r = _gordon(lpa=lpa)
+    r = Gordon().calcular(_inputs_ficha(lpa=BRL(lpa)), PARAMS)
     assert isinstance(r, Abstention)
     assert r.motivo == "LPA não positivo"
-    assert (r.metodo, r.versao) == ("Gordon", "1.1.0")
+    assert (r.metodo, r.versao) == ("Gordon", "2.1.0")
 
 
 def test_premissas_exigem_lpa_positivo_sem_fallback():
-    # F2A-25: sai a premissa do payout de 50%; o LPA positivo passa a ser exigência.
     assert not any("50%" in a for a in Gordon.assumptions)
     assert any("LPA positivo" in a for a in Gordon.assumptions)
 
 
-def test_k_igual_ou_menor_que_g_abstem_se():
-    # g no teto de 8%: k = selic + 7% fica em 8% quando a selic é 1%
-    r_igual = _gordon(roe=0.9, selic=0.01)
-    assert isinstance(r_igual, Abstention)
-    assert r_igual.motivo == MOTIVO_K_NAO_MAIOR_QUE_G
-    assert _gordon(roe=0.9, selic=0.0).motivo == MOTIVO_K_NAO_MAIOR_QUE_G
-    assert _gordon(roe=0.9, selic=-0.05).motivo == MOTIVO_K_NAO_MAIOR_QUE_G
-    r = _gordon(roe=0.9, selic=0.0101)
+@pytest.mark.parametrize("payout", [0, -0.1, 1.01])
+def test_payout_fora_do_dominio_abstem_sem_truncar(payout):
+    i = _inputs_ficha()
+    p = replace(i.proventos_controladores, payout=Ratio(payout))
+    r = Gordon().calcular(replace(i, proventos_controladores=p), PARAMS)
+    assert isinstance(r, Abstention) and r.motivo == "payout fora de (0,1]"
+
+
+def test_payout_um_e_valido():
+    i = _inputs_ficha()
+    p = replace(i.proventos_controladores, payout=Ratio(1))
+    r = Gordon().calcular(replace(i, proventos_controladores=p), PARAMS)
     assert isinstance(r, MethodResult)
-    assert r.valor.valor == _v1(100.0, 10.0, 0.9, 0.06, 0.0101)
+    assert r.obter("payout") == Ratio(1)
 
 
-def test_dy_no_minimo_abstem_se_e_acima_calcula():
-    r = _gordon(dy=0.04)
-    assert isinstance(r, Abstention)
-    assert r.motivo == MOTIVO_DY_ABAIXO_DO_MINIMO
-    assert isinstance(_gordon(dy=0.0401), MethodResult)
-
-
-def test_roe_no_minimo_abstem_se_e_acima_calcula():
-    r = _gordon(roe=0.10)
-    assert isinstance(r, Abstention)
-    assert r.motivo == MOTIVO_ROE_ABAIXO_DO_MINIMO
-    assert isinstance(_gordon(roe=0.1001), MethodResult)
-
-
-def test_dy_nao_confiavel_abstem_se():
-    r = _gordon(dy_confiavel=False)
-    assert isinstance(r, Abstention)
-    assert r.motivo == MOTIVO_DY_NAO_CONFIAVEL
-
-
-def test_vale_para_qualquer_perfil():
-    i = MethodInputs(
-        as_of=date(2026, 10, 2),
-        preco=BRL(100.0),
-        lpa=BRL(10.0),
-        roe=Ratio(0.15),
-        dy=Ratio(0.06),
-        selic=RateNominal(0.145),
-        perfil=Perfil.CRESCIMENTO,
+@pytest.mark.parametrize("roe", [0.01, 0.1, 0.15])
+def test_roe_positivo_sem_minimo_de_dez_por_cento(roe):
+    assert isinstance(
+        Gordon().calcular(_inputs_ficha(roe=Ratio(roe)), PARAMS), MethodResult
     )
-    assert isinstance(Gordon().calcular(i, PARAMS), MethodResult)
 
 
-@pytest.mark.parametrize(
-    "kw",
-    [
-        {"dy_confiavel": False},
-        {"dy": 0.01},
-        {"roe": 0.05},
-        {"roe": 0.9, "selic": 0.0},
-    ],
-)
-def test_abstencao_identifica_metodo_e_versao(kw):
-    r = _gordon(**kw)
-    assert isinstance(r, Abstention)
-    assert (r.metodo, r.versao) == ("Gordon", Gordon.version)
+@pytest.mark.parametrize("roe", [0, -0.1])
+def test_roe_nao_positivo_abstem(roe):
+    assert (
+        Gordon().calcular(_inputs_ficha(roe=Ratio(roe)), PARAMS).motivo
+        == "ROE não positivo"
+    )
 
 
-@pytest.mark.parametrize("campo", ["preco", "lpa", "roe", "dy", "selic"])
+@pytest.mark.parametrize("dy", [None, Ratio(0.001), Ratio(0)])
+def test_dy_nao_cria_d0_nem_veta_o_metodo(dy):
+    assert Gordon().calcular(
+        _inputs_ficha(dy=dy, dy_confiavel=False), PARAMS
+    ).valor.valor == pytest.approx(6.161748819933, abs=1e-10)
+
+
+def test_fisher_antes_do_teto():
+    r = Gordon().calcular(_inputs_ficha(roe=Ratio(0.5), inflacao=Inflacao(0.1)), PARAMS)
+    assert r.obter("g") == RateReal(0.02)
+    assert r.obter("g_real_bruto").valor > 0.02
+
+
+@pytest.mark.parametrize("k", [0.02, 0.019, -0.1])
+def test_k_igual_ou_menor_que_g_abstem_se(k):
+    r = Gordon().calcular(
+        _inputs_ficha(roe=Ratio(0.9), custo_capital_real=RateReal(k)), PARAMS
+    )
+    assert r.motivo == MOTIVO_K_NAO_MAIOR_QUE_G
+
+
+@pytest.mark.parametrize("campo", Gordon.requires)
 def test_insumo_ausente_abstem_se(campo):
-    base = {
-        "preco": BRL(100.0),
-        "lpa": BRL(10.0),
-        "roe": Ratio(0.15),
-        "dy": Ratio(0.06),
-        "selic": RateNominal(0.145),
-    }
-    base[campo] = None
-    r = Gordon().calcular(MethodInputs(as_of=date(2026, 10, 2), **base), PARAMS)
+    r = Gordon().calcular(_inputs_ficha(**{campo: None}), PARAMS)
     assert isinstance(r, Abstention)
     assert r.motivo == f"insumo ausente: {campo}"
 
 
-def test_resultado_que_estoura_para_infinito_abstem_se():
-    r = Gordon().calcular(
-        MethodInputs(
-            as_of=date(2026, 10, 2),
-            preco=BRL(1e308),
-            lpa=BRL(1.0),
-            roe=Ratio(0.9),
-            dy=Ratio(0.9),
-            selic=RateNominal(0.145),
-        ),
-        PARAMS,
+@pytest.mark.parametrize("campo", ["preco", "lpa"])
+def test_preco_lpa_nao_positivos(campo):
+    assert isinstance(
+        Gordon().calcular(_inputs_ficha(**{campo: BRL(0)}), PARAMS), Abstention
     )
-    assert isinstance(r, Abstention)
-    assert r.motivo == "resultado não finito"
-    assert (r.metodo, r.versao) == ("Gordon", Gordon.version)
+
+
+@pytest.mark.parametrize("fim", [date(2026, 12, 31), date(2024, 12, 31)])
+def test_janela_futura_ou_antiga_abstem(fim):
+    i = _inputs_ficha()
+    p = replace(i.proventos_controladores, inicio=date(fim.year, 1, 1), fim=fim)
+    assert isinstance(
+        Gordon().calcular(replace(i, proventos_controladores=p), PARAMS), Abstention
+    )
+
+
+def test_janela_itr_nao_substitui_dfp():
+    i = _inputs_ficha()
+    p = replace(i.proventos_controladores, fim=date(2025, 9, 30))
+    assert (
+        "anual"
+        in Gordon().calcular(replace(i, proventos_controladores=p), PARAMS).motivo
+    )
+
+
+def test_resultado_que_estoura_para_infinito_abstem_se():
+    i = _inputs_ficha()
+    p = replace(i.proventos_controladores, dividendo_anual=BRL(1e308))
+    r = Gordon().calcular(replace(i, proventos_controladores=p), PARAMS)
+    assert isinstance(r, Abstention) and r.motivo == "resultado não finito"
+
+
+def test_vale_para_qualquer_perfil():
+    assert isinstance(
+        Gordon().calcular(_inputs_ficha(perfil=Perfil.CRESCIMENTO), PARAMS),
+        MethodResult,
+    )
 
 
 def test_metadados():
     m = Gordon()
-    assert m.nome == "Gordon"
-    assert m.version == "1.1.0"
-    assert m.regime is Regime.NOMINAL
-    assert m.requires == ("preco", "lpa", "roe", "dy", "selic")
+    assert m.nome == "Gordon" and m.version == "2.1.0"
+    assert m.regime is Regime.REAL
+    assert "selic" not in m.requires and "dy" not in m.requires
     assert m.applies_to == frozenset({AssetType.STOCK, AssetType.UNIT})
     assert m.params_type is GordonParams
     assert all(isinstance(a, str) and a for a in m.assumptions)
+
+
+@pytest.mark.parametrize(
+    "inicio,fim",
+    [(date(2025, 1, 2), date(2025, 12, 31)), (date(2025, 1, 1), date(2025, 12, 30))],
+)
+def test_exercicio_exige_primeiro_e_ultimo_dia(inicio, fim):
+    i = _inputs_ficha()
+    p = replace(i.proventos_controladores, inicio=inicio, fim=fim)
+    r = Gordon().calcular(replace(i, proventos_controladores=p), PARAMS)
+    assert r.motivo == "janela da DVA incompatível: exige exercício anual completo"
+
+
+@pytest.mark.parametrize(
+    "dia,esperado", [(date(2027, 3, 31), True), (date(2027, 4, 1), False)]
+)
+def test_idade_limite_exato_de_quinze_meses(dia, esperado):
+    r = Gordon().calcular(_inputs_ficha(as_of=dia), PARAMS)
+    if esperado:
+        assert isinstance(r, MethodResult)
+    else:
+        assert r.motivo == "DFP anual além do prazo de 15 meses"
+
+
+def test_exercicio_nao_civil_e_bissexto():
+    i = _inputs_ficha()
+    p = replace(
+        i.proventos_controladores, inicio=date(2023, 3, 1), fim=date(2024, 2, 29)
+    )
+    r = Gordon().calcular(
+        replace(i, as_of=date(2025, 5, 29), proventos_controladores=p), PARAMS
+    )
+    assert isinstance(r, MethodResult)
+    r = Gordon().calcular(
+        replace(i, as_of=date(2025, 5, 30), proventos_controladores=p), PARAMS
+    )
+    assert r.motivo == "DFP anual além do prazo de 15 meses"
+
+
+@pytest.mark.parametrize("campo", ["custo_capital_real", "teto_pib_real"])
+@pytest.mark.parametrize("valor", [-1, -1.01])
+def test_fator_real_exige_positivo(campo, valor):
+    r = Gordon().calcular(_inputs_ficha(**{campo: RateReal(valor)}), PARAMS)
+    assert r.motivo == "taxa real sem fator positivo"
+
+
+@pytest.mark.parametrize("d0", [0, -1])
+def test_distribuicao_nao_positiva_abstem(d0):
+    i = _inputs_ficha()
+    p = replace(i.proventos_controladores, dividendo_anual=BRL(d0))
+    r = Gordon().calcular(replace(i, proventos_controladores=p), PARAMS)
+    assert r.motivo == "distribuição não positiva"
+
+
+def test_intermediarios_do_exemplo_na_unidade_correta():
+    i = _inputs_ficha()
+    r = Gordon().calcular(i, PARAMS)
+    assert r.obter("d0") == i.proventos_controladores.dividendo_anual
+    assert r.obter("roe_nominal") == i.roe
+    assert r.obter("g_nominal_bruto").valor == pytest.approx(0.04663443074769496)
+    assert r.obter("g_real_bruto").valor == pytest.approx(0.0038695863684)
+    assert r.obter("teto_pib_real") == RateReal(0.02)
+    assert r.obter("dividendo_proximo").valor == pytest.approx(0.7008902737816887)

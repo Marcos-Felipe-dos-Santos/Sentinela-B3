@@ -52,3 +52,6 @@ empresa;emprestimos_nao_circulante;2.02.01;emprestimos e financiamentos;dfp_cia_
 empresa;caixa;1.01.01;caixa e equivalentes de caixa;dfp_cia_aberta_BPA_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A
 empresa;aplicacoes;1.01.02;aplicacoes financeiras;dfp_cia_aberta_BPA_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A
 empresa;depreciacao_amortizacao;7.04.01;depreciacao, amortizacao e exaustao;dfp_cia_aberta_DVA_con_2025.csv;2025;LWSA3 02.351.877/0001-52 LWSA S/A
+empresa;dva_nao_controladores;7.08.04.04;part. nao controladores nos lucros retidos;dfp_cia_aberta_DVA_con_2025.csv;2025;ABEV3 07.526.557/0001-00 AMBEV S.A.
+banco;dva_nao_controladores;7.09.04.04;part. nao controladores nos lucros retidos;dfp_cia_aberta_DVA_con_2025.csv;2025;ITUB4 60.872.504/0001-23 ITAU UNIBANCO HOLDING S.A.
+banco;dva_nao_controladores;7.09.04.04;participacao de nao controladores nos lucros retidos;dfp_cia_aberta_DVA_con_2025.csv;2025;BBAS3 00.000.000/0001-91 BCO BRASIL S.A.

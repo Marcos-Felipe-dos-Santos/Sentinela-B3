@@ -12,6 +12,11 @@ import random
 from pathlib import Path
 from unittest.mock import patch
 
+from apoio_bancos import INFLACAO, NTNB, PL_INICIAL, VPA, enriquecer_bancos
+from apoio_bazin import enriquecer_bazin
+from apoio_fii import enriquecer_fii
+from apoio_gordon import AS_OF_GORDON, enriquecer_gordon
+
 import fii_engine
 import valuation_engine
 from config import MACRO
@@ -21,6 +26,7 @@ from valuation_engine import ValuationEngine
 GOLDEN = Path(__file__).parent / "fixtures" / "golden_motores.jsonl"
 SELIC_PADRAO = 0.145
 DISTRESSED = frozenset({"TSD3"})
+ESCOPO_DA_CASCATA = {"classe_ativo": "STOCK", "modelo_bpp": "empresa"}
 
 
 # ── execução ──────────────────────────────────────────────────────────────────
@@ -31,15 +37,40 @@ def executar(caso):
     entrada = json.loads(json.dumps(caso["entrada"]))  # cópia, com NaN preservado
     try:
         if caso["motor"] == "acoes":
+            # F2B-4: a cascata sempre grava a classe e o modelo do BPP; o caso que precisa
+            # de outro valor (ou da ausência, com None) o declara na entrada.
+            entrada = {**ESCOPO_DA_CASCATA, **entrada}
+            taxa = caso.get("taxa_real") or {"ntnb": 0.07, "inflacao": 0.055}
+            if "banco" in caso:
+                # F2B-32: DFP sintética de banco (apoio_bancos), com ROE, payout e VPA do caso.
+                lucro = caso["banco"]["roe"] * PL_INICIAL
+                entrada = enriquecer_bancos(
+                    entrada,
+                    lucro_controladores=lucro,
+                    proventos_controladores=caso["banco"]["payout"] * lucro,
+                    vpa=caso["banco"]["vpa"],
+                )
+            else:
+                entrada = enriquecer_bazin(
+                    enriquecer_gordon(
+                        entrada,
+                        ntnb=taxa["ntnb"],
+                        inflacao=taxa["inflacao"],
+                        teto=caso.get("teto_pib_cenario", 0.02),
+                    )
+                )
             with (
-                patch.object(
-                    valuation_engine, "get_selic_atual", return_value=caso["selic"]
-                ),
                 patch.object(valuation_engine, "DISTRESSED_TICKERS", DISTRESSED),
             ):
-                return ValuationEngine().processar(entrada)
+                return ValuationEngine().processar(entrada, as_of=AS_OF_GORDON)
+        # F2B-2: Informe, B3 e NTN-B real sintéticos (apoio_fii), no as_of fixo; a chave
+        # `sem_informe` deixa o caso sem eles.
+        if not caso.get("sem_informe"):
+            entrada = enriquecer_fii(
+                entrada, ntnb=caso.get("taxa_real", {}).get("ntnb")
+            )
         with patch.object(fii_engine, "get_selic_atual", return_value=caso["selic"]):
-            return FIIEngine().analisar(entrada)
+            return FIIEngine().analisar(entrada, as_of=AS_OF_GORDON)
     except Exception as exc:
         return {"__erro__": type(exc).__name__}
 
@@ -502,20 +533,192 @@ def _fii_aleatorios(n=250):
     return casos
 
 
+def _fii_ntnb():
+    """F2B-2: grade da NTN-B real (com q = NTN-B + spread de positivo a não positivo), sem
+    Informe e sem taxa real."""
+    casos = []
+    for ntnb in (-0.05, -0.04, 0.0, 0.04, 0.06, 0.07, 0.08):
+        for dy in (0.06, 0.09, 0.12):
+            caso = _fii(f"ntnb{ntnb}-dy{dy}", {**_FII, "dy": dy})
+            caso["taxa_real"] = {"ntnb": ntnb}
+            casos.append(caso)
+    sem = _fii("sem-informe", dict(_FII))
+    sem["sem_informe"] = True
+    sem_taxa = _fii("sem-taxa-real", dict(_FII))
+    sem_taxa["taxa_real"] = {"ntnb": None}
+    return [*casos, sem, sem_taxa]
+
+
+def _acoes_gordon_real():
+    """Grade sintética da ficha: teto elevado só para testar k→g, identificado."""
+    casos = []
+    for ntnb in (0.04, 0.06, 0.08):
+        for ipca in (0.02, 0.04, 0.06):
+            for diferenca in (-0.001, 0, 0.00001, 0.001):
+                g = ntnb + 0.05 - diferenca
+                roe = ((1 + g) * (1 + ipca) - 1) / 0.7
+                caso = _acao(
+                    f"gordon_real_ntnb{ntnb}_ipca{ipca}_margem{diferenca}",
+                    {
+                        "ticker": "TST3",
+                        "preco_atual": 100.0,
+                        "pl": 10.0,
+                        "pvp": 1.0,
+                        "dy": 0.06,
+                        "roe": roe,
+                    },
+                )
+                caso["taxa_real"] = {"ntnb": ntnb, "inflacao": ipca}
+                caso["teto_pib_cenario"] = 0.15
+                casos.append(caso)
+    return casos
+
+
+def _acoes_taxa_bazin():
+    """Grade do F2B-31: DY em torno do gate, do critério, do alerta e do limite, por Selic."""
+    casos = []
+    for selic in (0.02, 0.06, 0.1475, 0.25):
+        for dy in (0.0499, 0.05, 0.0599, 0.06, 0.0601, 0.15, 0.1501, 0.25, 0.2501):
+            casos.append(
+                _acao(
+                    f"bazin_taxa_selic{selic}_dy{dy}",
+                    {
+                        "ticker": "TST3",
+                        "preco_atual": 100.0,
+                        "pl": 10.0,
+                        "pvp": 1.0,
+                        "dy": dy,
+                        "roe": 0.12,
+                    },
+                    selic=selic,
+                )
+            )
+    return casos
+
+
+def _casos_liquidez():
+    """F2A-10: só inclusões, com a mesma regra explícita por classe."""
+    casos = []
+    for classe in ("STOCK", "UNIT", "FII"):
+        minimo = 100000 if classe == "FII" else 500000
+        for nome, presenca, volume, extra in (
+            ("acima", 1.0, 1000000.0, {}),
+            ("limite", 0.8, minimo, {}),
+            ("presenca-baixa", 0.79, minimo, {}),
+            ("volume-baixo", 0.8, minimo - 1, {}),
+            ("ambos-baixos", 0.1, 0, {}),
+            ("sem-negocio", 0.0, 0.0, {}),
+            ("incompleta", 0.1, 0, {"incompleta": True}),
+            ("mes-ausente", 0.1, 0, {"meses_ausentes": ["2026-09"]}),
+            (
+                "sem-dado",
+                0.0,
+                0.0,
+                {"abstencao": "falha de coleta: fonte indisponível"},
+            ),
+        ):
+            bloco = {
+                "janelas": {
+                    "63": {
+                        "pregoes": 63,
+                        "incompleta": extra.get("incompleta", False),
+                        "presenca": presenca,
+                        "volume_mediano": volume,
+                    }
+                },
+                "meses_ausentes": extra.get("meses_ausentes", []),
+                "fonte": "COTAHIST sintético",
+                "data_final": "2026-10-19",
+            }
+            if "abstencao" in extra:
+                bloco = {"abstencao": extra["abstencao"]}
+            entrada = {**_RENDA, "classe_ativo": classe, "liquidez": bloco}
+            entrada["ticker"] = "TSTU11" if classe in ("FII", "UNIT") else "TSTC3"
+            fabrica = _fii if classe == "FII" else _acao
+            casos.append(fabrica(f"liquidez-{classe}-{nome}", entrada))
+    return casos
+
+
+def _acoes_escopo_modelo():
+    """F2B-4: escopo pelo modelo do BPP consolidado, não pelo setor, e evidência até o as_of."""
+    entrega = {"data_entrega": "2026-02-12", "data_coleta": "2026-02-20T18:00:00+00:00"}
+    variantes = (
+        ("empresa", {}),
+        ("banco", {"modelo_bpp": "banco", "setor": "Bancos"}),
+        (
+            "seguradora",
+            {"modelo_bpp": "seguradora", "setor": "Seguradoras e Corretoras"},
+        ),
+        ("sem-modelo", {"modelo_bpp": None}),
+        ("holding", {"setor": "Holdings Diversificadas"}),
+        ("setor-banco-bpp-empresa", {"setor": "Bancos"}),
+        ("setor-seguradora-bpp-empresa", {"setor": "Seguradoras e Corretoras"}),
+        ("unit-empresa", {"classe_ativo": "UNIT"}),
+        ("unit-banco", {"classe_ativo": "UNIT", "modelo_bpp": "banco"}),
+        ("sem-classe", {"classe_ativo": None}),
+        ("classe-com-espacos", {"classe_ativo": " ETF "}),
+        ("stock-com-espacos", {"classe_ativo": " stock "}),
+        ("evidencia-anterior", {"modelo_bpp_proveniencia": entrega}),
+        (
+            "evidencia-posterior",
+            {"modelo_bpp_proveniencia": {**entrega, "data_entrega": "2026-10-21"}},
+        ),
+        ("evidencia-ausente", {"modelo_bpp_proveniencia": None}),
+    )
+    return [
+        _acao(f"escopo-{nome}-{perfil}", {**base, **extra})
+        for nome, extra in variantes
+        for perfil, base in (("renda", _RENDA), ("cresc", _CRESC))
+    ]
+
+
+def _acoes_bancos():
+    """F2B-32: grade da lente de bancos (ROE sobre PL inicial, payout → g, VPA CVM)."""
+    casos = []
+    base = {"ticker": "TSTB4", "preco_atual": 44.28, "roe": 0.2, "pl": 9.0, "pvp": 2.0,
+            "dy": 0.07, "modelo_bpp": "banco", "setor": "Bancos"}  # fmt: skip
+    grade = [
+        (roe, payout, vpa)
+        for roe in (-0.05, 0.05, 0.1, 0.15, 0.2125, 0.3)
+        for payout in (0.0, 0.25, 0.5, 0.75, 1.0)
+        for vpa in (VPA, 2 * VPA)
+    ]
+    for roe, payout, vpa in grade:
+        caso = _acao(
+            f"banco-roe{roe}-payout{payout}-vpa{round(vpa, 4)}", {**base, "roe": roe}
+        )
+        caso["banco"] = {"roe": roe, "payout": payout, "vpa": vpa}
+        # A taxa que a DFP sintética de banco usa (apoio_bancos), registrada no caso.
+        caso["taxa_real"] = {"ntnb": NTNB, "inflacao": INFLACAO}
+        casos.append(caso)
+    return casos
+
+
 def montar_casos():
     casos = (
         _acoes_fronteiras()
+        + _casos_liquidez()
         + _acoes_especiais()
         + _acoes_chaves_e_extremos()
         + _acoes_varredura_classificacao()
         + _acoes_aleatorias()
         + _acoes_classe_ativo()
+        + _acoes_escopo_modelo()
+        + _acoes_bancos()
         + _acoes_preco_nao_finito()
+        + _acoes_gordon_real()
+        + _acoes_taxa_bazin()
         + _fii_fronteiras()
         + _fii_selic_e_vacancia()
         + _fii_aleatorios()
         + _fii_nao_finitos()
+        + _fii_ntnb()
     )
+    for caso in casos:
+        if caso["motor"] == "acoes":
+            caso.setdefault("taxa_real", {"ntnb": 0.07, "inflacao": 0.055})
+        else:
+            caso.setdefault("taxa_real", {"ntnb": 0.07})
     vistos, unicos = set(), []
     for c in casos:
         chave = (c["motor"], c["id"])

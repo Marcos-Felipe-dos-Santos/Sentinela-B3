@@ -96,3 +96,66 @@ def test_cnpj_do_indice_tem_prioridade(monkeypatch):
     }
     assert engine._buscar_cvm_fii("HGLG11", dados) is True
     assert informe.cnpjs == ["99.999.999/0001-99"]
+
+
+def test_informe_grava_valores_por_fonte(monkeypatch):
+    # F2B-16 (BUG-2A-12): o que o Informe entregou fica em `valores_por_fonte['CVM']`.
+    dados = _cascata(monkeypatch, _InformeFalso(INFORME))
+    assert dados["valores_por_fonte"]["CVM"] == {
+        "vpa": 100.0,
+        "pvp": pytest.approx(0.9),
+        "patrimonio_liquido": 5_000_000_000.0,
+    }
+    assert dados["valores_por_fonte"]["yfinance"]["pvp"] == pytest.approx(1.5)
+
+
+# ── avisos de cobertura do FII (F2B-17; BUG-2A-13) ───────────────────────────
+
+
+def test_fii_nao_recebe_o_aviso_de_cobertura_das_companhias(monkeypatch):
+    from market_engine import RISCO_FORA_DA_CVM
+    from tests.test_market_engine import FakeCVM
+
+    engine = _engine(monkeypatch, info=INFO, historico=_historico(90.0), cvm=FakeCVM())
+    engine.cvm_fii = _InformeFalso(INFORME)
+    dados = engine.buscar_dados_ticker("HGLG11")  # FII do índice falso, sem CD_CVM
+    assert dados["vpa"] == 100.0
+    assert RISCO_FORA_DA_CVM not in dados["riscos_dados"]
+
+
+def test_fii_sem_indice_tem_o_aviso_de_referencia(monkeypatch):
+    from market_engine import RISCO_SEM_REFERENCIA
+
+    engine = _engine(monkeypatch, info=INFO, historico=_historico(90.0))  # sem índice
+    engine.cvm_fii = _InformeFalso(INFORME)
+    dados = engine.buscar_dados_ticker("HGLG11")
+    assert dados["riscos_dados"].count(RISCO_SEM_REFERENCIA) == 1
+
+
+def test_fii_sem_cnpj_tem_o_aviso_do_informe(monkeypatch):
+    from market_engine import RISCO_FII_FORA_DO_INFORME, RISCO_FORA_DA_CVM
+    from tests.test_market_engine_referencia import FakeReferencia, _indice, _registro
+
+    registro = _registro("TSTF11", classe="FII", especie=None, cnpj=None, cd_cvm=None)
+    engine = _engine(monkeypatch, info=INFO, historico=_historico(90.0))
+    engine.referencia = FakeReferencia(_indice(registro))
+    engine.cvm_fii = _InformeFalso(INFORME)
+    dados = engine.buscar_dados_ticker("TSTF11")
+    assert engine.cvm_fii.cnpjs == []
+    assert RISCO_FII_FORA_DO_INFORME == "FII fora da cobertura do Informe Mensal"
+    assert RISCO_FII_FORA_DO_INFORME in dados["riscos_dados"]
+    assert RISCO_FORA_DA_CVM not in dados["riscos_dados"]
+
+
+def test_informe_com_data_ilegivel_vira_aviso_sem_numero(monkeypatch):
+    # F2B-2 (aceite Gemini HEAD60e61e2): a abstenção do provedor chega com o motivo.
+    informe = _InformeFalso(
+        {"abstencao": "Informe Mensal com Data_Referencia ilegível"}
+    )
+    dados = _cascata(monkeypatch, informe)
+    assert dados["pvp"] == 1.5
+    assert "vpa" not in dados
+    assert (
+        "Informe Mensal do FII não usado: Informe Mensal com Data_Referencia ilegível"
+        in dados["riscos_dados"]
+    )

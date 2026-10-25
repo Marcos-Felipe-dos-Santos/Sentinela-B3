@@ -6,6 +6,7 @@ from sentinela.data.acoes_cvm import (
     FAIXA_DA_ESCALA,
     MOTIVO_CLASSES_PREFERENCIAIS,
     MOTIVO_ESCALA,
+    MOTIVO_ESCALA_NAO_CONFIRMADA,
     MOTIVO_LINHAS_CONFLITANTES,
     MOTIVO_LUCRO_ZERO,
     MOTIVO_ROE_PL,
@@ -18,6 +19,7 @@ from sentinela.data.acoes_cvm import (
     MOTIVO_SINAL_NAO_CONFERIVEL,
     MOTIVO_TOTAL,
     MOTIVO_UNIT,
+    NOTA_ESCALA_PELO_CONSOLIDADO,
     NOTA_FIM_DO_PERIODO,
     NOTA_RECALCULADO,
     NOTA_SINAL_CONSOLIDADO,
@@ -25,12 +27,16 @@ from sentinela.data.acoes_cvm import (
     Composicao,
     LpaDivulgado,
     PorAcao,
+    confirmar_escala,
     derivar_por_acao,
     divergencia_acoes,
     divulgado_da_escala,
     divulgados_coerentes,
+    especie_da_classe,
     inferir_escala,
+    linhas_da_especie_unica,
     lpa_dos_metodos,
+    nota_linha_pn_unica,
     roe_dos_controladores,
 )
 from sentinela.domain.units import Escala
@@ -387,3 +393,270 @@ def test_unit_soma_componentes_e_junta_as_notas():
     assert _metodos(eh_unit=True, acoes_por_unit=None) == Abstencao(MOTIVO_UNIT)
     sem_recalculado = _metodos(eh_unit=True, acoes_por_unit={"ON": 1}, recalculado=None)
     assert sem_recalculado.motivo.endswith("(ON da unit)")
+
+
+# ── escala pelo lucro consolidado (F2B-10; ficha 1.1, 7.7) ──────────────────
+
+
+def _confirmar(shares, *, eh_unit=False, acoes_por_unit=None):
+    return confirmar_escala(
+        _cc(),
+        Escala.UNIDADE,
+        eh_unit=eh_unit,
+        acoes_por_unit=acoes_por_unit,
+        shares_outstanding=shares,
+    )
+
+
+def test_confirmacao_divide_pelas_acoes_por_unit_so_na_unit():
+    # 1.000 ações ÷ 5 por unit = 200 units: com 40 units no yfinance, razão 25 sem a divisão
+    # (recusa) e 5 com ela (confirma).
+    unit = _confirmar(40.0, eh_unit=True, acoes_por_unit={"ON": 1, "PN": 4})
+    assert unit["acoes_cvm"] == pytest.approx(200.0)
+    assert unit["confirmada"] is True
+    avulsa = _confirmar(40.0, acoes_por_unit={"ON": 1, "PN": 4})
+    assert avulsa["acoes_cvm"] == pytest.approx(1_000.0)
+    assert avulsa["confirmada"] is False
+    assert unit["escala"] == "UNIDADE"
+    assert unit["nota"] == NOTA_ESCALA_PELO_CONSOLIDADO
+
+
+@pytest.mark.parametrize("shares", [None, 0.0, -5.0, float("nan"), float("inf")])
+def test_confirmacao_sem_quantidade_valida_do_yfinance(shares):
+    registro = _confirmar(shares)
+    assert registro["acoes_yfinance"] is None
+    assert registro["razao"] is None
+    assert registro["confirmada"] is False
+    assert registro["nota"] == MOTIVO_ESCALA_NAO_CONFIRMADA
+
+
+@pytest.mark.parametrize("shares", [10_000.0, 100.0])
+def test_confirmacao_recusa_os_limites_exatos(shares):
+    # 1.000 ações da CVM: razões 0,1 e 10 exatas, fora pela desigualdade estrita (ficha, 7.7).
+    registro = _confirmar(shares)
+    assert registro["razao"] in (0.1, 10.0)
+    assert registro["confirmada"] is False
+
+
+def test_confirmacao_aceita_quantidade_fracionaria_positiva():
+    registro = _confirmar(500.0)
+    assert registro["acoes_yfinance"] == 500.0
+    assert registro["razao"] == pytest.approx(2.0)
+    assert _confirmar(0.5)["razao"] == pytest.approx(2_000.0)
+
+
+def test_consolidado_sem_escala_abstem_se_pelo_motivo_da_escala():
+    # Consolidado com sinal oposto ao LPA divulgado: a escala não é inferida.
+    resultado = _derivar(
+        lucro_controladores=None, lucro_consolidado=-2_000.0, shares_outstanding=1_000.0
+    )
+    assert resultado == Abstencao(MOTIVO_ESCALA)
+
+
+def test_unit_pelo_consolidado_confirma_pelas_units():
+    # 200 units contra 40 do yfinance: confirma só dividindo pelas ações por unit.
+    resultado = _derivar(
+        lucro_controladores=None,
+        lucro_consolidado=2_000.0,
+        shares_outstanding=40.0,
+        eh_unit=True,
+        acoes_por_unit={"ON": 1, "PN": 4},
+    )
+    assert isinstance(resultado, PorAcao)
+    assert resultado.escala_pelo_consolidado["acoes_cvm"] == pytest.approx(200.0)
+    assert resultado.vpa == pytest.approx(10.0 * 5)
+
+
+# ── linha agregada em companhia de espécie única (F2B-11; ficha 1.1, 7.8) ───
+
+
+def _agregada(linhas=None, agregado=None, especies=("ON",), lucro=2_000.0):
+    return linhas_da_especie_unica(
+        linhas or {},
+        agregado,
+        list(especies),
+        lucro_controladores=lucro,
+        acoes=1_000.0,
+    )
+
+
+def test_linhas_por_especie_dispensam_a_linha_agregada():
+    assert _agregada({"ON": [1.0]}, {"3.99.01": 2.0, "3.99": 2.0}) == (
+        {"ON": [1.0]},
+        None,
+    )
+
+
+def test_sem_linha_agregada_nada_muda():
+    assert _agregada(agregado=None) == ({}, None)
+    assert _agregada(agregado={"3.99.01": None, "3.99": None}) == ({}, None)
+
+
+def test_linha_agregada_registra_a_conta_e_a_especie():
+    linhas, registro = _agregada(
+        agregado={"3.99.01": 2.0, "3.99": 9.0}, especies=("PN",)
+    )
+    assert linhas == {"PN": [2.0]}
+    assert registro == {
+        "conta": "3.99.01",
+        "especie": "PN",
+        "nota": "LPA da linha agregada (3.99.01 ou 3.99, conferida pelo recalculado): "
+        "companhia de espécie única no FCA",
+    }
+    linhas, registro = _agregada(agregado={"3.99.01": None, "3.99": 2.0})
+    assert linhas == {"ON": [2.0]}
+    assert (registro["conta"], registro["especie"]) == ("3.99", "ON")
+    assert registro["razao"] == pytest.approx(1.0)
+
+
+def test_linha_399_sem_escala_nao_vale():
+    # Lucro dos controladores ausente: sem recalculado, a 3.99 não é conferida e não entra.
+    assert _agregada(agregado={"3.99.01": None, "3.99": 2.0}, lucro=None) == ({}, None)
+
+
+# ── linha "PN" única com mais de uma classe preferencial (F2B-12; ficha 1.1, 7.9) ─
+
+
+def test_especie_da_classe():
+    assert [especie_da_classe(c) for c in (None, "ON", "PN", "PNA", "PNB")] == [
+        None,
+        "ON",
+        "PN",
+        "PN",
+        "PN",
+    ]
+
+
+def test_linha_pn_unica_vale_para_a_classe_com_a_marca_e_a_nota_do_sinal():
+    divulgados = {"PN": LpaDivulgado(2.5, NOTA_SINAL_CONSOLIDADO)}
+    valor, detalhe = _metodos(
+        classe="PNB", classes_preferenciais=["PNA", "PNB"], divulgados=divulgados
+    )
+    assert (valor, detalhe) == (
+        2.5,
+        {
+            "origem": "divulgado",
+            "classe": "PNB",
+            "notas": [NOTA_SINAL_CONSOLIDADO, nota_linha_pn_unica("PNB")],
+        },
+    )
+    assert nota_linha_pn_unica("PNB") == "LPA da linha PN única, aplicado à classe PNB"
+    sem_nota = _metodos(
+        classe="PNA",
+        classes_preferenciais=["PNA", "PNB"],
+        divulgados={"PN": LpaDivulgado(2.5)},
+    )
+    assert sem_nota[1]["notas"] == [nota_linha_pn_unica("PNA")]
+
+
+def test_linha_pn_unica_incoerente_ou_ausente_mantem_a_abstencao():
+    varias = {"classe": "PNA", "classes_preferenciais": ["PNA", "PNB"]}
+    incoerente = {"PN": Abstencao(MOTIVO_LINHAS_CONFLITANTES)}
+    assert _metodos(**varias, divulgados=incoerente) == Abstencao(
+        MOTIVO_LINHAS_CONFLITANTES
+    )
+    assert _metodos(**varias) == Abstencao(MOTIVO_CLASSES_PREFERENCIAIS)
+    # A linha da classe, quando existe, vem antes da "PN" única.
+    assert (
+        _metodos(
+            **varias, divulgados={"PNA": LpaDivulgado(3.0), "PN": LpaDivulgado(2.5)}
+        )[0]
+        == 3.0
+    )
+
+
+def test_classe_pn_sem_sigla_com_varias_classes_nao_usa_o_desvio():
+    # Componente "PN" de um índice antigo: a chave já é a linha "PN", sem a marca.
+    valor, detalhe = _metodos(
+        classe="PN",
+        classes_preferenciais=["PNA", "PNB"],
+        divulgados={"PN": LpaDivulgado(2.5)},
+    )
+    assert (valor, detalhe["notas"]) == (2.5, [])
+    assert _metodos(classe="PN", classes_preferenciais=["PNA", "PNB"]) == Abstencao(
+        MOTIVO_CLASSES_PREFERENCIAIS
+    )
+
+
+def test_unit_com_componente_da_classe_usa_a_especie_para_a_linha_pn():
+    valor, detalhe = _metodos(
+        eh_unit=True,
+        acoes_por_unit={"ON": 1, "PNA": 2},
+        classes_preferenciais=["PNA", "PNB"],
+        divulgados={"ON": LpaDivulgado(1.0), "PN": LpaDivulgado(2.0)},
+    )
+    assert valor == pytest.approx(1.0 + 2 * 2.0)
+    assert detalhe["componentes"]["PNA"]["classe"] == "PNA"
+    # Com uma só classe preferencial, o componente PNA cai na linha da espécie (PN), sem marca.
+    valor, detalhe = _metodos(
+        eh_unit=True,
+        acoes_por_unit={"ON": 1, "PNA": 2},
+        classes_preferenciais=["PNA"],
+        divulgados={"ON": LpaDivulgado(1.0), "PN": LpaDivulgado(2.0)},
+    )
+    assert valor == pytest.approx(5.0)
+    assert detalhe["componentes"]["PNA"] == {
+        "quantidade": 2,
+        "lpa": 2.0,
+        "origem": "divulgado",
+        "classe": "PN",
+        "notas": [],
+    }
+
+
+@pytest.mark.parametrize(
+    "valor", ["1", True, float("nan"), float("inf"), -float("inf")]
+)
+@pytest.mark.parametrize(
+    "campo",
+    ["lucro_controladores", "lpa_divulgado", "lucro_consolidado"],
+)
+def test_insumo_nao_numerico_ou_nao_finito_se_abstem(campo, valor):
+    resultado = _derivar(**{campo: valor})
+    assert isinstance(resultado, Abstencao)
+    assert "inválido" in resultado.motivo
+
+
+@pytest.mark.parametrize("q", [0, -1, 0.5, True, "1", float("nan"), float("inf")])
+def test_quantidade_da_unit_invalida_se_abstem(q):
+    assert isinstance(_derivar(eh_unit=True, acoes_por_unit={"ON": q}), Abstencao)
+
+
+@pytest.mark.parametrize("q", [-1, 0.5, True, "1", float("nan"), float("inf")])
+def test_composicao_com_quantidade_invalida_se_abstem(q):
+    assert isinstance(_derivar(composicao=_cc(on=q)), Abstencao)
+
+
+@pytest.mark.parametrize(
+    "lucro,pl", [(True, 10), ("1", 10), (10, "1"), (10, False), (1e308, 1e-308)]
+)
+def test_roe_invalido_ou_resultado_nao_finito_tem_motivo(lucro, pl):
+    valor, motivo = roe_dos_controladores(lucro, pl)
+    assert valor is None and motivo
+
+
+def test_roe_zero_e_prejuizo_sao_dados():
+    assert roe_dos_controladores(0, 10) == (0, None)
+    assert roe_dos_controladores(-2, 10) == (-0.2, None)
+
+
+@pytest.mark.parametrize(
+    "valor", ["1", True, float("nan"), float("inf"), -float("inf"), None, 0, -1]
+)
+def test_preco_invalido_preserva_numeros_que_nao_dependem_dele(valor):
+    resultado = _derivar(preco=valor)
+    assert isinstance(resultado, PorAcao)
+    assert resultado.lpa == 2.0 and resultado.vpa == 10.0
+    assert resultado.pl is None and resultado.pvp is None
+    assert "preço" in resultado.motivos["pl"]
+
+
+@pytest.mark.parametrize(
+    "valor", ["1", True, float("nan"), float("inf"), -float("inf")]
+)
+def test_pl_invalido_preserva_lpa_e_multiplo_de_lucro(valor):
+    resultado = _derivar(pl_controladores=valor)
+    assert isinstance(resultado, PorAcao)
+    assert resultado.lpa == 2.0 and resultado.pl == 10.0
+    assert resultado.vpa is None and resultado.pvp is None
+    assert "inválido" in resultado.motivos["vpa"]

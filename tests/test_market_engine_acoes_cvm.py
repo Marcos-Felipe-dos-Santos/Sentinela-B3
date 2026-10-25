@@ -11,7 +11,9 @@ import zipfile
 import pandas as pd
 import pytest
 
+import cvm_provider
 from cvm_provider import CVMProvider
+from sentinela.data import acoes_cvm
 from sentinela.data.acoes_cvm import (
     MOTIVO_CLASSES_PREFERENCIAIS,
     MOTIVO_DOCUMENTO_DIFERENTE,
@@ -857,3 +859,274 @@ def test_pl_do_divulgado_nao_declara_as_acoes_do_fim_do_periodo(monkeypatch):
         "shares_end_of_period"
         in unit["field_provenance"]["pl"]["provenance"]["warnings"]
     )
+
+
+# ── escala pelo lucro consolidado (F2B-10; ficha 1.1, decisão 7.7) ───────────
+
+# Lucro dos controladores abstido (decisão 7.2); PL dos controladores lido. Consolidado 2.500 ÷
+# 1.000 ações ÷ LPA divulgado 2,1 → razão 1,19 na unidade.
+SEM_CONTROLADORES = {"lucro_controladores": None, "roe": None}
+
+
+def test_escala_pelo_consolidado_quando_controladores_se_abstem(monkeypatch):
+    dados = _motor(monkeypatch, _ind(**SEM_CONTROLADORES)).buscar_dados_ticker("PETR4")
+    assert dados["vpa"] == pytest.approx(10.0)
+    assert dados["pvp"] == pytest.approx(PRECO / 10.0)
+    assert dados["acoes_cvm"]["escala"] == "UNIDADE"
+    assert dados["acoes_cvm"]["razao_lpa_calculado_sobre_divulgado"] == pytest.approx(
+        2_500.0 / 1_000.0 / 2.1
+    )
+
+
+def test_consolidado_nao_entra_no_lpa_nem_no_roe(monkeypatch):
+    # Ticker ON do índice: o LPA dos métodos é o divulgado da espécie (D19).
+    referencia = FakeReferencia(_indice(_registro("TSTA3", cnpj=CNPJ)))
+    dados = _motor(monkeypatch, _ind(**SEM_CONTROLADORES), referencia=referencia)
+    dados = dados.buscar_dados_ticker("TSTA3")
+    assert dados["acoes_cvm"]["lpa_recalculado"] is None
+    assert dados["lpa"] == pytest.approx(2.1)  # o divulgado, nunca 2.500 ÷ 1.000
+    assert dados["lpa_cvm"]["origem"] == "divulgado"
+    assert dados.get("roe") is None
+
+
+def test_escala_pelo_consolidado_na_proveniencia(monkeypatch):
+    proveniencia = {"documento": "DFP", "periodo_referencia": "2025-12-31"}
+    ind = _ind(**SEM_CONTROLADORES, proveniencia=proveniencia)
+    dados = _motor(monkeypatch, ind, shares=400.0).buscar_dados_ticker("PETR4")
+    assert dados["proveniencia"]["vpa"]["documento"] == "DFP"
+    escala = dados["proveniencia"]["vpa"]["escala"]
+    assert escala["nota"] == acoes_cvm.NOTA_ESCALA_PELO_CONSOLIDADO
+    assert escala["acoes_cvm"] == pytest.approx(1_000.0)
+    assert escala["acoes_yfinance"] == pytest.approx(400.0)
+    assert escala["razao"] == pytest.approx(2.5)
+    assert escala["confirmada"] is True
+    assert dados["escala_pelo_consolidado"] == escala
+
+
+@pytest.mark.parametrize(
+    ("acoes_yfinance", "confirmada"),
+    [
+        (6_000_000_000.0, True),  # razão 1,0226 (ficha, 5.3)
+        (6_135_428.0, False),  # razão 1.000: escala errada
+        (6_135_427_665.0 / 0.1, False),  # razão 0,1 (desigualdade estrita)
+        (6_135_427_665.0 / 10, False),  # razão 10
+        (6_135_427_665.0 / 0.0999, False),  # razão 0,0999
+    ],
+)
+def test_escala_pelo_consolidado_exige_a_confirmacao_do_yfinance(
+    acoes_yfinance, confirmada
+):
+    composicao = _composicao(
+        on=6_241_478_850.0, pn=0.0, tes_on=106_051_185.0, tes_pn=0.0
+    )
+    registro = acoes_cvm.confirmar_escala(
+        composicao,
+        acoes_cvm.Escala.UNIDADE,
+        eh_unit=False,
+        acoes_por_unit=None,
+        shares_outstanding=acoes_yfinance,
+    )
+    assert registro["acoes_cvm"] == pytest.approx(6_135_427_665.0)
+    assert registro["razao"] == pytest.approx(6_135_427_665.0 / acoes_yfinance)
+    assert registro["confirmada"] is confirmada
+
+
+@pytest.mark.parametrize("shares", [None, 0.0, -1.0])
+def test_sem_yfinance_a_abstencao_continua(monkeypatch, shares):
+    info_extra = {"sharesOutstanding": shares}
+    dados = _motor(monkeypatch, _ind(**SEM_CONTROLADORES), info_extra=info_extra)
+    dados = dados.buscar_dados_ticker("PETR4")
+    assert dados.get("vpa") is None
+    assert dados["escala_pelo_consolidado"]["confirmada"] is False
+    assert dados["escala_pelo_consolidado"]["razao"] is None
+    assert any(
+        acoes_cvm.MOTIVO_ESCALA_NAO_CONFIRMADA in r for r in dados["riscos_dados"]
+    )
+
+
+def test_exemplo_da_ficha_klbn11():
+    # Ficha 1.1, seção 5.3 (D28): contas refeitas pela auditoria externa sobre a DFP 2025.
+    composicao = _composicao(
+        on=6_241_478_850.0, pn=0.0, tes_on=106_051_185.0, tes_pn=0.0
+    )
+    resultado = acoes_cvm.derivar_por_acao(
+        lucro_controladores=None,
+        pl_controladores=(14_401_101.0 - 6_515_155.0) * 1_000,
+        composicao=composicao,
+        motivo_composicao=None,
+        lpa_divulgado=0.2286,
+        preco=None,
+        eh_unit=True,
+        acoes_por_unit={"ON": 1, "PN": 4},
+        lucro_consolidado=1_678_211_000.0,
+        shares_outstanding=1_200_000_000.0,
+    )
+    assert resultado.acoes.valor == pytest.approx(6_135_427_665.0)
+    assert resultado.escala is acoes_cvm.Escala.UNIDADE
+    assert resultado.razao_lpa == pytest.approx(1.1965352, abs=1e-6)
+    assert resultado.vpa == pytest.approx(6.4265659, abs=1e-6)
+    assert resultado.lpa is None
+
+
+# ── linha agregada de LPA em companhia de espécie única (F2B-11; ficha 1.1, 7.8) ─
+
+
+def _so_agregada(v39901, v399, **campos):
+    """DRE sem linhas por espécie: só a 3.99.01 e a 3.99 (o caso do BBAS3 e do Pine)."""
+    return _ind(
+        lpa_divulgado=None,
+        lpa_basico_por_classe={},
+        lpa_basico_agregado={"3.99.01": v39901, "3.99": v399},
+        **campos,
+    )
+
+
+def _especie_unica():
+    return FakeReferencia(_indice(_registro("TSTA3", cnpj=CNPJ)))
+
+
+def _duas_especies():
+    return FakeReferencia(
+        _indice(
+            _registro("TSTA3", cnpj=CNPJ),
+            _registro("TSTA4", cnpj=CNPJ, especie="PN"),
+        )
+    )
+
+
+def test_linha_agregada_vale_para_companhia_de_especie_unica(monkeypatch):
+    # 3.99.01 = 2,0; lucro dos controladores 2.000 ÷ 1.000 ações → recalculado 2,0.
+    engine = _motor(
+        monkeypatch,
+        _so_agregada(
+            2.0,
+            2.0,
+            composicao_capital=_composicao(on=1100.0, pn=0.0, tes_on=100.0, tes_pn=0.0),
+        ),
+        referencia=_especie_unica(),
+    )
+    dados = engine.buscar_dados_ticker("TSTA3")
+    assert dados["lpa"] == pytest.approx(2.0)
+    assert dados["lpa_cvm"]["origem"] == "divulgado"
+    assert dados["lpa_cvm"]["linha_agregada"]["conta"] == "3.99.01"
+    assert acoes_cvm.NOTA_LINHA_AGREGADA in dados["lpa_cvm"]["notas"]
+    assert dados["vpa"] == pytest.approx(10.0)
+
+
+def test_linha_agregada_nao_vale_com_mais_de_uma_especie(monkeypatch):
+    engine = _motor(monkeypatch, _so_agregada(2.0, 2.0), referencia=_duas_especies())
+    dados = engine.buscar_dados_ticker("TSTA3")
+    assert "linha_agregada" not in (dados.get("lpa_cvm") or {})
+    assert dados.get("vpa") is None  # escala indeterminada, como antes
+
+
+@pytest.mark.parametrize(
+    ("v399", "vale"),
+    [
+        (2.0, True),  # recalculado 2,0: razão 1
+        (2.2, True),  # razão 0,909: a até 10%
+        (1.82, True),  # razão 1,0989
+        (1.8, False),  # razão 1,111
+        (2.3, False),  # razão 0,870
+    ],
+)
+def test_linha_399_vale_so_com_o_recalculado_a_ate_10_por_cento(
+    monkeypatch, v399, vale
+):
+    engine = _motor(
+        monkeypatch,
+        _so_agregada(
+            0.0,
+            v399,
+            composicao_capital=_composicao(on=1100.0, pn=0.0, tes_on=100.0, tes_pn=0.0),
+        ),
+        referencia=_especie_unica(),
+    )
+    dados = engine.buscar_dados_ticker("TSTA3")
+    if vale:
+        assert dados["lpa"] == pytest.approx(v399)
+        assert dados["lpa_cvm"]["linha_agregada"]["conta"] == "3.99"
+    else:
+        assert "linha_agregada" not in (dados.get("lpa_cvm") or {})
+        assert dados.get("vpa") is None
+
+
+def test_exemplo_da_ficha_bbas3():
+    # Ficha 1.1, seção 5.3 (D28): 3.99.01 = 0; 3.99 = 2,40; recalculado na unidade
+    # 13.698.124.000 ÷ (5.730.834.040 − 22.370.399) = 2,3996166; razão 0,9998402.
+    composicao = _composicao(
+        on=5_730_834_040.0, pn=0.0, tes_on=22_370_399.0, tes_pn=0.0
+    )
+    linhas, registro = acoes_cvm.linhas_da_especie_unica(
+        {},
+        {"3.99.01": 0.0, "3.99": 2.40},
+        ["ON"],
+        lucro_controladores=13_698_124_000.0,
+        acoes=composicao.total,
+    )
+    assert linhas == {"ON": [2.40]}
+    assert registro["conta"] == "3.99"
+    assert registro["razao"] == pytest.approx(0.9998402, abs=1e-6)
+
+
+def test_provedor_le_as_linhas_agregadas_sem_zeros():
+    # Layout da DFP: 3.99 (título do grupo) e 3.99.01 (LPA básico), sem a espécie (BBAS3).
+    linhas = pd.DataFrame(
+        {
+            "CD_CONTA": ["3.99", "3.99.01", "3.99.02"],
+            "DS_CONTA": ["Lucro por Ação", "Lucro Básico por Ação", "Lucro Diluído"],
+            "VL_CONTA": ["2.40", "0", "2.39"],
+        }
+    )
+    assert cvm_provider.lpa_basico_agregado(linhas) == {"3.99.01": None, "3.99": 2.40}
+    assert cvm_provider.lpa_basico_agregado(linhas.iloc[0:0]) == {
+        "3.99.01": None,
+        "3.99": None,
+    }
+
+
+# ── linha "PN" única com mais de uma classe preferencial (F2B-12; ficha 1.1, 7.9) ─
+
+
+def _unit_com(acoes_por_unit):
+    return _registro(
+        "TSTA11", classe="UNIT", especie=None, acoes_por_unit=acoes_por_unit,
+        classes_preferenciais=["PNA", "PNB"],
+    )  # fmt: skip
+
+
+def test_linha_pn_unica_com_classes_distintas(monkeypatch):
+    # Como a USIM5: PNA e PNB no FCA, uma só linha básica "PN" na DRE.
+    linhas = {"ON": [2.1], "PN": [2.3]}
+    pna = _por_classe(
+        monkeypatch, "TSTB5", linhas, registro=_banrisul("TSTB5", "PN", "PNA")
+    )
+    assert pna["lpa"] == pytest.approx(2.3)
+    assert pna["lpa_cvm"]["classe"] == "PNA"
+    assert acoes_cvm.nota_linha_pn_unica("PNA") in pna["lpa_cvm"]["notas"]
+    unit = _por_classe(
+        monkeypatch,
+        "TSTA11",
+        linhas,
+        registro=_unit_com({"ON": 1, "PNA": 2}),
+    )
+    assert unit["lpa"] == pytest.approx(2.1 + 2 * 2.3)
+    componente = unit["lpa_cvm"]["componentes"]["PNA"]
+    assert (componente["lpa"], componente["classe"]) == (2.3, "PNA")
+    assert acoes_cvm.nota_linha_pn_unica("PNA") in componente["notas"]
+
+
+def test_unit_com_componente_pna_usa_a_linha_da_classe(monkeypatch):
+    from sentinela.data.referencia.montagem import parsear_acoes_por_unit
+
+    composicao = parsear_acoes_por_unit("1 ON E 2 PNA")
+    assert composicao == {"ON": 1, "PNA": 2}
+    dados = _por_classe(
+        monkeypatch,
+        "TSTA11",
+        {"ON": [2.1], "PNA": [2.3], "PNB": [2.5]},
+        registro=_unit_com(composicao),
+    )
+    assert dados["lpa"] == pytest.approx(2.1 + 2 * 2.3)
+    assert dados["lpa_cvm"]["componentes"]["PNA"]["classe"] == "PNA"
+    assert dados["lpa_cvm"]["componentes"]["PNA"]["notas"] == []

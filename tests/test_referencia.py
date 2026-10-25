@@ -271,7 +271,8 @@ def test_unit_sem_composicao_oficial_fica_sem_acoes_por_unit():
         ("1 ação ordinária e 4 ações preferenciais", {"ON": 1, "PN": 4}),
         ("1 ON / 2 PN", {"ON": 1, "PN": 2}),
         ("1 ON E 2 PN", {"ON": 1, "PN": 2}),
-        ("1 ON E 2 PNA", {"ON": 1, "PN": 2}),
+        ("1 ON E 2 PNA", {"ON": 1, "PNA": 2}),  # F2B-12: a sigla da classe fica
+        ("1 ON + 2 PNA + 1 PNA", {"ON": 1, "PNA": 3}),
         ("2 ações preferenciais e 1 ação ordinária", {"PN": 2, "ON": 1}),
         ("1 ON e 2PNs", {"ON": 1, "PN": 2}),
         ("1 KLBN3 + 4 KLBN4", {"ON": 1, "PN": 4}),

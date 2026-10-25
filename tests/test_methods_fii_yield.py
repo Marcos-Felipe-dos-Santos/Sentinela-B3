@@ -1,118 +1,110 @@
+"""Rendimento do FII 2.0.0: NTN-B real + spread, crescimento real zero (ficha FII 1.1, §1 e §4)."""
+
 from datetime import date
 
 import pytest
 
 from sentinela.domain.enums import AssetType, Regime
-from sentinela.domain.units import BRL, RateNominal, Ratio
+from sentinela.domain.units import BRL, RateReal, Ratio
 from sentinela.methods.base import Abstention, MethodInputs, MethodResult
-from sentinela.methods.fii_yield import (
-    MOTIVO_SELIC_LIQUIDA_ZERO,
-    FiiYield,
-    FiiYieldParams,
-)
+from sentinela.methods.fii_yield import FiiYield, FiiYieldParams
 
-PARAMS = FiiYieldParams(fator_ir=0.85)
+# F2B-4: classe oficial FII (sem BPP de companhia).
+ESCOPO = {"classe_ativo": AssetType.FII}
+
+PARAMS = FiiYieldParams(spread=0.02)
 
 
-def _inputs(preco=100.0, dy=0.10, selic=0.145, vacancia=None, **kw):
+def _inputs(preco=100.0, dy=0.10, ntnb=0.07, **kw):
     return MethodInputs(
-        as_of=date(2026, 10, 2),
+        **ESCOPO,
+        as_of=date(2026, 10, 19),
         preco=BRL(preco),
         dy=Ratio(dy),
-        selic=RateNominal(selic),
-        vacancia=None if vacancia is None else Ratio(vacancia),
+        ntnb_real=None if ntnb is None else RateReal(ntnb),
         **kw,
     )
 
 
-def _fii(**kw):
-    return FiiYield().calcular(_inputs(**kw), PARAMS)
+def _fii(params=PARAMS, **kw):
+    return FiiYield().calcular(_inputs(**kw), params)
 
 
-def test_formula_preco_vezes_dy_efetivo_sobre_selic_liquida():
-    r = _fii(preco=100.0, dy=0.10, selic=0.145)
+def test_preco_justo_pela_ntnb_mais_spread():
+    # V0 = R ÷ (y_real + s), R = preço × DY de 12 meses (ficha, §1).
+    r = _fii(preco=100.0, dy=0.10, ntnb=0.07)
     assert isinstance(r, MethodResult)
-    assert r.valor.valor == (100.0 * 0.10) / (0.145 * 0.85)
-    assert (r.metodo, r.versao) == ("Bazin FII", "1.0.0")
+    assert r.valor.valor == pytest.approx(100.0 * 0.10 / (0.07 + 0.02))
+    assert r.obter("taxa") == RateReal(0.07 + 0.02)
+    assert r.obter("spread") == RateReal(0.02)
+    assert r.obter("rendimento_12m") == BRL(100.0 * 0.10)
+
+
+def test_sem_ntnb_abstem():
+    r = _fii(ntnb=None)
+    assert isinstance(r, Abstention)
+    assert r.motivo == "insumo ausente: ntnb_real"
+
+
+def test_exemplo_da_ficha():
+    # Ficha FII 1.1, §5, cenário condicional: R = 13,240529645135538184 (HGLG11, preço
+    # COTAHIST de 30/09/2026 R$ 147,95, DY 8,949327235644%), y = 74,38/1100, s = 2 pp.
+    preco = 147.95
+    dy = 13.240529645135538184 / preco
+    r = _fii(preco=preco, dy=dy, ntnb=74.38 / 1100)
+    assert r.valor.valor == pytest.approx(151.116233758550, abs=1e-9)
 
 
 @pytest.mark.parametrize(
-    ("p", "dy", "selic", "vac"),
+    ("spread", "valor"), [(0.01, 170.585414), (0.02, 151.116234), (0.03, 135.635897)]
+)
+def test_sensibilidade_da_ficha(spread, valor):
+    preco = 147.95
+    r = FiiYield().calcular(
+        _inputs(preco=preco, dy=13.240529645135538184 / preco, ntnb=74.38 / 1100),
+        FiiYieldParams(spread=spread),
+    )
+    assert r.valor.valor == pytest.approx(valor, abs=1e-6)
+
+
+@pytest.mark.parametrize(
+    ("kw", "params", "motivo"),
     [
-        (37.19, 0.0913, 0.1375, None),
-        (95.5, 0.11, 0.0525, 0.15),
-        (12.5, 0.07, 0.145, 0.0),
+        ({}, FiiYieldParams(spread=None), "spread indisponível"),
+        ({}, FiiYieldParams(spread=float("nan")), "spread indisponível"),
+        ({"ntnb": -1.0}, PARAMS, "taxa indisponível: NTN-B real fora do domínio"),
+        ({"ntnb": -0.02}, PARAMS, "taxa não positiva"),
+        ({"ntnb": -0.05}, PARAMS, "taxa não positiva"),
+        ({"dy": 0.0}, PARAMS, "rendimento anual não positivo"),
+        ({"dy": -0.01}, PARAMS, "rendimento anual não positivo"),
+        ({"dy": 0.2501}, PARAMS, "rendimento não confiável"),
+        ({"preco": 0.0}, PARAMS, "preço não positivo"),
+        (
+            {"preco": 1e308, "dy": 0.2, "ntnb": -0.019999},
+            PARAMS,
+            "resultado não finito",
+        ),
     ],
 )
-def test_mesma_ordem_de_operacoes_da_v1(p, dy, selic, vac):
-    dy_efetivo = dy * (1 - vac) if vac is not None else dy
-    selic_liquida = selic * 0.85
-    esperado = (p * dy_efetivo) / selic_liquida
-    assert _fii(preco=p, dy=dy, selic=selic, vacancia=vac).valor.valor == esperado
-
-
-def test_sem_vacancia_o_dy_efetivo_e_o_dy():
-    r = _fii(dy=0.10)
-    assert r.obter("dy_efetivo") == Ratio(0.10)
-    assert r.obter("selic_liquida") == RateNominal(0.145 * 0.85)
-
-
-def test_com_vacancia_o_dy_efetivo_cai():
-    r = _fii(dy=0.10, vacancia=0.2)
-    assert r.obter("dy_efetivo") == Ratio(0.10 * (1 - 0.2))
-    assert r.valor.valor == (100.0 * (0.10 * (1 - 0.2))) / (0.145 * 0.85)
-
-
-def test_vacancia_zero_nao_muda_o_dy():
-    assert _fii(dy=0.10, vacancia=0.0).obter("dy_efetivo") == Ratio(0.10)
-
-
-def test_fator_de_ir_vem_dos_parametros():
-    r = FiiYield().calcular(_inputs(), FiiYieldParams(fator_ir=0.5))
-    assert r.obter("selic_liquida") == RateNominal(0.145 * 0.5)
-    assert r.valor.valor == (100.0 * 0.10) / (0.145 * 0.5)
-
-
-def test_selic_liquida_zero_abstem_se():
-    r = _fii(selic=0.0)
+def test_matriz_de_validade(kw, params, motivo):
+    r = _fii(params=params, **kw)
     assert isinstance(r, Abstention)
-    assert r.motivo == MOTIVO_SELIC_LIQUIDA_ZERO
-    assert (r.metodo, r.versao) == ("Bazin FII", "1.0.0")
+    assert r.motivo == motivo
+    assert (r.metodo, r.versao) == ("Rendimento do FII", "2.1.0")
 
 
-def test_selic_negativa_calcula_como_na_v1():
-    r = _fii(selic=-0.02)
-    assert isinstance(r, MethodResult)
-    assert r.valor.valor == (100.0 * 0.10) / (-0.02 * 0.85)
-
-
-@pytest.mark.parametrize("campo", ["preco", "dy", "selic"])
-def test_insumo_ausente_abstem_se(campo):
-    base = {"preco": BRL(100.0), "dy": Ratio(0.10), "selic": RateNominal(0.145)}
-    base[campo] = None
-    r = FiiYield().calcular(MethodInputs(as_of=date(2026, 10, 2), **base), PARAMS)
-    assert isinstance(r, Abstention)
-    assert r.motivo == f"insumo ausente: {campo}"
-
-
-def test_vacancia_ausente_nao_e_insumo_exigido():
-    assert "vacancia" not in FiiYield.requires
-    assert isinstance(_fii(vacancia=None), MethodResult)
-
-
-def test_resultado_que_estoura_para_infinito_abstem_se():
-    r = _fii(preco=1e308, dy=0.9, selic=0.0001)
-    assert isinstance(r, Abstention)
-    assert r.motivo == "resultado não finito"
-    assert (r.metodo, r.versao) == ("Bazin FII", "1.0.0")
+def test_spread_negativo_com_taxa_positiva_calcula():
+    # Ficha, §4: spread negativo é permitido se a mediana for comprovada e q > 0.
+    r = _fii(params=FiiYieldParams(spread=-0.01), ntnb=0.07)
+    assert r.valor.valor == pytest.approx(100.0 * 0.10 / 0.06)
 
 
 def test_metadados():
     m = FiiYield()
-    assert m.nome == "Bazin FII"
-    assert m.version == "1.0.0"
-    assert m.regime is Regime.NOMINAL
-    assert m.requires == ("preco", "dy", "selic")
+    assert m.nome == "Rendimento do FII"
+    assert m.version == "2.1.0"
+    assert m.regime is Regime.REAL
+    assert m.requires == ("preco", "dy", "ntnb_real")
     assert m.applies_to == frozenset({AssetType.FII})
     assert m.params_type is FiiYieldParams
     assert m.assumptions

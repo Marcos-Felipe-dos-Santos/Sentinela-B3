@@ -1,10 +1,12 @@
 import pandas as pd
 import pytest
+from apoio_escopo import de_empresa
 
 import market_engine
 from market_engine import (
     MarketEngine,
     _is_fii_ticker,
+    list_missing_market_fields,
     list_missing_required_fields,
     merge_if_valid,
 )
@@ -363,7 +365,10 @@ def test_brapi_does_not_overwrite_valid_fields_with_missing_values(monkeypatch):
             "returnOnEquity": 0.12,
             "dividendYield": 3.0,
         },
-        brapi=FakeBrapi({"pl": None, "pvp": 0, "roe": 0, "dy": None, "preco_atual": 0}),
+        # F2B-8: ausente em pl, pvp e roe é só None ou não finito; zero é dado.
+        brapi=FakeBrapi(
+            {"pl": None, "pvp": None, "roe": float("nan"), "dy": None, "preco_atual": 0}
+        ),
     )
 
     dados = engine.buscar_dados_ticker("BBAS3")
@@ -595,9 +600,11 @@ def test_manual_fii_fallback_never_overwrites_fresh_provider_values(monkeypatch)
 
 
 def test_quality_helpers_respect_zero_dy_but_not_zero_price():
+    # F2B-8: P/L e ROE zero (ou negativos) são dado, não campo faltando.
     dados = {"preco_atual": 0, "pl": 0, "pvp": 1.0, "roe": 0, "dy": 0}
 
-    assert list_missing_required_fields(dados) == ["pl", "roe"]
+    assert list_missing_required_fields(dados) == []
+    assert list_missing_market_fields(dados) == ["preco_atual", "historico"]
 
 
 def test_missing_field_provenance_is_safe(monkeypatch):
@@ -618,7 +625,7 @@ def test_missing_field_provenance_is_safe(monkeypatch):
 
 
 def test_merge_if_valid_only_fills_missing_fields():
-    base = {"pl": 10.0, "pvp": 0, "dy": 0}
+    base = {"pl": 10.0, "pvp": None, "dy": 0}
     changed = merge_if_valid(base, {"pl": None, "pvp": 1.2, "dy": 0.05})
 
     assert changed == ["pvp"]
@@ -722,3 +729,18 @@ def test_cvm_overrides_brapi_fundamentals(monkeypatch):
     # CVM sobrescreve o roe absurdo do brapi
     assert dados["roe"] == pytest.approx(0.20)
     assert dados["fonte_fundamentos"] == "CVM"
+
+
+def test_falha_do_coletor_de_liquidez_chega_como_aviso(monkeypatch):
+    from valuation_engine import ValuationEngine
+
+    class FonteIndisponivel:
+        def coletar(self, agora):
+            raise OSError("fonte indisponível")
+
+    engine = _engine(monkeypatch, info={"currentPrice": 100.0}, historico=_historico(100.0))
+    engine.cotahist = FonteIndisponivel()
+    dados = engine.buscar_dados_ticker("PETR4")
+    assert "falha de coleta" in dados["liquidez"]["abstencao"]
+    resultado = ValuationEngine().processar(de_empresa(dados))
+    assert resultado["aviso_liquidez"].startswith("liquidez não medida:")  # F2B-45

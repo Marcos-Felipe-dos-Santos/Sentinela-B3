@@ -1,8 +1,8 @@
 """Registro dos métodos de valuation: catálogo e changelog.
 
-Fixa a 1.0.0 de cada método ao comportamento da V1; as versões seguintes ficam no
-changelog. O `applies_to` é declarado, mas não aplicado: descreve o roteamento da V1 (ações para STOCK e UNIT, FII para FII; o
-classificador atual nunca devolve ETF nem BDR). Aplicar e estreitar é o F2B-4.
+Os métodos extraídos da V1 mantêm seu histórico no changelog. Desde o F2B-4, o contrato
+aplica o escopo de todos (classe oficial e, em STOCK/UNIT, o modelo do BPP consolidado);
+a lente Bancos fica sem consumidor nos motores até o F2B-32.
 """
 
 from __future__ import annotations
@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from sentinela.domain.enums import AssetType, Regime
+from sentinela.methods.bancos import Bancos
 from sentinela.methods.base import ValuationMethod
 from sentinela.methods.bazin import Bazin
 from sentinela.methods.fii_nav import FiiNav
@@ -25,6 +26,7 @@ METODOS: tuple[ValuationMethod, ...] = (
     Gordon(),
     FiiYield(),
     FiiNav(),
+    Bancos(),
 )
 
 DESCRICAO_1_0_0 = "comportamento da V1, extraído na Fase 1, sem mudança de número"
@@ -55,10 +57,60 @@ CHANGELOG["Gordon"] += (
         "com LPA não positivo, abstém-se; sai o payout de 50% do fallback da V1",
     ),
 )
+CHANGELOG["Gordon"] += (
+    Mudanca(
+        "2.0.0",
+        "ficha Gordon1.1: desconto real, DVA dos controladores, ROE sobre PL inicial, Fisher antes do teto PIB; saem Selic, mínimos de DY/ROE e truncamento do payout",
+    ),
+)
 CHANGELOG["Bazin"] += (
     Mudanca(
         "1.0.1",
         "motivo da abstenção (DY não confiável antes do mínimo); nenhum número muda",
+    ),
+    Mudanca(
+        "2.0.0",
+        "ficha Bazin 1.0: critério fixo de 6% sobre o DY bruto de 12 meses da relação B3; saem a Selic e o piso; aviso de prejuízo",
+    ),
+)
+CHANGELOG["Graham"] += (
+    Mudanca("1.1.0", "com VPA não positivo, abstém-se antes da raiz"),
+)
+CHANGELOG["Rendimento do FII"] += (
+    Mudanca(
+        "2.0.0",
+        "ficha FII 1.1: preço justo pelo rendimento de 12 meses do Informe sobre NTN-B real + spread calibrado dos tijolos, crescimento real zero; sai a Selic líquida; nome anterior: Bazin FII",
+    ),
+)
+CHANGELOG["P/VP do FII"] += (
+    Mudanca(
+        "1.1.0", "com P/VP não positivo, abstém-se em vez de classificar como desconto"
+    ),
+)
+
+CHANGELOG["Bancos"] = (
+    Mudanca(
+        "1.0.0",
+        "ficha bancos1.1: lente nova de P/VP justificado em regime real; sem consumidor no motor",
+    ),
+)
+
+# F2B-4: escopo aplicado pelo contrato, antes dos insumos; nenhuma fórmula muda.
+_ESCOPO_EMPRESA = "F2B-4: aplica o escopo (STOCK/UNIT, modelo empresa pelo BPP consolidado); sem classe ou modelo, abstém-se"
+_ESCOPO_FII = "F2B-4: aplica o escopo (classe oficial FII, sem BPP de companhia); sem classe, abstém-se"
+for _nome, _versao in (
+    ("Graham", "1.2.0"),
+    ("Bazin", "2.1.0"),
+    ("Lynch", "1.1.0"),
+    ("Gordon", "2.1.0"),
+):
+    CHANGELOG[_nome] += (Mudanca(_versao, _ESCOPO_EMPRESA),)
+CHANGELOG["Rendimento do FII"] += (Mudanca("2.1.0", _ESCOPO_FII),)
+CHANGELOG["P/VP do FII"] += (Mudanca("1.2.0", _ESCOPO_FII),)
+CHANGELOG["Bancos"] += (
+    Mudanca(
+        "1.1.0",
+        "F2B-4: classe e modelo conferidos pelo contrato antes dos insumos; sem classe ou modelo, motivo de escopo em vez de insumo ausente",
     ),
 )
 

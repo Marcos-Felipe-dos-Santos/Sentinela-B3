@@ -5,9 +5,8 @@ Representação de cada provedor (F2A-16, `docs/decisoes/fontes-fase2a.md`, seç
 e para ela vale a regra da V1 (acima de 1 é percentual), declarada como inferência.
 """
 
-from unittest.mock import patch
-
 import pytest
+from apoio_escopo import de_empresa
 
 from valuation_engine import ValuationEngine
 
@@ -21,8 +20,7 @@ def _processar(dy):
         "pvp": 1.5,
         "dy": dy,
     }
-    with patch("valuation_engine.get_selic_atual", return_value=0.145):
-        return ValuationEngine().processar(dados)
+    return ValuationEngine().processar(de_empresa(dados))
 
 
 def test_motor_nao_converte_percentual():
@@ -118,3 +116,38 @@ def test_cascata_converte_e_marca_a_proveniencia(monkeypatch):
     assert dados["dy"] == pytest.approx(0.075)
     assert dados["proveniencia"]["dy"]["fonte"] == "brapi"
     assert dados["proveniencia"]["dy"]["inferida"] is True
+
+
+def test_dy_fora_da_faixa_nao_entra_no_merge(monkeypatch):
+    # F2B-39 (BUG-2A-15): o invariante dos motores vale também no merge; o DY válido do
+    # yfinance (6,0 em percentual → 0,06) fica, e o 0,40 da brapi sai com o motivo.
+    from market_engine import MOTIVO_DY_FORA_DA_FAIXA
+    from tests.test_market_engine import FakeBrapi, _engine, _historico
+
+    engine = _engine(
+        monkeypatch,
+        historico=_historico(20.0),
+        info={"currentPrice": 20.0, "quoteType": "EQUITY", "dividendYield": 6.0},
+        brapi=FakeBrapi({"dy": 0.40, "pl": 8.0}),
+    )
+    dados = engine.buscar_dados_ticker("PETR4")
+    assert dados["dy"] == pytest.approx(0.06)
+    assert dados["pl"] == pytest.approx(8.0)  # o resto da brapi entra
+    assert f"DY descartado (brapi): {MOTIVO_DY_FORA_DA_FAIXA}" in dados["riscos_dados"]
+    (descarte,) = dados["proveniencia"]["dy_descartes"]
+    assert descarte == {
+        "fonte": "brapi",
+        "valor": 0.40,
+        "motivo": MOTIVO_DY_FORA_DA_FAIXA,
+    }
+    # DY zero é dado ("sem proventos") e entra; o válido também.
+    for dy in (0.0, 0.12):
+        engine = _engine(
+            monkeypatch,
+            historico=_historico(20.0),
+            info={"currentPrice": 20.0, "quoteType": "EQUITY", "dividendYield": 6.0},
+            brapi=FakeBrapi({"dy": dy}),
+        )
+        dados = engine.buscar_dados_ticker("PETR4")
+        assert dados["dy"] == pytest.approx(dy)
+        assert "dy_descartes" not in dados.get("proveniencia", {})

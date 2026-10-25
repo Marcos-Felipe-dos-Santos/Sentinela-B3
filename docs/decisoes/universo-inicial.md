@@ -130,7 +130,7 @@ AZUL4, ELET3 e NTCO3 continuam como históricos. Contagens de negócios da audit
 
 | Caso | Onde |
 |---|---|
-| 12 bancos ativos do F2A-16 (cadastro: setor "Bancos", situação ativa, com BPP consolidado na DFP 2025) | BBAS3, BBDC4 e ITUB4 (mapa); BEES3, BRSR6, BMEB4, PINE4, BMGB4 e SANB11 (acima); Daycoval, RCI e BTG Pactual S/A nas exclusões |
+| 12 bancos ativos do F2A-16 (cadastro: setor "Bancos", situação ativa, com BPP consolidado na DFP 2025) | BBAS3, BBDC4 e ITUB4 (mapa); BEES3, BRSR6, BMEB4, PINE4, BMGB4 e SANB11 (acima); Daycoval e RCI nas exclusões; BTG teve a exclusão cadastral superada no F2A-39 |
 | Units do índice: KLBN11, SANB11, TAEE11, ENGI11, BRBI11, IGTI11 | KLBN11 (mapa); as outras cinco acima |
 | Holding com minoritários relevantes | CSAN3 (mapa) |
 | Empresa com reapresentação de DFP (F2A-32) | MRVE3 (mapa): DFP 2021 e 2022 reapresentadas em 6/7/2023 |
@@ -138,15 +138,26 @@ AZUL4, ELET3 e NTCO3 continuam como históricos. Contagens de negócios da audit
 
 Nos bancos e units com mais de um ticker no índice (BEES3/BEES4, BRSR3/BRSR5/BRSR6, BMEB3/BMEB4, PINE3/PINE4, SANB3/SANB4/SANB11), a lista leva um ticker por companhia (aprovado em 13/10/2026), **exceto o Banrisul**, que entra com as três classes (BRSR3, BRSR5 e BRSR6): é o caso real de preferenciais com direitos distintos (PNA e PNB) que a regra 3 da D19 precisa testar. Ficam fora da verificação inicial: BEES4, BMEB3, PINE3, SANB3 e SANB4.
 
-## Exclusões
+## BTG após o F2A-39 (21/10/2026)
+
+A exclusão provisória por lacuna do índice foi superada no commit `88596f2`.
+A tabela `sentinela/data/referencia/correcoes.csv` liga BPAC11 ao CNPJ do banco,
+código CVM 22616 e ISIN BRBPACUNT006 pela resposta GetDetail da B3, evidência de
+19/10/2026. A composição é 1 ON e 2 PNA (3 ações por unit). A ligação cadastral
+não comprova escala de LPA nem entrega valuation: F2B-4/F2B-32 seguem pendentes.
+O quadro abaixo preserva as exclusões da aprovação de 13/10; a exclusão do BTG
+é histórica. As contagens originais abaixo também são desse recorte, não uma
+nova medição de cobertura nem ampliação automática da amostra.
+
+## Exclusões na aprovação de 13/10/2026
 
 | Ativo | CNPJ | Motivo |
 |---|---|---|
 | Banco Daycoval S.A. | 62.232.889/0001-90 | banco ativo com DFP (F2A-16), emissor de Categoria B no cadastro (sem ação em bolsa) |
 | Banco RCI Brasil S.A. | 62.307.848/0001-15 | banco ativo com DFP (F2A-16), emissor de Categoria B no cadastro (sem ação em bolsa) |
-| Banco BTG Pactual S/A | 30.306.294/0001-45 | banco ativo com DFP (F2A-16), Categoria A, listado em bolsa (BPAC11: 1.695.828 negócios em jul–set/2026), mas **fora do índice por lacuna do F2A-1**: o FCA traz o código "000000" (unit "1 ON E 2 PNA") e o índice o descartou como código fora do formato de ticker. Exclusão provisória, aprovada em 13/10/2026. O F2A-39 ficou bloqueado sem fonte oficial que ligue ISIN e CNPJ; a correção foi para a 2B |
+| Banco BTG Pactual S/A | 30.306.294/0001-45 | banco ativo com DFP (F2A-16), Categoria A, listado em bolsa (BPAC11: 1.695.828 negócios em jul–set/2026), mas **estava fora do índice por lacuna do F2A-1**: o FCA traz o código "000000" (unit "1 ON E 2 PNA") e o índice o descartou como código fora do formato de ticker. Exclusão provisória, aprovada em 13/10/2026. O F2A-39 ficou bloqueado sem fonte oficial que ligue ISIN e CNPJ; a correção foi entregue no F2A-39 (`88596f2`); exclusão superada |
 
-## Contagem (depois da deduplicação)
+## Contagem original de 13/10/2026 (depois da deduplicação)
 
 - Base nominal: 45 ações + 30 FIIs = 75.
 - Ações: 38 atuais + 7 históricas (AZUL4, BRML3, ELET3, GOLL4, JBSS3, NTCO3, PETZ3).

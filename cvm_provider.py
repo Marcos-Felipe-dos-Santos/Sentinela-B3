@@ -1,20 +1,24 @@
+import calendar
 import io
 import logging
+import math
 import re
 import threading
 import zipfile
 from collections import OrderedDict
 from dataclasses import replace
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
 
 from cvm_download import baixar_arquivo
 from sentinela.data import (
+    acoes_cvm,
     contas_cvm,
     controladores,
     divida_liquida,
+    gordon_cvm,
     proveniencia,
     series_cvm,
 )
@@ -80,9 +84,14 @@ _COLUNAS_COMPOSICAO = {
 }
 
 
-def _numero(valor) -> float:
-    numero = pd.to_numeric(valor, errors="coerce")
-    return 0.0 if pd.isna(numero) else float(numero)
+# F2B-32: sem PL de empresa nem de banco no BPP consolidado, ou com os dois (conflito).
+MOTIVO_MODELO_DO_BPP = (
+    "BPP consolidado sem PL só de empresa ou só de banco (ausente ou conflitante)"
+)
+
+# F2B-4 (decisão do Marcos de 25/10/2026): descrições, sem acento e em minúsculas, que
+# indicam a estrutura seguradora no BPP consolidado (leiautes anterior e posterior ao IFRS 17).
+_CONTAS_DE_SEGURADORA = r"provisoes tecnicas|contratos? de (?:res)?seguros?|atividade seguradora"
 
 
 def _ler(df: pd.DataFrame, campo: str, modelo: str):
@@ -173,7 +182,9 @@ def lpa_divulgado(linhas_399: pd.DataFrame) -> dict | None:
 _CLASSE_NA_DESCRICAO = re.compile(r"^(ON|PN[A-Z]?)$")
 
 
-def lpa_basico_por_classe(linhas_399: pd.DataFrame) -> dict[str, list[float]]:
+def lpa_basico_por_classe(
+    linhas_399: pd.DataFrame,
+) -> dict[str, list[float] | acoes_cvm.Abstencao]:
     """Valores das linhas de LPA básico (3.99.01.xx) por classe da descrição, sem zeros.
 
     Cada classe fica na sua chave (ON, PN, PNA, PNB…; F2A-36, D19, regra 3); linhas repetidas
@@ -184,10 +195,29 @@ def lpa_basico_por_classe(linhas_399: pd.DataFrame) -> dict[str, list[float]]:
     basico = linhas_399[linhas_399["CD_CONTA"].str.startswith("3.99.01.")]
     descricao = basico["DS_CONTA"].fillna("").str.strip().str.upper()
     valores = pd.to_numeric(basico["VL_CONTA"], errors="coerce")
-    resultado: dict[str, list[float]] = {}
+    resultado: dict[str, list[float] | acoes_cvm.Abstencao] = {}
     for classe, valor in zip(descricao, valores):
-        if _CLASSE_NA_DESCRICAO.match(classe) and pd.notna(valor) and valor != 0:
+        if not _CLASSE_NA_DESCRICAO.match(classe):
+            continue
+        if pd.isna(valor) or not math.isfinite(valor):
+            resultado[classe] = acoes_cvm.Abstencao(acoes_cvm.MOTIVO_LPA_INVALIDO)
+        elif valor != 0 and not isinstance(resultado.get(classe), acoes_cvm.Abstencao):
             resultado.setdefault(classe, []).append(float(valor))
+    return resultado
+
+
+def lpa_basico_agregado(linhas_399: pd.DataFrame) -> dict[str, float | acoes_cvm.Abstencao | None]:
+    """Valores das linhas agregadas 3.99.01 e 3.99, sem espécie (ficha 1.1, 7.8); zero vira `None`."""
+    resultado: dict[str, float | acoes_cvm.Abstencao | None] = {}
+    for conta in ("3.99.01", "3.99"):
+        linhas = linhas_399[linhas_399["CD_CONTA"] == conta] if not linhas_399.empty else linhas_399
+        valores = pd.to_numeric(linhas["VL_CONTA"], errors="coerce") if not linhas.empty else []
+        if any(pd.isna(v) or not math.isfinite(v) for v in valores):
+            resultado[conta] = acoes_cvm.Abstencao(acoes_cvm.MOTIVO_LPA_INVALIDO)
+            continue
+        numeros = [float(v) for v in valores if pd.notna(v) and v != 0]
+        resultado[conta] = (acoes_cvm.Abstencao(acoes_cvm.MOTIVO_LINHAS_CONFLITANTES)
+                            if len(set(numeros)) > 1 else numeros[0] if numeros else None)
     return resultado
 
 
@@ -195,6 +225,7 @@ def lpa_divulgado_por_especie(linhas_399: pd.DataFrame) -> dict[str, float]:
     """Primeiro LPA básico divulgado de cada classe (ON, PN, PNA…), sem zeros (F2A-5)."""
     return {
         classe: valores[0] for classe, valores in lpa_basico_por_classe(linhas_399).items()
+        if not isinstance(valores, acoes_cvm.Abstencao)
     }
 
 
@@ -214,10 +245,23 @@ def composicao_do_documento(
     if mesmo.empty:
         return None, MOTIVO_DOCUMENTO_DIFERENTE
     linha = mesmo.iloc[0]
-    valores = {campo: _numero(linha.get(coluna)) for campo, coluna in _COLUNAS_COMPOSICAO.items()}
-    if pd.isna(pd.to_numeric(linha.get("QT_ACAO_TOTAL_TESOURO"), errors="coerce")):
+    valores = {}
+    for campo, coluna in _COLUNAS_COMPOSICAO.items():
+        bruto = linha.get(coluna)
+        if campo == "tesouraria_total" and (bruto is None or pd.isna(bruto)):
+            continue
+        numero = pd.to_numeric(bruto, errors="coerce")
+        if (
+            pd.api.types.is_bool(bruto) or pd.isna(numero) or not math.isfinite(numero)
+            or numero < 0 or numero % 1
+        ):
+            return None, f"quantidade de ações ausente ou inválida: {coluna}"
+        valores[campo] = float(numero)
+    if "tesouraria_total" not in valores:
         # Sem o total da tesouraria, vale a soma das espécies.
         valores["tesouraria_total"] = valores["tesouraria_on"] + valores["tesouraria_pn"]
+    if valores["tesouraria_on"] > valores["on"] or valores["tesouraria_pn"] > valores["pn"]:
+        return None, "Composição do Capital inválida: tesouraria maior que a espécie"
     return (
         Composicao(
             **valores,
@@ -634,6 +678,7 @@ class CVMProvider:
                     "lpa_divulgado":      lpa_divulgado(linhas_399),
                     "lpa_divulgado_por_especie": lpa_divulgado_por_especie(linhas_399),
                     "lpa_basico_por_classe": lpa_basico_por_classe(linhas_399),
+                    "lpa_basico_agregado": lpa_basico_agregado(linhas_399),
                     "composicao_capital": composicao,
                     "composicao_motivo":  motivo_composicao,
                     "contas_abstidas":    contas_abstidas,
@@ -662,6 +707,323 @@ class CVMProvider:
     # Série de cinco anos e TTM (F2A-7)
     # ------------------------------------------------------------------
 
+    def composicao_mais_recente(self, cnpj: str, as_of: datetime, ano_dfp: int) -> dict:
+        """Última referência/versão ITR ou DFP entregue até o corte (Gordon1.1).
+
+        Data de entrega sem hora entra após o fim do dia de Brasília. A seleção
+        usa o índice de entregas, antes de ler a composição; falta na última
+        entrega elegível não permite voltar silenciosamente a documento antigo.
+        """
+        from zoneinfo import ZoneInfo
+
+        if as_of.tzinfo is None or as_of.utcoffset() is None:
+            return {"abstencao": "as_of exige fuso horário"}
+        dia = as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+        candidatos = []
+        for ano in range(ano_dfp, dia.year + 1):
+            for documento, baixar, url in (
+                ("DFP", self.baixar_dfp, _DFP_URL),
+                ("ITR", self.baixar_itr, _ITR_URL),
+            ):
+                try:
+                    caminho = baixar(ano)
+                    arquivo = proveniencia.registrar_arquivo(
+                        caminho, url.format(ano=ano), documento, str(ano)
+                    )
+                    if datetime.fromisoformat(arquivo.data_coleta) > as_of:
+                        return {
+                            "abstencao": "composição recente com coleta posterior ao as_of"
+                        }
+                    for linha in self._entregas(caminho):
+                        if linha.get("CNPJ_CIA") != cnpj:
+                            continue
+                        referencia = date.fromisoformat(linha["DT_REFER"])
+                        entrega = proveniencia.entrega_no_indice(
+                            [linha],
+                            {k: linha[k] for k in ("CNPJ_CIA", "DT_REFER", "VERSAO")},
+                        )
+                        if (
+                            entrega is None
+                            or date.fromisoformat(entrega) >= dia
+                            or referencia >= dia
+                        ):
+                            continue
+                        candidatos.append(
+                            (
+                                referencia,
+                                int(linha["VERSAO"]),
+                                caminho,
+                                arquivo.do_documento(
+                                    referencia.isoformat(),
+                                    linha["VERSAO"],
+                                    entrega,
+                                    proveniencia.MOTIVO_DOCUMENTO_FORA_DO_INDICE,
+                                ),
+                            )
+                        )
+                except OSError as erro:
+                    # 404 atesta ausência do arquivo anual, não falha de consulta.
+                    if (
+                        getattr(getattr(erro, "response", None), "status_code", None)
+                        == 404
+                    ):
+                        continue
+                    return {
+                        "abstencao": "não foi possível conferir a composição mais recente"
+                    }
+                except (
+                    StopIteration,
+                    KeyError,
+                    TypeError,
+                    ValueError,
+                    zipfile.BadZipFile,
+                ):
+                    return {"abstencao": "índice da composição mais recente inválido"}
+        if not candidatos:
+            return {"abstencao": "composição recente sem documento elegível"}
+        referencia, versao, caminho, prov = max(candidatos, key=lambda x: (x[0], x[1]))
+        try:
+            cc = self._read_raw(caminho, "composicao_capital")
+            composicao, motivo = composicao_do_documento(
+                cc, cnpj, referencia.isoformat(), str(versao)
+            )
+        except (OSError, KeyError, ValueError, zipfile.BadZipFile):
+            composicao, motivo = None, "composição recente indisponível"
+        if composicao is None:
+            return {"abstencao": motivo, "proveniencia": prov.para_dict()}
+        return {
+            "composicao": composicao,
+            "escala": self._escala_da_composicao(
+                caminho, cnpj, referencia.isoformat(), str(versao), composicao
+            ),
+            "proveniencia": prov.para_dict(),
+        }
+
+    def _escala_da_composicao(
+        self,
+        caminho: Path,
+        cnpj: str,
+        dt_refer: str,
+        versao: str,
+        composicao: Composicao,
+    ) -> str | None:
+        """Escala da quantidade de ações do documento recente (ficha por-ação 1.1; F2B-54).
+
+        Pela regra da DFP (`acoes_cvm.inferir_escala`): lucro dos controladores do mesmo
+        documento e período, com as reservas da D20 (`lucro_controladores_com_reserva`, com
+        o BPP do mesmo documento), ÷ ações, contra o LPA divulgado. O período é o acumulado
+        do exercício (menor `DT_INI_EXERC`) da linha "ÚLTIMO". `None` quando indeterminada.
+        """
+
+        def do_documento(tipo: str) -> pd.DataFrame:
+            df = self._read_raw(caminho, tipo)
+            df = df[
+                (df["CNPJ_CIA"] == cnpj)
+                & (df["DT_REFER"].astype(str) == dt_refer)
+                & (df["VERSAO"].astype(str) == versao)
+            ]
+            if "ORDEM_EXERC" in df.columns:
+                df = df[df["ORDEM_EXERC"] == "ÚLTIMO"]
+            return df.assign(VL_CONTA=pd.to_numeric(df["VL_CONTA"], errors="coerce"))
+
+        def em_reais(df: pd.DataFrame) -> pd.DataFrame:
+            if "ESCALA_MOEDA" not in df.columns:
+                return df
+            mil = df["ESCALA_MOEDA"].astype(str).str.upper() == "MIL"
+            return df.assign(VL_CONTA=df["VL_CONTA"].where(~mil, df["VL_CONTA"] * 1000))
+
+        try:
+            dre = do_documento("DRE_con")
+            if "DT_INI_EXERC" in dre.columns and not dre.empty:
+                dre = dre[dre["DT_INI_EXERC"] == dre["DT_INI_EXERC"].min()]
+            try:
+                bpp = em_reais(do_documento("BPP_con"))
+            except FileNotFoundError:
+                bpp = pd.DataFrame(columns=["CD_CONTA", "DS_CONTA", "VL_CONTA"])
+        except (OSError, KeyError, ValueError, zipfile.BadZipFile):
+            return None
+        e_lpa = dre["CD_CONTA"].astype(str).str.startswith("3.99")
+        divulgado = lpa_divulgado(dre[e_lpa])
+        lucro = lucro_controladores_com_reserva(em_reais(dre[~e_lpa]), bpp).valor
+        inferida = acoes_cvm.inferir_escala(
+            lucro, composicao.total, divulgado["valor"] if divulgado else None
+        )
+        return None if inferida is None else inferida[0].name
+
+    def gordon_do_documento(self, cd_cvm: int, ind: dict, as_of: datetime) -> dict:
+        """DVA anual e PL inicial do mesmo documento, com disponibilidade explícita.
+
+        Não certifica eventos entre a DFP e o preço; essa evidência chega separada
+        na fronteira de mercado. Ausência de prova não vira dado positivo.
+        """
+        from zoneinfo import ZoneInfo
+
+        try:
+            if as_of.tzinfo is None or as_of.utcoffset() is None:
+                return {"abstencao": "as_of exige fuso horário"}
+            dia = as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+            referencia = date.fromisoformat(ind["cvm_dt_refer"])
+            versao = ind["cvm_versao"]
+            caminho = self.baixar_dfp(referencia.year)
+            prov = self.proveniencia_do_documento(
+                caminho, referencia.year, ind["cnpj"], referencia.isoformat(), versao
+            )
+            if (
+                prov is None
+                or prov.get("data_entrega") is None
+                or date.fromisoformat(prov["data_entrega"]) >= dia
+                or datetime.fromisoformat(prov["data_coleta"]) > as_of
+            ):
+                return {"abstencao": "disponibilidade histórica da DFP não demonstrada"}
+
+            def linhas(tipo: str, ordem: str) -> pd.DataFrame:
+                bruto = self._read_raw(caminho, tipo)
+                doc = bruto[
+                    (pd.to_numeric(bruto["CD_CVM"], errors="coerce") == cd_cvm)
+                    & (bruto["DT_REFER"].astype(str) == referencia.isoformat())
+                    & (pd.to_numeric(bruto["VERSAO"], errors="coerce") == float(versao))
+                    & (bruto["ORDEM_EXERC"] == ordem)
+                ].copy()
+                if not doc.empty:
+                    doc["VL_CONTA"] = pd.to_numeric(doc["VL_CONTA"], errors="coerce")
+                    if (
+                        "ESCALA_MOEDA" not in doc
+                        or not doc["ESCALA_MOEDA"]
+                        .isin(["REAL", "MIL", "UNIDADE"])
+                        .all()
+                    ):
+                        raise ValueError("escala monetária da DFP indeterminada")
+                    doc.loc[doc["ESCALA_MOEDA"] == "MIL", "VL_CONTA"] *= 1000
+                return doc
+
+            dre = linhas("DRE_con", "ÚLTIMO")
+            bpp = linhas("BPP_con", "ÚLTIMO")
+            dva = linhas("DVA_con", "ÚLTIMO")
+            if dre.empty or bpp.empty or dva.empty:
+                return {"abstencao": "DFP anual sem DRE, BPP ou DVA consolidada"}
+            # F2B-32: o modelo banco lê as contas do próprio modelo (ficha bancos 1.1, §2);
+            # o escopo de cada lente fica com o motor e a fronteira (`gordon_cvm.entradas`).
+            banco, empresa = (
+                isinstance(_ler(bpp, "pl_total", m), contas_cvm.Leitura)
+                for m in ("banco", "empresa")
+            )
+            if banco == empresa:
+                return {"abstencao": MOTIVO_MODELO_DO_BPP}
+            modelo = "banco" if banco else "empresa"
+            janelas = set(
+                zip(dre["DT_INI_EXERC"].astype(str), dre["DT_FIM_EXERC"].astype(str))
+            )
+            janelas_dva = set(
+                zip(dva["DT_INI_EXERC"].astype(str), dva["DT_FIM_EXERC"].astype(str))
+            )
+            if len(janelas) != 1 or janelas_dva != janelas:
+                return {"abstencao": "DRE e DVA com janelas incompatíveis"}
+            inicio_texto, fim_texto = next(iter(janelas))
+            inicio, fim = (
+                date.fromisoformat(inicio_texto),
+                date.fromisoformat(fim_texto),
+            )
+            if fim != referencia:
+                return {"abstencao": "fim do exercício difere da referência da DFP"}
+            inicial = linhas("BPP_con", "PENÚLTIMO")
+            inicial = inicial[
+                inicial["DT_FIM_EXERC"].astype(str)
+                == (inicio - timedelta(days=1)).isoformat()
+            ]
+            if inicial.empty:
+                return {"abstencao": "PL inicial ausente do comparativo da mesma DFP"}
+            dre_inicial = linhas("DRE_con", "PENÚLTIMO")
+            dre_inicial = dre_inicial[
+                dre_inicial["DT_FIM_EXERC"].astype(str)
+                == (inicio - timedelta(days=1)).isoformat()
+            ]
+            pl_inicial = controladores.pl_dos_controladores(
+                _ler(inicial, "pl_total", modelo),
+                _ler(inicial, "pl_nao_controladores", modelo),
+                _ler(dre_inicial, "lucro_nao_controladores", modelo),
+            )
+            total = gordon_cvm.proventos_da_dva(
+                _ler(dva, "dividendos", modelo),
+                _ler(dva, "jcp", modelo),
+                _ler(dva, "dva_nao_controladores", modelo),
+                _ler(dre, "lucro_nao_controladores", modelo),
+                _ler(bpp, "pl_nao_controladores", modelo),
+            )
+            if isinstance(total, gordon_cvm.Abstencao):
+                return {"abstencao": total.motivo}
+            mencao_extraordinaria = (
+                dva["DS_CONTA"]
+                .astype(str)
+                .str.contains("extraordin", case=False, na=False)
+            )
+            if not dva.loc[mencao_extraordinaria, "VL_CONTA"].map(math.isfinite).all():
+                return {"abstencao": "distribuição extraordinária com valor inválido"}
+            extraordinario = mencao_extraordinaria & (dva["VL_CONTA"] != 0)
+            # A ficha §1 aceita a DVA anual como aproximação do fluxo recorrente.
+            # Isto é hipótese do modelo, não certificado de ausência de eventos.
+            # A guarda §3 exclui evento extraordinário ou estrutural identificado.
+            anual = (
+                inicio.day == 1
+                and fim.day == calendar.monthrange(fim.year, fim.month)[1]
+                and (fim.year - inicio.year) * 12 + fim.month - inicio.month == 11
+            )
+            mudanca_estrutural = ind.get("mudanca_estrutural_sem_reconciliacao") is True
+            return {
+                "modelo": modelo,
+                "documento": "DFP",
+                "inicio": inicio_texto,
+                "fim": fim_texto,
+                "data_entrega": prov["data_entrega"],
+                "versao": str(versao),
+                "cnpj": ind["cnpj"],
+                "lucro_controladores": lucro_controladores_com_reserva(dre, bpp).valor,
+                "pl_inicial_controladores": pl_inicial.valor,
+                "proventos_controladores": total,
+                "hipotese_dva_anual": anual,
+                "distribuicao_extraordinaria_identificada": bool(extraordinario.any()),
+                "mudanca_estrutural_sem_reconciliacao": mudanca_estrutural,
+                "fundamento_fluxo": "hipótese de DVA anual como aproximação do fluxo recorrente (ficha Gordon1.1, §1)",
+                "proveniencia": prov,
+            }
+        except (KeyError, ValueError, TypeError, OSError, zipfile.BadZipFile) as erro:
+            return {"abstencao": f"DFP anual do Gordon indisponível: {erro}"}
+
+    def modelo_do_documento(self, cd_cvm: int, ind: dict) -> str | None:
+        """Modelo de demonstração pelo BPP consolidado do documento de `ind` (F2B-31, F2B-4).
+
+        "banco" com o PL no par do modelo de instituição financeira; com o par do modelo
+        empresa, "seguradora" se alguma conta do BPP descreve provisões técnicas, contratos
+        de seguro/resseguro ou a atividade seguradora (decisão do Marcos de 25/10/2026), e
+        "empresa" sem elas (holdings inclusive). `None` sem o BPP do documento, sem nenhum
+        dos dois pares ou com os dois (conflito). Não é o rótulo do setor.
+        """
+        try:
+            referencia = date.fromisoformat(ind["cvm_dt_refer"])
+            bruto = self._read_raw(self.baixar_dfp(referencia.year), "BPP_con")
+            bpp = bruto[
+                (pd.to_numeric(bruto["CD_CVM"], errors="coerce") == cd_cvm)
+                & (bruto["DT_REFER"].astype(str) == referencia.isoformat())
+                & (pd.to_numeric(bruto["VERSAO"], errors="coerce") == float(ind["cvm_versao"]))
+                & (bruto["ORDEM_EXERC"] == "ÚLTIMO")
+            ].copy()
+        except (KeyError, ValueError, TypeError, OSError, zipfile.BadZipFile):
+            return None
+        if bpp.empty:
+            return None
+        bpp["VL_CONTA"] = pd.to_numeric(bpp["VL_CONTA"], errors="coerce")
+        banco, empresa = (
+            isinstance(_ler(bpp, "pl_total", modelo), contas_cvm.Leitura)
+            for modelo in ("banco", "empresa")
+        )
+        if banco == empresa:
+            return None
+        if banco:
+            return "banco"
+        descricoes = bpp["DS_CONTA"].map(contas_cvm.normalizar_descricao)
+        if descricoes.str.contains(_CONTAS_DE_SEGURADORA).any():
+            return "seguradora"
+        return "empresa"
+
     def proventos_do_documento(
         self,
         zip_path: Path,
@@ -686,6 +1048,10 @@ class CVMProvider:
             ]
         except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
             motivo = f"DVA indisponível ({exc})"
+            return {"dividendos": None, "jcp": None,
+                    "proventos_motivos": {"dividendos": motivo, "jcp": motivo}}
+        if dva.empty:
+            motivo = "DVA indisponível no documento"
             return {"dividendos": None, "jcp": None,
                     "proventos_motivos": {"dividendos": motivo, "jcp": motivo}}
         saida: dict = {"proventos_motivos": {}}
@@ -723,23 +1089,53 @@ class CVMProvider:
         trimestre isolado.
         """
         partes = []
+        dva_indisponivel = None
         for tipo in ("DRE_con", "DVA_con"):
-            df = self.parsear_demonstrativo(
-                zip_path, tipo, include_cd_cvm=True, include_versao=True, include_periodo=True
-            )
+            try:
+                df = self.parsear_demonstrativo(
+                    zip_path, tipo, include_cd_cvm=True, include_versao=True, include_periodo=True
+                )
+            except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
+                if tipo != "DVA_con":
+                    raise
+                dva_indisponivel = f"DVA indisponível ({exc})"
+                continue
             partes.append(df[df["CD_CVM"] == cd_cvm])
         linhas = pd.concat(partes, ignore_index=True)
         if linhas.empty:
             return []
+        # F2B-37 (BUG-2A-10): o balanço do mesmo documento, para a reserva da decisão 7.2.
+        try:
+            bpp = self.parsear_demonstrativo(
+                zip_path, "BPP_con", include_cd_cvm=True, include_versao=True
+            )
+            bpp = bpp[bpp["CD_CVM"] == cd_cvm]
+        except (OSError, KeyError, ValueError):
+            bpp = pd.DataFrame(columns=["DT_REFER", "VERSAO", "CD_CONTA", "DS_CONTA", "VL_CONTA"])
         acumulados = []
         for (dt_refer, versao), doc in linhas.groupby(["DT_REFER", "VERSAO"]):
             inicio = doc["DT_INI_EXERC"].min()
             doc = doc[doc["DT_INI_EXERC"] == inicio]
             fim = doc["DT_FIM_EXERC"].max()
-            valores = {}
+            valores, motivos = {}, {}
             for campo in series_cvm.CAMPOS_TTM:
                 leitura = _ler(doc, campo, modelo)
                 valores[campo] = leitura.valor if isinstance(leitura, contas_cvm.Leitura) else None
+                if campo in ("dividendos", "jcp") and isinstance(leitura, contas_cvm.Abstencao):
+                    if dva_indisponivel or not doc["CD_CONTA"].str.startswith("7.").any():
+                        motivos[campo] = dva_indisponivel or "DVA indisponível no documento"
+                    else:
+                        motivos[campo] = f"{leitura.motivo} {leitura.detalhe}".strip()
+            # F2B-37: o lucro dos controladores pela mesma leitura com reservas da série anual
+            # (D20 e decisão 7.2), com o balanço do mesmo documento.
+            bpp_doc = bpp[
+                (bpp["DT_REFER"].astype(str) == str(dt_refer))
+                & (bpp["VERSAO"].astype(str) == str(versao))
+            ]
+            controladores_doc = lucro_controladores_com_reserva(doc, bpp_doc)
+            valores["lucro_controladores"] = controladores_doc.valor
+            if controladores_doc.valor is None and controladores_doc.motivo:
+                motivos["lucro_controladores"] = controladores_doc.motivo
             acumulados.append(
                 series_cvm.Acumulado(
                     documento=documento,
@@ -748,6 +1144,7 @@ class CVMProvider:
                     inicio=date.fromisoformat(str(inicio)),
                     fim=date.fromisoformat(str(fim)),
                     valores=valores,
+                    motivos=motivos,
                 )
             )
         return acumulados

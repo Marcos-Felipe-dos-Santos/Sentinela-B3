@@ -1,9 +1,14 @@
 import logging
 import os
 import time
+from datetime import UTC, date, datetime
+from types import MappingProxyType
+from zoneinfo import ZoneInfo
 
 import requests
 from dotenv import load_dotenv
+
+from sentinela.data import taxas as _taxas
 
 load_dotenv()
 
@@ -116,10 +121,45 @@ def get_selic_atual() -> float:
         return SELIC_FALLBACK
 
 
+# Taxa real da ficha 1.1: carregamento separado, sem rede nova no import.
+_TAXA_REAL_TTL = 86400
+_taxa_real_cache: dict = {}
+
+
+def _carregar_taxa_real(
+    instante: datetime, janela: tuple[date, date] | None
+) -> dict | None:
+    from sentinela.data.providers.macro import MacroProvider
+
+    return MacroProvider().registro(instante, janela)
+
+
+def get_taxa_real(
+    *, as_of: datetime | None = None, janela: tuple[date, date] | None = None
+) -> dict | None:
+    """Registro observado até as_of; ausência não usa contingência numérica."""
+    instante = as_of if as_of is not None else datetime.now(UTC)
+    if instante.tzinfo is None or instante.utcoffset() is None:
+        return None
+    chave = (janela, instante.astimezone(ZoneInfo("America/Sao_Paulo")).date())
+    anterior = _taxa_real_cache.get(chave)
+    if anterior is not None:
+        coleta, registro = anterior
+        idade = (instante - coleta).total_seconds()
+        proxima = (registro.get("pib") or {}).get("proxima_publicacao")
+        edicao_devida = proxima is not None and datetime.fromisoformat(proxima) <= instante
+        if 0 <= idade < _TAXA_REAL_TTL and not edicao_devida:
+            return registro
+    registro = _carregar_taxa_real(instante, janela)
+    # F2B-51: a abstenção não fica no cache; a próxima análise consulta de novo.
+    if registro is not None and "abstencao" not in registro:
+        _taxa_real_cache[chave] = (instante, registro)
+    return registro
+
+
 # Fallbacks para indicadores macro dinâmicos
 CDI_FALLBACK      = 0.143   # CDI ≈ Selic (BCB SGS série 12 anualizada)
 IPCA_12M_FALLBACK = 0.055   # IPCA acumulado 12m estimado (BCB SGS série 433)
-NTNB_LONGA_FALLBACK = 0.070 # Yield real NTN-B vencimento >= 2035 (Tesouro Direto)
 
 
 # ── PARÂMETROS ECONÔMICOS CENTRALIZADOS ──────────────────────────────────────
@@ -127,6 +167,15 @@ NTNB_LONGA_FALLBACK = 0.070 # Yield real NTN-B vencimento >= 2035 (Tesouro Diret
 # Altere aqui para tunar o comportamento sem caçar literais no código.
 
 class MacroContext:
+    # F2A-10: regra do Marcos de 18/10/2026, em pregões, razão e BRL/dia.
+    LIQUIDEZ_JANELA = 63
+    LIQUIDEZ_PRESENCA_MIN = 0.80
+    LIQUIDEZ_VOLUME_ACOES_MIN = 500_000.0
+    LIQUIDEZ_VOLUME_FII_MIN = 100_000.0
+
+    PREMIO_ACOES_REAL = _taxas.PREMIO_ACOES_REAL
+    NTNB_VENCIMENTO_MIN = _taxas.ANO_MIN_NTNB
+
     # DY normalização (Yahoo Finance)
     DY_PERCENTUAL_THRESHOLD = 1.0      # DY > 1 → Yahoo retornou como %
     DY_SANIDADE_MAX         = 0.25     # DY > 25% → dado inválido
@@ -144,7 +193,6 @@ class MacroContext:
     # Bazin
     BAZIN_DY_MIN            = 0.05     # gate: pagadoras consistentes
     BAZIN_DY_ARMADILHA      = 0.15     # DY > 15% → possível armadilha
-    BAZIN_TAXA_MIN          = 0.05     # taxa mínima (floor da Selic)
 
     # Lynch
     LYNCH_PAYOUT_MAX        = 0.95
@@ -156,7 +204,6 @@ class MacroContext:
     GORDON_DY_MIN           = 0.04
     GORDON_ROE_MIN          = 0.10
     GORDON_G_MAX            = 0.08
-    GORDON_PREMIO_RISCO     = 0.07     # k = Selic + 7% (também reutilizado em cost_of_equity_real)
     GORDON_PAYOUT_MAX       = 0.95
 
     # Divergência entre métodos
@@ -187,6 +234,18 @@ class MacroContext:
     FII_PVP_DESCONTO        = 0.85
     FII_UPSIDE_COMPRA       = 0.10
     FII_UPSIDE_VENDA        = -0.10
+    # F2B-2 (ficha FII 1.1, §6; plano final da 2B, seção 3): spread dos FIIs de tijolo sobre
+    # a NTN-B real, calibrado por `scripts/calibrar_spread_fii.py` em 21/10/2026. Constante
+    # datada, sem recalibração em execução: nova calibração é item novo da fila.
+    FII_SPREAD_TIJOLO       = 0.03505842448151178
+    FII_SPREAD_CALIBRACAO   = MappingProxyType({
+        "data": "2026-10-21",
+        "janela": ("2021-10", "2026-09"),
+        "fundos_por_mes": {"minimo": 30, "mediana": 36, "maximo": 41},
+        "p25": 0.03170004418948333,
+        "p75": 0.03773431291227301,
+        "registro": "docs/metodologia/fii.md, seção 6a",
+    })
 
     # ── Indicadores dinâmicos ──────────────────────────────────────────────────
 
@@ -195,7 +254,6 @@ class MacroContext:
         self._selic: float = selic if selic is not None else get_selic_atual()
         self._cdi:      float | None = None
         self._ipca_12m: float | None = None
-        self._ntnb_longa: float | None = None
 
     @property
     def selic(self) -> float:
@@ -224,16 +282,14 @@ class MacroContext:
             self._ipca_12m = self._fetch_ipca_acumulado()
         return self._ipca_12m
 
-    @property
-    def ntnb_longa(self) -> float:
-        """Yield real NTN-B vencimento >= 2035 (Tesouro Direto). Fallback: NTNB_LONGA_FALLBACK."""
-        if self._ntnb_longa is None:
-            self._ntnb_longa = self._fetch_ntnb()
-        return self._ntnb_longa
-
-    def cost_of_equity_real(self) -> float:
-        """Custo de capital próprio real = yield NTN-B longa + prêmio de risco."""
-        return self.ntnb_longa + self.GORDON_PREMIO_RISCO
+    def cost_of_equity_real(self) -> float | None:
+        """Custo real do F2B-30, sem contingência nem prêmio duplicado."""
+        registro = get_taxa_real()
+        return (
+            None
+            if registro is None or "abstencao" in registro
+            else registro['custo_capital_real']
+        )
 
     # ── Fetchers privados ──────────────────────────────────────────────────────
 
@@ -267,38 +323,6 @@ class MacroContext:
         except Exception as exc:
             logger.warning("Falha IPCA BCB série 433: %s. Usando fallback.", exc)
             return IPCA_12M_FALLBACK
-
-    def _fetch_ntnb(self) -> float:
-        """Yield real médio de NTN-B com vencimento >= 2035 via Tesouro Direto. Retorna decimal."""
-        try:
-            url = (
-                "https://www.tesourodireto.com.br/json/br/com/b3/tesourodireto/"
-                "service/api/treasureList.json"
-            )
-            resp = requests.get(
-                url, timeout=10, headers={"User-Agent": "Mozilla/5.0"}
-            )
-            resp.raise_for_status()
-            bonds = resp.json()["response"]["TrsrBdTradgList"]
-            rates: list[float] = []
-            for item in bonds:
-                bd = item["TrsrBd"]
-                nm   = str(bd.get("nm", ""))
-                venc = str(bd.get("mtrtyDt", ""))
-                ano  = int(venc[:4]) if len(venc) >= 4 and venc[:4].isdigit() else 0
-                if "IPCA+" in nm and ano >= 2035:
-                    # taxa pode estar em sellr.anulInvstmtRate ou no nível do TrsrBd
-                    taxa = (
-                        bd.get("sellr", {}).get("anulInvstmtRate")
-                        or bd.get("anulInvstmtRate")
-                    )
-                    if taxa is not None:
-                        rates.append(float(taxa))
-            if rates:
-                return sum(rates) / len(rates) / 100
-        except Exception as exc:
-            logger.warning("Falha NTN-B Tesouro Direto: %s. Usando fallback.", exc)
-        return NTNB_LONGA_FALLBACK
 
 
 # Instância global — engines importam MACRO em vez de literais

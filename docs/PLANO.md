@@ -147,7 +147,7 @@ A ordem segue a prioridade "críticos → taxa real → dados de referência →
 
 ### Fase 0 — Preparação
 
-Em execução pelo loop. Escopo e aceites em `docs/loop/fila.md`.
+Concluída (tag `v2-fase-0`). Fila arquivada em `docs/loop/historico/fase-0/`.
 
 | Item | Tipo | Entrega |
 |---|---|---|
@@ -236,8 +236,6 @@ Correções com teste xfail primeiro. Dados de referência antes de tudo.
 
 Ordem da fila, não a numérica. O F2A-10 (gate de liquidez) e o F2A-39 (correção do BTG no índice) foram para a 2B.
 
-O ADR-0003 acrescenta, antes do F2A-7: F2A-32 (proveniência temporal e contratos de provedor), F2A-33 (tabela de contas por código e descrição), F2A-38 (leituras existentes pela tabela), F2A-34 (ficha dos números por ação), F2A-35 (universo inicial), F2A-36 (LPA divulgado por espécie) e F2A-37 (reservas de controladores). Detalhes na fila.
-
 **Gate:** cada correção com xfail estrito → marca retirada → PASS (ADR-0003, D27); seção A inalterada; seção B só muda onde está marcada; mutation; cobertura CVM de 100% dos listados mapeáveis, com o denominador da D32 do ADR-0003 (pares CNPJ e código ativos no FCA mais recente e FIIs listados no Informe Mensal; toda exclusão com motivo); auditoria externa no checkpoint (D30).
 **Decisões:** limiares de divergência de ações e de liquidez; fonte dos dados bancários.
 **Jules:** os tickets dele em `cvm_provider.py` precisam estar integrados antes do F2A-1.
@@ -246,18 +244,84 @@ O ADR-0003 acrescenta, antes do F2A-7: F2A-32 (proveniência temporal e contrato
 
 Decisão do Marcos item a item, com o dossiê do F0-6. Cada método alterado muda de versão, com changelog.
 
-| Item | Entrega |
-|---|---|
-| F2B-1 | Taxa de desconto: NTN-B longa (real) + prêmio de risco, via `cost_of_equity_real`, com k e g no mesmo regime. A Selic deixa de ser taxa de desconto. Prêmio e vértice decididos com o dossiê |
-| F2B-2 | Benchmarks por classe: FII comparado com a NTN-B (spread) e com a Selic líquida; cada método documenta a taxa que usa |
-| F2B-3 | Lente de bancos: P/VP justificado pelo ROE e pelo custo de capital do F2B-1; Basileia e inadimplência como qualidade. Holdings de banco pelo desconto sobre as participações (opcional) |
-| F2B-4 | `applies_to`: métodos de empresa não financeira se abstêm em bancos e seguradoras; ETFs e BDRs ficam fora do escopo dos métodos, com o motivo exibido |
-| F2B-5 | Limpeza: constantes e caminhos que usavam a Selic como taxa de desconto |
-| F2A-10 | Gate de liquidez com volume e negócios do COTAHIST (medidos no F2A-26); abaixo do limiar, abstenção [D7] [LIQUIDEZ]. Veio da 2A |
-| F2A-39 | Unit do BTG (BPAC11) pela tabela de correções, com fonte oficial da B3 que traga ISIN e CNPJ juntos. Veio da 2A (decisão de 13/10/2026) |
-| F2B-6 | Resumo e arquivamento |
+Ordem e IDs finais da fila da fase (`docs/loop/historico/fase-2b/fila.md`) e da fila de
+fechamento da auditoria externa (F2B-56 a F2B-68, `docs/loop/fila.md`); títulos de commit
+delimitam as entregas. F2B-4 e F2B-32 saíram do bloqueio pelas decisões de 25/10/2026: o
+escopo segue o modelo do BPP consolidado (seguradora pelo critério ampliado) e a lente de
+bancos é chamada pelo motor; Basileia e inadimplência do IF.data ficam só como contexto. Resumo
+da fase em `docs/loop/historico/fase-2b/pr-fase-2b.md`.
 
-**Gate:** seção A inalterada; seção B virou exatamente onde marcada; mutation ≥ 80%; os resultados antes e depois da taxa real estão comparados no diário.
+| Item | Entrega (título da fila) | Estado em 25/10/2026 |
+|---|---|---|
+| F2B-35 | docs: sync agent instructions after the phase 2A closure | entregue |
+| F2B-36 | test: register the IF.data audit bugs and point open bugs to their items | entregue |
+| F2B-7 | test: move rate-dependent section A checks to section B | entregue |
+| F2B-8 | fix: keep non-positive CVM figures over stale positive values | entregue |
+| F2B-10 | fix: infer share scale from consolidated earnings when controlling earnings abstain | entregue |
+| F2B-11 | fix: read the aggregate EPS line as the EPS of a single-class company | entregue |
+| F2B-12 | fix: apply one preferred-class rule to units and standalone shares | entregue |
+| F2B-13 | fix: correct share species through the source corrections table | entregue |
+| F2B-14 | fix: cross-check recalculated EPS only against coherent reported EPS | entregue |
+| F2B-16 | fix: record FII figures per source for the cross-checks | entregue |
+| F2B-17 | fix: stop flagging FIIs as outside CVM company coverage | entregue |
+| F2B-18 | fix: discard implausible negative ROE at the provider boundary | entregue |
+| F2B-20 | fix: refuse non-positive prices in both engines | entregue |
+| F2B-37 | fix: apply the controlling-interest rule to the trailing twelve months | entregue |
+| F2B-38 | fix: pick the latest version of a restated FII monthly report | entregue |
+| F2B-39 | fix: keep a valid dividend yield over an out-of-range later source | entregue |
+| F2B-40 | fix: treat an empty COTAHIST archive as a failed download | entregue |
+| F2B-41 | fix: abstain the FII book-value lens on non-positive P/VP | entregue |
+| F2B-42 | fix: abstain Graham on non-positive book value per share | entregue |
+| F2B-21 | docs: survey rates, FII yields and bank sources for phase 2B | entregue |
+| F2B-43 | test: register bugs confirmed by the phase 2B survey | entregue |
+| F2B-22 | docs: add methodology sheet for the real cost of equity | entregue |
+| F2B-23 | docs: add methodology sheet for Gordon in the real regime | entregue |
+| F2B-24 | docs: add methodology sheet for the Bazin rate | entregue |
+| F2B-25 | docs: add methodology sheet for FII yield against NTN-B | entregue |
+| F2B-26 | docs: add methodology sheet for the bank lens | entregue |
+| F2B-28 | feat: add FII trailing distributions from the monthly report | entregue |
+| F2B-46 | fix: enforce CVM input domains and completeness by statement model | entregue |
+| F2B-27 | feat: add Tesouro Nacional bond rates provider | entregue |
+| F2B-29 | feat: add real-rate inputs and Fisher conversion to the method contract | entregue |
+| F2B-47 | fix: enforce the approved local cutoff for Tesouro snapshots | entregue |
+| F2B-48 | fix: close audited unit dividend and Tesouro data gaps | entregue |
+| F2B-30 | feat: expose the real cost of equity with provenance | entregue |
+| F2B-49 | chore: satisfy the macro provider lint gate | entregue |
+| F2B-1 | fix: discount Gordon at the real cost of equity | entregue |
+| F2B-31 | fix: take the Selic out of the Bazin rate | entregue |
+| F2B-50 | test: register the B3 trading-name search bug | entregue |
+| F2B-51 | fix: keep the real-rate abstention reason in the macro provider | entregue |
+| F2B-52 | fix: use one profile per asset from the B3 dividend yield | entregue |
+| F2B-53 | fix: count a fully covered B3 series without dividends as zero yield | entregue |
+| F2B-54 | fix: close the audited Bazin, FII report and Gordon base gaps | entregue |
+| F2B-2 | fix: compare FII yield with NTN-B plus the historical spread | entregue |
+| F2A-39 | fix: map BTG Pactual unit through the source corrections table | entregue |
+| F2B-55 | fix: accept fractional FII quota counts from the Informe | entregue |
+| F2B-4 | fix: enforce method scope by asset class and statement model | entregue |
+| F2B-44 | fix: record IF.data provenance and the reference instant | entregue |
+| F2B-3 | feat: add justified price-to-book lens for banks | entregue |
+| F2B-32 | fix: value banks with the bank lens | entregue |
+| F2A-10 | fix: abstain below the liquidity threshold | entregue |
+| F2B-33 | docs: sync agent instructions with phase 2B rates and scope | entregue |
+| F2B-34 | docs: propose phase 2C queue | entregue |
+| F2B-45 | fix: stop parsing Portuguese debt text in the stock engine | entregue |
+| F2B-5 | chore: clean up phase 2B residue | entregue |
+| F2B-6 | docs: add phase 2B summary and archive loop files | entregue |
+| F2B-56 | docs: approve the FII sheet 1.3 on empty composition and amortization cells | entregue |
+| F2B-57 | fix: treat any conflicting field of a same-version FII report as a conflict | entregue |
+| F2B-58 | fix: hold the FII lens to the same time cut as the real rate and the reports | entregue |
+| F2B-59 | fix: take the FII composition from the selected report version | entregue |
+| F2B-60 | fix: validate every book value in the FII window | entregue |
+| F2B-61 | fix: read empty FII amortization by the sheet 1.3 rule | entregue |
+| F2B-62 | fix: return no number when the FII lens abstains | entregue |
+| F2B-63 | fix: read the statement model where the cascade writes it in the completeness check | entregue |
+| F2B-64 | test: redo the D27 counterproof for F2B-54 and F2B-2 | entregue |
+| F2B-65 | docs: remeasure the FII spread after the closing fixes | entregue |
+| F2B-66 | docs: sync CLAUDE.md and the plan with the phase 2B delivery | entregue |
+| F2B-67 | docs: add the phase 2B closing caveats to the phase 2C proposal | pendente |
+| F2B-68 | docs: record the phase 2B closing and archive the closing queue | pendente |
+
+**Gate:** seção A muda só no F2B-7 ([SEÇÃO A] em (c), decisão de 18/10/2026); seção B virou exatamente onde marcada; mutation ≥ 80%; os resultados antes e depois da taxa real estão comparados no diário.
 
 ### Fase 2C — Qualidade e apresentação
 
@@ -286,7 +350,7 @@ Decisão do Marcos item a item, com o dossiê do F0-6. Cada método alterado mud
 | F3-3 | Demonstrações ponto-no-tempo: contas, entregas, versões e composição do capital |
 | F3-4 | Histórico longo de preços pelo COTAHIST, com eventos societários e série ajustada para retorno |
 | F3-5 | Universo ponto-no-tempo, a partir dos dados de referência do F2A-1, incluindo empresas deslistadas |
-| F3-6 | `AnalysisService.analisar(ticker, as_of)` conectado; `app.py` passa a chamar o serviço |
+| F3-6 | `AnalysisService.analisar(ticker, as_of)` conectado; `app.py` passa a chamar o serviço; abstenção (FII, banco, ETF, BDR, `UNKNOWN`) aparece como motivo, sem número (`app.py:271` mostrava R$ 0,00; F2B-67) |
 | F3-7 | Reconstrução histórica (backfill) do universo |
 | F3-8 | Backtest ponto-no-tempo; os CSVs fabricados saem do repositório |
 | F3-9 | Limpeza: os dois bancos antigos (com backup antes), o cache de 7 dias da cascata antiga, a orquestração duplicada do `app.py`, `limpar_banco.py` (substituído pelas migrações) e `auditar_recomendacoes.py` (substituído pelo backtest), conforme o inventário |
@@ -421,7 +485,7 @@ IDs conforme a auditoria normalizada no F0-0 (`docs/auditoria/2026-09-red-team.m
 | Selic nominal como taxa de desconto; `cost_of_equity_real` sem uso | F2B-1 |
 | Só o último ano, com cinco anos de CVM já baixados | F2A-7, F2C-1 |
 | Alavancagem pelo endividamento contábil total | F2A-8 |
-| Bancos sem regras próprias | F2A-9, F2B-3, F2B-4 |
+| Bancos sem regras próprias | F2A-9, F2B-3, F2B-4, F2B-32 |
 | Markowitz com um ano de dados, divisão fixa 40/60 e "Alocação Sugerida" | F0-9, F2C-9, F4-7 |
 | Cobertura por mapas manuais; atualizador que não preenche ticker | F2A-1, F2A-31, F2A-13 |
 | Segmento do FII e controle acionário baixados e não lidos | F2A-2 |

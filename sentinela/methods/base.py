@@ -3,7 +3,8 @@
 `MethodInputs` é congelado e carrega `as_of`. Todo método declara `nome`, `version`,
 `regime`, `requires`, `assumptions`, `applies_to` e `params_type`, e devolve
 `MethodResult` ou `Abstention`: sem insumo exigido, abstém-se, nunca devolve um
-número conservador. Os parâmetros entram como argumento explícito (dataclass
+número conservador. O escopo é conferido antes dos insumos (F2B-4): a classe oficial é
+exigida de todos; STOCK e UNIT exigem também o modelo do BPP consolidado em `modelos`. Os parâmetros entram como argumento explícito (dataclass
 congelada, sem valor padrão); os métodos não importam `config`.
 """
 
@@ -16,10 +17,18 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
 
-from sentinela.domain.enums import AssetType, Perfil, Regime
+from sentinela.domain.enums import (
+    AssetType,
+    DocumentoContabil,
+    ModeloDemonstracao,
+    Perfil,
+    Regime,
+)
 from sentinela.domain.units import (
     BRL,
+    Inflacao,
     Percent,
+    ProventosControladores,
     QuantidadeAcoes,
     RateNominal,
     RateReal,
@@ -32,7 +41,7 @@ TIPO_TAXA: dict[Regime, type | None] = {
     Regime.SEM_TAXA: None,
 }
 
-_UNIDADES = (BRL, Ratio, Percent, RateNominal, RateReal, QuantidadeAcoes)
+_UNIDADES = (BRL, Ratio, Percent, RateNominal, RateReal, QuantidadeAcoes, Inflacao)
 _TIPOS_CAMPOS: dict[str, type] = {
     "preco": BRL,
     "lpa": BRL,
@@ -41,11 +50,23 @@ _TIPOS_CAMPOS: dict[str, type] = {
     "pvp": Ratio,
     "dy": Ratio,
     "roe": Ratio,
-    "selic": RateNominal,
+    "custo_capital_real": RateReal,
+    "inflacao": Inflacao,
+    "teto_pib_real": RateReal,
+    "proventos_controladores": ProventosControladores,
+    "ntnb_real": RateReal,
     "vacancia": Ratio,
     "perfil": Perfil,
+    "classe_ativo": AssetType,
+    "modelo": ModeloDemonstracao,
+    "documento_contabil": DocumentoContabil,
+    "base_acionaria_compativel": bool,
+    "lucro_anual_controladores": BRL,
+    "pl_inicial_controladores": BRL,
 }
 _FLAGS = ("pl_confiavel", "dy_confiavel")
+# F2B-4: classes cujo escopo depende do modelo da demonstração (BPP consolidado).
+CLASSES_DE_COMPANHIA = frozenset({AssetType.STOCK, AssetType.UNIT})
 _VERSAO = re.compile(r"\d+\.\d+\.\d+")
 
 
@@ -59,11 +80,23 @@ class MethodInputs:
     pvp: Ratio | None = None
     dy: Ratio | None = None
     roe: Ratio | None = None
-    selic: RateNominal | None = None
     vacancia: Ratio | None = None
     perfil: Perfil | None = None
     pl_confiavel: bool = True
     dy_confiavel: bool = True
+    custo_capital_real: RateReal | None = None
+    inflacao: Inflacao | None = None
+    teto_pib_real: RateReal | None = None
+    proventos_controladores: ProventosControladores | None = None
+    # F2B-2 (decisão do Marcos de 20/10/2026): a NTN-B real da lente do FII, sem prêmio.
+    ntnb_real: RateReal | None = None
+
+    classe_ativo: AssetType | None = None
+    modelo: ModeloDemonstracao | None = None
+    documento_contabil: DocumentoContabil | None = None
+    base_acionaria_compativel: bool | None = None
+    lucro_anual_controladores: BRL | None = None
+    pl_inicial_controladores: BRL | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.as_of, date) or isinstance(self.as_of, datetime):
@@ -157,6 +190,8 @@ class ValuationMethod(ABC):
     assumptions: tuple[str, ...]
     applies_to: frozenset[AssetType]
     params_type: type
+    # F2B-4: modelos do BPP consolidado aceitos para STOCK/UNIT; vazio, nenhum.
+    modelos: frozenset[ModeloDemonstracao] = frozenset()
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
@@ -189,14 +224,20 @@ class ValuationMethod(ABC):
             raise TypeError(
                 f"requires deve ser tupla de insumos de MethodInputs: {cls.requires!r}"
             )
-        if "selic" in cls.requires and cls.regime is not Regime.NOMINAL:
-            raise TypeError("selic é taxa nominal: só método NOMINAL pode exigi-la")
+        if "custo_capital_real" in cls.requires and cls.regime is not Regime.REAL:
+            raise TypeError("custo_capital_real: só método REAL pode exigi-lo")
+        if "ntnb_real" in cls.requires and cls.regime is not Regime.REAL:
+            raise TypeError("ntnb_real: só método REAL pode exigi-la")
         if (
             not isinstance(cls.applies_to, frozenset)
             or not cls.applies_to
             or not all(isinstance(a, AssetType) for a in cls.applies_to)
         ):
             raise TypeError("applies_to deve ser frozenset não vazio de AssetType")
+        if not isinstance(cls.modelos, frozenset) or not all(
+            isinstance(m, ModeloDemonstracao) for m in cls.modelos
+        ):
+            raise TypeError("modelos deve ser frozenset de ModeloDemonstracao")
         _validar_params_type(cls.params_type)
 
     def calcular(self, inputs: MethodInputs, params: Any) -> MethodResult | Abstention:
@@ -204,6 +245,9 @@ class ValuationMethod(ABC):
             raise TypeError("inputs deve ser MethodInputs")
         if not isinstance(params, self.params_type):
             raise TypeError(f"parâmetros devem ser {self.params_type.__name__}")
+        fora = self._fora_do_escopo(inputs)
+        if fora is not None:
+            return Abstention(self.nome, self.version, fora)
         faltantes = [r for r in self.requires if getattr(inputs, r) is None]
         if faltantes:
             return Abstention(
@@ -213,6 +257,19 @@ class ValuationMethod(ABC):
         if not isinstance(resultado, (MethodResult, Abstention)):
             raise TypeError("_calcular deve devolver MethodResult ou Abstention")
         return resultado
+
+    def _fora_do_escopo(self, inputs: MethodInputs) -> str | None:
+        classe = inputs.classe_ativo
+        if classe is None:
+            return "classe do ativo ausente"
+        if classe not in self.applies_to:
+            return f"classe {classe.value} fora do escopo do método"
+        if classe in CLASSES_DE_COMPANHIA:
+            if inputs.modelo is None:
+                return "modelo da demonstração não demonstrado no BPP consolidado"
+            if inputs.modelo not in self.modelos:
+                return f"modelo {inputs.modelo.value} fora do escopo do método"
+        return None
 
     @abstractmethod
     def _calcular(

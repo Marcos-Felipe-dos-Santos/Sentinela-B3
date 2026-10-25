@@ -92,9 +92,12 @@ def parsear_linhas(
 def ler_zip(
     zip_path: Path, mercados: tuple[str, ...] = (MERCADO_A_VISTA,)
 ) -> list[Cotacao]:
-    """Lê o primeiro arquivo do ZIP mensal da B3."""
+    """Lê o primeiro arquivo do ZIP mensal da B3. ZIP sem arquivo é ZIP corrompido (F2B-40)."""
     with zipfile.ZipFile(zip_path) as zf:
-        nome = zf.namelist()[0]
+        nomes = zf.namelist()
+        if not nomes:
+            raise zipfile.BadZipFile(f"{zip_path}: ZIP sem arquivo")
+        nome = nomes[0]
         with zf.open(nome) as f:
             texto = (linha.decode("latin-1") for linha in f)
             return list(parsear_linhas(texto, mercados))
@@ -118,15 +121,31 @@ def data_de_geracao(zip_path: Path) -> str | None:
         return None
 
 
+def _tem_arquivo(destino: Path) -> bool:
+    """O ZIP abre e traz ao menos um arquivo (F2B-40: o vazio não é a cópia definitiva)."""
+    try:
+        with zipfile.ZipFile(destino) as zf:
+            return bool(zf.namelist())
+    except (OSError, zipfile.BadZipFile):
+        return False
+
+
 def _completo(destino: Path, ano: int, mes: int) -> bool:
-    """O ZIP foi baixado depois do fim do mês (mais a folga): não muda mais."""
+    """O ZIP foi baixado depois do fim do mês (mais a folga) e traz o arquivo: não muda mais."""
     proximo = date(ano + (mes == 12), mes % 12 + 1, 1)
     fim = datetime(proximo.year, proximo.month, 1, tzinfo=_FUSO_B3).timestamp()
-    return destino.stat().st_mtime >= fim + _MARGEM_FECHAMENTO_S
+    return destino.stat().st_mtime >= fim + _MARGEM_FECHAMENTO_S and _tem_arquivo(
+        destino
+    )
 
 
 def baixar_mes(
-    ano: int, mes: int, agora: datetime, cache_dir: str | Path = "data/cotahist"
+    ano: int,
+    mes: int,
+    agora: datetime,
+    cache_dir: str | Path = "data/cotahist",
+    *,
+    permitir_cache_antigo: bool = True,
 ) -> Path:
     """Baixa o ZIP do mês.
 
@@ -134,7 +153,8 @@ def baixar_mes(
     outra, inclusive a de um mês já fechado baixada com o mês em curso, expira em um
     dia, porque ainda lhe faltam pregões. `agora` é o instante de referência (sem
     leitura de relógio aqui; é lido no fuso da B3). Se a rede falha e há cópia antiga,
-    vale a cópia, com aviso.
+    vale a cópia, com aviso, quando `permitir_cache_antigo` é verdadeiro. O coletor
+    de liquidez recusa essa reserva para sinalizar falha de cobertura ao gate.
     """
     cache = Path(cache_dir)
     cache.mkdir(parents=True, exist_ok=True)
@@ -153,6 +173,8 @@ def baixar_mes(
         baixado = baixar_arquivo(url, destino)
     except (requests.RequestException, OSError, zipfile.BadZipFile):
         antigo.replace(destino)
+        if not permitir_cache_antigo:
+            raise
         logger.warning(
             "COTAHIST %02d/%d: falha no download, usando cópia antiga", mes, ano
         )
@@ -241,7 +263,9 @@ class HistoricoRecente:
                     continue
                 try:
                     cotacoes += ler_zip_em_cache(
-                        baixar_mes(ano, mes, agora, self.cache_dir)
+                        baixar_mes(
+                            ano, mes, agora, self.cache_dir, permitir_cache_antigo=False
+                        )
                     )
                 except (
                     requests.RequestException,

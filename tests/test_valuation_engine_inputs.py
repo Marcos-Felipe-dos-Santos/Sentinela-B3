@@ -2,13 +2,18 @@ import math
 
 import pytest
 
-from sentinela.domain.enums import Perfil
+from sentinela.domain.enums import AssetType, ModeloDemonstracao, Perfil
 from sentinela.domain.units import BRL, Ratio
 from valuation_engine import ValuationEngine
 
+# F2B-4: o motor só monta os insumos depois da guarda de classe e modelo.
+ESCOPO = {"classe": AssetType.STOCK, "modelo": ModeloDemonstracao.EMPRESA}
+
 
 def _montar(p=100.0, pl=10.0, pvp=2.0, is_growth=False, pl_confiavel=True):
-    return ValuationEngine()._montar_inputs(p, pl, pvp, is_growth, pl_confiavel)
+    return ValuationEngine()._montar_inputs(
+        p, pl, pvp, is_growth, pl_confiavel, **ESCOPO
+    )
 
 
 def test_converte_os_dados_da_v1_em_inputs_tipados():

@@ -2,7 +2,7 @@ from datetime import date
 
 import pytest
 
-from sentinela.domain.enums import AssetType, Perfil, Regime
+from sentinela.domain.enums import AssetType, ModeloDemonstracao, Perfil, Regime
 from sentinela.domain.units import BRL, RateNominal, Ratio
 from sentinela.methods.base import Abstention, MethodInputs, MethodResult
 from sentinela.methods.lynch import (
@@ -15,6 +15,9 @@ from sentinela.methods.lynch import (
     LynchParams,
 )
 
+# F2B-4: escopo de companhia (STOCK, modelo empresa pelo BPP consolidado).
+ESCOPO = {"classe_ativo": AssetType.STOCK, "modelo": ModeloDemonstracao.EMPRESA}
+
 PARAMS = LynchParams(payout_max=0.95, g_max=0.25, pl_multiplicador=1.5, pl_max=35.0)
 
 
@@ -24,6 +27,7 @@ def _inputs(
     if lpa == "auto":
         lpa = BRL(preco / pl) if pl > 0 else BRL(0.0)
     return MethodInputs(
+        **ESCOPO,
         as_of=date(2026, 10, 2),
         preco=BRL(preco),
         lpa=lpa,
@@ -55,7 +59,7 @@ def test_formula_igual_a_da_v1():
     r = _lynch(preco=100.0, pl=15.0, roe=0.25, dy=0.02)
     assert isinstance(r, MethodResult)
     assert r.valor.valor == _v1(100.0, 15.0, 0.25, 0.02)
-    assert (r.metodo, r.versao) == ("Lynch", "1.0.0")
+    assert (r.metodo, r.versao) == ("Lynch", "1.1.0")
 
 
 @pytest.mark.parametrize(
@@ -148,7 +152,7 @@ def test_roe_nao_positivo_abstem_se(roe):
 def test_abstencao_identifica_metodo_e_versao(kw):
     r = _lynch(**kw)
     assert isinstance(r, Abstention)
-    assert (r.metodo, r.versao) == ("Lynch", "1.0.0")
+    assert (r.metodo, r.versao) == ("Lynch", "1.1.0")
 
 
 @pytest.mark.parametrize("campo", ["preco", "lpa", "pl", "roe", "dy", "perfil"])
@@ -162,7 +166,9 @@ def test_insumo_ausente_abstem_se(campo):
         "perfil": Perfil.CRESCIMENTO,
     }
     base[campo] = None
-    r = Lynch().calcular(MethodInputs(as_of=date(2026, 10, 2), **base), PARAMS)
+    r = Lynch().calcular(
+        MethodInputs(**ESCOPO, as_of=date(2026, 10, 2), **base), PARAMS
+    )
     assert isinstance(r, Abstention)
     assert r.motivo == f"insumo ausente: {campo}"
 
@@ -170,6 +176,7 @@ def test_insumo_ausente_abstem_se(campo):
 def test_resultado_que_estoura_para_infinito_abstem_se():
     r = Lynch().calcular(
         MethodInputs(
+            **ESCOPO,
             as_of=date(2026, 10, 2),
             preco=BRL(1e308),
             lpa=BRL(1e308),
@@ -182,13 +189,13 @@ def test_resultado_que_estoura_para_infinito_abstem_se():
     )
     assert isinstance(r, Abstention)
     assert r.motivo == "resultado não finito"
-    assert (r.metodo, r.versao) == ("Lynch", "1.0.0")
+    assert (r.metodo, r.versao) == ("Lynch", "1.1.0")
 
 
 def test_metadados():
     m = Lynch()
     assert m.nome == "Lynch"
-    assert m.version == "1.0.0"
+    assert m.version == "1.1.0"
     assert m.regime is Regime.NOMINAL
     assert m.requires == ("preco", "lpa", "pl", "roe", "dy", "perfil")
     assert m.applies_to == frozenset({AssetType.STOCK, AssetType.UNIT})

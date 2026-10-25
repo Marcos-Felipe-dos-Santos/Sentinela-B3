@@ -6,7 +6,7 @@ from datetime import date
 
 import pytest
 
-from sentinela.domain.enums import AssetType, Regime
+from sentinela.domain.enums import AssetType, ModeloDemonstracao, Regime
 from sentinela.domain.units import BRL
 from sentinela.methods import registry
 from sentinela.methods.base import (
@@ -37,6 +37,7 @@ def _metodo(**sobrescreve):
         "requires": ("preco",),
         "assumptions": (),
         "applies_to": frozenset({AssetType.STOCK}),
+        "modelos": frozenset({ModeloDemonstracao.EMPRESA}),
         "params_type": _Params,
         "_calcular": lambda self, inputs, params: Abstention("X", "1.0.0", "n/a"),
     }
@@ -103,16 +104,26 @@ def test_mensagens_da_declaracao_do_metodo():
     assert _msg(TypeError, _metodo(nome="")) == "nome deve ser texto não vazio"
     assert _msg(TypeError, _metodo(regime="NOMINAL")) == "regime deve ser Regime"
     assert _msg(TypeError, _metodo(assumptions=["a"])) == "assumptions deve ser tupla"
-    assert _msg(TypeError, _metodo(regime=Regime.REAL, requires=("selic",))) == (
-        "selic é taxa nominal: só método NOMINAL pode exigi-la"
+    # F2B-2: a NTN-B real da lente do FII só serve a método REAL.
+    assert _msg(TypeError, _metodo(regime=Regime.NOMINAL, requires=("ntnb_real",))) == (
+        "ntnb_real: só método REAL pode exigi-la"
     )
     assert _msg(TypeError, _metodo(applies_to=frozenset())) == (
         "applies_to deve ser frozenset não vazio de AssetType"
     )
+    for modelos in ({ModeloDemonstracao.EMPRESA}, frozenset({"empresa"})):
+        assert _msg(TypeError, _metodo(modelos=modelos)) == (
+            "modelos deve ser frozenset de ModeloDemonstracao"
+        )
 
 
 def test_mensagens_do_calcular():
-    i = MethodInputs(as_of=date(2026, 10, 2), preco=BRL(1.0))
+    i = MethodInputs(
+        as_of=date(2026, 10, 2),
+        preco=BRL(1.0),
+        classe_ativo=AssetType.STOCK,
+        modelo=ModeloDemonstracao.EMPRESA,
+    )
     metodo = _metodo()()
     assert _msg(TypeError, lambda: metodo().calcular({"preco": 1}, _Params(1.0))) == (
         "inputs deve ser MethodInputs"
@@ -125,7 +136,7 @@ def test_mensagens_do_calcular():
 
 def test_mensagens_do_registro():
     g = registry.obter("Graham")
-    ok = {"Graham": (registry.Mudanca("1.0.0", "x"),)}
+    ok = {"Graham": (registry.Mudanca("1.2.0", "x"),)}
     assert (
         _msg(ValueError, lambda: registry.validar((g, g), ok))
         == "nome de método repetido no registro"

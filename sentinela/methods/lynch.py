@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from sentinela.domain.enums import AssetType, Perfil, Regime
+from sentinela.domain.enums import AssetType, ModeloDemonstracao, Perfil, Regime
 from sentinela.domain.units import BRL, RateNominal, Ratio
 from sentinela.methods.base import (
     Abstention,
@@ -38,7 +38,7 @@ class LynchParams:
 
 class Lynch(ValuationMethod):
     nome = "Lynch"
-    version = "1.0.0"
+    version = "1.1.0"
     regime = Regime.NOMINAL
     requires = ("preco", "lpa", "pl", "roe", "dy", "perfil")
     assumptions = (
@@ -48,6 +48,7 @@ class Lynch(ValuationMethod):
         "exige P/L, LPA e ROE positivos",
     )
     applies_to = frozenset({AssetType.STOCK, AssetType.UNIT})
+    modelos = frozenset({ModeloDemonstracao.EMPRESA})
     params_type = LynchParams
 
     def _calcular(

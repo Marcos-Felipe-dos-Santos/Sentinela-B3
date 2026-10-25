@@ -3,7 +3,7 @@ from datetime import date
 
 import pytest
 
-from sentinela.domain.enums import AssetType, Perfil, Regime
+from sentinela.domain.enums import AssetType, ModeloDemonstracao, Perfil, Regime
 from sentinela.domain.units import BRL, Ratio
 from sentinela.methods.base import Abstention, MethodInputs, MethodResult
 from sentinela.methods.graham import (
@@ -13,6 +13,9 @@ from sentinela.methods.graham import (
     GrahamParams,
 )
 
+# F2B-4: escopo de companhia (STOCK, modelo empresa pelo BPP consolidado).
+ESCOPO = {"classe_ativo": AssetType.STOCK, "modelo": ModeloDemonstracao.EMPRESA}
+
 PARAMS = GrahamParams(
     pl_limite=25.0, pl_piso=7.0, pvp_limite_renda=2.5, pvp_limite_crescimento=3.0
 )
@@ -21,6 +24,7 @@ PARAMS = GrahamParams(
 def _inputs(preco=100.0, pl=10.0, pvp=1.5, perfil=Perfil.RENDA, **kw):
     vpa = BRL(preco / pvp) if pvp is not None and pvp > 0 else None
     return MethodInputs(
+        **ESCOPO,
         as_of=date(2026, 10, 2),
         preco=BRL(preco),
         pl=Ratio(pl) if pl is not None else None,
@@ -42,7 +46,7 @@ def test_formula_raiz_de_22_5_lpa_ajustado_vpa():
     assert r.valor == BRL(math.sqrt(22.5 * lpa * vpa))
     assert r.obter("lpa_ajustado") == BRL(10.0)
     assert r.obter("pl_aplicado") == Ratio(10.0)
-    assert (r.metodo, r.versao) == ("Graham", "1.0.0")
+    assert (r.metodo, r.versao) == ("Graham", "1.2.0")
 
 
 def test_mesma_ordem_de_operacoes_da_v1():
@@ -98,6 +102,7 @@ def test_pl_nao_positivo_abstem_se(pl):
 def test_pvp_nao_positivo_abstem_se(pvp):
     r = Graham().calcular(
         MethodInputs(
+            **ESCOPO,
             as_of=date(2026, 10, 2),
             preco=BRL(100.0),
             pl=Ratio(10.0),
@@ -131,7 +136,9 @@ def test_insumo_ausente_abstem_se(campo):
         "perfil": Perfil.RENDA,
     }
     base[campo] = None
-    r = Graham().calcular(MethodInputs(as_of=date(2026, 10, 2), **base), PARAMS)
+    r = Graham().calcular(
+        MethodInputs(**ESCOPO, as_of=date(2026, 10, 2), **base), PARAMS
+    )
     assert isinstance(r, Abstention)
     assert r.motivo == f"insumo ausente: {campo}"
 
@@ -139,7 +146,7 @@ def test_insumo_ausente_abstem_se(campo):
 def test_metadados():
     g = Graham()
     assert g.nome == "Graham"
-    assert g.version == "1.0.0"
+    assert g.version == "1.2.0"
     assert g.regime is Regime.SEM_TAXA
     assert g.requires == ("preco", "pl", "pvp", "vpa", "perfil")
     assert g.applies_to == frozenset({AssetType.STOCK, AssetType.UNIT})
@@ -160,12 +167,13 @@ def test_metadados():
 def test_abstencao_identifica_metodo_e_versao(kw):
     r = _graham(**kw)
     assert isinstance(r, Abstention)
-    assert (r.metodo, r.versao) == ("Graham", "1.0.0")
+    assert (r.metodo, r.versao) == ("Graham", "1.2.0")
 
 
 def test_resultado_que_estoura_para_infinito_abstem_se():
     r = Graham().calcular(
         MethodInputs(
+            **ESCOPO,
             as_of=date(2026, 10, 2),
             preco=BRL(1e300),
             pl=Ratio(10.0),
@@ -177,4 +185,4 @@ def test_resultado_que_estoura_para_infinito_abstem_se():
     )
     assert isinstance(r, Abstention)
     assert r.motivo == MOTIVO_NAO_FINITO
-    assert (r.metodo, r.versao) == ("Graham", "1.0.0")
+    assert (r.metodo, r.versao) == ("Graham", "1.2.0")

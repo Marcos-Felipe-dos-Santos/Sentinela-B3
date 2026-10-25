@@ -24,6 +24,7 @@ from jinja2 import Environment
 
 import fii_engine as modulo_fii
 import valuation_engine as modulo_valuation
+from config import MACRO
 from sentinela.domain import ticker as ticker_b3
 from sentinela.domain import units
 from sentinela.methods.base import Abstention, MethodResult
@@ -118,8 +119,10 @@ Não é consultoria financeira.</p>
 {% for nome, valor in fontes %}<tr><th>{{ nome }}</th><td>{{ valor }}</td></tr>{% endfor %}
 </table>
 
-<h2>Selic usada</h2>
-<p>{{ selic }} ao ano (taxa nominal).</p>
+<h2>Taxa real</h2>
+{% if taxa_real %}
+<table>{% for nome, valor in taxa_real %}<tr><th>{{ nome }}</th><td>{{ valor }}</td></tr>{% endfor %}</table>
+{% else %}<p>Indisponível: sem registro elegível, sem valor de contingência.</p>{% endif %}
 
 <h2>Insumos</h2>
 <table>
@@ -218,6 +221,7 @@ def _instancias(eh_fii: bool):
         modulo_valuation._BAZIN,
         modulo_valuation._LYNCH,
         modulo_valuation._GORDON,
+        modulo_valuation._BANCOS,
     ]
 
 
@@ -302,7 +306,15 @@ def _texto_referencia(referencia: dict[str, Any]) -> str:
     """Regra do índice oficial (F2A-19); com correção, o código veio da tabela, não da fonte."""
     texto = f"{referencia.get('regra')} (índice de {referencia.get('gerado_em')})"
     correcao = referencia.get("correcao")
-    if correcao:
+    if correcao and correcao.get("campo") == "especie":
+        # F2B-13: a correção de espécie mantém o código e troca a espécie do FCA.
+        texto += (
+            f"; espécie da tabela de correções, não do arquivo da fonte: "
+            f"{correcao.get('valor')} para {correcao.get('ticker')} "
+            f"(evidência: {correcao.get('arquivo')}, {correcao.get('coluna')}, "
+            f"{correcao.get('data')})"
+        )
+    elif correcao:
         texto += (
             f"; código da tabela de correções, não do arquivo da fonte: "
             f"{correcao.get('codigo_na_fonte')} → {correcao.get('ticker')} "
@@ -312,13 +324,35 @@ def _texto_referencia(referencia: dict[str, Any]) -> str:
     return texto
 
 
+def _escopo(inst) -> str:
+    """Classes do método e, para companhia, os modelos do BPP consolidado (F2B-4)."""
+    texto = ", ".join(sorted(a.value for a in inst.applies_to))
+    if inst.modelos:
+        modelos = ", ".join(sorted(m.value for m in inst.modelos))
+        texto += f"; modelo {modelos} (BPP consolidado)"
+    return texto
+
+
+def _classe_do_cabecalho(dados, eh_fii, fora_do_escopo) -> str:
+    """Classe tratada no cabeçalho; fora do escopo, a classe recebida, não "ação" (F2B-4)."""
+    if eh_fii:
+        return "FII"
+    classe = dados.get("classe_ativo")
+    if classe is None:
+        return "classe não informada"
+    classe = str(getattr(classe, "value", classe)).strip().upper()
+    if fora_do_escopo and classe not in ("STOCK", "UNIT"):
+        return f"{classe}, fora do escopo dos métodos de ação"
+    return "ação"
+
+
 def _bloco_metodo(registro) -> dict[str, Any]:
     inst, _, params, resultado = registro
     bloco: dict[str, Any] = {
         "nome": inst.nome,
         "versao": inst.version,
         "regime": inst.regime.value,
-        "applies_to": ", ".join(sorted(a.value for a in inst.applies_to)),
+        "applies_to": _escopo(inst),
         "premissas": list(inst.assumptions),
         "params": [(k, _param(v)) for k, v in dataclasses.asdict(params).items()],
         "abstencao": None,
@@ -340,7 +374,7 @@ def _bloco_nao_calculado(inst, motivo: str) -> dict[str, Any]:
         "nome": inst.nome,
         "versao": inst.version,
         "regime": inst.regime.value,
-        "applies_to": ", ".join(sorted(a.value for a in inst.applies_to)),
+        "applies_to": _escopo(inst),
         "premissas": list(inst.assumptions),
         "params": [],
         "abstencao": None,
@@ -360,6 +394,82 @@ def _texto_liquidez(liquidez: dict[str, Any]) -> str:
         for n, j in liquidez["janelas"].items()
     ]
     return f"{'; '.join(partes)}; até {liquidez['data_final']} ({liquidez['fonte']}){lacuna}"
+
+
+def _texto_taxa_fii(dados: dict[str, Any]) -> str:
+    """NTN-B real da taxa real e o spread datado da calibração (ficha FII 1.1, §6)."""
+    taxa = dados.get("taxa_real") or {}
+    calibracao = getattr(MACRO, "FII_SPREAD_CALIBRACAO", None) or {}
+    spread = getattr(MACRO, "FII_SPREAD_TIJOLO", None)
+    ntnb = taxa.get("ntnb")
+    texto_ntnb = (
+        f"NTN-B real {_numero(ntnb * 100)}% (data-base {taxa.get('data_base', 'n/d')}, "
+        f"{taxa.get('fonte') or 'fonte n/d'})"
+        if isinstance(ntnb, (int, float))
+        and not isinstance(ntnb, bool)
+        and math.isfinite(ntnb)
+        else f"NTN-B real indisponível ({taxa.get('abstencao', 'sem registro')})"
+    )
+    texto_spread = (
+        f"spread {_numero(spread * 100)}% (mediana dos tijolos, "
+        f"{'–'.join(calibracao.get('janela', ()))}, calibrado em {calibracao.get('data')})"
+        if isinstance(spread, (int, float))
+        else "spread indisponível"
+    )
+    return f"{texto_ntnb} + {texto_spread}; a Selic não forma o preço justo"
+
+
+def _texto_rendimento_fii(medida: dict[str, Any], dy_cascata: Any) -> str:
+    if "abstencao" in medida:
+        return f"não calculado: {medida['abstencao']}"
+    cascata = (
+        f"{_numero(dy_cascata * 100)}%"
+        if isinstance(dy_cascata, (int, float)) and not isinstance(dy_cascata, bool)
+        else "n/d"
+    )
+    return (
+        f"DY de 12 meses {_numero(medida['dy'] * 100)}% pelo Informe (até {medida['mes_final']}, "
+        f"rendimento de R$ {_numero(medida['rendimento_12m'])} por cota, sobre o "
+        f"{medida['base']}) contra {cascata} da cascata"
+        + (f"; tipo {medida['tipo']}" if medida.get("tipo") else "")
+        + "".join(
+            f"; emissão em {e['mes']} ({e['cotas_antes']} → {e['cotas_depois']} cotas)"
+            for e in medida.get("emissoes", ())
+        )
+        + "".join(f"; aviso: {a}" for a in medida.get("avisos", ()))
+    )
+
+
+def _taxa_real(dados: dict[str, Any]) -> list[tuple[str, str]]:
+    registro = dados.get("taxa_real")
+    if not registro:
+        return []
+    if "abstencao" in registro:
+        return [("Taxa real", f"abstenção: {registro['abstencao']}")]
+    inflacao = registro.get("inflacao") or {}
+    return [
+        ("NTN-B real", _formatar(units.RateReal(registro["ntnb"]))),
+        ("Custo de capital real", _formatar(units.RateReal(registro["custo_capital_real"]))),
+        ("Prêmio das ações", _formatar(units.RateReal(registro["premio"]))),
+        ("Vértice", str(registro.get("vertice"))),
+        ("Data-base", str(registro.get("data_base"))),
+        ("Fonte", str(registro.get("fonte"))),
+        ("Inflação da janela", str(inflacao["abstencao"]) if "abstencao" in inflacao else _formatar(units.RateNominal(inflacao["valor"]))),
+        ("Janela", f"{inflacao.get('inicio')} a {inflacao.get('fim')}"),
+        ("Fonte do IPCA", str((inflacao.get("proveniencia") or {}).get("fonte"))),
+        ("Proveniência", str(registro.get("proveniencia"))),
+    ]
+
+
+def _texto_proventos_bazin(dados: dict[str, Any]) -> str:
+    serie = dados.get("bazin_proventos")
+    if not serie:
+        return f"não calculado: {dados.get('bazin_diagnostico') or 'sem relação B3'}"
+    return (
+        f"R$ {_numero(serie['d_bruto_12m'], 6)} brutos por papel em 12 meses, datas ex "
+        f"de {serie['inicio_exclusivo']} (exclusive) a {serie['referencia']}, "
+        f"{len(serie['eventos'])} eventos; critério fixo de 6% (ficha Bazin 1.0)"
+    )
 
 
 def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str, Any]:
@@ -393,11 +503,6 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         for i in instancias
     ]
 
-    entradas = next(
-        (r[1] for r in registros if r[1].selic is not None),
-        registros[0][1] if registros else None,
-    )
-    selic = entradas.selic if entradas is not None else None
     insumos = [
         {
             "campo": campo,
@@ -463,16 +568,30 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
             }
         )
 
-    if selic is not None:
+    if eh_fii and "selic_liquida" in analise:
+        # F2B-2: a Selic líquida é só contexto e score do FII; não forma o preço justo.
         insumos.append(
             {
-                "campo": "selic",
-                "valor": _formatar(selic),
-                "unidade": "taxa nominal a.a.",
+                "campo": "selic_liquida (contexto e score)",
+                "valor": _formatar(analise["selic_liquida"]),
+                "unidade": "taxa nominal a.a., líquida de IR",
                 "proveniencia": PROVENIENCIA_DERIVADA["selic"],
             }
         )
 
+    if dados.get("bazin_diagnostico"):
+        for metodo in metodos:
+            if metodo["nome"] == "Bazin":
+                metodo["abstencao"] = dados["bazin_diagnostico"]
+    if dados.get("gordon_diagnostico"):
+        for metodo in metodos:
+            if metodo["nome"] == "Gordon":
+                metodo["abstencao"] = dados["gordon_diagnostico"]
+    if dados.get("bancos_diagnostico"):
+        # F2B-32: o motivo real da fronteira ou da lente, não o dos insumos vazios.
+        for metodo in metodos:
+            if metodo["nome"] == "Bancos":
+                metodo["abstencao"] = dados["bancos_diagnostico"]
     flags = ("dados_parciais", "dados_cache", "dados_manual", "fundamentos_incompletos")
     fontes = [
         ("Fonte do preço", dados.get("fonte_preco") or "desconhecida"),
@@ -487,6 +606,30 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         ),
     ]
 
+    fonte_gordon = dados.get("gordon_cvm")
+    if fonte_gordon and (
+        fonte_gordon.get("modelo") == "banco" or dados.get("modelo_bpp") == "banco"
+    ):
+        # F2B-32: o exercício e a entrega da DFP da lente de bancos (ficha bancos 1.1, §3).
+        fontes.append(
+            (
+                "DFP da lente de bancos",
+                f"exercício {fonte_gordon.get('inicio')} a {fonte_gordon.get('fim')}, "
+                f"entrega {fonte_gordon.get('data_entrega')}; "
+                f"{fonte_gordon.get('proveniencia') or 'sem proveniência'}",
+            )
+        )
+    elif fonte_gordon:
+        fontes.append(
+            (
+                "DVA do Gordon",
+                str(
+                    fonte_gordon.get("proveniencia")
+                    or fonte_gordon.get("abstencao")
+                    or "DFP anual dos controladores"
+                ),
+            )
+        )
     referencia = dados.get("referencia_oficial")
     if referencia:
         fontes.append(("Referência oficial", _texto_referencia(referencia)))
@@ -505,7 +648,34 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
     liquidez = dados.get("liquidez")
     if liquidez:
         fontes.append(
-            ("Liquidez (F2A-26, ainda sem uso nos métodos)", _texto_liquidez(liquidez))
+            ("Liquidez (63 pregões: presença ≥ 80%; mediana ≥ R$ 500 mil em ações/units e R$ 100 mil em FIIs)", _texto_liquidez(liquidez))
+        )
+    rendimento = dados.get("rendimento_fii_cvm")
+    if rendimento:
+        fontes.append(
+            (
+                "Rendimento do FII pelo Informe (F2B-2, lente de rendimento)",
+                _texto_rendimento_fii(rendimento, dados.get("dy")),
+            )
+        )
+    if eh_fii:
+        fontes.append(("Taxa da lente do FII (F2B-2)", _texto_taxa_fii(dados)))
+    if not eh_fii:
+        fontes.append(
+            ("Proventos do Bazin (relação B3, F2B-31)", _texto_proventos_bazin(dados))
+        )
+        perfil = dados.get("perfil_fonte") or {}
+        fontes.append(
+            (
+                "DY do perfil (F2B-52)",
+                perfil.get("aviso")
+                or (
+                    f"pela {perfil['fonte']}"
+                    + "".join(f"; aviso: {a}" for a in perfil.get("avisos", ()))
+                    if perfil.get("fonte")
+                    else "não calculado (sem detecção de perfil)"
+                ),
+            )
         )
     ttm = dados.get("ttm_cvm")
     if ttm:
@@ -545,15 +715,36 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
     sintese.append(("Métodos usados", str(analise.get("metodos_usados") or "nenhum")))
     if fora_do_escopo:
         sintese = [("Abstenção do motor", motivo_ausente)]
+    elif "fair_value" not in analise:
+        # F2B-62 (BUG-2B-50): a lente do FII se absteve; sem valor, sem variação.
+        sintese = [
+            ("Abstenção da lente", str(analise.get("metodos_usados") or "")),
+            *[(nome, valor) for nome, valor in sintese[2:] if nome != "Métodos usados"],
+        ]
+    # F2B-45: avisos que saíram de `riscos` (não mudam a classificação), em linha própria.
+    for chave, rotulo in (
+        ("aviso_liquidez", "Aviso de liquidez (fora dos riscos)"),
+        ("aviso_alavancagem", "Aviso de alavancagem (fora dos riscos)"),
+    ):
+        if analise.get(chave):
+            sintese.append((rotulo, analise[chave]))
+    if analise.get("inadimplencia_ifdata"):
+        # F2B-32: só leitura, sem efeito no valor (ficha bancos 1.1, §3).
+        sintese.append(
+            (
+                "Inadimplência (IF.data, só leitura; não altera o valor)",
+                analise["inadimplencia_ifdata"],
+            )
+        )
 
     return {
+        "taxa_real": _taxa_real(dados),
         "ticker": dados.get("ticker", ""),
         "data": hoje.isoformat(),
-        "classe": "FII" if eh_fii else "ação",
+        "classe": _classe_do_cabecalho(dados, eh_fii, fora_do_escopo),
         "plano_url": PLANO_URL,
         "limites": LIMITES,
         "fontes": fontes,
-        "selic": _formatar(selic) if selic is not None else "indisponível",
         "insumos": insumos,
         "metodos": metodos,
         "sintese": sintese,

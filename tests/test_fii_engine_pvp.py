@@ -2,6 +2,8 @@ import math
 from unittest.mock import patch
 
 import pytest
+from apoio_fii import enriquecer_fii
+from apoio_gordon import AS_OF_GORDON
 
 import fii_engine
 from fii_engine import FIIEngine
@@ -53,7 +55,10 @@ BASE = {"ticker": "XPML11", "preco_atual": 100.0, "dy": 0.12}
 
 def _analisar(**extra):
     with patch("fii_engine.get_selic_atual", return_value=0.10):
-        return FIIEngine().analisar({**BASE, **extra})
+        # F2B-2: o FII calcula com o Informe e a B3 sintéticos.
+        return FIIEngine().analisar(
+            enriquecer_fii({**BASE, **extra}), as_of=AS_OF_GORDON
+        )
 
 
 @pytest.mark.parametrize("pvp", [None, 0, 0.0])

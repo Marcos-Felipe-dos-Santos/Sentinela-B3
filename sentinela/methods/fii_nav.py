@@ -1,4 +1,4 @@
-"""Lente de P/VP do FII 1.0.0: comportamento da V1, extraído na Fase 1.
+"""Lente de P/VP do FII 1.1.0: abstém-se com P/VP não positivo.
 
 Na V1 o patrimônio não forma valor justo: o P/VP só pesa no score. Esta lente devolve o
 P/VP e a faixa (prêmio alto, prêmio moderado, desconto ou neutra, esta sem alerta); a
@@ -10,7 +10,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from sentinela.domain.enums import AssetType, Regime
-from sentinela.methods.base import MethodInputs, MethodResult, ValuationMethod
+from sentinela.methods.base import (
+    Abstention,
+    MethodInputs,
+    MethodResult,
+    ValuationMethod,
+)
 
 FAIXA_PREMIO_ALTO = "prêmio alto sobre o patrimônio"
 FAIXA_PREMIO_MODERADO = "prêmio moderado sobre o patrimônio"
@@ -26,7 +31,7 @@ class FiiNavParams:
 
 class FiiNav(ValuationMethod):
     nome = "P/VP do FII"
-    version = "1.0.0"
+    version = "1.2.0"
     regime = Regime.SEM_TAXA
     requires = ("pvp",)
     assumptions = (
@@ -36,8 +41,12 @@ class FiiNav(ValuationMethod):
     applies_to = frozenset({AssetType.FII})
     params_type = FiiNavParams
 
-    def _calcular(self, inputs: MethodInputs, params: FiiNavParams) -> MethodResult:
+    def _calcular(
+        self, inputs: MethodInputs, params: FiiNavParams
+    ) -> MethodResult | Abstention:
         pvp = inputs.pvp.valor
+        if pvp <= 0:
+            return Abstention(self.nome, self.version, "P/VP ≤ 0")
         if pvp > params.premio_alto:
             alertas: tuple[str, ...] = (FAIXA_PREMIO_ALTO,)
         elif pvp > params.premio_moderado:

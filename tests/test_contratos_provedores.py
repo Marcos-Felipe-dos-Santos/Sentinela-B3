@@ -242,3 +242,187 @@ def test_contrato_cotahist(tmp_path):
     assert petr3.volume_financeiro == pytest.approx(568_366_968.00)
     assert petr3.isin == "BRPETRACNOR9"
     assert petr3.tipo_mercado == "010"
+
+
+def test_contrato_tesouro():
+    from sentinela.data.providers import tesouro
+    from sentinela.domain.units import RateNominal, RateReal
+
+    fixture = _fixture("tesouro_2026.json")
+    titulos = tesouro.ler_csv(
+        fixture["membros"]["precotaxatesourodireto.csv"], as_of=date(2026, 10, 19)
+    )
+    por_nome = {titulo.nome: titulo for titulo in titulos}
+    assert len(titulos) == 4
+    real = por_nome["Tesouro IPCA+ com Juros Semestrais"]
+    assert real.tipo == "NTN-B"
+    assert real.data_base == date(2026, 10, 15)
+    assert real.vencimento == date(2035, 5, 15)
+    assert real.taxa_aplicacao == RateReal(0.0682)
+    assert real.taxa_resgate == RateReal(0.0694)
+    assert por_nome["Tesouro IPCA+"].taxa_aplicacao == RateReal(0.0673)
+    assert por_nome["Tesouro Prefixado"].taxa_aplicacao == RateNominal(0.1264)
+    assert por_nome[
+        "Tesouro Prefixado com Juros Semestrais"
+    ].taxa_resgate == RateNominal(0.1303)
+
+
+# ── B3: relação de proventos em dinheiro (F2B-31) ───────────────────────────
+
+
+def _b3_obter(fixture):
+    from sentinela.data.providers import b3_proventos
+
+    por_url = {
+        b3_proventos.url(
+            "GetDetail", {"codeCVM": "8133", "language": "pt-br"}
+        ): "GetDetail.json",
+        fixture["fonte"]: "GetListedCashDividends.json",
+        b3_proventos.url(
+            "GetListedSupplementCompany",
+            {"issuingCompany": "LREN", "language": "pt-br"},
+        ): "GetListedSupplementCompany.json",
+    }
+
+    def obter(endereco):
+        nome = por_url[endereco]
+        return json.loads(fixture["membros"][nome]), {"url": endereco}
+
+    return obter
+
+
+def test_contrato_proventos_b3():
+    from datetime import UTC, datetime
+
+    from sentinela.data import proventos_b3
+    from sentinela.data.providers import b3_proventos
+
+    fixture = _fixture("b3_proventos_lren_2026.json")
+    relacao = b3_proventos.coletar(
+        8133, datetime(2026, 10, 20, 20, 40, tzinfo=UTC), _b3_obter(fixture)
+    )
+    assert (relacao.nome_pregao, relacao.emissor) == ("LOJAS RENNER", "LREN")
+    assert relacao.total == len(relacao.registros) == 99
+    campos = {
+        "typeStock",
+        "corporateAction",
+        "valueCash",
+        "lastDatePriorEx",
+        "dateApproval",
+        "quotedPerShares",
+    }
+    assert all(campos <= set(r) for r in relacao.registros)
+    assert {r["corporateAction"] for r in relacao.registros} == {
+        "DIVIDENDO",
+        "JRS CAP PROPRIO",
+    }
+    assert {e["label"] for e in relacao.eventos_acoes} >= {
+        "BONIFICACAO",
+        "DESDOBRAMENTO",
+    }
+    # os proventos recentes do complemento (por ISIN) estão todos na relação pelo nome
+    assert {e["isinCode"] for e in relacao.dinheiro_complemento} == {"BRLRENACNOR1"}
+    assert len(relacao.dinheiro_complemento) >= 4
+    # Ficha Bazin 1.0, §5: LREN3, preço COTAHIST de 30/09/2026 (R$ 11,60), as_of 19/10/2026.
+    serie = proventos_b3.serie_12_meses(
+        relacao.registros,
+        total=relacao.total,
+        referencia=date(2026, 9, 30),
+        dia_as_of=date(2026, 10, 19),
+        especie="ON",
+        eventos_acoes=relacao.eventos_acoes,
+        dinheiro_complemento=relacao.dinheiro_complemento,
+    )
+    assert [(e["data_com"], e["natureza"], e["valor"]) for e in serie["eventos"]] == [
+        ("2025-12-11", "jcp", 0.227784),
+        ("2026-03-24", "jcp", 0.222698),
+        ("2026-06-23", "jcp", 0.229299),
+        ("2026-09-22", "jcp", 0.240666),
+    ]
+    assert serie["d_bruto_12m"] == pytest.approx(0.920447, abs=1e-12)
+    assert serie["d_bruto_12m"] / 11.60 == pytest.approx(0.07934887931034, abs=1e-10)
+    assert serie["d_bruto_12m"] / 0.06 == pytest.approx(15.340783333333, abs=1e-6)
+    # a mesma soma da conferência do yfinance da ficha: nenhum aviso
+    assert (
+        proventos_b3.conferencia_yfinance(
+            serie,
+            {
+                "2025-12-12": 0.227784,
+                "2026-03-25": 0.222698,
+                "2026-06-24": 0.229299,
+                "2026-09-23": 0.240666,
+            },
+        )
+        == []
+    )
+
+
+def test_contrato_fundos_b3():
+    # F2B-2 (ficha FII 1.1, §3a): a resposta real do HGLG11 tem o fundo, os rendimentos
+    # por ISIN e mês, e o desdobramento de 2018 (fator 900) nos eventos de cota.
+    from datetime import UTC, datetime
+
+    from sentinela.data import fii_elegibilidade
+    from sentinela.data.providers import b3_fundos
+
+    fixture = _fixture("b3_fundos_hglg_2026.json")
+    corpo = fixture["membros"]["GetListedSupplementFunds"]
+    endereco = b3_fundos.url("11.728.688/0001-47", "HGLG11")
+    assert endereco == fixture["fonte"]
+    coleta = b3_fundos.coletar(
+        "11.728.688/0001-47",
+        "HGLG11",
+        datetime(2026, 10, 21, 12, 41, tzinfo=UTC),
+        lambda u: (json.loads(corpo), {"url": u}),
+    )
+    resposta = coleta["resposta"]
+    assert coleta["codigo"] == "HGLG"
+    assert fii_elegibilidade.resposta_b3_valida(resposta, "HGLG")
+    assert {"rate", "relatedTo", "isinCode", "label", "lastDatePrior"} <= set(
+        resposta["cashDividends"][0]
+    )
+    assert [
+        (e["label"], e["lastDatePrior"], e["factor"])
+        for e in resposta["stockDividends"]
+    ] == [("DESDOBRAMENTO", "17/04/2018", "900,00000000000")]
+    # Ficha FII 1.1, §3a: setembro/2026, R$ 1,17 por cota contra R$ 1,170289 do Informe.
+    assert (
+        fii_elegibilidade.conferencia_b3(
+            {"2026-09": 1.170289}, resposta["cashDividends"], "BRHGLGCTF004"
+        )
+        == []
+    )
+
+
+def test_contrato_ifdata_com_proveniencia(tmp_path, monkeypatch):
+    # Recorte público do controle BB, F2A-16, fontes-fase2a §5. Unidade: razão.
+    from datetime import UTC, datetime
+
+    from sentinela.data import proveniencia
+    from sentinela.data.providers import ifdata
+    from tests.regressao.test_bug_2a_19_ifdata_sem_proveniencia import _get_falso
+
+    monkeypatch.setattr(ifdata.requests, "get", _get_falso)
+    capital = ifdata.IFDataProvider(str(tmp_path)).capital(
+        "00.000.000/0001-91",
+        date(2026, 10, 13),
+        as_of=datetime(2026, 10, 13, 12, tzinfo=UTC),
+    )
+    assert capital.codinst == "C0080329"
+    assert capital.basileia == pytest.approx(0.151297835513664)
+    assert len(capital.proveniencia) == 3  # cadastro, capital e carteira (F2B-32)
+    for registro in capital.proveniencia:
+        assert registro["documento"] == "IF.data"
+        assert registro["periodo_referencia"] == "202609"
+        assert registro["data_entrega"] is None
+        assert (
+            registro["motivo_sem_entrega"] == proveniencia.MOTIVO_SEM_ENTREGA_NA_FONTE
+        )
+        assert registro["versao"] is None
+        assert registro["fonte"].startswith(ifdata.URL_BASE)
+        caminho = registro["fonte"].removeprefix(ifdata.URL_BASE + "/")
+        arquivo = tmp_path / (hashlib.sha256(caminho.encode()).hexdigest() + ".json")
+        assert (
+            registro["hash_sha256"] == hashlib.sha256(arquivo.read_bytes()).hexdigest()
+        )
+        assert registro["data_coleta"] == proveniencia.data_da_coleta(arquivo)

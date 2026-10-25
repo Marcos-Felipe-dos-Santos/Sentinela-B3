@@ -4,6 +4,10 @@ from datetime import date
 from unittest.mock import patch
 
 import pytest
+from apoio_bazin import enriquecer_bazin
+from apoio_escopo import de_empresa
+from apoio_fii import enriquecer_fii
+from apoio_gordon import AS_OF_GORDON, DiaGordon, enriquecer_gordon
 
 from fii_engine import FIIEngine
 from sentinela.methods import registry
@@ -63,7 +67,10 @@ def _acao(**kw):
         },
     }
     dados.update(kw)
-    return dados
+    enriquecidos = enriquecer_bazin(enriquecer_gordon(de_empresa(dados)))
+    if "taxa_real" in kw:
+        enriquecidos["taxa_real"] = kw["taxa_real"]
+    return enriquecidos
 
 
 def _fii(**kw):
@@ -78,16 +85,22 @@ def _fii(**kw):
         "field_provenance": {},
     }
     dados.update(kw)
-    return dados
+    return enriquecer_fii(dados)  # F2B-2: Informe e B3 sintéticos
 
 
 def _contexto(dados, eh_fii=False, selic=0.145):
+    motor = ValuationEngine()
+    original = motor.processar
+    motor.processar = lambda dados: original(dados, as_of=AS_OF_GORDON)
+    motor_fii = FIIEngine()
+    analisar = motor_fii.analisar
+    motor_fii.analisar = lambda dados: analisar(dados, as_of=AS_OF_GORDON)
     with (
-        patch("valuation_engine.get_selic_atual", return_value=selic),
+        patch("valuation_engine.date", DiaGordon),
         patch("fii_engine.get_selic_atual", return_value=selic),
     ):
         return rastreabilidade.construir_contexto(
-            dados, eh_fii, HOJE, ValuationEngine(), FIIEngine()
+            dados, eh_fii, HOJE, motor, motor_fii
         )
 
 
@@ -106,17 +119,27 @@ def test_relatorio_mostra_cada_metodo_com_versao():
     assert "raiz de 22,5" in html
     assert "<td><code>pl_limite</code></td><td>25.0</td>" in html
     assert "R$ 122,47" in html
-    # a Selic usada e a síntese
-    assert "14,50%" in html
+    # F2B-31: nenhum método de ação usa a Selic; a taxa do Bazin e a fonte dos proventos
+    assert "<h2>Selic usada</h2>" not in html
+    assert "<tr><td>taxa_aplicada</td><td>6,00%</td></tr>" in html
+    assert "Proventos do Bazin (relação B3, F2B-31)" in html
+    assert "critério fixo de 6% (ficha Bazin 1.0)" in html
     assert "Mediana" in html and "Score" in html
 
 
 def test_relatorio_do_fii_mostra_rendimento_e_lente_de_pvp():
     html = _html(_fii(pvp=0.8), eh_fii=True)
-    assert "Bazin FII" in html and "P/VP do FII" in html
-    assert html.count("versão 1.0.0") == 2
+    assert "Rendimento do FII" in html and "P/VP do FII" in html
+    assert (
+        "Rendimento do FII <small>versão 2.1.0" in html
+        and "P/VP do FII <small>versão 1.2.0" in html
+    )
     assert "desconto sobre o patrimônio" in html
-    assert "fator_ir" in html
+    # F2B-2: o spread datado e a NTN-B real formam a taxa; a Selic é só contexto
+    assert "<td><code>spread</code></td>" in html
+    assert "Taxa da lente do FII (F2B-2)" in html
+    assert "a Selic não forma o preço justo" in html
+    assert "selic_liquida (contexto e score)" in html
 
 
 def test_relatorio_mostra_motivo_da_abstencao():
@@ -138,7 +161,8 @@ def test_proveniencia_dos_cinco_campos_e_heranca_dos_demais():
     assert "yfinance" in html
     assert "brapi" in html
     assert "herdada de fonte_fundamentos: CVM" in html
-    assert "sem proveniência registrada" in html  # a Selic (E-6)
+    # a Selic (E-6), que só o relatório do FII mostra desde o F2B-31
+    assert "sem proveniência registrada" in _html(_fii(), eh_fii=True)
 
 
 def test_relatorio_declara_os_limites_conhecidos_e_o_aviso():
@@ -189,15 +213,17 @@ def test_ticker_valido_e_normalizado():
 
 
 def test_variacao_sobre_o_preco_esta_em_pontos_percentuais():
-    # Mediana 55,17 sobre preço 100: o motor já devolve o upside em pontos percentuais
+    # Mediana 122,47 (Graham; Bazin 133,33 a 6% desde o F2B-31; Gordon 30,60) sobre preço
+    # 100: o motor já devolve o upside em pontos percentuais
     html = _html(_acao())
-    assert "<th>Variação sobre o preço</th><td>-44,80%</td>" in html
-    assert "4.480" not in html
+    assert "<th>Variação sobre o preço</th><td>22,50%</td>" in html
+    assert "2.250" not in html
 
 
 def test_variacao_do_fii_esta_em_pontos_percentuais():
+    # F2B-2: 10 ÷ (7% + spread calibrado de 3,51%) = 95,19 contra o preço de 100.
     html = _html(_fii(), eh_fii=True)
-    assert "<th>Variação sobre o preço</th><td>-18,90%</td>" in html
+    assert "<th>Variação sobre o preço</th><td>-4,80%</td>" in html
 
 
 def test_dy_normalizado_aparece_ao_lado_do_bruto():
@@ -258,7 +284,9 @@ def test_analise_vazia_vira_erro_claro():
 
 def test_sintese_do_fii_sem_dy_nao_chama_o_preco_de_preco_justo():
     html = _html(_fii(dy=None), eh_fii=True)
-    assert "Nenhum método calculou" in html
+    # F2B-62 (BUG-2B-50): a abstenção do FII aparece como tal, sem o preço como valor.
+    assert "Abstenção da lente" in html
+    assert "Nenhum método calculou" not in html
     assert "Preço justo do rendimento" not in html
 
 
@@ -302,3 +330,52 @@ def test_regime_da_divida_e_declarado():
     )
     texto = _proveniencia_do_insumo(_contexto(dados), "divida_liq_ebitda")
     assert "regime da dívida: pós-IFRS 16, arrendamento incluído na dívida" in texto
+
+
+def test_relatorio_mostra_a_taxa_real_e_a_fonte():
+    registro = {
+        "ntnb": 0.07,
+        "custo_capital_real": 0.12,
+        "premio": 0.05,
+        "vertice": "vencimentos ≥2035",
+        "data_base": "2026-10-15",
+        "fonte": "Tesouro Transparente",
+        "inflacao": {
+            "valor": 0.0426,
+            "inicio": "2025-01-01",
+            "fim": "2025-12-31",
+            "proveniencia": {"fonte": "IBGE SIDRA 1737"},
+        },
+    }
+    html = _html(_acao(taxa_real=registro))
+    for texto in (
+        "Taxa real",
+        "7,00%",
+        "12,00%",
+        "5,00%",
+        "Tesouro Transparente",
+        "2026-10-15",
+        "2035",
+        "4,26%",
+        "2025-01-01",
+        "IBGE SIDRA 1737",
+        "Selic usada",
+    ):
+        assert texto in html
+
+
+def test_gordon_real_exibe_versao_intermediarios_e_dva():
+    d = _acao()
+    d["gordon_cvm"]["proveniencia"] = {"fonte": "CVM DFP/DVA", "hash_sha256": "a" * 64}
+    d["taxa_real"]["fonte"] = "Tesouro Transparente"
+    html = _html(d)
+    for texto in (
+        "2.1.0",
+        "Gordon",
+        "REAL",
+        "12,00%",
+        "2,00%",
+        "CVM DFP/DVA",
+        "Tesouro Transparente",
+    ):
+        assert texto in html

@@ -2,22 +2,34 @@ import logging
 import math
 from datetime import UTC, date, datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import yfinance as yf
+from yfinance.exceptions import YFException
 
 from brapi_provider import BrapiProvider
-from config import FII_MANUAL_FALLBACK
+from config import FII_MANUAL_FALLBACK, _normalizar_dy, get_taxa_real
 from cvm_fii_provider import CVMFIIProvider
 from cvm_provider import CVMProvider
 from database import DatabaseManager
-from sentinela.data import acoes_cvm, contas_cvm, liquidez, normalizacao, series_cvm
+from sentinela.data import (
+    acoes_cvm,
+    contas_cvm,
+    gordon_cvm,
+    liquidez,
+    normalizacao,
+    proventos_b3,
+    series_cvm,
+)
+from sentinela.data.providers import b3_cotahist, b3_fundos, b3_proventos
 from sentinela.data.providers.b3_cotahist import HistoricoRecente
 from sentinela.data.providers.ifdata import IFDataProvider
 from sentinela.data.referencia.carga import ReferenciaOficial
 from sentinela.domain import ticker as ticker_b3
 from sentinela.domain.enums import AssetType
 from sentinela.domain.provenance import FieldProvenance, FieldValue
+from sentinela.domain.units import Escala
 from sentinela.services.asset_classifier import AssetClassifier
 
 logger = logging.getLogger("MarketEngine")
@@ -82,6 +94,8 @@ _CAMPOS_DA_REFERENCIA = {
 RISCO_FORA_DA_REFERENCIA = 'ticker fora da referência oficial'
 RISCO_FORA_DA_CVM = 'ticker fora da cobertura da CVM'
 RISCO_SEM_REFERENCIA = 'referência oficial indisponível: dados da CVM não consultados'
+RISCO_FII_FORA_DO_INFORME = 'FII fora da cobertura do Informe Mensal'
+MOTIVO_DY_FORA_DA_FAIXA = 'DY fora de 0–25% (invariante dos motores): descartado no merge'
 AVISO_CODIGO_DA_TABELA = 'cvm_code_from_correction_table'
 AVISO_ACOES_FIM_DO_PERIODO = 'shares_end_of_period'
 RISCO_SEM_POR_ACAO_CVM = 'CVM não derivou LPA, VPA, P/L e P/VP'
@@ -128,9 +142,9 @@ def _is_field_missing(field: str, value: Any, dados: dict[str, Any] | None = Non
     if field == 'historico':
         return value is None or getattr(value, 'empty', True)
     if field in {'pl', 'pvp', 'roe', 'lpa', 'vpa'}:
-        if dados and field == 'pl' and dados.get('pl_confiavel') is False:
-            return True
-        return numero is not None and numero <= 0
+        # F2B-8: ausente é só None ou não finito; prejuízo e PL negativo são dado, e cada
+        # método se abstém pela própria regra.
+        return bool(dados and field == 'pl' and dados.get('pl_confiavel') is False)
 
     # DY zero can be a valid "no dividends" signal.
     return False
@@ -225,19 +239,25 @@ def _retrato(dados: dict[str, Any]) -> dict[str, Any]:
 
 
 def _lpa_divulgado_comparado(
-    ind: dict[str, Any], especie: str | None, especie_base: str | None = None
+    divulgados: dict[str, Any], especie: str | None, especie_base: str | None = None
 ) -> dict[str, Any] | None:
-    """LPA divulgado da classe do ticker (F2A-5), ou o da espécie quando a DRE não traz a classe.
+    """LPA divulgado coerente da classe do ticker (F2A-5), ou o da espécie sem a classe.
 
-    Sem classe (unit ou sem índice), o da escala.
+    Só o coerente (F2B-14; ficha, 7.3 e 7.5): com o divulgado da classe descartado pela D19, não
+    há conferência, e o alerta é o da incoerência. Sem classe (unit ou sem índice), o da escala.
     """
-    por_especie = ind.get('lpa_divulgado_por_especie') or {}
     for chave in (especie, especie_base):
-        if chave in por_especie:
-            return {'especie': chave, 'valor': por_especie[chave]}
-    referencia = ind.get('lpa_divulgado')
-    if especie is None and referencia:
-        return {'especie': referencia.get('especie'), 'valor': referencia.get('valor')}
+        if chave in divulgados:
+            achado = divulgados[chave]
+            if not isinstance(achado, acoes_cvm.LpaDivulgado):
+                return None
+            return {'especie': chave, 'valor': achado.valor}
+    if especie is None:
+        ordem = [*acoes_cvm.ORDEM_DA_ESCALA, *sorted(set(divulgados) - set(acoes_cvm.ORDEM_DA_ESCALA))]
+        for chave in ordem:
+            achado = divulgados.get(chave)
+            if isinstance(achado, acoes_cvm.LpaDivulgado):
+                return {'especie': chave, 'valor': achado.valor}
     return None
 
 
@@ -300,6 +320,8 @@ class MarketEngine:
         self.ifdata = IFDataProvider()
         self.cvm_fii = CVMFIIProvider()
         self.cotahist = HistoricoRecente()
+        self.b3_proventos = b3_proventos
+        self.b3_fundos = b3_fundos
         self.database = DatabaseManager()
         self.asset_classifier = asset_classifier or AssetClassifier()
         self.referencia = REFERENCIA_OFICIAL
@@ -443,6 +465,9 @@ class MarketEngine:
 
         # 0. Índice oficial: classe, CNPJ, CD_CVM e atributos do ticker.
         self._aplicar_referencia(ticker, dados)
+        if dados.get('_sem_referencia'):
+            # F2B-17: o aviso vale para qualquer classe, sem depender da etapa da CVM.
+            dados['riscos_dados'].append(RISCO_SEM_REFERENCIA)
         if 'classe_ativo' not in dados:
             # F2A-43: fora do índice (ou sem ele), a classe é a do classificador (final 11 sem
             # dado oficial vira UNKNOWN), para a guarda de escopo do motor de ações valer.
@@ -461,9 +486,12 @@ class MarketEngine:
         if not dados.get('fonte_preco'):
             return None
 
-        self._buscar_ifdata(dados)
+        self._buscar_ifdata(dados, as_of=datetime.now(UTC))
         self._buscar_cvm_fii(ticker, dados)
+        self._buscar_rendimento_fii(ticker, dados)
+        self._buscar_proventos_b3(ticker, dados)
         self._buscar_liquidez(ticker, dados)
+        self._buscar_taxa_real(dados)
 
         if list_missing_required_fields(dados, classifier):
             self._aplicar_cache_fundamentos(ticker, dados)
@@ -503,6 +531,19 @@ class MarketEngine:
             return
         for chave, campo in _CAMPOS_DA_REFERENCIA.items():
             dados[chave] = getattr(registro, campo)
+        # F2B-11 (ficha 1.1, 7.8): espécies da companhia no FCA, pelos registros do mesmo CNPJ.
+        dados['especies_da_companhia'] = sorted(
+            {
+                especie
+                for r in indice.registros.values()
+                if r.cnpj and r.cnpj == registro.cnpj
+                for especie in (
+                    [r.especie]
+                    if r.especie
+                    else [acoes_cvm.especie_da_classe(c) for c in r.acoes_por_unit or ()]
+                )
+            }
+        )
         dados['referencia_oficial'] = {
             'regra': registro.regra,
             'fonte': registro.fonte,
@@ -521,6 +562,20 @@ class MarketEngine:
                 dados['preco_atual'] = hist['Close'].iloc[-1]
                 dados['fonte_preco'] = 'yfinance'
                 self._record_field_sources(dados, ('preco_atual',), 'yfinance')
+                # F2B-54 (BUG-2B-33): o DY da B3 usa o fechamento bruto (ficha Bazin, §2); o
+                # `historico` ajustado fica para retorno e técnico (armadilha 11).
+                # Leitura à parte: a falha dela não pode derrubar os fundamentos do `info`.
+                try:
+                    bruto = tk.history(period="1mo", auto_adjust=False, timeout=10)
+                except (OSError, ValueError, KeyError, YFException) as exc:
+                    logger.warning(f"[{ticker}] fechamento bruto do yfinance indisponível: {exc}")
+                    bruto = None
+                if bruto is not None and not bruto.empty and 'Close' in bruto:
+                    dados['fechamentos_brutos'] = {
+                        i.date().isoformat(): float(c)
+                        for i, c in bruto['Close'].tail(10).items()
+                        if isinstance(c, (int, float)) and math.isfinite(c) and c > 0
+                    }
 
             info = tk.info
             if info:
@@ -605,6 +660,8 @@ class MarketEngine:
             }
             if 'roe' in fundamentos:
                 fundamentos['roe'] = self._roe_guardado(dados, 'brapi', fundamentos['roe'])
+            if 'dy' in fundamentos:
+                fundamentos['dy'] = self._dy_guardado(dados, 'brapi', fundamentos['dy'])
             _guardar_por_fonte(
                 dados, 'brapi', {**fundamentos, 'preco_atual': brapi_data.get('preco_atual')}
             )
@@ -639,11 +696,158 @@ class MarketEngine:
 
         return False
 
+    def _buscar_rendimento_fii(self, ticker: str, dados: dict[str, Any]) -> None:
+        """Informe Mensal e complemento da B3 do FII, para a lente de rendimento (F2B-2).
+
+        Grava, fora do prompt, `dados['informe_fii']` (linhas do complemento com a entrega e
+        o ISIN do `geral`, composições do `ativo_passivo`, ISIN e proveniência) e
+        `dados['b3_fundo']` (a resposta literal do `fundsCall` da B3, ou a abstenção). A conta,
+        com o as_of, é do motor (`rendimento_fii.entradas`). O CNPJ vem só do índice oficial;
+        provedores por `getattr`. Sem eles ou sem CNPJ, as chaves ficam de fora.
+        """
+        if not self._is_fii_ticker(ticker, dados):
+            return
+        ler = getattr(getattr(self, 'cvm_fii', None), 'obter_rendimentos_fii', None)
+        cnpj = dados.get('cnpj')
+        if ler is None or not cnpj:
+            return
+        try:
+            dados['informe_fii'] = ler(cnpj)
+        except Exception as exc:
+            logger.warning(
+                f"[{ticker}] Informe Mensal indisponível para o rendimento: {exc}"
+            )
+            dados['informe_fii'] = {'abstencao': f"Informe Mensal indisponível: {exc}"}
+            return
+        provedor = getattr(self, 'b3_fundos', None)
+        if provedor is None:
+            return
+        try:
+            dados['b3_fundo'] = provedor.coletar(cnpj, ticker, datetime.now(UTC))
+        except (OSError, ValueError) as exc:
+            logger.warning(f"[{ticker}] complemento da B3 do fundo indisponível: {exc}")
+            dados['b3_fundo'] = {
+                'abstencao': f"complemento da B3 do fundo indisponível: {exc}"
+            }
+
+    def _buscar_taxa_real(self, dados: dict[str, Any]) -> None:
+        """Registro aditivo, fora dos métodos e do prompt (F2B-30).
+
+        Sem início/fim comprovados, IPCA se abstém; não inferir janeiro pela
+        data final de um balanço nem usar a janela do TTM como DFP anual.
+        """
+        janela = dados.get('janela_contabil_cvm')
+        dados['taxa_real'] = get_taxa_real(
+            as_of=datetime.now(UTC), janela=janela
+        )
+
+    def _buscar_proventos_b3(self, ticker: str, dados: dict[str, Any]) -> None:
+        """Relação de proventos em dinheiro da B3 para o Bazin (F2B-31), fora do prompt.
+
+        Só STOCK e UNIT do modelo empresa pelo BPP consolidado (ficha Bazin 1.0, §4). Grava em
+        `dados['proventos_b3']` os registros literais, o total do serviço, os eventos em ações
+        e os proventos em dinheiro do complemento (a conferência do emissor),
+        os últimos fechamentos brutos do yfinance por data (o motor usa o último pregão encerrado
+        antes do as_of, marcador da 2B, §2.2), o calendário de pregões
+        quando a data ex depende dele e os dividendos do yfinance, só para conferência; ou a
+        abstenção. A conta, com o as_of, é do motor (`proventos_b3.entradas`). Provedor por
+        `getattr`; sem ele, a chave fica de fora.
+        """
+        if dados.get('classe_ativo') not in ('STOCK', 'UNIT'):
+            return
+        provedor = getattr(self, 'b3_proventos', None)
+        if provedor is None:
+            return
+        modelo = dados.get('modelo_bpp')
+        if modelo != 'empresa':
+            dados['proventos_b3'] = {
+                'abstencao': f"fora do escopo do Bazin: modelo {modelo}"
+                if modelo
+                else "modelo empresa não demonstrado no BPP consolidado"
+            }
+            return
+        historico = dados.get('historico')
+        fechamentos = dados.get('fechamentos_brutos')
+        if (
+            dados.get('fonte_preco') != 'yfinance'
+            or not isinstance(historico, pd.DataFrame)
+            or historico.empty
+            or not isinstance(fechamentos, dict)
+            or not fechamentos
+        ):
+            dados['proventos_b3'] = {'abstencao': proventos_b3.MOTIVO_PRECO}
+            return
+        agora = datetime.now(UTC)
+        hoje = agora.astimezone(proventos_b3.FUSO).date()
+        anteriores = [date.fromisoformat(d) for d in fechamentos if date.fromisoformat(d) < hoje]
+        if not anteriores:
+            dados['proventos_b3'] = {'abstencao': proventos_b3.MOTIVO_PRECO_NAO_ENCERRADO}
+            return
+        referencia = max(anteriores)
+        try:
+            relacao = provedor.coletar(dados['cd_cvm'], agora)
+        except Exception as exc:
+            logger.warning(f"[{ticker}] relação de proventos da B3 indisponível: {exc}")
+            dados['proventos_b3'] = {
+                'abstencao': f"relação de proventos da B3 indisponível: {exc}"
+            }
+            return
+        dividendos = None
+        if 'Dividends' in historico:
+            pagos = historico['Dividends'][historico['Dividends'] > 0]
+            dividendos = {i.date().isoformat(): float(v) for i, v in pagos.items()}
+        dados['proventos_b3'] = {
+            'registros': list(relacao.registros),
+            'total': relacao.total,
+            'eventos_acoes': list(relacao.eventos_acoes),
+            'dinheiro_complemento': list(relacao.dinheiro_complemento),
+            'fechamentos': fechamentos,
+            'pregoes': self._pregoes_da_data_ex(relacao.registros, referencia, agora),
+            'conferencia_yfinance': dividendos,
+            'coleta': relacao.coleta,
+            'proveniencia': {
+                'fonte': 'B3, relação de proventos em dinheiro (CompanyCall)',
+                'nome_pregao': relacao.nome_pregao,
+                'coleta': relacao.coleta,
+                'arquivos': list(relacao.fontes),
+            },
+        }
+
+    @staticmethod
+    def _pregoes_da_data_ex(registros, referencia: date, agora: datetime) -> list | None:
+        """Pregões do COTAHIST em torno do início da janela, se alguma data com cair nele.
+
+        `None` quando nenhuma data ex depende do calendário, ou se o COTAHIST não puder ser
+        lido (a série se abstém nesse caso).
+        """
+        inicio = proventos_b3.inicio_da_janela(referencia)
+        limite = inicio - proventos_b3.FOLGA_SEM_PREGAO
+        datas = {
+            proventos_b3.ler_data(r.get('lastDatePriorEx'))
+            for r in registros
+            if isinstance(r, dict)
+        }
+        if not any(d is not None and limite < d < inicio for d in datas):
+            return None
+        meses = sorted({(limite.year, limite.month), (inicio.year, inicio.month)})
+        try:
+            pregoes = {
+                cotacao.data
+                for ano, mes in meses
+                for cotacao in b3_cotahist.ler_zip_em_cache(
+                    b3_cotahist.baixar_mes(ano, mes, agora)
+                )
+            }
+        except Exception as exc:
+            logger.warning(f"COTAHIST indisponível para a data ex: {exc}")
+            return None
+        return sorted(d.isoformat() for d in pregoes)
+
     def _buscar_liquidez(self, ticker: str, dados: dict[str, Any]) -> None:
         """Liquidez do ticker pelo COTAHIST (F2A-26), em `dados['liquidez']`, fora do prompt.
 
-        Só mede: nenhum motor lê. Provedor por `getattr`; sem ele ou com falha, a chave fica
-        de fora.
+        Provedor por `getattr`; sem ele, a chave fica de fora. Falha de coleta é
+        preservada no bloco para que os motores mostrem o aviso.
         """
         historico = getattr(self, 'cotahist', None)
         if historico is None:
@@ -652,6 +856,7 @@ class MarketEngine:
             coleta = historico.coletar(datetime.now(UTC))
         except Exception as exc:
             logger.warning(f"[{ticker}] COTAHIST indisponível para a liquidez: {exc}")
+            dados['liquidez'] = {'abstencao': f'falha de coleta: {exc}'}
             return
         resultado = liquidez.metricas(
             coleta.cotacoes, ticker, meses_ausentes=coleta.meses_ausentes
@@ -661,6 +866,12 @@ class MarketEngine:
             if isinstance(resultado, liquidez.Abstencao)
             else resultado
         )
+
+
+        if isinstance(resultado, liquidez.Abstencao) and resultado.motivo == liquidez.MOTIVO_TICKER_AUSENTE:
+            # A ausência do ticker só vale como zero se a coleta cobrir a janela.
+            pregoes = len({c.data for c in coleta.cotacoes})
+            dados['liquidez']['incompleta'] = pregoes < 63
 
     def _buscar_cvm_fii(self, ticker: str, dados: dict[str, Any]) -> bool:
         """VPA, P/VP, PL e cotas do FII pelo Informe Mensal da CVM (F2A-11; E-10, armadilha 9).
@@ -676,6 +887,8 @@ class MarketEngine:
             return False
         cnpj = dados.get('cnpj')  # F2A-31: só do índice oficial
         if not cnpj:
+            if not dados.get('_sem_referencia'):
+                dados.setdefault('riscos_dados', []).append(RISCO_FII_FORA_DO_INFORME)
             return False
         try:
             informe = provedor.obter_dados_fii(cnpj)
@@ -687,6 +900,11 @@ class MarketEngine:
             return False
         if not informe:
             return False
+        if informe.get('abstencao'):
+            dados.setdefault('riscos_dados', []).append(
+                f"Informe Mensal do FII não usado: {informe['abstencao']}"
+            )
+            return False
         vpa = _as_float(informe.get('valor_cota'))
         if not vpa or vpa <= 0:
             return False
@@ -697,6 +915,8 @@ class MarketEngine:
         preco = _as_float(dados.get('preco_atual'))
         if preco and preco > 0:
             campos['pvp'] = preco / vpa
+        # F2B-16 (BUG-2A-12): o que o Informe entregou, para a validação cruzada (F2A-5).
+        _guardar_por_fonte(dados, 'CVM', campos)
         preenchidos = merge_if_valid(
             dados, campos, overwrite=True, allowed_keys=set(FUNDAMENTAL_KEYS)
         )
@@ -724,13 +944,36 @@ class MarketEngine:
         vai para `riscos_dados` e para `dados['proveniencia']['roe_descartes']`, sem tocar no
         registro da fonte que preencheu o campo.
         """
-        roe, motivo = normalizacao.guardar_roe(valor)
+        # F2B-18: o piso vale só nas fontes de mercado; o ROE dos controladores da CVM não
+        # passa por ele (decisão C da [AUDITORIA], 18/10/2026).
+        roe, motivo = normalizacao.guardar_roe(valor, com_piso=fonte != 'cvm')
         if motivo:
             dados.setdefault('riscos_dados', []).append(f"ROE descartado ({fonte}): {motivo}")
             dados.setdefault('proveniencia', {}).setdefault('roe_descartes', []).append(
                 {**normalizacao.proveniencia_roe(fonte), 'motivo': motivo}
             )
         return roe
+
+    @staticmethod
+    def _dy_guardado(dados: dict[str, Any], fonte: str, valor: Any) -> float | None:
+        """DY de fonte posterior pelo invariante dos motores (F2B-39; BUG-2A-15, armadilha 4).
+
+        Finito e fora de 0–25%, não entra no merge: o válido anterior fica, e o descarte vai
+        para `riscos_dados` e `dados['proveniencia']['dy_descartes']`. Nenhuma conversão aqui:
+        a da fronteira (`normalizacao`) continua a única. Ausente ou não finito, segue `None`.
+        """
+        numero = _as_float(valor)
+        if numero is None:
+            return None
+        if _normalizar_dy(numero)[1]:
+            return numero
+        dados.setdefault('riscos_dados', []).append(
+            f"DY descartado ({fonte}): {MOTIVO_DY_FORA_DA_FAIXA}"
+        )
+        dados.setdefault('proveniencia', {}).setdefault('dy_descartes', []).append(
+            {'fonte': fonte, 'valor': numero, 'motivo': MOTIVO_DY_FORA_DA_FAIXA}
+        )
+        return None
 
     def _buscar_cvm(self, ticker: str, dados: dict[str, Any]) -> bool:
         """Preenche fundamentos a partir das DFPs oficiais da CVM.
@@ -748,9 +991,10 @@ class MarketEngine:
         cd_cvm = dados.get('cd_cvm')
         if cd_cvm is None:
             dados['cvm_disponivel'] = False
-            dados.setdefault('riscos_dados', []).append(
-                RISCO_SEM_REFERENCIA if dados.get('_sem_referencia') else RISCO_FORA_DA_CVM
-            )
+            # F2B-17 (BUG-2A-13): o FII é coberto pelo Informe Mensal, não pelas DFPs; sem
+            # índice, o aviso já foi gravado na etapa da referência.
+            if not dados.get('_sem_referencia') and not self._is_fii_ticker(ticker, dados):
+                dados.setdefault('riscos_dados', []).append(RISCO_FORA_DA_CVM)
             return False
 
         try:
@@ -790,11 +1034,85 @@ class MarketEngine:
                     'motivos': dict(ind.get('alavancagem_motivos') or {}),
                 }
                 for campo, motivo in dados['alavancagem_cvm']['motivos'].items():
-                    dados.setdefault('riscos_dados', []).append(
+                    dados.setdefault("riscos_dados", []).append(
                         f"{RISCO_ALAVANCAGEM_CVM} ({campo}): {motivo}"
                     )
             cvm_campos.update(self._por_acao_cvm(ticker, dados, ind))
-            if 'roe' in cvm_campos:
+            obter_modelo = getattr(cvm, "modelo_do_documento", None)
+            if callable(obter_modelo):
+                # F2B-31 e F2B-4: escopo dos métodos pelo BPP consolidado, com a entrega da
+                # DFP que o demonstra (o motor confere contra o as_of).
+                dados["modelo_bpp"] = obter_modelo(cd_cvm, ind)
+                dados["modelo_bpp_proveniencia"] = ind.get("proveniencia")
+            obter_gordon = getattr(cvm, "gordon_do_documento", None)
+            if callable(obter_gordon):
+                instante_gordon = datetime.now(UTC)
+                fato = obter_gordon(cd_cvm, ind, instante_gordon)
+                if "abstencao" not in fato:
+                    acoes = dados.get("acoes_cvm") or {}
+                    doc = acoes.get("documento") or {}
+                    mesmo_documento = (
+                        doc.get("cnpj") == fato.get("cnpj")
+                        and doc.get("dt_refer") == fato.get("fim")
+                        and str(doc.get("versao")) == str(fato.get("versao"))
+                    )
+                    obter_recente = getattr(cvm, "composicao_mais_recente", None)
+                    recente = (
+                        obter_recente(
+                            ind["cnpj"], instante_gordon, int(fato["fim"][:4])
+                        )
+                        if callable(obter_recente)
+                        else {"abstencao": "composição recente indisponível"}
+                    )
+                    base = {"compativel": False, "avisos": [gordon_cvm.AVISO_EVENTOS]}
+                    if (
+                        mesmo_documento
+                        and ind.get("composicao_capital") is not None
+                        and recente.get("composicao") is not None
+                        and acoes.get("escala")
+                    ):
+                        base = gordon_cvm.compatibilidade_base(
+                            ind["composicao_capital"],
+                            recente["composicao"],
+                            escala=Escala[acoes["escala"]],
+                            escala_recente=(
+                                Escala[recente["escala"]]
+                                if recente.get("escala")
+                                else None
+                            ),
+                            especie=dados.get("especie"),
+                            eh_unit=dados.get("classe_ativo") == "UNIT",
+                            acoes_por_unit=dados.get("acoes_por_unit"),
+                            shares_outstanding=_as_float(
+                                dados.get("_shares_outstanding")
+                            ),
+                        )
+                    base["proveniencia"] = recente.get("proveniencia")
+                    if recente.get("abstencao"):
+                        base["motivo"] = recente["abstencao"]
+                    dados["base_acionaria_gordon"] = base
+                    fato.update(
+                        acoes_base=acoes.get("acoes") if mesmo_documento else None,
+                        lpa=cvm_campos.get("lpa"),
+                        # F2B-32: VPA CVM do mesmo documento, por ação ou unit (lente de bancos).
+                        vpa=cvm_campos.get("vpa") if mesmo_documento else None,
+                        fator_unit=acoes.get("acoes_por_papel", 1),
+                        base_acionaria_compativel=base["compativel"],
+                        direitos_compativeis=(
+                            dados.get("classe_ativo") != "UNIT"
+                            or (
+                                acoes_cvm._unit_valida(dados.get("acoes_por_unit"))
+                                and len(dados["acoes_por_unit"]) == 1
+                            )
+                        ),
+                        avisos=base["avisos"],
+                    )
+                    dados["janela_contabil_cvm"] = (
+                        date.fromisoformat(fato["inicio"]),
+                        date.fromisoformat(fato["fim"]),
+                    )
+                dados["gordon_cvm"] = fato
+            if "roe" in cvm_campos:
                 # F2A-30: o ROE derivado da CVM passa pela mesma guarda.
                 cvm_campos['roe'] = self._roe_guardado(dados, 'cvm', cvm_campos['roe'])
                 if cvm_campos['roe'] is None:
@@ -831,6 +1149,12 @@ class MarketEngine:
                                 **registro,
                                 'reservas': [*registro.get('reservas', []), reservas[origem]],
                             }
+                if 'vpa' in dados['proveniencia'] and dados.get('escala_pelo_consolidado'):
+                    # F2B-10 (D16): a escala do VPA veio do consolidado, com a confirmação.
+                    dados['proveniencia']['vpa'] = {
+                        **dados['proveniencia']['vpa'],
+                        'escala': dados['escala_pelo_consolidado'],
+                    }
                 if 'lpa' in dados['proveniencia'] and dados.get('lpa_cvm'):
                     # F2A-36 (D16): origem do LPA, com a marca do recalculado ou do sinal.
                     dados['proveniencia']['lpa'] = {
@@ -849,7 +1173,7 @@ class MarketEngine:
         dados['cvm_disponivel'] = False
         return False
 
-    def _buscar_ifdata(self, dados: dict[str, Any]) -> None:
+    def _buscar_ifdata(self, dados: dict[str, Any], *, as_of: datetime) -> None:
         """Basileia e inadimplência do IF.data para banco (F2A-9), com a fonte e a data-base.
 
         Só para o setor de banco (F2A-2). O que falta vira limitação declarada em `riscos_dados`.
@@ -862,9 +1186,11 @@ class MarketEngine:
             riscos.append(f"{RISCO_LIMITACAO_BANCO}: Basileia e inadimplência sem fonte (IF.data não consultado)")
             return
         try:
-            capital = ifdata.capital(dados.get('cnpj'), date.today())
+            capital = ifdata.capital(dados.get('cnpj'), as_of.astimezone(ZoneInfo('America/Sao_Paulo')).date(), as_of=as_of)
         except Exception as exc:
             riscos.append(f"{RISCO_LIMITACAO_BANCO}: Basileia e inadimplência sem fonte (IF.data indisponível: {exc})")
+            # F2B-32: consultado e falhou; o motivo chega à leitura da inadimplência.
+            dados['ifdata'] = {'proveniencia': (), 'motivos': {'inadimplencia': f"IF.data indisponível: {exc}"}}
             return
         dados['basileia'] = capital.basileia
         dados['inadimplencia'] = capital.inadimplencia
@@ -872,6 +1198,8 @@ class MarketEngine:
             'fonte': capital.fonte,
             'data_base': capital.data_base,
             'codinst': capital.codinst,
+            'proveniencia': capital.proveniencia,
+            'motivos': dict(capital.motivos),
         }
         for campo, motivo in capital.motivos.items():
             riscos.append(f"{RISCO_LIMITACAO_BANCO} ({campo}): {motivo}")
@@ -905,7 +1233,15 @@ class MarketEngine:
                 'exercicios': exercicios,
                 'proventos_base': series_cvm.COMPETENCIA,
             }
-            ttm = series_cvm.ttm(acumulados_ttm(cd_cvm, hoje, modelo), hoje)
+            acumulados = acumulados_ttm(cd_cvm, hoje, modelo)
+            if exercicios:
+                atual = exercicios[-1]
+                janelas = {(a.inicio, a.fim) for a in acumulados
+                           if a.documento == 'DFP' and a.dt_refer == atual.get('dt_refer')
+                           and str(a.versao) == str(atual.get('versao'))}
+                if len(janelas) == 1:
+                    dados['janela_contabil_cvm'] = next(iter(janelas))
+            ttm = series_cvm.ttm(acumulados, hoje)
             dados['ttm_cvm'] = (
                 {'abstencao': ttm.motivo} if isinstance(ttm, series_cvm.Abstencao) else ttm
             )
@@ -931,8 +1267,25 @@ class MarketEngine:
         eh_unit = classifier.classify(ticker, dados) == AssetType.UNIT
         acoes_por_unit = dados.get('acoes_por_unit')
         classe = dados.get('classe_preferencial') or dados.get('especie')
-        divulgados = acoes_cvm.divulgados_coerentes(
+        composicao = ind.get('composicao_capital')
+        especies_confirmadas = None
+        if composicao is not None and all(
+            isinstance(q, (int,float)) and not isinstance(q,bool) and math.isfinite(q) and q >= 0
+            for q in (composicao.on, composicao.pn)
+        ):
+            presentes = {especie for especie, q in (('ON',composicao.on),('PN',composicao.pn)) if q > 0}
+            declaradas = set(dados.get('especies_da_companhia') or ())
+            if len(presentes) == 1 and presentes == declaradas and len(dados.get('classes_preferenciais') or ()) <= 1:
+                especies_confirmadas = sorted(presentes)
+        linhas, linha_agregada = acoes_cvm.linhas_da_especie_unica(
             _linhas_de_lpa(ind),
+            ind.get('lpa_basico_agregado'),
+            especies_confirmadas,
+            lucro_controladores=ind.get('lucro_controladores'),
+            acoes=composicao.total if composicao is not None else 0.0,
+        )
+        divulgados = acoes_cvm.divulgados_coerentes(
+            linhas,
             ind.get('lucro_controladores'),
             ind.get('lucro_liquido'),
         )
@@ -945,8 +1298,13 @@ class MarketEngine:
             preco=_as_float(dados.get('preco_atual')),
             eh_unit=eh_unit,
             acoes_por_unit=acoes_por_unit,
+            # F2B-10 (ficha 1.1, 7.7): escala pelo consolidado, confirmada pelo yfinance.
+            lucro_consolidado=ind.get('lucro_liquido'),
+            shares_outstanding=_as_float(dados.get('_shares_outstanding')),
         )
-        fator = sum(acoes_por_unit.values()) if eh_unit and acoes_por_unit else 1
+        if resultado.escala_pelo_consolidado is not None:
+            dados['escala_pelo_consolidado'] = resultado.escala_pelo_consolidado
+        fator = sum(acoes_por_unit.values()) if eh_unit and acoes_cvm._unit_valida(acoes_por_unit) else 1
         por_acao = resultado if isinstance(resultado, acoes_cvm.PorAcao) else None
         recalculado = por_acao.lpa / fator if por_acao and por_acao.lpa is not None else None
         lpa = acoes_cvm.lpa_dos_metodos(
@@ -962,6 +1320,13 @@ class MarketEngine:
         campos: dict[str, Any] = {}
         if not isinstance(lpa, acoes_cvm.Abstencao):
             campos['lpa'], dados['lpa_cvm'] = lpa
+            if linha_agregada is not None and dados['lpa_cvm'].get('origem') == 'divulgado':
+                # F2B-11 (D16): o LPA veio da linha agregada da companhia de espécie única.
+                dados['lpa_cvm'] = {
+                    **dados['lpa_cvm'],
+                    'linha_agregada': linha_agregada,
+                    'notas': [*dados['lpa_cvm'].get('notas', []), linha_agregada['nota']],
+                }
             preco = _as_float(dados.get('preco_atual'))
             if preco and preco > 0:
                 campos['pl'] = preco / campos['lpa']
@@ -979,7 +1344,7 @@ class MarketEngine:
             'acoes_por_papel': fator,
             'lpa_recalculado': por_acao.lpa,
             'lpa_divulgado_comparado': _lpa_divulgado_comparado(
-                ind,
+                divulgados,
                 None if eh_unit else classe,
                 None if eh_unit else dados.get('especie'),
             ),

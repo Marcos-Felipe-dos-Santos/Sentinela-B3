@@ -4,7 +4,7 @@ DFP no modelo do ITUB4 (F2A-16): PL consolidado na 2.08, lucro na 3.09 e a parte
 controladores na 3.09.01; a 2.03 é "Passivos Financeiros ao Custo Amortizado".
 """
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 import pytest
 import requests
@@ -65,7 +65,12 @@ def test_banco_nao_recebe_margem_nem_alavancagem(tmp_path, monkeypatch):
             return {2025: ind}
 
     engine = _engine(monkeypatch, info={"currentPrice": 20.0}, cvm=_CVM())
-    dados = {"setor": "Bancos", "cd_cvm": 19348, "riscos_dados": [], "preco_atual": 20.0}
+    dados = {
+        "setor": "Bancos",
+        "cd_cvm": 19348,
+        "riscos_dados": [],
+        "preco_atual": 20.0,
+    }
     engine._buscar_cvm("ITUB4", dados)
     riscos = " | ".join(dados["riscos_dados"])
     assert f"receita_liquida: {cvm_provider.MOTIVO_SEM_SIGNIFICADO_BANCO}" in riscos
@@ -78,24 +83,26 @@ def test_banco_nao_recebe_margem_nem_alavancagem(tmp_path, monkeypatch):
 def test_sem_ifdata_a_limitacao_e_declarada(monkeypatch):
     engine = _engine(monkeypatch, info={"currentPrice": 20.0})
     dados = {"setor": "Bancos", "cnpj": "60.872.504/0001-23", "riscos_dados": []}
-    engine._buscar_ifdata(dados)  # sem o atributo `ifdata`
+    engine._buscar_ifdata(
+        dados, as_of=datetime(2026, 10, 13, 12, tzinfo=UTC)
+    )  # sem o atributo `ifdata`
     assert dados["riscos_dados"] == [
         "limitação do banco: Basileia e inadimplência sem fonte (IF.data não consultado)"
     ]
     assert "basileia" not in dados
 
     class _Falha:
-        def capital(self, cnpj, data_referencia):
+        def capital(self, cnpj, data_referencia, *, as_of):
             raise OSError("sem rede")
 
     engine.ifdata = _Falha()
     dados = {"setor": "Bancos", "cnpj": "60.872.504/0001-23", "riscos_dados": []}
-    engine._buscar_ifdata(dados)
+    engine._buscar_ifdata(dados, as_of=datetime(2026, 10, 13, 12, tzinfo=UTC))
     assert "IF.data indisponível: sem rede" in dados["riscos_dados"][0]
 
     # Fora do setor de banco, nada é consultado nem declarado.
     dados = {"setor": "Petróleo e Gás", "riscos_dados": []}
-    engine._buscar_ifdata(dados)
+    engine._buscar_ifdata(dados, as_of=datetime(2026, 10, 13, 12, tzinfo=UTC))
     assert dados == {"setor": "Petróleo e Gás", "riscos_dados": []}
 
 
@@ -132,27 +139,31 @@ def test_ifdata_grava_basileia_e_inadimplencia(monkeypatch):
     assert capital.basileia == pytest.approx(0.151297835513664)
     assert capital.data_base == "202606"
     assert capital.codinst == "C0080329"  # o conglomerado prudencial, não a instituição
+    # F2B-32: o relatório 16 é lido no mesmo conglomerado e data; sem ele, o motivo.
     assert capital.inadimplencia is None
-    assert capital.motivos == {"inadimplencia": ifdata.MOTIVO_SEM_INADIMPLENCIA}
-    assert "CodInst eq 'C0080329'" in pedidos[-1] and "@Relatorio='5'" in pedidos[-1]
+    assert capital.motivos == {"inadimplencia": ifdata.MOTIVO_CARTEIRA_AUSENTE}
+    assert "CodInst eq 'C0080329'" in pedidos[-2] and "@Relatorio='5'" in pedidos[-2]
+    assert pedidos[-1] == ifdata.caminho_carteira("202606", "C0080329")
 
     class _IFData:
-        def capital(self, cnpj, data_referencia):
+        def capital(self, cnpj, data_referencia, *, as_of):
             return capital
 
     engine = _engine(monkeypatch, info={"currentPrice": 20.0})
     engine.ifdata = _IFData()
     dados = {"setor": "Bancos", "cnpj": "00.000.000/0001-91", "riscos_dados": []}
-    engine._buscar_ifdata(dados)
+    engine._buscar_ifdata(dados, as_of=datetime(2026, 10, 13, 12, tzinfo=UTC))
     assert dados["basileia"] == pytest.approx(0.1513, abs=1e-4)
     assert dados["inadimplencia"] is None
     assert dados["ifdata"] == {
         "fonte": ifdata.FONTE,
         "data_base": "202606",
         "codinst": "C0080329",
+        "proveniencia": (),
+        "motivos": {"inadimplencia": ifdata.MOTIVO_CARTEIRA_AUSENTE},
     }
     assert dados["riscos_dados"] == [
-        f"limitação do banco (inadimplencia): {ifdata.MOTIVO_SEM_INADIMPLENCIA}"
+        f"limitação do banco (inadimplencia): {ifdata.MOTIVO_CARTEIRA_AUSENTE}"
     ]
 
 
@@ -234,8 +245,8 @@ def test_provedor_usa_o_cache_e_o_cache_antigo_sem_rede(tmp_path, monkeypatch):
 
     monkeypatch.setattr("sentinela.data.providers.ifdata.requests.get", get)
     provedor = ifdata.IFDataProvider(cache_dir=str(tmp_path), ttl_segundos=3600)
-    assert provedor._buscar("x") == CAPITAL_BB
-    assert provedor._buscar("x") == CAPITAL_BB
+    assert provedor._buscar("x", as_of=datetime.now(UTC)) == CAPITAL_BB
+    assert provedor._buscar("x", as_of=datetime.now(UTC)) == CAPITAL_BB
     assert len(chamadas) == 1
     assert chamadas[0] == f"{ifdata.URL_BASE}/x"
 
@@ -244,9 +255,13 @@ def test_provedor_usa_o_cache_e_o_cache_antigo_sem_rede(tmp_path, monkeypatch):
 
     monkeypatch.setattr("sentinela.data.providers.ifdata.requests.get", sem_rede)
     vencido = ifdata.IFDataProvider(cache_dir=str(tmp_path), ttl_segundos=0)
-    assert vencido._buscar("x") == CAPITAL_BB  # cache antigo, com aviso
+    assert (
+        vencido._buscar("x", as_of=datetime.now(UTC)) == CAPITAL_BB
+    )  # cache antigo, com aviso
     with pytest.raises(requests.ConnectionError):
-        vencido._buscar("y")  # sem cache, a falha sobe para a cascata
+        vencido._buscar(
+            "y", as_of=datetime.now(UTC)
+        )  # sem cache, a falha sobe para a cascata
 
 
 def test_ttm_do_banco_usa_o_modelo_financeiro(tmp_path):
@@ -294,7 +309,12 @@ def test_resposta_sem_value_vira_lista_vazia(tmp_path, monkeypatch):
         "sentinela.data.providers.ifdata.requests.get",
         lambda url, timeout: _SemValue(None),
     )
-    assert ifdata.IFDataProvider(cache_dir=str(tmp_path))._buscar("z") == []
+    assert (
+        ifdata.IFDataProvider(cache_dir=str(tmp_path))._buscar(
+            "z", as_of=datetime.now(UTC)
+        )
+        == []
+    )
 
 
 def test_provedor_le_o_capital_pelo_cnpj_e_pela_data(tmp_path, monkeypatch):
@@ -302,8 +322,12 @@ def test_provedor_le_o_capital_pelo_cnpj_e_pela_data(tmp_path, monkeypatch):
         {"@AnoMes=202606&$filter=Cnpj": CADASTRO_BB, "@AnoMes=202606&@Tipo": CAPITAL_BB}
     )
     provedor = ifdata.IFDataProvider(cache_dir=str(tmp_path))
-    monkeypatch.setattr(provedor, "_buscar", buscar)
-    capital = provedor.capital("00.000.000/0001-91", date(2026, 10, 13))
+    monkeypatch.setattr(provedor, "_buscar", lambda caminho, *, as_of: buscar(caminho))
+    capital = provedor.capital(
+        "00.000.000/0001-91",
+        date(2026, 10, 13),
+        as_of=datetime(2026, 10, 13, 12, tzinfo=UTC),
+    )
     assert (capital.basileia, capital.data_base) == (
         pytest.approx(0.151297835513664),
         "202606",

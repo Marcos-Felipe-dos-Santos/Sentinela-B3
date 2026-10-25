@@ -1,0 +1,10 @@
+código: pai (sem escala_recente)
+escala DFP MIL: compativel=False razao=1010.0 motivo=base de ações incompatível -> FAIL (econômica)
+escala DFP UNIDADE: compativel=False razao=0.00101 motivo=base de ações incompatível -> FAIL (econômica)
+escala recente indeterminada: compativel=True motivo=None -> FAIL (econômica: compatível sem prova da escala)
+falhas: 3
+código: item (com escala_recente)
+escala DFP MIL: compativel=True razao=1.01 motivo=None -> PASS
+escala DFP UNIDADE: compativel=True razao=1.01 motivo=None -> PASS
+escala recente indeterminada: compativel=False motivo=escala das ações do documento mais recente indeterminada -> PASS
+falhas: 0

@@ -8,36 +8,32 @@
 Plataforma educacional de análise de ações e FIIs da B3.
 Python 3.13 + Streamlit (interface FastAPI + HTMX prevista para a Fase 7), local-first, SQLite.
 **Não é consultoria financeira.**
-Suíte: ~1.360 testes, 76 módulos em `tests/`, ~8 s.
+Suíte em 25/10/2026: 2.568 passed, 1 skipped, 14 xfailed (~10 s).
 
 ---
 
 ## Fase atual
 
-**Fase 2A — Dados corretos.** O mantenedor trabalha num branch local por fase e só
+**Fase 2B — Taxa real, bancos e escopo.** O mantenedor trabalha num branch local por fase e só
 publica no fim de cada fase. Baseie seu branch sempre na `main` mais recente.
 
 Arquivos travados enquanto esta fase estiver em andamento. Não abra PR que toque
 em nenhum deles:
 
-```
-market_engine.py  cvm_provider.py  cvm_fii_provider.py  cvm_ticker_map.py  cvm_fii_map.py
-fii_engine.py  valuation_engine.py  brapi_provider.py  data_quality.py  config.py
-fundamentus_scraper.py  ai_core.py  requirements.txt
+market_engine.py  cvm_provider.py  cvm_fii_provider.py  fii_engine.py  valuation_engine.py
+data_quality.py  config.py  ai_core.py  pytest.ini  vulture_whitelist.py
 sentinela/data/  sentinela/domain/  sentinela/methods/  sentinela/services/  sentinela/reports/
 scripts/  tests/conftest.py  tests/fixtures/  tests/golden_motores.py
-tests/test_market_engine*.py  tests/test_cvm_*.py  tests/test_fii_engine*.py
-tests/test_valuation_engine*.py  tests/test_brapi_provider.py  tests/test_data_quality*.py
-tests/test_asset_classifier*.py  tests/test_fundamentus_scraper.py  tests/test_ai_core.py
-tests/test_methods_*.py  tests/test_registry.py  tests/test_rastreabilidade.py
-```
+tests/test_market_engine*.py  tests/test_cvm_*.py  tests/test_fii_*.py  tests/test_valuation_*.py
+tests/test_data_quality*.py  tests/test_methods_*.py  tests/test_registry.py  tests/test_rastreabilidade.py
+tests/test_acoes_cvm.py  tests/test_controladores.py  tests/test_contas_cvm*.py  tests/test_referencia*.py
+tests/test_asset_classifier*.py  tests/test_saidas_finitas.py  tests/test_roe_fronteira.py
+tests/test_dy_fronteira.py  tests/test_liquidez*.py  tests/test_macro_context.py  tests/test_units.py
+tests/test_contratos_*.py  tests/test_invalidar_cache_cvm.py  tests/test_tesouro.py  tests/test_taxa*.py
+tests/regressao/  tests/test_cotahist.py
 
-Tickets com janela nesta fase: B1, B3, C-A, C-B e C-C. O B2 está cancelado (o scraper
-sai nesta fase). O C-E perdeu a janela se não foi mergeado na Fase 1.
-
-Esta seção é atualizada pelo mantenedor a cada fase.
-
----
+Tickets com janela nesta fase, se ainda abertos: B1, B3, C-A, C-B e C-C (a última janela
+do C-C). B2, C-D e C-E não têm mais janela.
 
 ## Regra fundamental: especificação externa
 
@@ -159,8 +155,17 @@ verificá-lo. Reporte a divergência; não a "conserte".
 
 - Os IDs de achado (E-*, F-*) citados nos tickets vêm de `docs/auditoria/2026-09-red-team.md`
 - Cascata de dados: `índice oficial → yfinance → brapi → CVM`, depois IF.data (bancos), Informe
-  Mensal (FII), liquidez (COTAHIST) e cache. O Fundamentus saiu. Preço do yfinance (brapi só se
+  Mensal/rendimento do FII, proventos B3, liquidez (COTAHIST), taxa real e cache. O Fundamentus saiu. Preço do yfinance (brapi só se
   o yfinance falhar), fechamento D-1. O README descreve outra ordem e está errado
+- Gordon usa DVA dos controladores e taxa/crescimento reais (Fisher, teto PIB); a taxa real
+  vem de NTN-B/Principal ≥ 2035, pesos iguais, mais 5 pp das ações, sem contingência numérica.
+  Bazin usa proventos brutos B3 de 12 meses e critério nominal fixo de 6%, DY mínimo de 5%.
+  FII de tijolo elegível usa rendimento do Informe ÷ (NTN-B real + spread versionado); Selic fica no score/contexto.
+- Escopo pelo modelo do BPP consolidado (F2B-4): empresa recebe os métodos de ação; banco, só a
+  lente de bancos (F2B-32; Basileia e inadimplência do IF.data só como contexto); seguradora e
+  sem BPP se abstêm sem número. FII (ficha 1.3) e bancos abstidos não trazem valor nem upside.
+- Liquidez: 63 pregões, presença ≥ 80%, volume mediano diário ≥ R$ 500 mil (ações/units)
+  ou R$ 100 mil (FII). Incompletude/falha de coleta produz aviso, sem tratar ausência como zero.
 - Duas camadas de orquestração: `app.py` (roda) e `sentinela/services/`
   (implementada, não conectada). Não adicione a mesma feature nas duas
 - Importar `config` dispara uma chamada HTTP ao Banco Central. A suíte só fica sem

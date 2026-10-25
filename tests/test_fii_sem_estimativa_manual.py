@@ -8,6 +8,8 @@ Informe Mensal não a traz.
 from unittest.mock import patch
 
 import pytest
+from apoio_fii import enriquecer_fii
+from apoio_gordon import AS_OF_GORDON
 
 from fii_engine import FIIEngine
 from tests.test_market_engine import FakeBrapi, FakeCache, _engine, _historico
@@ -16,7 +18,7 @@ from tests.test_market_engine import FakeBrapi, FakeCache, _engine, _historico
 def _analisar(ticker):
     dados = {"ticker": ticker, "preco_atual": 150.0, "dy": 0.08, "pvp": 0.9}
     with patch("fii_engine.get_selic_atual", return_value=0.10):
-        return FIIEngine().analisar(dados)
+        return FIIEngine().analisar(enriquecer_fii(dados), as_of=AS_OF_GORDON)  # F2B-2
 
 
 def test_vacancia_manual_nao_altera_dy_nem_score():
