@@ -316,6 +316,18 @@ cada fundo candidato, coletada em 21/10/2026.
   inválida 150 → 165; linhas conflitantes 21 → 25; grupamento 1 → 2. As demais ficam
   iguais. É o mesmo número da sensibilidade acima. As medianas mensais abaixo são as da
   constante (regra 1.1).
+- **Medição depois do fechamento da 2B (F2B-65, 25/10/2026; só medição, a constante não
+  muda):** mesmos arquivos e mês final, com as regras dos F2B-57 a F2B-62 (conflito em qualquer
+  campo, composição da versão selecionada, os 13 VPs, amortização pela ficha 1.3) e a leitura
+  literal do CSV (vazio e `NaN` declarado separados, como no provedor). Spread **3,5124%**,
+  p25 3,1738%, p75 3,7345%, 30 a 44 fundos por mês (mediana 39,5), 2.351 fundos-mês válidos:
+  os mesmos números do F2B-55. Mudam só os motivos das exclusões, que passam por outra guarda
+  antes: VP inválido 0 → 105 (o motivo é novo), que somam as reduções de cotas emitidas
+  inválidas 35 → 0, "menos de 12 meses" 2.650 → 2.618, "DY mensal negativo" 1.336 → 1.306,
+  amortização na janela 815 → 809, amortização inválida 165 → 164 e rendimento anual não
+  positivo 1.422 → 1.421 (35 + 32 + 30 + 6 + 1 + 1 = 105). A leitura literal não muda nenhum
+  número (rodada também com a leitura antiga: idêntica). As medianas mensais abaixo continuam
+  as da constante (regra 1.1).
 - **Medianas mensais (%, fundos):** 2021-10 2,24 (30); 2021-11 3,13 (32); 2021-12 2,68 (35);
   2022-01 2,31 (37); 2022-02 2,82 (39); 2022-03 3,20 (36); 2022-04 2,80 (37); 2022-05 2,72
   (37); 2022-06 2,99 (39); 2022-07 2,44 (38); 2022-08 2,02 (37); 2022-09 2,50 (34); 2022-10

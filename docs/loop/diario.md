@@ -120,3 +120,14 @@ Diário da fila de fechamento (`docs/loop/fila.md`). O diário da fase está em 
 - **3ª revisão: NÃO PODE COMMITAR** só pelo texto: o README tinha dois trechos corrompidos pela edição (a linha dos avisos do perfil emendada no título do F2B-2, com a dispensa perdida, e um fragmento solto); corrigido e commitado sem nova parada (plano final, §1, regra 5), com o README reescrito inteiro. Médios de evidência ajustados na mesma rodada: a reprodução roda os dois commits de cada item; `f2b54_escala.py` também roda no item (o pai falha nos 3 cenários pelo valor, o item passa nos 3); o C3 do pai usa o DY da ficha (107,43); o README diz que, no item, a abstenção se prova pelo motivo (o `fair_value` igual ao preço só saiu no F2B-62). O "critério `None`" da 2ª versão deixou de existir: a prova é a diferença entre as duas saídas.
 - **Testes existentes que mudam:** nenhum. Nenhum teste enfraquecido.
 - **Testes:** 2568 passed, 1 skipped, 14 xfailed, sem mudança. Gates verdes.
+
+
+### F2B-65 — docs: remeasure the FII spread after the closing fixes
+- **Executor:** claude-code (claude-opus-5-5).
+- **Status:** sucesso.
+- **O que foi feito:** recalibração com `scripts/calibrar_spread_fii.py --mes-final 2026-09`, depois dos F2B-57 a F2B-62, só como medição; `MacroContext.FII_SPREAD_TIJOLO` (3,5058%) inalterado. O script passou a ler os CSVs com `keep_default_na=False`, a mesma leitura literal do provedor depois do F2B-61 (vazio fica `""`, `NaN` declarado fica `"NaN"`), para a medição seguir as regras de produção; a leitura antiga foi rodada antes, para comparar (`outputs/f2b65_spread_sem_literal.json`).
+- **Resultado:** spread **3,5124%** (p25 3,1738%, p75 3,7345%; 30 a 44 fundos por mês, mediana 39,5; 2.351 fundos-mês válidos), os mesmos números do F2B-55, com e sem a leitura literal. Só os motivos das exclusões se redistribuem: "valor patrimonial da cota inválido" 0 → 105 (F2B-60), que somam as reduções de cotas emitidas inválidas 35 → 0, "menos de 12 meses" 2.650 → 2.618, "DY mensal negativo" 1.336 → 1.306, amortização na janela 815 → 809, amortização inválida 165 → 164 e rendimento anual não positivo 1.422 → 1.421 (35 + 32 + 30 + 6 + 1 + 1). Registro na ficha FII, §6a.
+- **Testes:** 2568 passed, 1 skipped, 14 xfailed, sem mudança (o script não tem teste; nenhum módulo de produção mudou). Gates verdes.
+- **Resíduos:** `outputs/f2b65_spread*.json` e `.log`, fora do git.
+- **Para o Marcos revisar:** o spread medido (3,5124%) continua 0,0066 pp acima da constante datada; pela decisão de 25/10/2026, a constante fica.
+- **Revisão:** PODE COMMITAR na 1ª rodada; ajustes de texto antes do commit: a soma das exclusões fecha em 105 com as seis origens, e as cotas inválidas aparecem como 35 → 0; a ressalva de que as medianas mensais são as da constante vem logo depois do novo registro na ficha.

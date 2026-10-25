@@ -50,7 +50,7 @@ Branch: `v2/fase-2b` · Protocolo: `docs/loop/protocolo.md` · Diário: `docs/lo
   - Decisão 5 de 25/10/2026: para os testes do F2B-54 e do F2B-2 cuja falha registrada foi de importação, interface ou coleta, refazer a contraprova contra o código anterior (worktree temporária no commit pai do item) com a falha econômica, ou escrever no diário a dispensa com o motivo, caso a caso, quando a contraprova correta for impossível. Sem dispensa genérica.
   - **Aceite:** diário com a lista de testes, o commit da contraprova, a saída (ou a dispensa e o motivo); nenhum teste existente enfraquecido; gate.
 
-- [ ] **F2B-65** · levantamento · `docs: remeasure the FII spread after the closing fixes`
+- [x] **F2B-65** · levantamento · `docs: remeasure the FII spread after the closing fixes`
   - Recalibração do spread com `scripts/calibrar_spread_fii.py`, mesmo mês final (2026-09), depois dos F2B-57 a F2B-62, **só como medição**: a constante de 3,5058% não muda sem decisão do Marcos.
   - **Aceite:** ficha FII §6a com a medição (spread, quartis, fundos por mês, exclusões antes → depois); `MacroContext.FII_SPREAD_TIJOLO` inalterado; gate.
 

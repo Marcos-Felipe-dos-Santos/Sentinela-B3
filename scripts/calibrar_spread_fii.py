@@ -58,8 +58,13 @@ def _csv(zip_path: Path, parte: str) -> pd.DataFrame:
     with zipfile.ZipFile(zip_path) as z:
         nome = next(n for n in z.namelist() if parte in n)
         with z.open(nome) as f:
+            # F2B-65: a leitura literal do provedor (F2B-61, ficha FII 1.3): vazio fica "" e
+            # o NaN declarado fica "NaN", sem os `na_values` do pandas.
             return pd.read_csv(
-                io.TextIOWrapper(f, encoding="latin-1"), sep=";", dtype=str
+                io.TextIOWrapper(f, encoding="latin-1"),
+                sep=";",
+                dtype=str,
+                keep_default_na=False,
             )
 
 
