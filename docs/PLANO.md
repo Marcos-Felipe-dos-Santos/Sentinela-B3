@@ -350,7 +350,7 @@ da fase em `docs/loop/historico/fase-2b/pr-fase-2b.md`.
 | F3-3 | Demonstrações ponto-no-tempo: contas, entregas, versões e composição do capital |
 | F3-4 | Histórico longo de preços pelo COTAHIST, com eventos societários e série ajustada para retorno |
 | F3-5 | Universo ponto-no-tempo, a partir dos dados de referência do F2A-1, incluindo empresas deslistadas |
-| F3-6 | `AnalysisService.analisar(ticker, as_of)` conectado; `app.py` passa a chamar o serviço |
+| F3-6 | `AnalysisService.analisar(ticker, as_of)` conectado; `app.py` passa a chamar o serviço; abstenção (FII, banco, ETF, BDR, `UNKNOWN`) aparece como motivo, sem número (`app.py:271` mostrava R$ 0,00; F2B-67) |
 | F3-7 | Reconstrução histórica (backfill) do universo |
 | F3-8 | Backtest ponto-no-tempo; os CSVs fabricados saem do repositório |
 | F3-9 | Limpeza: os dois bancos antigos (com backup antes), o cache de 7 dias da cascata antiga, a orquestração duplicada do `app.py`, `limpar_banco.py` (substituído pelas migrações) e `auditar_recomendacoes.py` (substituído pelo backtest), conforme o inventário |

@@ -58,7 +58,7 @@ Branch: `v2/fase-2b` · Protocolo: `docs/loop/protocolo.md` · Diário: `docs/lo
   - `CLAUDE.md` e `docs/PLANO.md` (tabela da 2B) com o estado final: F2B-4 e F2B-32 entregues, escopo por BPP, seguradora pelo critério ampliado, liquidez, lente de bancos, FII (ficha 1.3), avisos fora de `riscos`, Selic fora do motor de ações, contagem da suíte, linhas citadas. Sem tocar a seção "Fase atual" do `AGENTS.md`; o resto do `AGENTS.md` só se contradisser a `CLAUDE.md`.
   - **Aceite:** cada linha citada conferida com `grep -n` no diário; `CLAUDE.md` e `AGENTS.md` sem contradição.
 
-- [ ] **F2B-67** · docs · `docs: add the phase 2B closing caveats to the phase 2C proposal`
+- [x] **F2B-67** · docs · `docs: add the phase 2B closing caveats to the phase 2C proposal`
   - Na `docs/loop/fila-fase2c-proposta.md`, as ressalvas não bloqueantes da auditoria: `CVMFIIProvider._preco_cotahist` sem `meses_ausentes` nem idade da cotação; `_escala_da_composicao` sem a confirmação pela `sharesOutstanding` da §7.7 (alinhar, ou documentar que a razão (0,9; 1,1) contra a DFP cumpre o papel); BUG-2B-09 (já em F2C-19); teste da DVA extraordinária no leiaute 7.09 de bancos; vocabulário legado dos motores; e os destinos 2C das decisões 1 e 2 (IF.data pelo BPP, calendário de publicação, separação da ON do BRSR3), mais os resíduos registrados nos diários do F2B-4, F2B-32, F2B-45 e F2B-5.
   - **Aceite:** cada ressalva com destino e aceite verificável na proposta; nada implementado.
 
