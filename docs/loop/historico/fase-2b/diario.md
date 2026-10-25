@@ -1366,3 +1366,14 @@ FAILED tests/test_financeiro_pre_refactor.py::test_b_gordon_acompanha_a_selic_um
 - **2ª revisão:** PODE COMMITAR. Ficam para a proposta da 2C, sem mudança: os testes de independência cobrem a Selic do `MACRO`, não uma volta de `get_selic_atual()` ao motor (o conftest a fixa na importação; junto com o E-6); `monkeypatch` sem uso nas duas funções de `tests/regressao/test_bug_2b_27_gordon_evidencia_futura.py`; `caso["selic"]` dos casos de ação no golden, que o harness não lê mais.
 - **Para o Marcos apagar à mão:** `data/tesouro/` não existe (o cache vigente do Tesouro é `data/macro/tesouro/`, em uso, e não deve sair); não há cache próprio do provedor de inflação fora de `data/macro/` (em uso); `outputs/levantamento_cache/f2b21/` (565 MB): atenção, `scripts/calibrar_spread_fii.py` lê os Informes, o COTAHIST e o Tesouro dali para reproduzir a calibração do spread.
 - **Para o Marcos revisar:** a linha de `tests/test_invalidar_cache_cvm.py` na lista de travados da "Fase atual" do `AGENTS.md`; o relatório do F1-12 não mostra mais a Selic para ação (nenhum método a usa).
+
+
+### F2B-6 — docs: add phase 2B summary and archive loop files
+- **Executor:** claude-code (claude-opus-5-5).
+- **Status:** sucesso.
+- **O que foi feito:** `docs/loop/pr-fase-2b.md` a partir deste diário, na ordem de revisão do plano final (§9): spread do FII, decisões provisórias, taxa real com prêmio de 4%, 5% e 7% (`docs/decisoes/f2b1-gordon-real.md`), golden de cada item e bancos com a lente; com itens e commits (todos conferidos no `git log main..HEAD`), testes antes → depois, mutação, fichas e auditorias, decisões pendentes e resíduos. Fila, diário e resumo movidos com `git mv` para `docs/loop/historico/fase-2b/`; `docs/loop/fila.md` novo só com a linha do [DECISÃO].
+- **Testes:** 2517 passed, 1 skipped, 14 xfailed, sem mudança (só documentos). Golden inalterado.
+- **Resíduos:** nenhum novo; a lista para o Marcos está no resumo.
+- **Decisões que ficaram para o Marcos:** as do resumo (seção "Decisões pendentes").
+- **Para o Marcos revisar:** o resumo, a começar pelo spread e pelas decisões provisórias; a sincronização da `CLAUDE.md` e do `AGENTS.md` com o F2B-4 e o F2B-32 entregues.
+- **Revisão:** 1ª rodada reprovada só por texto do resumo; corrigido e commitado sem nova parada (plano final, §1, regra 5): total de mutação de `sentinela.methods*` (1.183/1.269), Tesouro (354/423) e unidades (139/163) pela última medição; o prêmio de 5% e as 51 linhas por prêmio no gate da taxa real; o as_of e a ressalva da medição dos bancos; o efeito no universo de FII; os desvios declarados nos diários (D27 do F2B-54 e do F2B-2, BUG-2B-33 a 38, F2B-43, diferenças do F2B-2, safe-commit do F2B-3); os BUG-2A corrigidos na fase.
