@@ -734,6 +734,13 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
     sintese.append(("Métodos usados", str(analise.get("metodos_usados") or "nenhum")))
     if fora_do_escopo:
         sintese = [("Abstenção do motor", motivo_ausente)]
+    # F2B-45: avisos que saíram de `riscos` (não mudam a classificação), em linha própria.
+    for chave, rotulo in (
+        ("aviso_liquidez", "Aviso de liquidez (fora dos riscos)"),
+        ("aviso_alavancagem", "Aviso de alavancagem (fora dos riscos)"),
+    ):
+        if analise.get(chave):
+            sintese.append((rotulo, analise[chave]))
     if analise.get("inadimplencia_ifdata"):
         # F2B-32: só leitura, sem efeito no valor (ficha bancos 1.1, §3).
         sintese.append(

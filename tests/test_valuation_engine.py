@@ -480,3 +480,57 @@ def test_sinal_tecnico_nao_altera_resultado() -> None:
         com = ValuationEngine().processar({**base, 'tecnico_negativo': True})
 
     assert com == sem
+
+
+# ── F2B-45: dívida que não é número finito não é avaliada ─────────────────────
+
+_ACAO_F2B45 = {
+    "ticker": "TEST3",
+    "preco_atual": 10.0,
+    "pvp": 1.0,
+    "pl": 10.0,
+    "dy": 0.05,
+    "roe": 0.15,
+}
+
+
+def _com_divida(divida):
+    dados = dict(_ACAO_F2B45)
+    if divida != "sem-chave":
+        dados["divida_liq_ebitda"] = divida
+    with patch("valuation_engine.get_selic_atual", return_value=0.10):
+        return ValuationEngine().processar(de_empresa(dados))
+
+
+def test_divida_em_texto_nao_e_avaliada():
+    r = _com_divida("9,5")
+    assert "Dívida elevada" not in r["riscos"]
+    assert r["aviso_alavancagem"] == (
+        "alavancagem não avaliada: dívida líquida/EBITDA em texto"
+    )
+    assert r["score_final"] == _com_divida(None)["score_final"]
+
+
+@pytest.mark.parametrize(
+    ("divida", "motivo"),
+    [
+        ("sem-chave", "ausente"),
+        (None, "ausente"),
+        (float("nan"), "não numérica ou não finita"),
+        (float("inf"), "não numérica ou não finita"),
+        (True, "não numérica ou não finita"),
+    ],
+)
+def test_divida_invalida_ganha_o_aviso_fora_de_riscos(divida, motivo):
+    r = _com_divida(divida)
+    assert r["aviso_alavancagem"] == (
+        f"alavancagem não avaliada: dívida líquida/EBITDA {motivo}"
+    )
+    assert not any("alavancagem" in s for s in r["riscos"])
+
+
+def test_divida_numerica_segue_a_regra_sem_aviso():
+    alta = _com_divida(9.5)
+    assert "Dívida elevada" in alta["riscos"]
+    assert "aviso_alavancagem" not in alta
+    assert "aviso_alavancagem" not in _com_divida(1.0)

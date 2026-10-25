@@ -9,24 +9,17 @@ Origem: 2ª passada do Gemini (15/10/2026).
 
 from unittest.mock import patch
 
-import pytest
 from apoio_escopo import de_empresa
 
 from tests.test_saidas_finitas import ACAO
 from valuation_engine import ValuationEngine
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG-2A-23 · motor de ações converte dívida em texto pt-BR, sem fonte que o entregue "
-        "· corrige: F2B-45"
-    ),
-)
 def test_divida_em_texto_nao_e_avaliada():
     with patch("valuation_engine.get_selic_atual", return_value=0.145):
         resultado = ValuationEngine().processar(
             de_empresa({**ACAO, "preco_atual": 10.0, "divida_liq_ebitda": "9,5"})
         )
     assert "Dívida elevada" not in resultado["riscos"]
-    assert any("alavancagem não avaliada" in r for r in resultado["riscos"])
+    # F2B-45 (decisão do Marcos de 25/10/2026): o aviso fica num campo próprio.
+    assert resultado["aviso_alavancagem"].startswith("alavancagem não avaliada")

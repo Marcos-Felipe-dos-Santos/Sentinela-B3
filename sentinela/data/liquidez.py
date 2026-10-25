@@ -82,6 +82,17 @@ def metricas(
     }
 
 
+def _percentual(razao: float) -> str:
+    """Razão como percentual pt-BR com uma casa: 0,7936 → "79,4%"."""
+    return f"{razao * 100:.1f}".replace(".", ",") + "%"
+
+
+def _reais(valor: float) -> str:
+    """Valor em reais pt-BR com duas casas: 64290,123 → "R$ 64.290,12"."""
+    texto = f"{valor:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
+    return f"R$ {texto}"
+
+
 def avaliar(
     bloco: dict | None, *, janela: int, presenca_min: float, volume_min: float
 ) -> dict[str, str] | None:
@@ -94,9 +105,9 @@ def avaliar(
         return {
             "abstencao": (
                 "liquidez abaixo do mínimo para análise: "
-                f"presença de {presenca * 100}% e volume mediano de R$ {volume} "
-                f"nos últimos {janela} pregões "
-                f"(mínimo: {presenca_min * 100:g}% e R$ {volume_min:g})"
+                f"presença de {_percentual(presenca)} e volume mediano de "
+                f"{_reais(volume)} nos últimos {janela} pregões "
+                f"(mínimo: {_percentual(presenca_min)} e {_reais(volume_min)})"
             )
         }
 

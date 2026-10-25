@@ -230,7 +230,9 @@ class ValuationEngine:
             presenca_min=MACRO.LIQUIDEZ_PRESENCA_MIN,
             volume_min=MACRO.LIQUIDEZ_VOLUME_ACOES_MIN,
         ) if "liquidez" in dados else None
-        avisos_liquidez = []
+        # F2B-45 (auditoria D30 do Claude): o aviso de liquidez não medida fica num campo
+        # próprio, fora de `riscos`, como o `perfil_fonte`; não muda a classificação.
+        aviso_liquidez = {}
         if gate_liquidez:
             if "abstencao" in gate_liquidez:
                 return {
@@ -239,7 +241,7 @@ class ValuationEngine:
                     'pl_confiavel': False, 'dy_confiavel': False, 'confianca': 0,
                     'riscos': [gate_liquidez["abstencao"]],
                 }
-            avisos_liquidez.append(gate_liquidez["aviso"])
+            aviso_liquidez = {'aviso_liquidez': gate_liquidez["aviso"]}
 
         # ── GUARD: DISTRESSED TICKERS ────────────────────────────────────────
         # Empresas em recuperação judicial ou situação especial não devem
@@ -259,7 +261,8 @@ class ValuationEngine:
                 'pl_confiavel':  False,
                 'dy_confiavel':  False,
                 'confianca':     0,
-                'riscos':        ['Empresa em situação especial/distressed', *avisos_liquidez],
+                'riscos':        ['Empresa em situação especial/distressed'],
+                **aviso_liquidez,
             }
         roe = float(dados.get('roe', 0) or 0)
         pl  = float(dados.get('pl',  0) or 0)
@@ -281,7 +284,7 @@ class ValuationEngine:
         selic = get_selic_atual()
 
         confianca = 100
-        riscos = list(avisos_liquidez)
+        riscos = []
 
         if dados.get("fundamentos_incompletos"):
             confianca -= 30
@@ -415,6 +418,7 @@ class ValuationEngine:
                     f"lente de bancos abstida: {dados['bancos_diagnostico']}", classe
                 ),
                 'inadimplencia_ifdata': _texto_inadimplencia(dados, instante),
+                **aviso_liquidez,
             }
         graham = resultados["Graham"]
         if isinstance(graham, MethodResult):
@@ -489,24 +493,28 @@ class ValuationEngine:
         score = max(0, min(100, score))
 
         # Ajustes de qualidade (aplicados independente do valuation)
-        try:
-            divida_texto = str(dados.get('divida_liq_ebitda') or 0).strip()
-            if ',' in divida_texto and '.' in divida_texto:
-                if divida_texto.rfind(',') > divida_texto.rfind('.'):
-                    divida_texto = divida_texto.replace('.', '').replace(',', '.')
-                else:
-                    divida_texto = divida_texto.replace(',', '')
-            else:
-                divida_texto = divida_texto.replace(',', '.')
-            divida_liq_ebitda = float(divida_texto)
-            if not math.isfinite(divida_liq_ebitda):
-                divida_liq_ebitda = 0.0
-        except (TypeError, ValueError):
-            divida_liq_ebitda = 0.0
-        if divida_liq_ebitda > MACRO.DIVIDA_EBITDA_LIMITE:
-            score -= 15
-            riscos.append("Dívida elevada")
-            confianca -= 15
+        # F2B-45: só número finito é avaliado; texto (sem fonte desde o F2A-22), ausência e
+        # não finito seguem sem penalidade, com o aviso num campo próprio, fora de `riscos`.
+        divida_liq_ebitda = dados.get('divida_liq_ebitda')
+        aviso_alavancagem = None
+        if (
+            isinstance(divida_liq_ebitda, (int, float))
+            and not isinstance(divida_liq_ebitda, bool)
+            and math.isfinite(divida_liq_ebitda)
+        ):
+            if divida_liq_ebitda > MACRO.DIVIDA_EBITDA_LIMITE:
+                score -= 15
+                riscos.append("Dívida elevada")
+                confianca -= 15
+        else:
+            motivo_divida = (
+                "ausente" if divida_liq_ebitda is None
+                else "em texto" if isinstance(divida_liq_ebitda, str)
+                else "não numérica ou não finita"
+            )
+            aviso_alavancagem = (
+                f"alavancagem não avaliada: dívida líquida/EBITDA {motivo_divida}"
+            )
 
         if roe > MACRO.ROE_BONUS_MIN:    score += 10
         if roe < MACRO.ROE_PENALIDADE_MAX: score -= 15
@@ -568,6 +576,9 @@ class ValuationEngine:
             if modelo == ModeloDemonstracao.BANCO.value
             else {}
         )
+        if aviso_alavancagem:
+            extra['aviso_alavancagem'] = aviso_alavancagem
+        extra.update(aviso_liquidez)
         return {
             'fair_value':    round(fair_value, 2),
             'upside':        round(upside * 100, 1),

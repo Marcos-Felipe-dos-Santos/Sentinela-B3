@@ -70,7 +70,7 @@ def test_sem_chave_nada_muda(fii):
 def test_falha_de_coleta_segue_com_aviso(fii):
     r = _analisar(fii, liquidez={"abstencao": "falha de coleta: fonte indisponível"})
     assert "fair_value" in r
-    assert any("liquidez não medida:" in s for s in r.get("riscos", []))
+    assert r["aviso_liquidez"].startswith("liquidez não medida:")  # F2B-45
 
 
 @pytest.mark.parametrize("fii", [False, True])
@@ -165,7 +165,7 @@ def test_ticker_ausente_com_cobertura_completa_abstem():
         presenca_min=0.8,
         volume_min=500000,
     )
-    assert "presença de 0.0%" in r["abstencao"]
+    assert "presença de 0,0%" in r["abstencao"]  # F2B-45: pt-BR
     assert "63 pregões" in r["abstencao"]
 
 
@@ -178,7 +178,7 @@ def test_aviso_chega_a_saida_distressed():
     with patch("valuation_engine.DISTRESSED_TICKERS", {"TSTC3"}):
         r = _analisar(liquidez={"abstencao": "falha de coleta"})
     assert r["perfil"] == "DISTRESSED"
-    assert any("liquidez não medida:" in s for s in r["riscos"])
+    assert r["aviso_liquidez"].startswith("liquidez não medida:")  # F2B-45
 
 
 def test_texto_da_abstencao_expoe_as_duas_medidas_e_o_limiar():
@@ -189,8 +189,8 @@ def test_texto_da_abstencao_expoe_as_duas_medidas_e_o_limiar():
     )
     assert r == {
         "abstencao": (
-            "liquidez abaixo do mínimo para análise: presença de 79.0% e volume mediano "
-            "de R$ 499999.0 nos últimos 63 pregões (mínimo: 80% e R$ 500000)"
+            "liquidez abaixo do mínimo para análise: presença de 79,0% e volume mediano "
+            "de R$ 499.999,00 nos últimos 63 pregões (mínimo: 80,0% e R$ 500.000,00)"
         )
     }
 
@@ -220,3 +220,72 @@ def test_aviso_expoe_o_motivo_sem_inventar_medida(bloco, motivo):
     assert liquidez.avaliar(bloco, janela=63, presenca_min=0.8, volume_min=500000) == {
         "aviso": "liquidez não medida: " + motivo
     }
+
+
+# ── F2B-45: aviso fora de riscos e texto em pt-BR (auditoria D30 do Claude) ───
+
+
+@pytest.mark.parametrize("fii", [False, True])
+def test_aviso_de_liquidez_fica_fora_de_riscos(fii):
+    com = _analisar(fii, liquidez={"abstencao": "falha de coleta: fonte indisponível"})
+    sem = _analisar(fii)
+    assert com["aviso_liquidez"] == (
+        "liquidez não medida: falha de coleta: fonte indisponível"
+    )
+    assert not any("liquidez" in s for s in com.get("riscos", []))
+    assert {k: v for k, v in com.items() if k != "aviso_liquidez"} == sem
+
+
+def test_aviso_de_liquidez_fora_de_riscos_no_distressed():
+    with patch("valuation_engine.DISTRESSED_TICKERS", {"TSTC3"}):
+        r = _analisar(liquidez={"abstencao": "falha de coleta"})
+    assert r["perfil"] == "DISTRESSED"
+    assert r["riscos"] == ["Empresa em situação especial/distressed"]
+    assert r["aviso_liquidez"] == "liquidez não medida: falha de coleta"
+
+
+@pytest.mark.parametrize(
+    ("presenca", "volume", "minimo", "texto"),
+    [
+        (0.7936507936507937, 64290.123, 500000,
+         "presença de 79,4% e volume mediano de R$ 64.290,12 nos últimos 63 pregões "
+         "(mínimo: 80,0% e R$ 500.000,00)"),
+        (0.0, 0.0, 100000,
+         "presença de 0,0% e volume mediano de R$ 0,00 nos últimos 63 pregões "
+         "(mínimo: 80,0% e R$ 100.000,00)"),
+        (0.95, 1234567.891, 2000000,
+         "presença de 95,0% e volume mediano de R$ 1.234.567,89 nos últimos 63 pregões "
+         "(mínimo: 80,0% e R$ 2.000.000,00)"),
+    ],
+)  # fmt: skip
+def test_texto_da_abstencao_em_pt_br(presenca, volume, minimo, texto):
+    from sentinela.data import liquidez
+
+    r = liquidez.avaliar(
+        _bloco(presenca, volume), janela=63, presenca_min=0.8, volume_min=minimo
+    )
+    assert r == {"abstencao": f"liquidez abaixo do mínimo para análise: {texto}"}
+
+
+def test_relatorio_mostra_os_avisos_fora_de_riscos():
+    from datetime import date
+
+    from sentinela.reports import rastreabilidade
+
+    dados = de_empresa(
+        _dados(liquidez={"abstencao": "falha de coleta"}, fonte_preco="yfinance")
+    )
+    with (
+        patch("valuation_engine.get_selic_atual", return_value=0.145),
+        patch("fii_engine.get_selic_atual", return_value=0.145),
+    ):
+        contexto = rastreabilidade.construir_contexto(
+            dados, False, date(2026, 10, 20), ValuationEngine(), FIIEngine()
+        )
+    sintese = dict(contexto["sintese"])
+    assert sintese["Aviso de liquidez (fora dos riscos)"] == (
+        "liquidez não medida: falha de coleta"
+    )
+    assert sintese["Aviso de alavancagem (fora dos riscos)"] == (
+        "alavancagem não avaliada: dívida líquida/EBITDA ausente"
+    )

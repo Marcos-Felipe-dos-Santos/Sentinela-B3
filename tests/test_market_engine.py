@@ -744,4 +744,4 @@ def test_falha_do_coletor_de_liquidez_chega_como_aviso(monkeypatch):
     assert "falha de coleta" in dados["liquidez"]["abstencao"]
     monkeypatch.setattr("valuation_engine.get_selic_atual", lambda: .145)
     resultado = ValuationEngine().processar(de_empresa(dados))
-    assert any("liquidez não medida:" in r for r in resultado["riscos"])
+    assert resultado["aviso_liquidez"].startswith("liquidez não medida:")  # F2B-45

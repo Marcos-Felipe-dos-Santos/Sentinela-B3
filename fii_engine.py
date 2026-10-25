@@ -93,8 +93,10 @@ class FIIEngine:
             }
 
         def _com_aviso(resultado: dict) -> dict:
+            # F2B-45 (auditoria D30 do Claude): o aviso fica num campo próprio, fora de
+            # `riscos`, como o `perfil_fonte`; liquidez não medida não muda a classificação.
             if gate_liquidez and "aviso" in gate_liquidez:
-                resultado.setdefault("riscos", []).append(gate_liquidez["aviso"])
+                resultado["aviso_liquidez"] = gate_liquidez["aviso"]
             return resultado
 
         # ── INVARIANTE DO DY ──────────────────────────────────────────────────
