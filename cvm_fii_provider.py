@@ -76,8 +76,14 @@ class CVMFIIProvider:
     # Parse
     # ------------------------------------------------------------------
 
-    def _parsear_complemento(self, zip_path: Path, ano: int) -> pd.DataFrame:
-        """Lê inf_mensal_fii_complemento_{ano}.csv do ZIP. Retorna DataFrame."""
+    def _parsear_complemento(
+        self, zip_path: Path, ano: int, *, literal: bool = False
+    ) -> pd.DataFrame:
+        """Lê inf_mensal_fii_complemento_{ano}.csv do ZIP. Retorna DataFrame.
+
+        `literal=True` (F2B-61, ficha FII 1.3): as células chegam como estão no arquivo, sem os
+        `na_values` do pandas; a célula vazia fica `""` e o `NaN` declarado fica `"NaN"`.
+        """
         target = f"inf_mensal_fii_complemento_{ano}.csv"
         with zipfile.ZipFile(zip_path) as zf:
             names = zf.namelist()
@@ -94,6 +100,7 @@ class CVMFIIProvider:
                     sep=";",
                     dtype=str,
                     low_memory=False,
+                    keep_default_na=not literal,
                 )
 
     def _proveniencia(self, zip_path: Path, ano: int, row) -> dict | None:
@@ -207,8 +214,13 @@ class CVMFIIProvider:
 
         return None
 
-    def _tabela(self, zip_path: Path, parte: str) -> pd.DataFrame:
-        """Um CSV do Informe (`geral`, `ativo_passivo`), em texto; vazio se não existe."""
+    def _tabela(
+        self, zip_path: Path, parte: str, *, literal: bool = False
+    ) -> pd.DataFrame:
+        """Um CSV do Informe (`geral`, `ativo_passivo`), em texto; vazio se não existe.
+
+        `literal=True`: sem os `na_values` do pandas, como em `_parsear_complemento`.
+        """
         with zipfile.ZipFile(zip_path) as zf:
             nome = next(
                 (n for n in zf.namelist() if parte in n.lower() and n.endswith(".csv")),
@@ -222,6 +234,7 @@ class CVMFIIProvider:
                     sep=";",
                     dtype=str,
                     low_memory=False,
+                    keep_default_na=not literal,
                 )
 
     def _linhas_do_fundo(
@@ -235,11 +248,11 @@ class CVMFIIProvider:
         """
         try:
             zip_path = self.baixar_informe(ano)
-            df = self._parsear_complemento(zip_path, ano)
+            df = self._parsear_complemento(zip_path, ano, literal=True)
             if df.empty or "CNPJ_Fundo_Classe" not in df.columns:
                 return zip_path, [], []
             linhas = df[df["CNPJ_Fundo_Classe"].str.strip() == cnpj].to_dict("records")
-            geral = self._tabela(zip_path, "geral")
+            geral = self._tabela(zip_path, "geral", literal=True)
             entregas = {}
             if {"CNPJ_Fundo_Classe", "Data_Referencia", "Versao"} <= set(geral.columns):
                 do_fundo = geral[geral["CNPJ_Fundo_Classe"].str.strip() == cnpj]
@@ -252,7 +265,7 @@ class CVMFIIProvider:
                 linha.update(
                     entregas.get((linha.get("Data_Referencia"), linha.get("Versao")), {})
                 )
-            ativo = self._tabela(zip_path, "ativo_passivo")
+            ativo = self._tabela(zip_path, "ativo_passivo", literal=True)
             composicoes = (
                 ativo[ativo["CNPJ_Fundo_Classe"].str.strip() == cnpj].to_dict("records")
                 if "CNPJ_Fundo_Classe" in ativo.columns

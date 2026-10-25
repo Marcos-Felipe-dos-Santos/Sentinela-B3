@@ -70,3 +70,16 @@ Diário da fila de fechamento (`docs/loop/fila.md`). O diário da fase está em 
 - **Mutação:** `sentinela.data.rendimento_fii` 508/558 (91,0%).
 - **Testes:** 2549 passed, 1 skipped, 14 xfailed → 2556 passed, 1 skipped, 14 xfailed. Gates verdes.
 - **Revisão:** PODE COMMITAR na 1ª rodada. Registrado para a 2C: o teste só invalida o VP do mês final; um caso num mês intermediário e no 13º mês protegeria a ordem das conferências contra uma mudança de lugar (que a mutação não pega).
+
+
+### F2B-61 — fix: read empty FII amortization by the sheet 1.3 rule
+- **Executor:** claude-code (claude-opus-5-5).
+- **Status:** sucesso.
+- **O que foi feito:** BUG-2B-49. A lente já separava o vazio (amortização zero) do inválido; o defeito estava na leitura: com `dtype=str` e os `na_values` padrão do pandas, a célula vazia e o `NaN` declarado chegavam iguais (`float('nan')`), e a lente aceitava os dois como "sem amortização". `CVMFIIProvider._parsear_complemento` e `_tabela` ganham `literal` (padrão `False`, o comportamento de antes para o P/VP e o `geral`); `_linhas_do_fundo`, que alimenta a lente, lê complemento, `geral` e `ativo_passivo` com `literal=True` (`keep_default_na=False`): o vazio fica `""` e o `NaN` declarado fica `"NaN"`. Pela ficha 1.3, vazio vale zero; `NaN`, texto e negativo abstêm ("amortização inválida no Informe").
+- **Especificação oficial:** conferida no F2B-56 (dicionário de dados da CVM, sem regra para o vazio).
+- **Rito D27:** `tests/regressao/test_bug_2b_49_fii_amortizacao_nan_literal.py` com `xfail(strict=True)` antes da correção; `--runxfail`: **3 failed** pelo motivo do bug (o provedor devolvia `nan` no lugar do `"NaN"` declarado e no lugar do vazio), em `f2b61-vermelho.txt` no scratchpad. Marca retirada: PASS. Os quatro casos da lente pedidos no aceite (vazio vale zero; `NaN`, texto e negativo abstêm) passam antes e depois e ficam como guarda, sem marca.
+- **Testes existentes que mudam:** nenhum.
+- **Golden:** regenerado, idêntico (o harness monta as linhas em texto).
+- **Mutação:** `cvm_fii_provider` (V1, sem meta) 445/545 (81,7%).
+- **Testes:** 2556 passed, 1 skipped, 14 xfailed → 2563 passed, 1 skipped, 14 xfailed. Gates verdes.
+- **Revisão:** PODE COMMITAR na 1ª rodada. Efeito do modo literal registrado: um `NaN` declarado (ou `NA`, `null`, `N/A`) numa posição da composição deixa de ser pulado como vazio e abstém por "classificação de FII desconhecida: <coluna> não numérico"; no complemento, `""` contra `"NaN"` na mesma versão vira conflito (`forma` os separa). Os dois seguem a ficha 1.3 (só o vazio é dispensado). Para a 2C: um teste fim a fim, do ZIP com `NaN` declarado até `avaliar`; trocar a terceira asserção do teste do provedor, que só confere a entrada do parametrize.

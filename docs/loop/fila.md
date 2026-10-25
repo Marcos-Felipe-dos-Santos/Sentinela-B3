@@ -34,7 +34,7 @@ Branch: `v2/fase-2b` · Protocolo: `docs/loop/protocolo.md` · Diário: `docs/lo
   - **BUG-2B-48:** VP final inválido (None, 0, negativo, NaN, inf) não impede a elegibilidade. Os 13 VPs são validados, inclusive o último.
   - **Aceite:** regressão estrita → correção → PASS; golden do FII; mutação ≥ 80%; gate.
 
-- [ ] **F2B-61** · fix · `fix: read empty FII amortization by the sheet 1.3 rule` · **[golden]**
+- [x] **F2B-61** · fix · `fix: read empty FII amortization by the sheet 1.3 rule` · **[golden]**
   - **BUG-2B-49:** amortização ausente aceita como "sem amortização" fora das condições da ficha 1.3 (decisão 4): vazio vale zero só dentro de um registro de complemento válido da mesma versão; NaN, texto ou negativo abstém.
   - **Aceite:** regressão estrita → correção → PASS, com um caso para cada leitura: célula vazia (vale zero), literal `NaN` declarado, texto e negativo (abstêm); a leitura do CSV distingue o vazio do `NaN` literal (revisão do F2B-56); golden do FII; mutação ≥ 80%; gate.
 
