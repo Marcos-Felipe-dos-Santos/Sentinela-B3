@@ -54,7 +54,7 @@ Branch: `v2/fase-2b` · Protocolo: `docs/loop/protocolo.md` · Diário: `docs/lo
   - Recalibração do spread com `scripts/calibrar_spread_fii.py`, mesmo mês final (2026-09), depois dos F2B-57 a F2B-62, **só como medição**: a constante de 3,5058% não muda sem decisão do Marcos.
   - **Aceite:** ficha FII §6a com a medição (spread, quartis, fundos por mês, exclusões antes → depois); `MacroContext.FII_SPREAD_TIJOLO` inalterado; gate.
 
-- [ ] **F2B-66** · docs · `docs: sync CLAUDE.md and the plan with the phase 2B delivery`
+- [x] **F2B-66** · docs · `docs: sync CLAUDE.md and the plan with the phase 2B delivery`
   - `CLAUDE.md` e `docs/PLANO.md` (tabela da 2B) com o estado final: F2B-4 e F2B-32 entregues, escopo por BPP, seguradora pelo critério ampliado, liquidez, lente de bancos, FII (ficha 1.3), avisos fora de `riscos`, Selic fora do motor de ações, contagem da suíte, linhas citadas. Sem tocar a seção "Fase atual" do `AGENTS.md`; o resto do `AGENTS.md` só se contradisser a `CLAUDE.md`.
   - **Aceite:** cada linha citada conferida com `grep -n` no diário; `CLAUDE.md` e `AGENTS.md` sem contradição.
 

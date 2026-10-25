@@ -147,7 +147,7 @@ A ordem segue a prioridade "críticos → taxa real → dados de referência →
 
 ### Fase 0 — Preparação
 
-Em execução pelo loop. Escopo e aceites em `docs/loop/fila.md`.
+Concluída (tag `v2-fase-0`). Fila arquivada em `docs/loop/historico/fase-0/`.
 
 | Item | Tipo | Entrega |
 |---|---|---|
@@ -244,12 +244,14 @@ Ordem da fila, não a numérica. O F2A-10 (gate de liquidez) e o F2A-39 (correç
 
 Decisão do Marcos item a item, com o dossiê do F0-6. Cada método alterado muda de versão, com changelog.
 
-Ordem e IDs finais da fila ativa (`docs/loop/fila.md`); títulos de commit delimitam
-as entregas. F2B-4 permanece bloqueado, e F2B-32 depende dele. Por decisão de 21/10,
-os itens independentes prosseguem; a fase não está encerrada. A lente pura Bancos
-não tem consumidor no motor; Basileia/inadimplência não entram na fórmula.
+Ordem e IDs finais da fila da fase (`docs/loop/historico/fase-2b/fila.md`) e da fila de
+fechamento da auditoria externa (F2B-56 a F2B-68, `docs/loop/fila.md`); títulos de commit
+delimitam as entregas. F2B-4 e F2B-32 saíram do bloqueio pelas decisões de 25/10/2026: o
+escopo segue o modelo do BPP consolidado (seguradora pelo critério ampliado) e a lente de
+bancos é chamada pelo motor; Basileia e inadimplência do IF.data ficam só como contexto. Resumo
+da fase em `docs/loop/historico/fase-2b/pr-fase-2b.md`.
 
-| Item | Entrega (título da fila) | Estado em 22/10/2026 |
+| Item | Entrega (título da fila) | Estado em 25/10/2026 |
 |---|---|---|
 | F2B-35 | docs: sync agent instructions after the phase 2A closure | entregue |
 | F2B-36 | test: register the IF.data audit bugs and point open bugs to their items | entregue |
@@ -294,16 +296,30 @@ não tem consumidor no motor; Basileia/inadimplência não entram na fórmula.
 | F2B-54 | fix: close the audited Bazin, FII report and Gordon base gaps | entregue |
 | F2B-2 | fix: compare FII yield with NTN-B plus the historical spread | entregue |
 | F2A-39 | fix: map BTG Pactual unit through the source corrections table | entregue |
-| F2B-4 | fix: enforce method scope by asset class and statement model | bloqueado |
+| F2B-55 | fix: accept fractional FII quota counts from the Informe | entregue |
+| F2B-4 | fix: enforce method scope by asset class and statement model | entregue |
 | F2B-44 | fix: record IF.data provenance and the reference instant | entregue |
 | F2B-3 | feat: add justified price-to-book lens for banks | entregue |
-| F2B-32 | fix: value banks with the bank lens | pendente |
+| F2B-32 | fix: value banks with the bank lens | entregue |
 | F2A-10 | fix: abstain below the liquidity threshold | entregue |
 | F2B-33 | docs: sync agent instructions with phase 2B rates and scope | entregue |
-| F2B-34 | docs: propose phase 2C queue | pendente |
-| F2B-45 | fix: stop parsing Portuguese debt text in the stock engine | pendente |
-| F2B-5 | chore: clean up phase 2B residue | pendente |
-| F2B-6 | docs: add phase 2B summary and archive loop files | pendente |
+| F2B-34 | docs: propose phase 2C queue | entregue |
+| F2B-45 | fix: stop parsing Portuguese debt text in the stock engine | entregue |
+| F2B-5 | chore: clean up phase 2B residue | entregue |
+| F2B-6 | docs: add phase 2B summary and archive loop files | entregue |
+| F2B-56 | docs: approve the FII sheet 1.3 on empty composition and amortization cells | entregue |
+| F2B-57 | fix: treat any conflicting field of a same-version FII report as a conflict | entregue |
+| F2B-58 | fix: hold the FII lens to the same time cut as the real rate and the reports | entregue |
+| F2B-59 | fix: take the FII composition from the selected report version | entregue |
+| F2B-60 | fix: validate every book value in the FII window | entregue |
+| F2B-61 | fix: read empty FII amortization by the sheet 1.3 rule | entregue |
+| F2B-62 | fix: return no number when the FII lens abstains | entregue |
+| F2B-63 | fix: read the statement model where the cascade writes it in the completeness check | entregue |
+| F2B-64 | test: redo the D27 counterproof for F2B-54 and F2B-2 | entregue |
+| F2B-65 | docs: remeasure the FII spread after the closing fixes | entregue |
+| F2B-66 | docs: sync CLAUDE.md and the plan with the phase 2B delivery | entregue |
+| F2B-67 | docs: add the phase 2B closing caveats to the phase 2C proposal | pendente |
+| F2B-68 | docs: record the phase 2B closing and archive the closing queue | pendente |
 
 **Gate:** seção A muda só no F2B-7 ([SEÇÃO A] em (c), decisão de 18/10/2026); seção B virou exatamente onde marcada; mutation ≥ 80%; os resultados antes e depois da taxa real estão comparados no diário.
 
@@ -469,7 +485,7 @@ IDs conforme a auditoria normalizada no F0-0 (`docs/auditoria/2026-09-red-team.m
 | Selic nominal como taxa de desconto; `cost_of_equity_real` sem uso | F2B-1 |
 | Só o último ano, com cinco anos de CVM já baixados | F2A-7, F2C-1 |
 | Alavancagem pelo endividamento contábil total | F2A-8 |
-| Bancos sem regras próprias | F2A-9, F2B-3, F2B-4 |
+| Bancos sem regras próprias | F2A-9, F2B-3, F2B-4, F2B-32 |
 | Markowitz com um ano de dados, divisão fixa 40/60 e "Alocação Sugerida" | F0-9, F2C-9, F4-7 |
 | Cobertura por mapas manuais; atualizador que não preenche ticker | F2A-1, F2A-31, F2A-13 |
 | Segmento do FII e controle acionário baixados e não lidos | F2A-2 |

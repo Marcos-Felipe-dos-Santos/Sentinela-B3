@@ -8,7 +8,7 @@
 Plataforma educacional de análise de ações e FIIs da B3.
 Python 3.13 + Streamlit (interface FastAPI + HTMX prevista para a Fase 7), local-first, SQLite.
 **Não é consultoria financeira.**
-Suíte em 22/10/2026: 2.429 passed, 1 skipped, 21 xfailed (~10 s).
+Suíte em 25/10/2026: 2.568 passed, 1 skipped, 14 xfailed (~10 s).
 
 ---
 
@@ -161,8 +161,9 @@ verificá-lo. Reporte a divergência; não a "conserte".
   vem de NTN-B/Principal ≥ 2035, pesos iguais, mais 5 pp das ações, sem contingência numérica.
   Bazin usa proventos brutos B3 de 12 meses e critério nominal fixo de 6%, DY mínimo de 5%.
   FII de tijolo elegível usa rendimento do Informe ÷ (NTN-B real + spread versionado); Selic fica no score/contexto.
-- Lente pura de bancos entregue (F2B-3), sem ligação ao motor: F2B-4 está bloqueado por
-  distinção seguradora/empresa pelo BPP, e F2B-32 depende dele. Não presumir escopo resolvido.
+- Escopo pelo modelo do BPP consolidado (F2B-4): empresa recebe os métodos de ação; banco, só a
+  lente de bancos (F2B-32; Basileia e inadimplência do IF.data só como contexto); seguradora e
+  sem BPP se abstêm sem número. FII (ficha 1.3) e bancos abstidos não trazem valor nem upside.
 - Liquidez: 63 pregões, presença ≥ 80%, volume mediano diário ≥ R$ 500 mil (ações/units)
   ou R$ 100 mil (FII). Incompletude/falha de coleta produz aviso, sem tratar ausência como zero.
 - Duas camadas de orquestração: `app.py` (roda) e `sentinela/services/`
