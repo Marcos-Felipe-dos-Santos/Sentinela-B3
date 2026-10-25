@@ -76,6 +76,7 @@ class SentinelaAI:
                 'proventos_b3', 'bazin_proventos', 'bazin_diagnostico', 'modelo_bpp',
                 'perfil_fonte', 'fechamentos_brutos', 'informe_fii', 'b3_fundo',
                 'escala_pelo_consolidado', 'especies_da_companhia',
+                'modelo_bpp_proveniencia', 'bancos_diagnostico',
             }
             return "\n".join(
                 [f"- {k}: {v}" for k, v in dados.items()

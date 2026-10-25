@@ -179,12 +179,16 @@ def test_relatorio_mostra_o_escopo_com_o_modelo_e_a_classe():
                 FIIEngine(),
             )
 
-    banco = contexto({"classe_ativo": "STOCK", "modelo_bpp": "banco"})
-    escopos = {m["nome"]: m["applies_to"] for m in banco["metodos"]}
+    seguradora = contexto({"classe_ativo": "STOCK", "modelo_bpp": "seguradora"})
+    escopos = {m["nome"]: m["applies_to"] for m in seguradora["metodos"]}
     assert escopos["Graham"] == "STOCK, UNIT; modelo empresa (BPP consolidado)"
-    assert banco["classe"] == "ação"
-    assert banco["sintese"] == [
-        ("Abstenção do motor", "modelo banco fora do escopo dos métodos de empresa")
+    assert escopos["Bancos"] == "STOCK, UNIT; modelo banco (BPP consolidado)"
+    assert seguradora["classe"] == "ação"
+    assert seguradora["sintese"] == [
+        (
+            "Abstenção do motor",
+            "modelo seguradora fora do escopo dos métodos de empresa",
+        )
     ]
     etf = contexto({"classe_ativo": "ETF"})
     assert etf["classe"] == "ETF, fora do escopo dos métodos de ação"

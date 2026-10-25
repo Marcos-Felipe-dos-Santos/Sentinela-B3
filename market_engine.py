@@ -1094,6 +1094,8 @@ class MarketEngine:
                     fato.update(
                         acoes_base=acoes.get("acoes") if mesmo_documento else None,
                         lpa=cvm_campos.get("lpa"),
+                        # F2B-32: VPA CVM do mesmo documento, por ação ou unit (lente de bancos).
+                        vpa=cvm_campos.get("vpa") if mesmo_documento else None,
                         fator_unit=acoes.get("acoes_por_papel", 1),
                         base_acionaria_compativel=base["compativel"],
                         direitos_compativeis=(
@@ -1187,6 +1189,8 @@ class MarketEngine:
             capital = ifdata.capital(dados.get('cnpj'), as_of.astimezone(ZoneInfo('America/Sao_Paulo')).date(), as_of=as_of)
         except Exception as exc:
             riscos.append(f"{RISCO_LIMITACAO_BANCO}: Basileia e inadimplência sem fonte (IF.data indisponível: {exc})")
+            # F2B-32: consultado e falhou; o motivo chega à leitura da inadimplência.
+            dados['ifdata'] = {'proveniencia': (), 'motivos': {'inadimplencia': f"IF.data indisponível: {exc}"}}
             return
         dados['basileia'] = capital.basileia
         dados['inadimplencia'] = capital.inadimplencia
@@ -1195,6 +1199,7 @@ class MarketEngine:
             'data_base': capital.data_base,
             'codinst': capital.codinst,
             'proveniencia': capital.proveniencia,
+            'motivos': dict(capital.motivos),
         }
         for campo, motivo in capital.motivos.items():
             riscos.append(f"{RISCO_LIMITACAO_BANCO} ({campo}): {motivo}")

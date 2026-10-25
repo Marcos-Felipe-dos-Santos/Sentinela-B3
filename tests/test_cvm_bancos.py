@@ -139,9 +139,11 @@ def test_ifdata_grava_basileia_e_inadimplencia(monkeypatch):
     assert capital.basileia == pytest.approx(0.151297835513664)
     assert capital.data_base == "202606"
     assert capital.codinst == "C0080329"  # o conglomerado prudencial, não a instituição
+    # F2B-32: o relatório 16 é lido no mesmo conglomerado e data; sem ele, o motivo.
     assert capital.inadimplencia is None
-    assert capital.motivos == {"inadimplencia": ifdata.MOTIVO_SEM_INADIMPLENCIA}
-    assert "CodInst eq 'C0080329'" in pedidos[-1] and "@Relatorio='5'" in pedidos[-1]
+    assert capital.motivos == {"inadimplencia": ifdata.MOTIVO_CARTEIRA_AUSENTE}
+    assert "CodInst eq 'C0080329'" in pedidos[-2] and "@Relatorio='5'" in pedidos[-2]
+    assert pedidos[-1] == ifdata.caminho_carteira("202606", "C0080329")
 
     class _IFData:
         def capital(self, cnpj, data_referencia, *, as_of):
@@ -158,9 +160,10 @@ def test_ifdata_grava_basileia_e_inadimplencia(monkeypatch):
         "data_base": "202606",
         "codinst": "C0080329",
         "proveniencia": (),
+        "motivos": {"inadimplencia": ifdata.MOTIVO_CARTEIRA_AUSENTE},
     }
     assert dados["riscos_dados"] == [
-        f"limitação do banco (inadimplencia): {ifdata.MOTIVO_SEM_INADIMPLENCIA}"
+        f"limitação do banco (inadimplencia): {ifdata.MOTIVO_CARTEIRA_AUSENTE}"
     ]
 
 

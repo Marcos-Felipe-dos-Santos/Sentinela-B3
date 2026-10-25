@@ -410,7 +410,7 @@ def test_contrato_ifdata_com_proveniencia(tmp_path, monkeypatch):
     )
     assert capital.codinst == "C0080329"
     assert capital.basileia == pytest.approx(0.151297835513664)
-    assert len(capital.proveniencia) == 2
+    assert len(capital.proveniencia) == 3  # cadastro, capital e carteira (F2B-32)
     for registro in capital.proveniencia:
         assert registro["documento"] == "IF.data"
         assert registro["periodo_referencia"] == "202609"

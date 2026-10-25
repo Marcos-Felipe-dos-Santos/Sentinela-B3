@@ -77,6 +77,8 @@ def test_cache_expira_no_instante_explicito_apos_sete_dias(tmp_path, monkeypatch
     for caminho, valor in (
         (ifdata.caminho_cadastro("202609", "00000000"), CADASTRO_BB),
         (ifdata.caminho_capital("202609", "C0080329"), CAPITAL_BB),
+        # F2B-32: a carteira (relatório 16) também fica no cache e também expira.
+        (ifdata.caminho_carteira("202609", "C0080329"), [{"Conta": "24454"}]),
     ):
         arquivo = tmp_path / f"{hashlib.sha256(caminho.encode()).hexdigest()}.json"
         arquivo.write_text(json.dumps(valor), encoding="utf-8")
@@ -94,6 +96,6 @@ def test_cache_expira_no_instante_explicito_apos_sete_dias(tmp_path, monkeypatch
         as_of=inicio + timedelta(days=7, seconds=1),
     )
     assert capital.basileia == pytest.approx(0.151297835513664)
-    assert len(pedidos) == 2
+    assert len(pedidos) == 3
     assert any("IfDataCadastro" in u for u in pedidos)
     assert any("IfDataValores" in u for u in pedidos)

@@ -224,6 +224,7 @@ def _instancias(eh_fii: bool):
         modulo_valuation._BAZIN,
         modulo_valuation._LYNCH,
         modulo_valuation._GORDON,
+        modulo_valuation._BANCOS,
     ]
 
 
@@ -605,6 +606,11 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         for metodo in metodos:
             if metodo["nome"] == "Gordon":
                 metodo["abstencao"] = dados["gordon_diagnostico"]
+    if dados.get("bancos_diagnostico"):
+        # F2B-32: o motivo real da fronteira ou da lente, não o dos insumos vazios.
+        for metodo in metodos:
+            if metodo["nome"] == "Bancos":
+                metodo["abstencao"] = dados["bancos_diagnostico"]
     flags = ("dados_parciais", "dados_cache", "dados_manual", "fundamentos_incompletos")
     fontes = [
         ("Fonte do preço", dados.get("fonte_preco") or "desconhecida"),
@@ -620,7 +626,19 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
     ]
 
     fonte_gordon = dados.get("gordon_cvm")
-    if fonte_gordon:
+    if fonte_gordon and (
+        fonte_gordon.get("modelo") == "banco" or dados.get("modelo_bpp") == "banco"
+    ):
+        # F2B-32: o exercício e a entrega da DFP da lente de bancos (ficha bancos 1.1, §3).
+        fontes.append(
+            (
+                "DFP da lente de bancos",
+                f"exercício {fonte_gordon.get('inicio')} a {fonte_gordon.get('fim')}, "
+                f"entrega {fonte_gordon.get('data_entrega')}; "
+                f"{fonte_gordon.get('proveniencia') or 'sem proveniência'}",
+            )
+        )
+    elif fonte_gordon:
         fontes.append(
             (
                 "DVA do Gordon",
@@ -716,6 +734,14 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
     sintese.append(("Métodos usados", str(analise.get("metodos_usados") or "nenhum")))
     if fora_do_escopo:
         sintese = [("Abstenção do motor", motivo_ausente)]
+    if analise.get("inadimplencia_ifdata"):
+        # F2B-32: só leitura, sem efeito no valor (ficha bancos 1.1, §3).
+        sintese.append(
+            (
+                "Inadimplência (IF.data, só leitura; não altera o valor)",
+                analise["inadimplencia_ifdata"],
+            )
+        )
 
     return {
         "taxa_real": _taxa_real(dados),

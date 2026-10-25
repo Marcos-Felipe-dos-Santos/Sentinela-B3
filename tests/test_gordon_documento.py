@@ -6,8 +6,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from zipfile import ZipFile
 
+import pandas as pd
 import pytest
 
+import cvm_provider
 from cvm_provider import CVMProvider
 
 
@@ -127,3 +129,45 @@ def test_mudanca_estrutural_identificada_exige_reconciliacao(documento):
         r["fundamento_fluxo"]
         == "hipótese de DVA anual como aproximação do fluxo recorrente (ficha Gordon1.1, §1)"
     )
+
+
+def _como_banco(original, *, manter_pl_de_empresa=False):
+    """O recorte da Ambev no leiaute de banco (PL em 2.08, DVA em 7.09.04), mesmos valores."""
+
+    def ler(caminho, demonstrativo):
+        df = original(caminho, demonstrativo).copy()
+        if demonstrativo == "BPP_con":
+            novo = df[df["CD_CONTA"].astype(str).str.startswith("2.03")].copy()
+            novo["CD_CONTA"] = novo["CD_CONTA"].str.replace("2.03", "2.08", n=1)
+            if not manter_pl_de_empresa:
+                df = df[~df["CD_CONTA"].astype(str).str.startswith("2.03")]
+            df = pd.concat([df, novo])
+        if demonstrativo == "DVA_con":
+            df["CD_CONTA"] = df["CD_CONTA"].str.replace("7.08.04", "7.09.04", n=1)
+        if demonstrativo == "DRE_con":
+            df.loc[df["CD_CONTA"] == "3.11.02", "DS_CONTA"] = (
+                "Atribuído aos Sócios Não Controladores"
+            )
+        return df
+
+    return ler
+
+
+def test_banco_le_as_contas_do_proprio_modelo(documento, monkeypatch):
+    # F2B-32: os mesmos valores, lidos pelos pares do modelo banco da tabela de contas.
+    p, ind = documento
+    monkeypatch.setattr(p, "_read_raw", _como_banco(p._read_raw))
+    r = p.gordon_do_documento(23264, ind, datetime(2026, 10, 20, 18, tzinfo=UTC))
+    assert "abstencao" not in r, r
+    assert r["modelo"] == "banco"
+    assert r["pl_inicial_controladores"] == 98642139000.0
+    assert r["proventos_controladores"] == 10903280000.0
+
+
+def test_pl_de_empresa_e_de_banco_no_mesmo_bpp_abstem(documento, monkeypatch):
+    p, ind = documento
+    monkeypatch.setattr(
+        p, "_read_raw", _como_banco(p._read_raw, manter_pl_de_empresa=True)
+    )
+    r = p.gordon_do_documento(23264, ind, datetime(2026, 10, 20, 18, tzinfo=UTC))
+    assert r == {"abstencao": cvm_provider.MOTIVO_MODELO_DO_BPP}

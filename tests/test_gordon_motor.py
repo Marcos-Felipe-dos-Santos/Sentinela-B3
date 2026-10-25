@@ -48,3 +48,21 @@ def test_base_oficial_explicita_e_documento_da_escala(
         "evento posterior ao último documento entregue não é detectado"
         in fato["avisos"]
     )
+
+
+@pytest.mark.parametrize("mesmo_documento", [True, False])
+def test_vpa_cvm_do_mesmo_documento_vai_ao_fato(monkeypatch, mesmo_documento):
+    # F2B-32: a lente de bancos usa o VPA CVM do mesmo documento da DVA; de outro
+    # documento, nenhum VPA vai ao fato.
+    monkeypatch.setattr("market_engine.datetime", Instante)
+    motor = _motor(monkeypatch, _ind())
+    motor.cvm.gordon_do_documento = lambda cd, ind, instante: {
+        "cnpj": CNPJ,
+        "versao": "1" if mesmo_documento else "2",
+        "inicio": "2025-01-01",
+        "fim": "2025-12-31",
+    }
+    dados = {"cd_cvm": 1, "preco_atual": 20.0, "especie": "ON", "classe_ativo": "STOCK"}
+    assert motor._buscar_cvm("TSTA3", dados)
+    assert isinstance(dados["vpa"], float) and dados["vpa"] > 0
+    assert dados["gordon_cvm"]["vpa"] == (dados["vpa"] if mesmo_documento else None)

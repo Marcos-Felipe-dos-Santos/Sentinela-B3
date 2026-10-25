@@ -869,7 +869,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden inalterado;
   - gate da fase.
 
-- [ ] **F2B-32** · fix · `fix: value banks with the bank lens` · **[golden]** **[BANCOS]**
+- [x] **F2B-32** · fix · `fix: value banks with the bank lens` · **[golden]** **[BANCOS]**
   - **Ordem de execução, 21/10/2026:** aguarda o F2B-4 (modelo/evidência no harness e casos de banco, exigidos pelo próprio predicado abaixo). Mantido pendente ao prosseguir pelos itens independentes, conforme autorização do Marcos; não presumir esse preparo entregue.
   - **Plano final:** docs/decisoes/plano-final-2b.md, seção 7.
   Armadilha 17. Desde o F2B-4, bancos estão em abstenção.

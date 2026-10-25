@@ -9,8 +9,13 @@ Especificação externa: o serviço OData IFDATA v1 do BCB (Olinda), conferido n
   linhas `NomeColuna`/`Saldo`; o índice de Basileia é a coluna "Índice de Basileia", em razão
   (0,1513 no BB em 12/2025).
 
-A inadimplência não tem relatório conhecido no IF.data (F2A-16): fica `None`, com a
-limitação declarada. A data de referência é parâmetro; nada de rede no import nem `config`.
+- `IfDataValores(..., Relatorio='16')` (carteira de crédito ativa) traz, por `Conta`, a
+  "Inadimplência" (148834, carteira ativa inadimplida arrastada) e o "Total Geral" (24454).
+  A inadimplência é a razão das duas, no mesmo conglomerado e data-base do capital, só para
+  leitura (F2B-32; ficha bancos 1.1, §2 e §3); conta ausente ou razão fora de [0; 1] fica
+  `None`, com o motivo.
+
+A data de referência é parâmetro; nada de rede no import nem `config`.
 Download com cache em `data/ifdata/`, com TTL; se a rede falha, vale o cache existente, com
 aviso no log.
 """
@@ -35,12 +40,23 @@ from sentinela.data.contas_cvm import normalizar_descricao
 logger = logging.getLogger(__name__)
 
 URL_BASE = "https://olinda.bcb.gov.br/olinda/servico/IFDATA/versao/v1/odata"
-FONTE = "BCB IF.data (Olinda), relatório 5 (Informações de Capital), conglomerado prudencial"
+FONTE = (
+    "BCB IF.data (Olinda), relatórios 5 (Informações de Capital) e 16 (carteira de "
+    "crédito ativa), conglomerado prudencial"
+)
 TTL_SEGUNDOS = 7 * 24 * 3600
 DATAS_BASE_TENTADAS = 4
 MOTIVO_SEM_INADIMPLENCIA = (
-    "inadimplência sem relatório conhecido no IF.data (F2A-16); limitação declarada"
+    "inadimplência não lida: sem conglomerado ou data-base com capital no IF.data"
 )
+MOTIVO_CARTEIRA_AUSENTE = (
+    "relatório 16 sem as contas 148834 (Inadimplência) e 24454 (Total Geral)"
+)
+MOTIVO_CARTEIRA_FORA_DO_DOMINIO = (
+    "fora do domínio: carteira inadimplida e Total Geral sem razão em [0; 1]"
+)
+CONTA_INADIMPLENCIA = ("148834", "inadimplencia")
+CONTA_TOTAL_GERAL = ("24454", "total geral")
 MOTIVO_SEM_CONGLOMERADO = (
     "conglomerado prudencial não encontrado no cadastro do IF.data"
 )
@@ -92,6 +108,41 @@ def caminho_capital(ano_mes: str, codinst: str) -> str:
     )
 
 
+def caminho_carteira(ano_mes: str, codinst: str) -> str:
+    return caminho_capital(ano_mes, codinst).replace(
+        "@Relatorio='5'", "@Relatorio='16'"
+    )
+
+
+def _saldo_da_conta(linhas: list[dict], conta: tuple[str, str]) -> object:
+    for linha in linhas:
+        if (
+            str(linha.get("Conta")) == conta[0]
+            and normalizar_descricao(linha.get("NomeColuna")) == conta[1]
+        ):
+            return linha.get("Saldo")
+    return None
+
+
+def inadimplencia(linhas: list[dict]) -> tuple[float | None, str | None]:
+    """(razão 148834 ÷ 24454, `None`) ou (`None`, motivo); a razão fica em [0; 1]."""
+    brutos = [
+        _saldo_da_conta(linhas, c) for c in (CONTA_INADIMPLENCIA, CONTA_TOTAL_GERAL)
+    ]
+    if any(b is None for b in brutos):
+        return None, MOTIVO_CARTEIRA_AUSENTE
+    try:
+        numerador, total = (float(b) for b in brutos)
+    except (TypeError, ValueError):
+        return None, MOTIVO_CARTEIRA_FORA_DO_DOMINIO
+    if not (math.isfinite(numerador) and math.isfinite(total)) or total <= 0:
+        return None, MOTIVO_CARTEIRA_FORA_DO_DOMINIO
+    razao = numerador / total
+    if not 0 <= razao <= 1:
+        return None, MOTIVO_CARTEIRA_FORA_DO_DOMINIO
+    return razao, None
+
+
 def codinst_prudencial(cadastro: list[dict], raiz: str) -> str | None:
     for linha in cadastro:
         if (
@@ -138,7 +189,22 @@ def ler_capital(
             continue
         valor = basileia(buscar(caminho_capital(ano_mes, codinst)))
         if valor is not None:
-            return Capital(valor, None, ano_mes, codinst, motivos=motivos)
+            try:
+                razao, motivo_carteira = inadimplencia(
+                    buscar(caminho_carteira(ano_mes, codinst))
+                )
+            except (
+                requests.RequestException,
+                ValueError,
+                OSError,
+                TypeError,
+                AttributeError,
+                KeyError,
+            ) as exc:
+                # BUG-2B-45: a carteira é só leitura; a falha dela não derruba a Basileia.
+                razao, motivo_carteira = None, f"relatório 16 indisponível: {exc}"
+            motivos = {"inadimplencia": motivo_carteira} if motivo_carteira else {}
+            return Capital(valor, razao, ano_mes, codinst, motivos=motivos)
         motivo = MOTIVO_SEM_BASILEIA
     return Capital(None, None, None, None, motivos={**motivos, "basileia": motivo})
 

@@ -12,6 +12,7 @@ import random
 from pathlib import Path
 from unittest.mock import patch
 
+from apoio_bancos import INFLACAO, NTNB, PL_INICIAL, VPA, enriquecer_bancos
 from apoio_bazin import enriquecer_bazin
 from apoio_fii import enriquecer_fii
 from apoio_gordon import AS_OF_GORDON, enriquecer_gordon
@@ -40,14 +41,24 @@ def executar(caso):
             # de outro valor (ou da ausência, com None) o declara na entrada.
             entrada = {**ESCOPO_DA_CASCATA, **entrada}
             taxa = caso.get("taxa_real") or {"ntnb": 0.07, "inflacao": 0.055}
-            entrada = enriquecer_bazin(
-                enriquecer_gordon(
+            if "banco" in caso:
+                # F2B-32: DFP sintética de banco (apoio_bancos), com ROE, payout e VPA do caso.
+                lucro = caso["banco"]["roe"] * PL_INICIAL
+                entrada = enriquecer_bancos(
                     entrada,
-                    ntnb=taxa["ntnb"],
-                    inflacao=taxa["inflacao"],
-                    teto=caso.get("teto_pib_cenario", 0.02),
+                    lucro_controladores=lucro,
+                    proventos_controladores=caso["banco"]["payout"] * lucro,
+                    vpa=caso["banco"]["vpa"],
                 )
-            )
+            else:
+                entrada = enriquecer_bazin(
+                    enriquecer_gordon(
+                        entrada,
+                        ntnb=taxa["ntnb"],
+                        inflacao=taxa["inflacao"],
+                        teto=caso.get("teto_pib_cenario", 0.02),
+                    )
+                )
             with (
                 patch.object(
                     valuation_engine, "get_selic_atual", return_value=caso["selic"]
@@ -664,6 +675,28 @@ def _acoes_escopo_modelo():
     ]
 
 
+def _acoes_bancos():
+    """F2B-32: grade da lente de bancos (ROE sobre PL inicial, payout → g, VPA CVM)."""
+    casos = []
+    base = {"ticker": "TSTB4", "preco_atual": 44.28, "roe": 0.2, "pl": 9.0, "pvp": 2.0,
+            "dy": 0.07, "modelo_bpp": "banco", "setor": "Bancos"}  # fmt: skip
+    grade = [
+        (roe, payout, vpa)
+        for roe in (-0.05, 0.05, 0.1, 0.15, 0.2125, 0.3)
+        for payout in (0.0, 0.25, 0.5, 0.75, 1.0)
+        for vpa in (VPA, 2 * VPA)
+    ]
+    for roe, payout, vpa in grade:
+        caso = _acao(
+            f"banco-roe{roe}-payout{payout}-vpa{round(vpa, 4)}", {**base, "roe": roe}
+        )
+        caso["banco"] = {"roe": roe, "payout": payout, "vpa": vpa}
+        # A taxa que a DFP sintética de banco usa (apoio_bancos), registrada no caso.
+        caso["taxa_real"] = {"ntnb": NTNB, "inflacao": INFLACAO}
+        casos.append(caso)
+    return casos
+
+
 def montar_casos():
     casos = (
         _acoes_fronteiras()
@@ -674,6 +707,7 @@ def montar_casos():
         + _acoes_aleatorias()
         + _acoes_classe_ativo()
         + _acoes_escopo_modelo()
+        + _acoes_bancos()
         + _acoes_preco_nao_finito()
         + _acoes_gordon_real()
         + _acoes_taxa_bazin()

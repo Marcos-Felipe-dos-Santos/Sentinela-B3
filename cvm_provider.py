@@ -84,6 +84,11 @@ _COLUNAS_COMPOSICAO = {
 }
 
 
+# F2B-32: sem PL de empresa nem de banco no BPP consolidado, ou com os dois (conflito).
+MOTIVO_MODELO_DO_BPP = (
+    "BPP consolidado sem PL só de empresa ou só de banco (ausente ou conflitante)"
+)
+
 # F2B-4 (decisão do Marcos de 25/10/2026): descrições, sem acento e em minúsculas, que
 # indicam a estrutura seguradora no BPP consolidado (leiautes anterior e posterior ao IFRS 17).
 _CONTAS_DE_SEGURADORA = r"provisoes tecnicas|contratos? de (?:res)?seguros?|atividade seguradora"
@@ -896,12 +901,15 @@ class CVMProvider:
             dva = linhas("DVA_con", "ÚLTIMO")
             if dre.empty or bpp.empty or dva.empty:
                 return {"abstencao": "DFP anual sem DRE, BPP ou DVA consolidada"}
-            if isinstance(_ler(bpp, "pl_total", "banco"), contas_cvm.Leitura):
-                return {"abstencao": "modelo banco fora do escopo do Gordon"}
-            if not isinstance(_ler(bpp, "pl_total", "empresa"), contas_cvm.Leitura):
-                return {
-                    "abstencao": "modelo empresa não demonstrado no BPP consolidado"
-                }
+            # F2B-32: o modelo banco lê as contas do próprio modelo (ficha bancos 1.1, §2);
+            # o escopo de cada lente fica com o motor e a fronteira (`gordon_cvm.entradas`).
+            banco, empresa = (
+                isinstance(_ler(bpp, "pl_total", m), contas_cvm.Leitura)
+                for m in ("banco", "empresa")
+            )
+            if banco == empresa:
+                return {"abstencao": MOTIVO_MODELO_DO_BPP}
+            modelo = "banco" if banco else "empresa"
             janelas = set(
                 zip(dre["DT_INI_EXERC"].astype(str), dre["DT_FIM_EXERC"].astype(str))
             )
@@ -930,16 +938,16 @@ class CVMProvider:
                 == (inicio - timedelta(days=1)).isoformat()
             ]
             pl_inicial = controladores.pl_dos_controladores(
-                _ler(inicial, "pl_total", "empresa"),
-                _ler(inicial, "pl_nao_controladores", "empresa"),
-                _ler(dre_inicial, "lucro_nao_controladores", "empresa"),
+                _ler(inicial, "pl_total", modelo),
+                _ler(inicial, "pl_nao_controladores", modelo),
+                _ler(dre_inicial, "lucro_nao_controladores", modelo),
             )
             total = gordon_cvm.proventos_da_dva(
-                _ler(dva, "dividendos", "empresa"),
-                _ler(dva, "jcp", "empresa"),
-                _ler(dva, "dva_nao_controladores", "empresa"),
-                _ler(dre, "lucro_nao_controladores", "empresa"),
-                _ler(bpp, "pl_nao_controladores", "empresa"),
+                _ler(dva, "dividendos", modelo),
+                _ler(dva, "jcp", modelo),
+                _ler(dva, "dva_nao_controladores", modelo),
+                _ler(dre, "lucro_nao_controladores", modelo),
+                _ler(bpp, "pl_nao_controladores", modelo),
             )
             if isinstance(total, gordon_cvm.Abstencao):
                 return {"abstencao": total.motivo}
@@ -961,7 +969,7 @@ class CVMProvider:
             )
             mudanca_estrutural = ind.get("mudanca_estrutural_sem_reconciliacao") is True
             return {
-                "modelo": "empresa",
+                "modelo": modelo,
                 "documento": "DFP",
                 "inicio": inicio_texto,
                 "fim": fim_texto,

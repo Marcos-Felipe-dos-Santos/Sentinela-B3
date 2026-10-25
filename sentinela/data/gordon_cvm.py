@@ -16,6 +16,7 @@ from sentinela.data.contas_cvm import (
 from sentinela.data.contas_cvm import (
     Abstencao as ContaAbstida,
 )
+from sentinela.domain.enums import DocumentoContabil
 from sentinela.domain.units import (
     BRL,
     Escala,
@@ -90,8 +91,15 @@ def proventos_da_dva(
     )
 
 
-def entradas(dados: dict[str, Any], as_of: date | datetime) -> dict | Abstencao:
-    """Fronteira tipada: nenhum DY agregado substitui a prova documental."""
+def entradas(
+    dados: dict[str, Any], as_of: date | datetime, *, modelo: str = "empresa"
+) -> dict | Abstencao:
+    """Fronteira tipada: nenhum DY agregado substitui a prova documental.
+
+    `modelo="banco"` (F2B-32) devolve os insumos da lente de bancos: a unit vale pela
+    composição oficial, com ON e PN (VPA e dividendo por unit), e o VPA é o CVM do mesmo
+    documento; classes preferenciais com direitos distintos abstêm, como no Gordon.
+    """
     instante = as_of if isinstance(as_of, datetime) else None
     if instante is not None:
         if instante.tzinfo is None or instante.utcoffset() is None:
@@ -103,11 +111,12 @@ def entradas(dados: dict[str, Any], as_of: date | datetime) -> dict | Abstencao:
     if "abstencao" in fonte:
         return Abstencao(fonte["abstencao"])
     try:
-        if fonte["modelo"] != "empresa" or dados.get("classe_ativo") not in (
+        lente = "do Gordon" if modelo == "empresa" else "da lente de bancos"
+        if fonte["modelo"] != modelo or dados.get("classe_ativo") not in (
             "STOCK",
             "UNIT",
         ):
-            return Abstencao("classe ou modelo fora do escopo do Gordon")
+            return Abstencao(f"classe ou modelo fora do escopo {lente}")
         if (
             dados.get("classes_preferenciais")
             and len(dados["classes_preferenciais"]) > 1
@@ -204,7 +213,7 @@ def entradas(dados: dict[str, Any], as_of: date | datetime) -> dict | Abstencao:
             return Abstencao("provento DVA inválido")
         fator = fonte.get("fator_unit", 1)
         if dados["classe_ativo"] == "UNIT" and (
-            not fonte.get("direitos_compativeis")
+            (modelo == "empresa" and not fonte.get("direitos_compativeis"))
             or isinstance(fator, bool)
             or not isinstance(fator, (float, int))
             or not math.isfinite(fator)
@@ -212,15 +221,36 @@ def entradas(dados: dict[str, Any], as_of: date | datetime) -> dict | Abstencao:
             or fator % 1
         ):
             return Abstencao("unit sem composição e direitos compatíveis")
+        proventos = ProventosControladores(
+            BRL(total / acoes * fator), Ratio(total / lucro), inicio, fim
+        )
+        if modelo == "banco":
+            vpa = fonte.get("vpa")
+            if (
+                isinstance(vpa, bool)
+                or not isinstance(vpa, (float, int))
+                or not math.isfinite(vpa)
+            ):
+                return Abstencao("VPA CVM do mesmo documento ausente ou inválido")
+            return {
+                "vpa": BRL(vpa),
+                "roe": Ratio(lucro / pl),
+                "lucro_anual_controladores": BRL(lucro),
+                "pl_inicial_controladores": BRL(pl),
+                "documento_contabil": DocumentoContabil.DFP,
+                "base_acionaria_compativel": True,
+                "custo_capital_real": RateReal(macro["custo_capital_real"]),
+                "inflacao": Inflacao(ipca["valor"]),
+                "teto_pib_real": RateReal(pib["valor"]),
+                "proventos_controladores": proventos,
+            }
         return {
             "lpa": BRL(fonte["lpa"]),
             "roe": Ratio(lucro / pl),
             "custo_capital_real": RateReal(macro["custo_capital_real"]),
             "inflacao": Inflacao(ipca["valor"]),
             "teto_pib_real": RateReal(pib["valor"]),
-            "proventos_controladores": ProventosControladores(
-                BRL(total / acoes * fator), Ratio(total / lucro), inicio, fim
-            ),
+            "proventos_controladores": proventos,
         }
     except (KeyError, TypeError, ValueError, OverflowError, ZeroDivisionError) as erro:
         return Abstencao(f"insumo ausente ou inválido do Gordon: {erro}")

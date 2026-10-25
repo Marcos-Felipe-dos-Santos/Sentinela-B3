@@ -112,3 +112,5 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2B-43 | quantidade de cotas fracionária no Informe (35% das linhas de 2026) tira o FII da lente de rendimento | sentinela/data/rendimento_fii.py (avaliar) | revisão do F2B-2 e decisão do Marcos de 25/10/2026 (ficha FII 1.2) | test_bug_2b_43_cotas_fracionarias_no_fii.py | F2B-55 | corrigido |
 
 | BUG-2B-44 | o backtest grava "OK" para a abstenção de escopo do motor e quebra ao ler `score_final` | backtesting/backtest_engine.py (simular_analise_mensal) | revisão do F2B-4, 25/10/2026 | test_bug_2b_44_backtest_abstencao_de_escopo.py | F2B-4 | corrigido |
+
+| BUG-2B-45 | a falha na coleta do relatório 16 do IF.data descarta a Basileia já lida | sentinela/data/providers/ifdata.py (ler_capital) | revisão do F2B-32, 25/10/2026 | test_bug_2b_45_ifdata_carteira_derruba_basileia.py | F2B-32 | corrigido |

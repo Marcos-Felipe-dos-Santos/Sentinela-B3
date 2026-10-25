@@ -9,6 +9,7 @@ from config import DISTRESSED_TICKERS, MACRO, _normalizar_dy, get_selic_atual
 from sentinela.data import gordon_cvm, liquidez, proventos_b3
 from sentinela.domain.enums import AssetType, ModeloDemonstracao, Perfil
 from sentinela.domain.units import BRL, RateNominal, Ratio
+from sentinela.methods.bancos import Bancos, BancosParams
 from sentinela.methods.base import MethodInputs, MethodResult
 from sentinela.methods.bazin import ALERTA_DY_ARMADILHA, Bazin, BazinParams
 from sentinela.methods.gordon import Gordon, GordonParams
@@ -21,6 +22,7 @@ _GRAHAM = Graham()
 _BAZIN = Bazin()
 _LYNCH = Lynch()
 _GORDON = Gordon()
+_BANCOS = Bancos()
 
 
 def _finito(valor):
@@ -34,6 +36,9 @@ ROTULO_FORA_DO_ESCOPO = "FORA DO ESCOPO DOS MÉTODOS"
 MOTIVO_SEM_CLASSE = "classe do ativo não informada"
 MOTIVO_SEM_MODELO = "modelo da demonstração não demonstrado no BPP consolidado"
 MOTIVO_BPP_INDISPONIVEL = "disponibilidade do BPP consolidado não demonstrada até o as_of"
+# F2B-4 e F2B-32: empresa recebe os quatro métodos; banco, a lente de bancos.
+MODELOS_COM_LENTE = (ModeloDemonstracao.EMPRESA.value, ModeloDemonstracao.BANCO.value)
+INADIMPLENCIA_NAO_INFORMADA = "inadimplência IF.data não informada"
 FUSO = ZoneInfo("America/Sao_Paulo")
 
 
@@ -48,6 +53,40 @@ def _abstencao_de_escopo(motivo, perfil):
         'confianca':      0,
         'riscos':         [motivo],
     }
+
+
+def _texto_inadimplencia(dados, instante):
+    """Inadimplência do IF.data só para leitura (F2B-32; ficha bancos 1.1, §3)."""
+    ifdata = dados.get("ifdata")
+    if not isinstance(ifdata, dict):
+        return f"{INADIMPLENCIA_NAO_INFORMADA}: IF.data não consultado"
+    registros = ifdata.get("proveniencia") or ()
+    try:
+        posterior = not registros or any(
+            datetime.fromisoformat(str(r["data_coleta"])) > instante for r in registros
+        )
+    except (TypeError, KeyError, ValueError):
+        posterior = True
+    if posterior and dados.get("inadimplencia") is not None:
+        return f"{INADIMPLENCIA_NAO_INFORMADA}: coleta não demonstrada até o as_of"
+    valor = dados.get("inadimplencia")
+    if valor is None:
+        motivo = (ifdata.get("motivos") or {}).get("inadimplencia") or "valor ausente"
+        return f"{INADIMPLENCIA_NAO_INFORMADA}: {motivo}"
+    if (
+        isinstance(valor, bool)
+        or not isinstance(valor, (int, float))
+        or not math.isfinite(valor)
+        or not 0 <= valor <= 1
+    ):
+        return f"{INADIMPLENCIA_NAO_INFORMADA}: fora do domínio ({valor!r})"
+    data_base = str(ifdata.get("data_base") or "")
+    return (
+        "inadimplência IF.data (carteira ativa inadimplida arrastada ÷ Total Geral, "
+        f"relatório 16, conglomerado {ifdata.get('codinst')}, "
+        f"data-base {data_base[4:]}/{data_base[:4]}): "
+        + f"{valor * 100:.2f}%".replace(".", ",")
+    )
 
 
 def _bpp_disponivel(proveniencia, instante):
@@ -103,8 +142,10 @@ class ValuationEngine:
             modelo=modelo,
         )
 
-    def _avaliar_metodos(self, inputs, inputs_gordon=None, inputs_bazin=None):
-        """Resultado de cada método extraído, na ordem da V1."""
+    def _avaliar_metodos(
+        self, inputs, inputs_gordon=None, inputs_bazin=None, inputs_bancos=None
+    ):
+        """Resultado de cada método extraído, na ordem da V1, e a lente de bancos (F2B-32)."""
         return {
             "Graham": _GRAHAM.calcular(
                 inputs,
@@ -133,6 +174,9 @@ class ValuationEngine:
             ),
             "Gordon": _GORDON.calcular(
                 inputs if inputs_gordon is None else inputs_gordon, GordonParams()
+            ),
+            "Bancos": _BANCOS.calcular(
+                inputs if inputs_bancos is None else inputs_bancos, BancosParams()
             ),
         }
 
@@ -169,7 +213,7 @@ class ValuationEngine:
         instante = as_of if as_of is not None else datetime.now(UTC)
         modelo = dados.get('modelo_bpp')
         modelo = getattr(modelo, 'value', modelo)
-        if modelo != ModeloDemonstracao.EMPRESA.value:
+        if modelo not in MODELOS_COM_LENTE:
             motivo = (
                 f"modelo {modelo} fora do escopo dos métodos de empresa"
                 if modelo else MOTIVO_SEM_MODELO
@@ -342,7 +386,36 @@ class ValuationEngine:
                 dy_confiavel=dy_b3_confiavel,
                 lpa=None if lpa_cvm is None else BRL(lpa_cvm),
             )
-        resultados = self._avaliar_metodos(inputs, inputs_gordon, inputs_bazin)
+        # F2B-32: banco recebe a lente de bancos pela mesma fronteira documental do Gordon;
+        # os métodos de empresa se abstêm pelo modelo no contrato.
+        inputs_bancos = inputs
+        if modelo == ModeloDemonstracao.BANCO.value:
+            entradas_bancos = (
+                gordon_cvm.entradas(dados, instante, modelo=modelo)
+                if instante.utcoffset() is not None
+                else gordon_cvm.Abstencao("as_of exige fuso horário")
+            )
+            if isinstance(entradas_bancos, gordon_cvm.Abstencao):
+                dados["bancos_diagnostico"] = entradas_bancos.motivo
+            else:
+                dados.pop("bancos_diagnostico", None)
+                inputs_bancos = replace(inputs, as_of=dia_gordon, **entradas_bancos)
+        resultados = self._avaliar_metodos(
+            inputs, inputs_gordon, inputs_bazin, inputs_bancos
+        )
+        bancos = resultados["Bancos"]
+        if modelo == ModeloDemonstracao.BANCO.value and not isinstance(
+            bancos, MethodResult
+        ):
+            # Decisão provisória do F2B-32: sem a lente, o banco não tem método; abstenção
+            # sem número, em vez do preço como valor da regra V1 de "nenhum método".
+            dados.setdefault("bancos_diagnostico", bancos.motivo)
+            return {
+                **_abstencao_de_escopo(
+                    f"lente de bancos abstida: {dados['bancos_diagnostico']}", classe
+                ),
+                'inadimplencia_ifdata': _texto_inadimplencia(dados, instante),
+            }
         graham = resultados["Graham"]
         if isinstance(graham, MethodResult):
             metodos["Graham"] = graham.valor.valor
@@ -380,6 +453,13 @@ class ValuationEngine:
         if isinstance(gordon, MethodResult):
             metodos['Gordon'] = gordon.valor.valor
             riscos.extend(a for a in gordon.alertas if a not in riscos)
+
+        # ── 5. BANCOS (F2B-32) ────────────────────────────────────────────────
+        # P/VP justificado da ficha bancos 1.1; só o modelo banco chega aqui com insumos.
+        if isinstance(bancos, MethodResult):
+            dados.pop("bancos_diagnostico", None)
+            metodos['Bancos'] = bancos.valor.valor
+            riscos.extend(a for a in bancos.alertas if a not in riscos)
 
         # ── CÁLCULO FINAL ─────────────────────────────────────────────────────
         valores_validos = list(metodos.values())
@@ -483,6 +563,11 @@ class ValuationEngine:
             f"FV={fair_value:.2f} upside={upside*100:.1f}% score={int(score)} rec={rec}"
         )
 
+        extra = (
+            {'inadimplencia_ifdata': _texto_inadimplencia(dados, instante)}
+            if modelo == ModeloDemonstracao.BANCO.value
+            else {}
+        )
         return {
             'fair_value':    round(fair_value, 2),
             'upside':        round(upside * 100, 1),
@@ -494,4 +579,5 @@ class ValuationEngine:
             'dy_confiavel':  dy_confiavel,
             'confianca':     max(0, confianca),
             'riscos':        riscos,
+            **extra,
         }
