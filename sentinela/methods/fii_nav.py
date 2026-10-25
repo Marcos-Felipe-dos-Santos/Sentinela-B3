@@ -31,7 +31,7 @@ class FiiNavParams:
 
 class FiiNav(ValuationMethod):
     nome = "P/VP do FII"
-    version = "1.1.0"
+    version = "1.2.0"
     regime = Regime.SEM_TAXA
     requires = ("pvp",)
     assumptions = (

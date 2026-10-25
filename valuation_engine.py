@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 from config import DISTRESSED_TICKERS, MACRO, _normalizar_dy, get_selic_atual
 from sentinela.data import gordon_cvm, liquidez, proventos_b3
-from sentinela.domain.enums import Perfil
+from sentinela.domain.enums import AssetType, ModeloDemonstracao, Perfil
 from sentinela.domain.units import BRL, RateNominal, Ratio
 from sentinela.methods.base import MethodInputs, MethodResult
 from sentinela.methods.bazin import ALERTA_DY_ARMADILHA, Bazin, BazinParams
@@ -28,9 +28,36 @@ def _finito(valor):
     return valor if math.isfinite(valor) else None
 
 
-# F2A-29 (P7): classes sem os métodos de ação; o `applies_to` dos métodos é do F2B-4.
-CLASSES_FORA_DO_ESCOPO = frozenset({"ETF", "BDR", "UNKNOWN"})
+# F2A-29 (P7) e F2B-4: só STOCK e UNIT recebem os métodos de ação.
 ROTULO_FORA_DO_ESCOPO = "FORA DO ESCOPO DOS MÉTODOS"
+# F2B-4: classe oficial exigida; STOCK/UNIT exigem o modelo empresa pelo BPP consolidado.
+MOTIVO_SEM_CLASSE = "classe do ativo não informada"
+MOTIVO_SEM_MODELO = "modelo da demonstração não demonstrado no BPP consolidado"
+MOTIVO_BPP_INDISPONIVEL = "disponibilidade do BPP consolidado não demonstrada até o as_of"
+FUSO = ZoneInfo("America/Sao_Paulo")
+
+
+def _abstencao_de_escopo(motivo, perfil):
+    """Saída da abstenção de escopo (F2A-29): o motivo, sem número no lugar."""
+    return {
+        'recomendacao':   ROTULO_FORA_DO_ESCOPO,
+        'metodos_usados': '',
+        'perfil':         perfil,
+        'pl_confiavel':   False,
+        'dy_confiavel':   False,
+        'confianca':      0,
+        'riscos':         [motivo],
+    }
+
+
+def _bpp_disponivel(proveniencia, instante):
+    """Entrega do BPP antes do dia do as_of e coleta até o instante (D16/D17)."""
+    try:
+        entrega = date.fromisoformat(str(proveniencia["data_entrega"]))
+        coleta = datetime.fromisoformat(str(proveniencia["data_coleta"]))
+        return entrega < instante.astimezone(FUSO).date() and coleta <= instante
+    except (TypeError, KeyError, ValueError):
+        return False
 
 
 class ValuationEngine:
@@ -46,6 +73,9 @@ class ValuationEngine:
         dy_confiavel=True,
         roe=None,
         lpa=None,
+        *,
+        classe,
+        modelo,
     ):
         """Converte os dados já normalizados da V1 em MethodInputs (uma única vez)."""
         p, pl, pvp = _finito(p), _finito(pl), _finito(pvp)
@@ -69,6 +99,8 @@ class ValuationEngine:
             perfil=Perfil.CRESCIMENTO if is_growth else Perfil.RENDA,
             pl_confiavel=pl_confiavel,
             dy_confiavel=dy_confiavel,
+            classe_ativo=classe,
+            modelo=modelo,
         )
 
     def _avaliar_metodos(self, inputs, inputs_gordon=None, inputs_bazin=None):
@@ -116,22 +148,37 @@ class ValuationEngine:
             return None
 
         # ── GUARD: CLASSE FORA DO ESCOPO (F2A-29, P7) ─────────────────────────
-        # ETF, BDR e classe desconhecida não recebem os métodos de ação: abstenção
-        # antes de qualquer método, sem número no lugar. Sem a chave, nada muda.
+        # Só STOCK e UNIT recebem os métodos de ação; ETF, BDR, UNKNOWN e a ausência de
+        # classe (F2B-4) se abstêm antes de qualquer método, sem número no lugar.
         classe = dados.get('classe_ativo')
-        if classe is not None:
-            classe = str(getattr(classe, 'value', classe)).upper()
-            if classe in CLASSES_FORA_DO_ESCOPO:
-                logger.info(f"[{ticker}] Classe {classe} fora do escopo dos métodos de ação")
-                return {
-                    'recomendacao':   ROTULO_FORA_DO_ESCOPO,
-                    'metodos_usados': '',
-                    'perfil':         classe,
-                    'pl_confiavel':   False,
-                    'dy_confiavel':   False,
-                    'confianca':      0,
-                    'riscos':         [f"Classe {classe} fora do escopo dos métodos de ação"],
-                }
+        if classe is None:
+            return _abstencao_de_escopo(MOTIVO_SEM_CLASSE, 'SEM CLASSE')
+        # F2B-4 (BUG-2B-39): espaços nas pontas não contornam a guarda; a classe normalizada
+        # volta para `dados`, para os métodos lerem a mesma.
+        classe = str(getattr(classe, 'value', classe)).strip().upper()
+        dados['classe_ativo'] = classe
+        if classe not in (AssetType.STOCK.value, AssetType.UNIT.value):
+            logger.info(f"[{ticker}] Classe {classe} fora do escopo dos métodos de ação")
+            return _abstencao_de_escopo(
+                f"Classe {classe} fora do escopo dos métodos de ação", classe
+            )
+
+        # ── GUARD: MODELO DO BPP CONSOLIDADO (F2B-4) ──────────────────────────
+        # Banco e seguradora não recebem os métodos de empresa; sem modelo demonstrado,
+        # abstenção (não há padrão empresa). A evidência, quando gravada, vale até o as_of.
+        instante = as_of if as_of is not None else datetime.now(UTC)
+        modelo = dados.get('modelo_bpp')
+        modelo = getattr(modelo, 'value', modelo)
+        if modelo != ModeloDemonstracao.EMPRESA.value:
+            motivo = (
+                f"modelo {modelo} fora do escopo dos métodos de empresa"
+                if modelo else MOTIVO_SEM_MODELO
+            )
+            return _abstencao_de_escopo(motivo, classe)
+        if 'modelo_bpp_proveniencia' in dados and not _bpp_disponivel(
+            dados['modelo_bpp_proveniencia'], instante
+        ):
+            return _abstencao_de_escopo(MOTIVO_BPP_INDISPONIVEL, classe)
 
         # F2A-10: classe já verificada; dado não medido produz aviso, não zero.
         gate_liquidez = liquidez.avaliar(
@@ -207,7 +254,6 @@ class ValuationEngine:
         # F2B-52 (decisão do Marcos de 20/10/2026): um perfil só por ativo, para todos os
         # métodos, pelo DY bruto de 12 meses da relação B3 (ficha Bazin 1.2) quando a série é
         # válida; sem ela, pelo DY da cascata, com o aviso e o motivo da B3.
-        instante = as_of if as_of is not None else datetime.now(UTC)
         entradas_bazin = proventos_b3.entradas(dados, instante)
         if isinstance(entradas_bazin, proventos_b3.Abstencao):
             dy_perfil, dy_perfil_confiavel = dy, dy_confiavel
@@ -253,12 +299,14 @@ class ValuationEngine:
             dy_confiavel=dy_confiavel,
             roe=roe,
             lpa=lpa,
+            classe=AssetType(classe),
+            modelo=ModeloDemonstracao(modelo),
         )
         if instante.tzinfo is None or instante.utcoffset() is None:
             entradas_gordon = gordon_cvm.Abstencao("as_of exige fuso horário")
             dia_gordon = inputs.as_of
         else:
-            dia_gordon = instante.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+            dia_gordon = instante.astimezone(FUSO).date()
             entradas_gordon = gordon_cvm.entradas(dados, instante)
         if isinstance(entradas_gordon, gordon_cvm.Abstencao):
             dados["gordon_diagnostico"] = entradas_gordon.motivo

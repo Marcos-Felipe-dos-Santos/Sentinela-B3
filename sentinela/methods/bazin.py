@@ -16,7 +16,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from sentinela.domain.enums import AssetType, Perfil, Regime
+from sentinela.domain.enums import AssetType, ModeloDemonstracao, Perfil, Regime
 from sentinela.domain.units import BRL, RateNominal, Ratio
 from sentinela.methods.base import (
     Abstention,
@@ -43,7 +43,7 @@ class BazinParams:
 
 class Bazin(ValuationMethod):
     nome = "Bazin"
-    version = "2.0.0"
+    version = "2.1.0"
     regime = Regime.NOMINAL
     requires = ("preco", "dy", "perfil")
     assumptions = (
@@ -55,6 +55,7 @@ class Bazin(ValuationMethod):
         "prejuízo com DY positivo mantém o método e gera aviso",
     )
     applies_to = frozenset({AssetType.STOCK, AssetType.UNIT})
+    modelos = frozenset({ModeloDemonstracao.EMPRESA})
     params_type = BazinParams
 
     def _calcular(

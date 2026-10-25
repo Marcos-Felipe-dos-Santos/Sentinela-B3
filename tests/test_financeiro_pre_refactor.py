@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from apoio_bazin import enriquecer_bazin
+from apoio_escopo import de_empresa
 from apoio_fii import enriquecer_fii
 from apoio_gordon import AS_OF_GORDON, DiaGordon, enriquecer_gordon
 
@@ -48,7 +49,7 @@ def _processar(dados, selic=SELIC):
         patch("valuation_engine.get_selic_atual", return_value=selic),
         patch("valuation_engine.date", DiaGordon),
     ):
-        return ValuationEngine().processar(dados, as_of=AS_OF_GORDON)
+        return ValuationEngine().processar(de_empresa(dados), as_of=AS_OF_GORDON)
 
 
 def _fii(selic=SELIC, **kw):

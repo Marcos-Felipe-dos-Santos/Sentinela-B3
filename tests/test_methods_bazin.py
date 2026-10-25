@@ -3,7 +3,7 @@ from datetime import date
 import pytest
 
 from sentinela.data import proventos_b3
-from sentinela.domain.enums import AssetType, Perfil, Regime
+from sentinela.domain.enums import AssetType, ModeloDemonstracao, Perfil, Regime
 from sentinela.domain.units import BRL, RateNominal, Ratio
 from sentinela.methods.base import Abstention, MethodInputs, MethodResult
 from sentinela.methods.bazin import (
@@ -16,11 +16,15 @@ from sentinela.methods.bazin import (
     BazinParams,
 )
 
+# F2B-4: escopo de companhia (STOCK, modelo empresa pelo BPP consolidado).
+ESCOPO = {"classe_ativo": AssetType.STOCK, "modelo": ModeloDemonstracao.EMPRESA}
+
 PARAMS = BazinParams(dy_min=0.05, dy_armadilha=0.15)
 
 
 def _inputs(preco=100.0, dy=0.08, selic=0.145, perfil=Perfil.RENDA, **kw):
     return MethodInputs(
+        **ESCOPO,
         as_of=date(2026, 10, 2),
         preco=BRL(preco),
         dy=Ratio(dy),
@@ -60,6 +64,7 @@ def test_mesma_ordem_de_operacoes():
 def test_sem_selic_calcula():
     r = Bazin().calcular(
         MethodInputs(
+            **ESCOPO,
             as_of=date(2026, 10, 2),
             preco=BRL(100.0),
             dy=Ratio(0.08),
@@ -183,7 +188,9 @@ def test_insumo_ausente_abstem_se(campo):
         "perfil": Perfil.RENDA,
     }
     base[campo] = None
-    r = Bazin().calcular(MethodInputs(as_of=date(2026, 10, 2), **base), PARAMS)
+    r = Bazin().calcular(
+        MethodInputs(**ESCOPO, as_of=date(2026, 10, 2), **base), PARAMS
+    )
     assert isinstance(r, Abstention)
     assert r.motivo == f"insumo ausente: {campo}"
 
@@ -198,7 +205,7 @@ def test_resultado_que_estoura_para_infinito_abstem_se():
 def test_metadados():
     b = Bazin()
     assert b.nome == "Bazin"
-    assert b.version == "2.0.0"
+    assert b.version == "2.1.0"
     assert b.regime is Regime.NOMINAL
     assert b.requires == ("preco", "dy", "perfil")
     assert b.applies_to == frozenset({AssetType.STOCK, AssetType.UNIT})
@@ -213,4 +220,4 @@ def test_dy_nao_confiavel_tem_prioridade_sobre_o_minimo():
     r = _bazin(dy=0.0, dy_confiavel=False)
     assert isinstance(r, Abstention)
     assert r.motivo == MOTIVO_DY_NAO_CONFIAVEL
-    assert r.versao == "2.0.0"
+    assert r.versao == "2.1.0"

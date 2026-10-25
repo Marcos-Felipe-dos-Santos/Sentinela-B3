@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 from apoio_bazin import enriquecer_bazin
+from apoio_escopo import de_empresa
 from apoio_fii import enriquecer_fii
 from apoio_gordon import AS_OF_GORDON, DiaGordon, enriquecer_gordon
 
@@ -66,7 +67,7 @@ def _acao(**kw):
         },
     }
     dados.update(kw)
-    enriquecidos = enriquecer_bazin(enriquecer_gordon(dados))
+    enriquecidos = enriquecer_bazin(enriquecer_gordon(de_empresa(dados)))
     if "taxa_real" in kw:
         enriquecidos["taxa_real"] = kw["taxa_real"]
     return enriquecidos
@@ -131,8 +132,8 @@ def test_relatorio_do_fii_mostra_rendimento_e_lente_de_pvp():
     html = _html(_fii(pvp=0.8), eh_fii=True)
     assert "Rendimento do FII" in html and "P/VP do FII" in html
     assert (
-        "Rendimento do FII <small>versão 2.0.0" in html
-        and "P/VP do FII <small>versão 1.1.0" in html
+        "Rendimento do FII <small>versão 2.1.0" in html
+        and "P/VP do FII <small>versão 1.2.0" in html
     )
     assert "desconto sobre o patrimônio" in html
     # F2B-2: o spread datado e a NTN-B real formam a taxa; a Selic é só contexto
@@ -368,7 +369,7 @@ def test_gordon_real_exibe_versao_intermediarios_e_dva():
     d["taxa_real"]["fonte"] = "Tesouro Transparente"
     html = _html(d)
     for texto in (
-        "2.0.0",
+        "2.1.0",
         "Gordon",
         "REAL",
         "12,00%",

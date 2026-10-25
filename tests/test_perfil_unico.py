@@ -3,6 +3,7 @@
 from unittest.mock import patch
 
 from apoio_bazin import enriquecer_bazin
+from apoio_escopo import de_empresa
 from apoio_gordon import AS_OF_GORDON
 
 from valuation_engine import ValuationEngine
@@ -21,7 +22,7 @@ def _acao(roe, dy_cascata, dy_b3):
         }
     )
     dados["dy"] = dy_cascata
-    return dados
+    return de_empresa(dados)
 
 
 def _processar(dados):

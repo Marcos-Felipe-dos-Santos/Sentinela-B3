@@ -7,7 +7,7 @@ import pytest
 
 import sentinela.methods as pacote
 from config import MACRO
-from sentinela.domain.enums import AssetType, Regime
+from sentinela.domain.enums import AssetType, ModeloDemonstracao, Regime
 from sentinela.methods import registry
 from sentinela.methods.base import ValuationMethod
 from sentinela.methods.bancos import BancosParams
@@ -141,7 +141,7 @@ def test_regime_coerente_com_a_taxa():
     assert regimes["Gordon"] is Regime.REAL
 
 
-def test_applies_to_descreve_o_roteamento_da_v1_sem_aplicar():
+def test_applies_to_descreve_o_escopo_aplicado():
     acoes = frozenset({AssetType.STOCK, AssetType.UNIT})
     esperado = {
         "Bancos": acoes,
@@ -153,6 +153,16 @@ def test_applies_to_descreve_o_roteamento_da_v1_sem_aplicar():
         "P/VP do FII": frozenset({AssetType.FII}),
     }
     assert {e.nome: e.applies_to for e in registry.entradas()} == esperado
+    # F2B-4: o escopo de companhia exige o modelo do BPP consolidado.
+    assert {m.nome: m.modelos for m in registry.METODOS} == {
+        "Bancos": frozenset({ModeloDemonstracao.BANCO}),
+        **{
+            nome: frozenset({ModeloDemonstracao.EMPRESA})
+            for nome in ("Graham", "Bazin", "Lynch", "Gordon")
+        },
+        "Rendimento do FII": frozenset(),
+        "P/VP do FII": frozenset(),
+    }
     todos = set().union(*esperado.values())
     assert AssetType.ETF not in todos
     assert AssetType.BDR not in todos
@@ -174,12 +184,14 @@ def test_changelog_tem_a_1_0_0():
     for nome in NOMES:
         mudancas = registry.CHANGELOG[nome]
         esperado = {
-            "Graham": ["1.0.0", "1.1.0"],
-            "Bazin": ["1.0.0", "1.0.1", "2.0.0"],
-            "Gordon": ["1.0.0", "1.1.0", "2.0.0"],
-            "P/VP do FII": ["1.0.0", "1.1.0"],
-            "Rendimento do FII": ["1.0.0", "2.0.0"],
-        }.get(nome, ["1.0.0"])  # F2A-21 e F2A-25
+            "Graham": ["1.0.0", "1.1.0", "1.2.0"],
+            "Bazin": ["1.0.0", "1.0.1", "2.0.0", "2.1.0"],
+            "Lynch": ["1.0.0", "1.1.0"],
+            "Gordon": ["1.0.0", "1.1.0", "2.0.0", "2.1.0"],
+            "P/VP do FII": ["1.0.0", "1.1.0", "1.2.0"],
+            "Rendimento do FII": ["1.0.0", "2.0.0", "2.1.0"],
+            "Bancos": ["1.0.0", "1.1.0"],
+        }[nome]  # F2A-21, F2A-25 e F2B-4
         assert [m.version for m in mudancas] == esperado
         assert mudancas[0].descricao == (
             "ficha bancos1.1: lente nova de P/VP justificado em regime real; sem consumidor no motor"
@@ -196,7 +208,7 @@ def test_nomes_sao_unicos():
 
 def test_validar_rejeita_registro_inconsistente():
     g = registry.obter("Graham")
-    ok = {"Graham": (registry.Mudanca("1.1.0", "x"),)}
+    ok = {"Graham": (registry.Mudanca("1.2.0", "x"),)}
     registry.validar((g,), ok)
     with pytest.raises(ValueError, match="repetido"):
         registry.validar((g, g), ok)

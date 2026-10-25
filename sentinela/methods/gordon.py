@@ -11,7 +11,7 @@ import math
 from dataclasses import dataclass
 from datetime import date
 
-from sentinela.domain.enums import AssetType, Regime
+from sentinela.domain.enums import AssetType, ModeloDemonstracao, Regime
 from sentinela.domain.units import BRL, RateNominal, RateReal, Ratio
 from sentinela.methods.base import (
     Abstention,
@@ -35,7 +35,7 @@ class GordonParams:
 
 class Gordon(ValuationMethod):
     nome = "Gordon"
-    version = "2.0.0"
+    version = "2.1.0"
     regime = Regime.REAL
     requires = (
         "preco",
@@ -54,6 +54,7 @@ class Gordon(ValuationMethod):
         "DVA anual como aproximação do fluxo recorrente: hipótese, não prova de estabilidade futura",
     )
     applies_to = frozenset({AssetType.STOCK, AssetType.UNIT})
+    modelos = frozenset({ModeloDemonstracao.EMPRESA})
     params_type = GordonParams
 
     def _calcular(

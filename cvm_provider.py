@@ -84,6 +84,11 @@ _COLUNAS_COMPOSICAO = {
 }
 
 
+# F2B-4 (decisão do Marcos de 25/10/2026): descrições, sem acento e em minúsculas, que
+# indicam a estrutura seguradora no BPP consolidado (leiautes anterior e posterior ao IFRS 17).
+_CONTAS_DE_SEGURADORA = r"provisoes tecnicas|contratos? de (?:res)?seguros?|atividade seguradora"
+
+
 def _ler(df: pd.DataFrame, campo: str, modelo: str):
     return contas_cvm.ler_conta(df.to_dict("records"), campo, modelo, contas_cvm.tabela())
 
@@ -976,12 +981,13 @@ class CVMProvider:
             return {"abstencao": f"DFP anual do Gordon indisponível: {erro}"}
 
     def modelo_do_documento(self, cd_cvm: int, ind: dict) -> str | None:
-        """Modelo de demonstração pelo BPP consolidado do documento de `ind` (F2B-31).
+        """Modelo de demonstração pelo BPP consolidado do documento de `ind` (F2B-31, F2B-4).
 
-        "banco" com o PL no par do modelo de instituição financeira, "empresa" com o par do
-        modelo empresa, `None` sem o BPP do documento ou sem nenhum dos dois: a mesma regra
-        de `gordon_do_documento`, para o escopo do Bazin (ficha Bazin 1.0, §4), que não é o
-        rótulo do setor.
+        "banco" com o PL no par do modelo de instituição financeira; com o par do modelo
+        empresa, "seguradora" se alguma conta do BPP descreve provisões técnicas, contratos
+        de seguro/resseguro ou a atividade seguradora (decisão do Marcos de 25/10/2026), e
+        "empresa" sem elas (holdings inclusive). `None` sem o BPP do documento, sem nenhum
+        dos dois pares ou com os dois (conflito). Não é o rótulo do setor.
         """
         try:
             referencia = date.fromisoformat(ind["cvm_dt_refer"])
@@ -997,10 +1003,18 @@ class CVMProvider:
         if bpp.empty:
             return None
         bpp["VL_CONTA"] = pd.to_numeric(bpp["VL_CONTA"], errors="coerce")
-        for modelo in ("banco", "empresa"):
-            if isinstance(_ler(bpp, "pl_total", modelo), contas_cvm.Leitura):
-                return modelo
-        return None
+        banco, empresa = (
+            isinstance(_ler(bpp, "pl_total", modelo), contas_cvm.Leitura)
+            for modelo in ("banco", "empresa")
+        )
+        if banco == empresa:
+            return None
+        if banco:
+            return "banco"
+        descricoes = bpp["DS_CONTA"].map(contas_cvm.normalizar_descricao)
+        if descricoes.str.contains(_CONTAS_DE_SEGURADORA).any():
+            return "seguradora"
+        return "empresa"
 
     def proventos_do_documento(
         self,

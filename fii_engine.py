@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 
 from config import MACRO, _normalizar_dy, get_selic_atual
 from sentinela.data import liquidez, rendimento_fii
+from sentinela.domain.enums import AssetType
 from sentinela.domain.units import BRL, RateReal, Ratio
 from sentinela.methods.base import MethodInputs, MethodResult
 from sentinela.methods.fii_nav import (
@@ -48,6 +49,7 @@ class FIIEngine:
             preco=BRL(p),
             dy=Ratio(entradas["dy"]),
             ntnb_real=RateReal(ntnb) if ntnb_valida else None,
+            classe_ativo=AssetType.FII,  # F2B-4: motor de FII, classe oficial FII
         )
         return _FII_YIELD.calcular(
             inputs, FiiYieldParams(spread=getattr(MACRO, "FII_SPREAD_TIJOLO", None))
@@ -58,7 +60,7 @@ class FIIEngine:
         if not math.isfinite(pvp):
             return None
         return _FII_NAV.calcular(
-            MethodInputs(as_of=date.today(), pvp=Ratio(pvp)),
+            MethodInputs(as_of=date.today(), pvp=Ratio(pvp), classe_ativo=AssetType.FII),
             FiiNavParams(
                 premio_alto=MACRO.FII_PVP_PREMIO_ALTO,
                 premio_moderado=MACRO.FII_PVP_PREMIO_MODERADO,

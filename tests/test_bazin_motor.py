@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 from apoio_bazin import enriquecer_bazin
+from apoio_escopo import de_empresa
 from apoio_gordon import AS_OF_GORDON
 
 from sentinela.methods.bazin import AVISO_PREJUIZO
@@ -26,7 +27,7 @@ def _acao(**kw):
 
 def _processar(dados, selic=0.10):
     with patch("valuation_engine.get_selic_atual", return_value=selic):
-        return ValuationEngine().processar(dados, as_of=AS_OF_GORDON)
+        return ValuationEngine().processar(de_empresa(dados), as_of=AS_OF_GORDON)
 
 
 def _bazin(resultado):

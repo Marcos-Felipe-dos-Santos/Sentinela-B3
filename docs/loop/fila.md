@@ -804,7 +804,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: se VISC11, XPLG11 e RBRP11 voltam à lente (preço justo, upside e classificação agrupada) e o spread recalculado;
   - gate da fase.
 
-- [ ] **F2B-4** · fix · `fix: enforce method scope by asset class and statement model` · **[golden]** **[FINANCEIRAS]**
+- [x] **F2B-4** · fix · `fix: enforce method scope by asset class and statement model` · **[golden]** **[FINANCEIRAS]**
   - **Decisão do Marcos de 25/10/2026:** seguradora é o BPP consolidado com conta cuja descrição contenha "Provisões Técnicas" (seguros, previdência ou capitalização); sem elas, modelo empresa (holdings). **Complemento do mesmo dia, depois da medição na DFP 2025** (só Bradesco, Bradsaúde, Hapvida e Qualicorp têm "Provisões Técnicas"; IRB, Porto Seguro, BB Seguridade e Aliança da Bahia usam o leiaute do IFRS 17): critério **ampliado** para descrições com "Provisões Técnicas", "contrato(s) de seguro/resseguro" ou "Atividade Seguradora". PL em 2.07/2.08 (banco) tem precedência; Caixa Seguridade, sem essas contas, fica empresa. Bloqueio de 21/10/2026 resolvido; executar e depois o F2B-32.
   - **Plano final:** docs/decisoes/plano-final-2b.md, seção 5.
   - **Decisão do Marcos de 21/10/2026 (superada em 25/10/2026):** manter a distinção seguradora/empresa pendente e prosseguir pelos próximos itens independentes; este item continua [!], sem implementação e sem aceite. Itens dependentes não presumem a decisão resolvida.

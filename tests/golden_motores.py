@@ -25,6 +25,7 @@ from valuation_engine import ValuationEngine
 GOLDEN = Path(__file__).parent / "fixtures" / "golden_motores.jsonl"
 SELIC_PADRAO = 0.145
 DISTRESSED = frozenset({"TSD3"})
+ESCOPO_DA_CASCATA = {"classe_ativo": "STOCK", "modelo_bpp": "empresa"}
 
 
 # ── execução ──────────────────────────────────────────────────────────────────
@@ -35,6 +36,9 @@ def executar(caso):
     entrada = json.loads(json.dumps(caso["entrada"]))  # cópia, com NaN preservado
     try:
         if caso["motor"] == "acoes":
+            # F2B-4: a cascata sempre grava a classe e o modelo do BPP; o caso que precisa
+            # de outro valor (ou da ausência, com None) o declara na entrada.
+            entrada = {**ESCOPO_DA_CASCATA, **entrada}
             taxa = caso.get("taxa_real") or {"ntnb": 0.07, "inflacao": 0.055}
             entrada = enriquecer_bazin(
                 enriquecer_gordon(
@@ -627,6 +631,39 @@ def _casos_liquidez():
     return casos
 
 
+def _acoes_escopo_modelo():
+    """F2B-4: escopo pelo modelo do BPP consolidado, não pelo setor, e evidência até o as_of."""
+    entrega = {"data_entrega": "2026-02-12", "data_coleta": "2026-02-20T18:00:00+00:00"}
+    variantes = (
+        ("empresa", {}),
+        ("banco", {"modelo_bpp": "banco", "setor": "Bancos"}),
+        (
+            "seguradora",
+            {"modelo_bpp": "seguradora", "setor": "Seguradoras e Corretoras"},
+        ),
+        ("sem-modelo", {"modelo_bpp": None}),
+        ("holding", {"setor": "Holdings Diversificadas"}),
+        ("setor-banco-bpp-empresa", {"setor": "Bancos"}),
+        ("setor-seguradora-bpp-empresa", {"setor": "Seguradoras e Corretoras"}),
+        ("unit-empresa", {"classe_ativo": "UNIT"}),
+        ("unit-banco", {"classe_ativo": "UNIT", "modelo_bpp": "banco"}),
+        ("sem-classe", {"classe_ativo": None}),
+        ("classe-com-espacos", {"classe_ativo": " ETF "}),
+        ("stock-com-espacos", {"classe_ativo": " stock "}),
+        ("evidencia-anterior", {"modelo_bpp_proveniencia": entrega}),
+        (
+            "evidencia-posterior",
+            {"modelo_bpp_proveniencia": {**entrega, "data_entrega": "2026-10-21"}},
+        ),
+        ("evidencia-ausente", {"modelo_bpp_proveniencia": None}),
+    )
+    return [
+        _acao(f"escopo-{nome}-{perfil}", {**base, **extra})
+        for nome, extra in variantes
+        for perfil, base in (("renda", _RENDA), ("cresc", _CRESC))
+    ]
+
+
 def montar_casos():
     casos = (
         _acoes_fronteiras()
@@ -636,6 +673,7 @@ def montar_casos():
         + _acoes_varredura_classificacao()
         + _acoes_aleatorias()
         + _acoes_classe_ativo()
+        + _acoes_escopo_modelo()
         + _acoes_preco_nao_finito()
         + _acoes_gordon_real()
         + _acoes_taxa_bazin()

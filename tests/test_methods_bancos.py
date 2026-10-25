@@ -308,3 +308,41 @@ def test_itr_mesmo_com_janela_anual_nao_substitui_dfp():
     r = _calcular(documento_contabil=DocumentoContabil.ITR)
     assert isinstance(r, Abstention)
     assert "DFP" in r.motivo
+
+
+def _proventos(dividendo, payout):
+    return ProventosControladores(
+        BRL(dividendo), Ratio(payout), date(2025, 1, 1), date(2025, 12, 31)
+    )
+
+
+@pytest.mark.parametrize(
+    ("extra", "motivo"),
+    [
+        ({"vpa": BRL(0.0)}, "VPA CVM não positivo"),
+        ({"base_acionaria_compativel": False}, "base de ações incompatível ou sem evidência vigente"),
+        ({"proventos_controladores": _proventos(1.0, 1.5)}, "payout fora de (0,1]"),
+        ({"proventos_controladores": _proventos(0.0, 0.5)}, "distribuição anual não positiva"),
+        ({"custo_capital_real": RateReal(-1.0)}, "taxa real sem fator positivo"),
+        ({"teto_pib_real": RateReal(-1.0)}, "taxa real sem fator positivo"),
+        ({"proventos_controladores": _proventos(1.0, 1e-30), "teto_pib_real": RateReal(1)}, "g >= ROE real"),
+        ({"custo_capital_real": RateReal(-0.03)}, "k real não maior que g real"),
+    ],
+)  # fmt: skip
+def test_motivo_identifica_metodo_versao_e_regra(extra, motivo):
+    # F2B-4: o motivo exato, não só o tipo da abstenção (mutação do bancos).
+    from sentinela.methods.bancos import Bancos
+
+    assert _calcular(**extra) == Abstention("Bancos", Bancos.version, motivo)
+
+
+def test_itr_abstem_com_o_motivo():
+    from sentinela.domain.enums import DocumentoContabil
+    from sentinela.methods.bancos import Bancos
+
+    r = _calcular(documento_contabil=DocumentoContabil.ITR)
+    assert r == Abstention("Bancos", Bancos.version, "exige DFP anual, não ITR")
+
+
+def test_distribuicao_de_um_real_e_valida():
+    assert isinstance(_calcular(proventos_controladores=_proventos(1.0, 0.5)), MethodResult)

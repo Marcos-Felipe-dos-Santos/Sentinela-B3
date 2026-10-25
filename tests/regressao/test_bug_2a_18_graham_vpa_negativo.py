@@ -11,10 +11,13 @@ from datetime import date
 
 import pytest
 
-from sentinela.domain.enums import Perfil
+from sentinela.domain.enums import AssetType, ModeloDemonstracao, Perfil
 from sentinela.domain.units import BRL, Ratio
 from sentinela.methods.base import Abstention, MethodInputs
 from sentinela.methods.graham import Graham, GrahamParams
+
+# F2B-4: escopo de companhia (STOCK, modelo empresa pelo BPP consolidado).
+ESCOPO = {"classe_ativo": AssetType.STOCK, "modelo": ModeloDemonstracao.EMPRESA}
 
 PARAMS = GrahamParams(
     pl_limite=25.0, pl_piso=7.0, pvp_limite_renda=2.5, pvp_limite_crescimento=3.0
@@ -24,6 +27,7 @@ PARAMS = GrahamParams(
 @pytest.mark.parametrize("vpa", [-50.0, 0.0])
 def test_vpa_negativo_se_abstem(vpa: float) -> None:
     inputs = MethodInputs(
+        **ESCOPO,
         as_of=date(2026, 10, 2),
         preco=BRL(100.0),
         pl=Ratio(10.0),
@@ -34,4 +38,4 @@ def test_vpa_negativo_se_abstem(vpa: float) -> None:
     resultado = Graham().calcular(inputs, PARAMS)
     assert isinstance(resultado, Abstention)
     assert resultado.motivo == "VPA ≤ 0"
-    assert (resultado.metodo, resultado.versao) == ("Graham", "1.1.0")
+    assert (resultado.metodo, resultado.versao) == ("Graham", "1.2.0")

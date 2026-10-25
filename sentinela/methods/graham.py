@@ -9,7 +9,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from sentinela.domain.enums import AssetType, Perfil, Regime
+from sentinela.domain.enums import AssetType, ModeloDemonstracao, Perfil, Regime
 from sentinela.domain.units import BRL, Ratio
 from sentinela.methods.base import (
     Abstention,
@@ -37,7 +37,7 @@ class GrahamParams:
 
 class Graham(ValuationMethod):
     nome = "Graham"
-    version = "1.1.0"
+    version = "1.2.0"
     regime = Regime.SEM_TAXA
     requires = ("preco", "pl", "pvp", "vpa", "perfil")
     assumptions = (
@@ -47,6 +47,7 @@ class Graham(ValuationMethod):
         "limite de P/VP maior para o perfil crescimento",
     )
     applies_to = frozenset({AssetType.STOCK, AssetType.UNIT})
+    modelos = frozenset({ModeloDemonstracao.EMPRESA})
     params_type = GrahamParams
 
     def _calcular(

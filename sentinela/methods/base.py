@@ -3,7 +3,8 @@
 `MethodInputs` é congelado e carrega `as_of`. Todo método declara `nome`, `version`,
 `regime`, `requires`, `assumptions`, `applies_to` e `params_type`, e devolve
 `MethodResult` ou `Abstention`: sem insumo exigido, abstém-se, nunca devolve um
-número conservador. Os parâmetros entram como argumento explícito (dataclass
+número conservador. O escopo é conferido antes dos insumos (F2B-4): a classe oficial é
+exigida de todos; STOCK e UNIT exigem também o modelo do BPP consolidado em `modelos`. Os parâmetros entram como argumento explícito (dataclass
 congelada, sem valor padrão); os métodos não importam `config`.
 """
 
@@ -65,6 +66,8 @@ _TIPOS_CAMPOS: dict[str, type] = {
     "pl_inicial_controladores": BRL,
 }
 _FLAGS = ("pl_confiavel", "dy_confiavel")
+# F2B-4: classes cujo escopo depende do modelo da demonstração (BPP consolidado).
+CLASSES_DE_COMPANHIA = frozenset({AssetType.STOCK, AssetType.UNIT})
 _VERSAO = re.compile(r"\d+\.\d+\.\d+")
 
 
@@ -189,6 +192,8 @@ class ValuationMethod(ABC):
     assumptions: tuple[str, ...]
     applies_to: frozenset[AssetType]
     params_type: type
+    # F2B-4: modelos do BPP consolidado aceitos para STOCK/UNIT; vazio, nenhum.
+    modelos: frozenset[ModeloDemonstracao] = frozenset()
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
@@ -233,6 +238,10 @@ class ValuationMethod(ABC):
             or not all(isinstance(a, AssetType) for a in cls.applies_to)
         ):
             raise TypeError("applies_to deve ser frozenset não vazio de AssetType")
+        if not isinstance(cls.modelos, frozenset) or not all(
+            isinstance(m, ModeloDemonstracao) for m in cls.modelos
+        ):
+            raise TypeError("modelos deve ser frozenset de ModeloDemonstracao")
         _validar_params_type(cls.params_type)
 
     def calcular(self, inputs: MethodInputs, params: Any) -> MethodResult | Abstention:
@@ -240,6 +249,9 @@ class ValuationMethod(ABC):
             raise TypeError("inputs deve ser MethodInputs")
         if not isinstance(params, self.params_type):
             raise TypeError(f"parâmetros devem ser {self.params_type.__name__}")
+        fora = self._fora_do_escopo(inputs)
+        if fora is not None:
+            return Abstention(self.nome, self.version, fora)
         faltantes = [r for r in self.requires if getattr(inputs, r) is None]
         if faltantes:
             return Abstention(
@@ -249,6 +261,19 @@ class ValuationMethod(ABC):
         if not isinstance(resultado, (MethodResult, Abstention)):
             raise TypeError("_calcular deve devolver MethodResult ou Abstention")
         return resultado
+
+    def _fora_do_escopo(self, inputs: MethodInputs) -> str | None:
+        classe = inputs.classe_ativo
+        if classe is None:
+            return "classe do ativo ausente"
+        if classe not in self.applies_to:
+            return f"classe {classe.value} fora do escopo do método"
+        if classe in CLASSES_DE_COMPANHIA:
+            if inputs.modelo is None:
+                return "modelo da demonstração não demonstrado no BPP consolidado"
+            if inputs.modelo not in self.modelos:
+                return f"modelo {inputs.modelo.value} fora do escopo do método"
+        return None
 
     @abstractmethod
     def _calcular(

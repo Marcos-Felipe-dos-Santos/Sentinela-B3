@@ -7,6 +7,7 @@ falta dado, não quando o scraper falhava e outras fontes completavam os campos.
 
 import pytest
 from apoio_bazin import enriquecer_bazin
+from apoio_escopo import de_empresa
 
 from tests.test_market_engine import _engine, _historico
 from valuation_engine import ValuationEngine
@@ -43,7 +44,7 @@ def _processar(dados):
     # mesmo DY.
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr("valuation_engine.get_selic_atual", lambda: 0.145)
-        return ValuationEngine().processar(enriquecer_bazin(dados))
+        return ValuationEngine().processar(de_empresa(enriquecer_bazin(dados)))
 
 
 def test_cascata_nao_chama_o_fundamentus(monkeypatch):

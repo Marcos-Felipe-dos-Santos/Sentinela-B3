@@ -101,7 +101,7 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2B-37 | duas linhas do Informe da mesma versão e valores diferentes: a primeira vence pela ordem | sentinela/data/rendimento_fii.py (_por_mes) | mesma auditoria | test_bug_2b_37_informe_conflitante_mesma_versao.py | F2B-54 | corrigido |
 | BUG-2B-38 | com D = 0 pela B3 e o yfinance sem dividendos (`{}`), a conferência diz "indisponível" | sentinela/data/proventos_b3.py (conferencia_yfinance) | revisão final do F2B-53, 21/10/2026 | test_bug_2b_38_conferencia_dy_zero.py | F2B-54 | corrigido |
 
-| BUG-2B-39 | classe com espaço nas pontas contorna a guarda de escopo e recebe valor de ação | valuation_engine.py (processar) | revisão do F2A-29 citada na fila; reprodução no F2B-4, 21/10/2026 | test_bug_2b_39_classe_com_espacos.py | F2B-4 | aberto |
+| BUG-2B-39 | classe com espaço nas pontas contorna a guarda de escopo e recebe valor de ação | valuation_engine.py (processar) | revisão do F2A-29 citada na fila; reprodução no F2B-4, 21/10/2026 | test_bug_2b_39_classe_com_espacos.py | F2B-4 | corrigido |
 
 | BUG-2B-40 | ROE nominal vira zero por underflow de valores positivos e o payout projetado divide por zero com teto ativo | sentinela/methods/bancos.py | revisão do F2B-3 antes do commit, 21/10/2026 | test_bug_2b_40_banco_roe_underflow.py | F2B-3 | corrigido |
 
@@ -110,3 +110,5 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2B-42 | download falha com cache antigo, coletor não sinaliza mês indisponível e aplica gate à janela desatualizada | sentinela/data/providers/b3_cotahist.py (baixar_mes, HistoricoRecente.coletar) | revisão1 F2A-10, 21/10/2026 | test_bug_2b_42_liquidez_cache_antigo.py | F2A-10 | corrigido |
 
 | BUG-2B-43 | quantidade de cotas fracionária no Informe (35% das linhas de 2026) tira o FII da lente de rendimento | sentinela/data/rendimento_fii.py (avaliar) | revisão do F2B-2 e decisão do Marcos de 25/10/2026 (ficha FII 1.2) | test_bug_2b_43_cotas_fracionarias_no_fii.py | F2B-55 | corrigido |
+
+| BUG-2B-44 | o backtest grava "OK" para a abstenção de escopo do motor e quebra ao ler `score_final` | backtesting/backtest_engine.py (simular_analise_mensal) | revisão do F2B-4, 25/10/2026 | test_bug_2b_44_backtest_abstencao_de_escopo.py | F2B-4 | corrigido |

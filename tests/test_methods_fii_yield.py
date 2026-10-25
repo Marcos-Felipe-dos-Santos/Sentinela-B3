@@ -9,11 +9,15 @@ from sentinela.domain.units import BRL, RateNominal, RateReal, Ratio
 from sentinela.methods.base import Abstention, MethodInputs, MethodResult
 from sentinela.methods.fii_yield import FiiYield, FiiYieldParams
 
+# F2B-4: classe oficial FII (sem BPP de companhia).
+ESCOPO = {"classe_ativo": AssetType.FII}
+
 PARAMS = FiiYieldParams(spread=0.02)
 
 
 def _inputs(preco=100.0, dy=0.10, ntnb=0.07, **kw):
     return MethodInputs(
+        **ESCOPO,
         as_of=date(2026, 10, 19),
         preco=BRL(preco),
         dy=Ratio(dy),
@@ -93,7 +97,7 @@ def test_matriz_de_validade(kw, params, motivo):
     r = _fii(params=params, **kw)
     assert isinstance(r, Abstention)
     assert r.motivo == motivo
-    assert (r.metodo, r.versao) == ("Rendimento do FII", "2.0.0")
+    assert (r.metodo, r.versao) == ("Rendimento do FII", "2.1.0")
 
 
 def test_spread_negativo_com_taxa_positiva_calcula():
@@ -105,7 +109,7 @@ def test_spread_negativo_com_taxa_positiva_calcula():
 def test_metadados():
     m = FiiYield()
     assert m.nome == "Rendimento do FII"
-    assert m.version == "2.0.0"
+    assert m.version == "2.1.0"
     assert m.regime is Regime.REAL
     assert m.requires == ("preco", "dy", "ntnb_real")
     assert m.applies_to == frozenset({AssetType.FII})

@@ -30,7 +30,7 @@ class BancosParams:
 
 class Bancos(ValuationMethod):
     nome = "Bancos"
-    version = "1.0.0"
+    version = "1.1.0"
     regime = Regime.REAL
     requires = (
         "classe_ativo",
@@ -62,12 +62,6 @@ class Bancos(ValuationMethod):
         def abster(motivo: str) -> Abstention:
             return Abstention(self.nome, self.version, motivo)
 
-        if inputs.classe_ativo not in self.applies_to:
-            return abster(
-                f"classe {inputs.classe_ativo.value} fora do escopo do método"
-            )
-        if inputs.modelo not in self.modelos:
-            return abster(f"modelo {inputs.modelo.value} fora do escopo do método")
         if inputs.documento_contabil is not DocumentoContabil.DFP:
             return abster("exige DFP anual, não ITR")
         if not inputs.base_acionaria_compativel:

@@ -3,7 +3,7 @@ from datetime import UTC, date, datetime
 
 import pytest
 
-from sentinela.domain.enums import AssetType, Perfil, Regime
+from sentinela.domain.enums import AssetType, ModeloDemonstracao, Perfil, Regime
 from sentinela.domain.units import BRL, Percent, RateNominal, RateReal, Ratio
 from sentinela.methods.base import (
     TIPO_TAXA,
@@ -15,6 +15,8 @@ from sentinela.methods.base import (
 )
 
 HOJE = date(2026, 10, 2)
+# F2B-4: os métodos de teste valem para STOCK com modelo empresa (BPP consolidado).
+ESCOPO = {"classe_ativo": AssetType.STOCK, "modelo": ModeloDemonstracao.EMPRESA}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -34,6 +36,7 @@ class _Dobro(ValuationMethod):
     requires = ("preco", "lpa")
     assumptions = ("o dobro do preço",)
     applies_to = frozenset({AssetType.STOCK})
+    modelos = frozenset({ModeloDemonstracao.EMPRESA})
     params_type = _Params
 
     def _calcular(self, inputs, params):
@@ -47,7 +50,7 @@ class _Dobro(ValuationMethod):
 
 
 def _inputs(**kw):
-    return MethodInputs(as_of=HOJE, **kw)
+    return MethodInputs(as_of=HOJE, **{**ESCOPO, **kw})
 
 
 # ── MethodInputs ──────────────────────────────────────────────────────────────
@@ -237,6 +240,7 @@ def _metodo(**sobrescreve):
         "requires": ("preco",),
         "assumptions": (),
         "applies_to": frozenset({AssetType.STOCK}),
+        "modelos": frozenset({ModeloDemonstracao.EMPRESA}),
         "params_type": _Params,
         "_calcular": lambda self, inputs, params: Abstention("X", "1.0.0", "n/a"),
     }
@@ -404,3 +408,82 @@ def test_contrato_real_recebe_insumos_e_inflacao_com_unidade():
     )
     assert resultado.valor == RateReal(0.1)
     assert resultado.obter("inflacao") == Inflacao(0.04)
+
+
+# ── escopo por classe e modelo (F2B-4) ────────────────────────────────────────
+
+_METODOS_DE_EMPRESA = ("Graham", "Bazin", "Lynch", "Gordon")
+_METODOS_DE_FII = ("Rendimento do FII", "P/VP do FII")
+
+
+def _metodo_do_registro(nome):
+    from sentinela.methods import registry
+
+    return registry.obter(nome)
+
+
+def _params_do_registro(metodo):
+    # Parâmetros quaisquer: o escopo vem antes de qualquer conta.
+    campos = dataclasses.fields(metodo.params_type)
+    return metodo.params_type(**{f.name: None for f in campos})
+
+
+def test_escopo_e_aplicado():
+    for nome in _METODOS_DE_EMPRESA:
+        m = _metodo_do_registro(nome)
+        r = m.calcular(
+            _inputs(classe_ativo=AssetType.FII, modelo=None), _params_do_registro(m)
+        )
+        assert r == Abstention(m.nome, m.version, "classe FII fora do escopo do método")
+        for modelo in (ModeloDemonstracao.BANCO, ModeloDemonstracao.SEGURADORA):
+            r = m.calcular(
+                _inputs(classe_ativo=AssetType.UNIT, modelo=modelo),
+                _params_do_registro(m),
+            )
+            assert r == Abstention(
+                m.nome, m.version, f"modelo {modelo.value} fora do escopo do método"
+            )
+    for nome in _METODOS_DE_FII:
+        m = _metodo_do_registro(nome)
+        r = m.calcular(
+            _inputs(classe_ativo=AssetType.STOCK, modelo=None, pvp=Ratio(1.0)),
+            _params_do_registro(m),
+        )
+        assert r == Abstention(
+            m.nome, m.version, "classe STOCK fora do escopo do método"
+        )
+
+
+@pytest.mark.parametrize("classe", [AssetType.STOCK, AssetType.UNIT])
+def test_stock_unit_sem_modelo_abstem(classe):
+    for nome in _METODOS_DE_EMPRESA:
+        m = _metodo_do_registro(nome)
+        r = m.calcular(
+            _inputs(classe_ativo=classe, modelo=None), _params_do_registro(m)
+        )
+        assert r == Abstention(
+            m.nome,
+            m.version,
+            "modelo da demonstração não demonstrado no BPP consolidado",
+        )
+
+
+def test_sem_classe_abstem():
+    from sentinela.methods import registry
+
+    for m in registry.METODOS:
+        r = m.calcular(
+            _inputs(classe_ativo=None, modelo=None, pvp=Ratio(1.0)),
+            _params_do_registro(m),
+        )
+        assert r == Abstention(m.nome, m.version, "classe do ativo ausente")
+
+
+def test_fii_com_classe_oficial_nao_exige_bpp():
+    from sentinela.methods.fii_nav import FiiNav, FiiNavParams
+
+    r = FiiNav().calcular(
+        _inputs(classe_ativo=AssetType.FII, modelo=None, pvp=Ratio(1.0)),
+        FiiNavParams(premio_alto=1.3, premio_moderado=1.1, desconto=0.9),
+    )
+    assert isinstance(r, MethodResult)

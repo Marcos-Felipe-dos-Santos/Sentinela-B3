@@ -5,7 +5,7 @@ from datetime import date
 
 import pytest
 
-from sentinela.domain.enums import AssetType, Perfil, Regime
+from sentinela.domain.enums import AssetType, ModeloDemonstracao, Perfil, Regime
 from sentinela.domain.units import (
     BRL,
     Inflacao,
@@ -16,6 +16,9 @@ from sentinela.domain.units import (
 )
 from sentinela.methods.base import Abstention, MethodInputs, MethodResult
 from sentinela.methods.gordon import MOTIVO_K_NAO_MAIOR_QUE_G, Gordon, GordonParams
+
+# F2B-4: escopo de companhia (STOCK, modelo empresa pelo BPP consolidado).
+ESCOPO = {"classe_ativo": AssetType.STOCK, "modelo": ModeloDemonstracao.EMPRESA}
 
 PARAMS = GordonParams()
 
@@ -40,7 +43,7 @@ def _inputs_ficha(**kw):
         ),
     }
     base.update(kw)
-    return MethodInputs(**base)
+    return MethodInputs(**(ESCOPO | base))
 
 
 def test_k_e_o_custo_de_capital_real():
@@ -80,7 +83,7 @@ def test_lpa_nao_positivo_abstem(lpa):
     r = Gordon().calcular(_inputs_ficha(lpa=BRL(lpa)), PARAMS)
     assert isinstance(r, Abstention)
     assert r.motivo == "LPA não positivo"
-    assert (r.metodo, r.versao) == ("Gordon", "2.0.0")
+    assert (r.metodo, r.versao) == ("Gordon", "2.1.0")
 
 
 def test_premissas_exigem_lpa_positivo_sem_fallback():
@@ -188,7 +191,7 @@ def test_vale_para_qualquer_perfil():
 
 def test_metadados():
     m = Gordon()
-    assert m.nome == "Gordon" and m.version == "2.0.0"
+    assert m.nome == "Gordon" and m.version == "2.1.0"
     assert m.regime is Regime.REAL
     assert "selic" not in m.requires and "dy" not in m.requires
     assert m.applies_to == frozenset({AssetType.STOCK, AssetType.UNIT})

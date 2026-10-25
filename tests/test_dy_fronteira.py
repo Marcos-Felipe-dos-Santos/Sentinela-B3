@@ -8,6 +8,7 @@ e para ela vale a regra da V1 (acima de 1 é percentual), declarada como inferê
 from unittest.mock import patch
 
 import pytest
+from apoio_escopo import de_empresa
 
 from valuation_engine import ValuationEngine
 
@@ -22,7 +23,7 @@ def _processar(dy):
         "dy": dy,
     }
     with patch("valuation_engine.get_selic_atual", return_value=0.145):
-        return ValuationEngine().processar(dados)
+        return ValuationEngine().processar(de_empresa(dados))
 
 
 def test_motor_nao_converte_percentual():

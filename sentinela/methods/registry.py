@@ -1,8 +1,8 @@
 """Registro dos métodos de valuation: catálogo e changelog.
 
-Os métodos extraídos da V1 mantêm seu histórico no changelog. O escopo dos seis
-métodos preexistentes ainda é aplicado pelo F2B-4; a lente nova Bancos já confere
-classe e modelo banco, sem consumidor nos motores até o F2B-32.
+Os métodos extraídos da V1 mantêm seu histórico no changelog. Desde o F2B-4, o contrato
+aplica o escopo de todos (classe oficial e, em STOCK/UNIT, o modelo do BPP consolidado);
+a lente Bancos fica sem consumidor nos motores até o F2B-32.
 """
 
 from __future__ import annotations
@@ -92,6 +92,25 @@ CHANGELOG["Bancos"] = (
     Mudanca(
         "1.0.0",
         "ficha bancos1.1: lente nova de P/VP justificado em regime real; sem consumidor no motor",
+    ),
+)
+
+# F2B-4: escopo aplicado pelo contrato, antes dos insumos; nenhuma fórmula muda.
+_ESCOPO_EMPRESA = "F2B-4: aplica o escopo (STOCK/UNIT, modelo empresa pelo BPP consolidado); sem classe ou modelo, abstém-se"
+_ESCOPO_FII = "F2B-4: aplica o escopo (classe oficial FII, sem BPP de companhia); sem classe, abstém-se"
+for _nome, _versao in (
+    ("Graham", "1.2.0"),
+    ("Bazin", "2.1.0"),
+    ("Lynch", "1.1.0"),
+    ("Gordon", "2.1.0"),
+):
+    CHANGELOG[_nome] += (Mudanca(_versao, _ESCOPO_EMPRESA),)
+CHANGELOG["Rendimento do FII"] += (Mudanca("2.1.0", _ESCOPO_FII),)
+CHANGELOG["P/VP do FII"] += (Mudanca("1.2.0", _ESCOPO_FII),)
+CHANGELOG["Bancos"] += (
+    Mudanca(
+        "1.1.0",
+        "F2B-4: classe e modelo conferidos pelo contrato antes dos insumos; sem classe ou modelo, motivo de escopo em vez de insumo ausente",
     ),
 )
 

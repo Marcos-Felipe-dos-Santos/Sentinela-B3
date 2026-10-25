@@ -10,6 +10,7 @@ Origem: 2ª passada do Gemini (15/10/2026).
 from unittest.mock import patch
 
 import pytest
+from apoio_escopo import de_empresa
 
 from tests.test_saidas_finitas import ACAO
 from valuation_engine import ValuationEngine
@@ -25,7 +26,7 @@ from valuation_engine import ValuationEngine
 def test_divida_em_texto_nao_e_avaliada():
     with patch("valuation_engine.get_selic_atual", return_value=0.145):
         resultado = ValuationEngine().processar(
-            {**ACAO, "preco_atual": 10.0, "divida_liq_ebitda": "9,5"}
+            de_empresa({**ACAO, "preco_atual": 10.0, "divida_liq_ebitda": "9,5"})
         )
     assert "Dívida elevada" not in resultado["riscos"]
     assert any("alavancagem não avaliada" in r for r in resultado["riscos"])

@@ -38,7 +38,7 @@ class FiiYieldParams:
 
 class FiiYield(ValuationMethod):
     nome = "Rendimento do FII"
-    version = "2.0.0"
+    version = "2.1.0"
     regime = Regime.REAL
     requires = ("preco", "dy", "ntnb_real")
     assumptions = (

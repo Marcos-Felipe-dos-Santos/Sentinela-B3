@@ -4,6 +4,7 @@ from copy import deepcopy
 from unittest.mock import patch
 
 import pytest
+from apoio_escopo import de_empresa
 
 from fii_engine import FIIEngine
 from valuation_engine import ValuationEngine
@@ -47,7 +48,9 @@ def _analisar(fii=False, **extra):
     ):
         dados = _dados(fii, **extra)
         return (
-            FIIEngine().analisar(dados) if fii else ValuationEngine().processar(dados)
+            FIIEngine().analisar(dados)
+            if fii
+            else ValuationEngine().processar(de_empresa(dados))
         )
 
 

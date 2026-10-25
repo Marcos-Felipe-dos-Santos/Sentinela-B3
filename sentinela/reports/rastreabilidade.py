@@ -326,13 +326,35 @@ def _texto_referencia(referencia: dict[str, Any]) -> str:
     return texto
 
 
+def _escopo(inst) -> str:
+    """Classes do método e, para companhia, os modelos do BPP consolidado (F2B-4)."""
+    texto = ", ".join(sorted(a.value for a in inst.applies_to))
+    if inst.modelos:
+        modelos = ", ".join(sorted(m.value for m in inst.modelos))
+        texto += f"; modelo {modelos} (BPP consolidado)"
+    return texto
+
+
+def _classe_do_cabecalho(dados, eh_fii, fora_do_escopo) -> str:
+    """Classe tratada no cabeçalho; fora do escopo, a classe recebida, não "ação" (F2B-4)."""
+    if eh_fii:
+        return "FII"
+    classe = dados.get("classe_ativo")
+    if classe is None:
+        return "classe não informada"
+    classe = str(getattr(classe, "value", classe)).strip().upper()
+    if fora_do_escopo and classe not in ("STOCK", "UNIT"):
+        return f"{classe}, fora do escopo dos métodos de ação"
+    return "ação"
+
+
 def _bloco_metodo(registro) -> dict[str, Any]:
     inst, _, params, resultado = registro
     bloco: dict[str, Any] = {
         "nome": inst.nome,
         "versao": inst.version,
         "regime": inst.regime.value,
-        "applies_to": ", ".join(sorted(a.value for a in inst.applies_to)),
+        "applies_to": _escopo(inst),
         "premissas": list(inst.assumptions),
         "params": [(k, _param(v)) for k, v in dataclasses.asdict(params).items()],
         "abstencao": None,
@@ -354,7 +376,7 @@ def _bloco_nao_calculado(inst, motivo: str) -> dict[str, Any]:
         "nome": inst.nome,
         "versao": inst.version,
         "regime": inst.regime.value,
-        "applies_to": ", ".join(sorted(a.value for a in inst.applies_to)),
+        "applies_to": _escopo(inst),
         "premissas": list(inst.assumptions),
         "params": [],
         "abstencao": None,
@@ -699,7 +721,7 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         "taxa_real": _taxa_real(dados),
         "ticker": dados.get("ticker", ""),
         "data": hoje.isoformat(),
-        "classe": "FII" if eh_fii else "ação",
+        "classe": _classe_do_cabecalho(dados, eh_fii, fora_do_escopo),
         "plano_url": PLANO_URL,
         "limites": LIMITES,
         "fontes": fontes,

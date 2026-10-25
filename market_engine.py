@@ -1040,8 +1040,10 @@ class MarketEngine:
             cvm_campos.update(self._por_acao_cvm(ticker, dados, ind))
             obter_modelo = getattr(cvm, "modelo_do_documento", None)
             if callable(obter_modelo):
-                # F2B-31: escopo do Bazin pelo BPP consolidado (ficha Bazin 1.0, §4).
+                # F2B-31 e F2B-4: escopo dos métodos pelo BPP consolidado, com a entrega da
+                # DFP que o demonstra (o motor confere contra o as_of).
                 dados["modelo_bpp"] = obter_modelo(cd_cvm, ind)
+                dados["modelo_bpp_proveniencia"] = ind.get("proveniencia")
             obter_gordon = getattr(cvm, "gordon_do_documento", None)
             if callable(obter_gordon):
                 instante_gordon = datetime.now(UTC)

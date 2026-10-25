@@ -3,6 +3,7 @@
 from datetime import UTC, datetime
 
 import pytest
+from apoio_escopo import de_empresa
 from apoio_gordon import enriquecer_gordon
 
 from valuation_engine import ValuationEngine
@@ -39,7 +40,9 @@ def test_reprocessamento_nao_aceita_evidencia_posterior_ao_asof(qual, monkeypatc
             else "2026-02-20T18:00:00+00:00",
         }
     }
-    r = ValuationEngine().processar(d, as_of=datetime(2026, 3, 1, 18, tzinfo=UTC))
+    r = ValuationEngine().processar(
+        de_empresa(d), as_of=datetime(2026, 3, 1, 18, tzinfo=UTC)
+    )
     assert "Gordon" not in r["metodos_usados"]
     assert "posterior" in d["gordon_diagnostico"]
 
@@ -62,7 +65,9 @@ def test_reprocessamento_recusa_contexto_macro_posterior_ou_sem_fuso(
         }
     )
     d["taxa_real"]["as_of"] = instante_macro
-    r = ValuationEngine().processar(d, as_of=datetime(2026, 3, 1, 18, tzinfo=UTC))
+    r = ValuationEngine().processar(
+        de_empresa(d), as_of=datetime(2026, 3, 1, 18, tzinfo=UTC)
+    )
     assert "Gordon" not in r["metodos_usados"]
     assert d["gordon_diagnostico"] == (
         "contexto da taxa real posterior ao as_of"

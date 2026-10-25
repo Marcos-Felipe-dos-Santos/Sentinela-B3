@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 from apoio_bazin import enriquecer_bazin
+from apoio_escopo import de_empresa
 from apoio_fii import enriquecer_fii
 from apoio_gordon import AS_OF_GORDON, DiaGordon, enriquecer_gordon
 
@@ -26,7 +27,7 @@ def test_dy_normalization_percentual() -> None:
     dados = enriquecer_bazin(dados)
 
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
-        resultado = ValuationEngine().processar(dados)
+        resultado = ValuationEngine().processar(de_empresa(dados))
 
     assert resultado['fair_value'] == pytest.approx(207.83, abs=0.01)
     assert resultado['metodos_usados'] == 'Bazin: R$207.83'
@@ -44,7 +45,7 @@ def test_dy_invalido_acima_25pct() -> None:
     }
 
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
-        resultado = ValuationEngine().processar(dados)
+        resultado = ValuationEngine().processar(de_empresa(dados))
 
     assert resultado['fair_value'] == 100.0
     assert resultado['metodos_usados'] == ''
@@ -68,7 +69,7 @@ def test_recomendacao_compra_forte_exige_upside() -> None:
         patch('valuation_engine.get_selic_atual', return_value=0.10),
         patch('valuation_engine.math.exp', return_value=0.2),
     ):
-        resultado = ValuationEngine().processar(dados)
+        resultado = ValuationEngine().processar(de_empresa(dados))
 
     assert resultado['score_final'] >= 75
     assert resultado['upside'] == pytest.approx(-15.0, abs=0.1)
@@ -91,7 +92,7 @@ def test_recomendacao_qualidade_aguardar() -> None:
         patch('valuation_engine.get_selic_atual', return_value=0.10),
         patch('valuation_engine.math.exp', return_value=0.2),
     ):
-        resultado = ValuationEngine().processar(dados)
+        resultado = ValuationEngine().processar(de_empresa(dados))
 
     assert resultado['score_final'] >= 75
     assert resultado['upside'] == pytest.approx(-10.0, abs=0.1)
@@ -111,7 +112,7 @@ def test_compra_forte_com_risco_vira_compra() -> None:
     }
 
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
-        resultado = ValuationEngine().processar(dados)
+        resultado = ValuationEngine().processar(de_empresa(dados))
 
     assert resultado['score_final'] >= 75
     assert resultado['upside'] > 15
@@ -132,7 +133,7 @@ def test_compra_forte_sem_risco_continua_possivel() -> None:
     }
 
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
-        resultado = ValuationEngine().processar(dados)
+        resultado = ValuationEngine().processar(de_empresa(dados))
 
     assert resultado['score_final'] >= 75
     assert resultado['upside'] > 15
@@ -153,7 +154,7 @@ def test_graham_ignorado_pl_negativo() -> None:
     }
 
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
-        resultado = ValuationEngine().processar(dados)
+        resultado = ValuationEngine().processar(de_empresa(dados))
 
     assert 'Graham' not in resultado['metodos_usados']
 
@@ -170,7 +171,7 @@ def test_lynch_desconta_payout() -> None:
     }
 
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
-        resultado = ValuationEngine().processar(dados)
+        resultado = ValuationEngine().processar(de_empresa(dados))
 
     assert resultado['fair_value'] == pytest.approx(180.0, abs=0.01)
     assert 'Lynch: R$180.00' in resultado['metodos_usados']
@@ -207,7 +208,7 @@ def test_divida_liq_ebitda_none() -> None:
         'divida_liq_ebitda': None
     }
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
-        result = ValuationEngine().processar(dados)
+        result = ValuationEngine().processar(de_empresa(dados))
     assert result is not None
     assert 'score_final' in result
     assert 0 <= result['score_final'] <= 100
@@ -224,7 +225,7 @@ def test_divida_liq_ebitda_malformed_string() -> None:
         'divida_liq_ebitda': "abc,def"
     }
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
-        result = ValuationEngine().processar(dados)
+        result = ValuationEngine().processar(de_empresa(dados))
     assert result is not None
     assert 'score_final' in result
 
@@ -240,7 +241,7 @@ def test_divida_liq_ebitda_brazilian_format() -> None:
         'divida_liq_ebitda': "1.234,56"
     }
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
-        result = ValuationEngine().processar(dados)
+        result = ValuationEngine().processar(de_empresa(dados))
     assert result is not None
     assert 0 <= result['score_final'] <= 100
 
@@ -255,7 +256,7 @@ def test_valuation_engine_expected_keys() -> None:
         'divida_liq_ebitda': 1.5
     }
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
-        result = ValuationEngine().processar(dados)
+        result = ValuationEngine().processar(de_empresa(dados))
     assert 'fair_value' in result
     assert 'upside' in result
     assert 'score_final' in result
@@ -282,7 +283,7 @@ def test_dy_muito_alto_penaliza_bazin() -> None:
     }
     dados = enriquecer_bazin(dados)
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
-        resultado = ValuationEngine().processar(dados)
+        resultado = ValuationEngine().processar(de_empresa(dados))
     
     assert "DY muito alto (possível armadilha)" in resultado['riscos']
     assert resultado['confianca'] < 100
@@ -300,7 +301,7 @@ def test_gordon_ignorado_k_menor_g() -> None:
     # F2B-1: g real no teto2%, k real1%; Selic é independente desse desconto.
     dados = enriquecer_gordon(dados,ntnb=-.04)
     with patch('valuation_engine.get_selic_atual', return_value=0.01), patch('valuation_engine.date',DiaGordon):
-        resultado = ValuationEngine().processar(dados, as_of=AS_OF_GORDON)
+        resultado = ValuationEngine().processar(de_empresa(dados), as_of=AS_OF_GORDON)
 
     assert 'Gordon' not in resultado['metodos_usados']
 
@@ -318,7 +319,7 @@ def test_distressed_ticker_retorna_alto_risco() -> None:
         'dy': 0.0,
     }
     with patch('valuation_engine.get_selic_atual', return_value=0.145):
-        resultado = ValuationEngine().processar(dados)
+        resultado = ValuationEngine().processar(de_empresa(dados))
 
     assert resultado['recomendacao'] == 'ALTO RISCO — EVITAR'
     assert resultado['score_final'] <= 45
@@ -337,7 +338,7 @@ def test_distressed_ticker_nunca_compra_forte() -> None:
         'dy': 0.10,
     }
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
-        resultado = ValuationEngine().processar(dados)
+        resultado = ValuationEngine().processar(de_empresa(dados))
 
     assert resultado['recomendacao'] not in ('COMPRA', 'COMPRA FORTE')
     assert resultado['recomendacao'] == 'ALTO RISCO — EVITAR'
@@ -355,7 +356,7 @@ def test_scraper_falhou_compra_vira_dados_insuficientes() -> None:
         'fundamentos_incompletos': True,
     }
     with patch('valuation_engine.get_selic_atual', return_value=0.145):
-        resultado = ValuationEngine().processar(dados)
+        resultado = ValuationEngine().processar(de_empresa(dados))
 
     assert resultado['recomendacao'] == 'DADOS INSUFICIENTES — AGUARDAR'
     assert resultado['confianca'] <= 50
@@ -381,7 +382,7 @@ def test_scraper_falhou_nao_sobrescreve_venda() -> None:
         'fundamentos_incompletos': True,
     }
     with patch('valuation_engine.get_selic_atual', return_value=0.145):
-        resultado = ValuationEngine().processar(dados)
+        resultado = ValuationEngine().processar(de_empresa(dados))
 
     # upside < -15% = VENDA; scraper guard não interfere
     assert resultado['recomendacao'] != 'DADOS INSUFICIENTES — AGUARDAR'
@@ -399,7 +400,7 @@ def test_scraper_falhou_nao_sobrescreve_alto_risco() -> None:
         'fundamentos_incompletos': True,
     }
     with patch('valuation_engine.get_selic_atual', return_value=0.145):
-        resultado = ValuationEngine().processar(dados)
+        resultado = ValuationEngine().processar(de_empresa(dados))
 
     # Distressed guard fires first — must remain ALTO RISCO
     assert resultado['recomendacao'] == 'ALTO RISCO — EVITAR'
@@ -418,7 +419,7 @@ def test_bazin_nao_aciona_dy_abaixo_5pct() -> None:
         'dy': 0.03,
     }
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
-        resultado = ValuationEngine().processar(dados)
+        resultado = ValuationEngine().processar(de_empresa(dados))
 
     assert 'Bazin' not in resultado['metodos_usados']
 
@@ -435,7 +436,7 @@ def test_bazin_aciona_no_limite_de_5pct() -> None:
     }
     dados = enriquecer_bazin(dados)
     with patch('valuation_engine.get_selic_atual', return_value=0.10):
-        resultado = ValuationEngine().processar(dados)
+        resultado = ValuationEngine().processar(de_empresa(dados))
 
     assert 'Bazin' in resultado['metodos_usados']
 
@@ -459,7 +460,7 @@ def test_fair_value_usa_mediana_com_tres_metodos() -> None:
     }
     dados = enriquecer_bazin(enriquecer_gordon(dados))
     with patch('valuation_engine.get_selic_atual', return_value=0.05), patch('valuation_engine.date',DiaGordon):
-        resultado = ValuationEngine().processar(dados, as_of=AS_OF_GORDON)
+        resultado = ValuationEngine().processar(de_empresa(dados), as_of=AS_OF_GORDON)
 
     assert resultado['fair_value'] == pytest.approx(106.07, abs=0.5)
 
