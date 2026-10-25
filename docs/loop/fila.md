@@ -15,7 +15,7 @@ Branch: `v2/fase-2b` · Protocolo: `docs/loop/protocolo.md` · Diário: `docs/lo
   - Registro no marcador (`docs/decisoes/marcador-2b.md`) das cinco decisões do Marcos de 25/10/2026 da auditoria de fechamento (1: provisórias ratificadas; 2: BRSR3; 3 e 4: esta ficha; 5: D27 sem dispensa genérica).
   - **Aceite:** ficha 1.3 com status e as duas regras; nenhuma mudança de código.
 
-- [ ] **F2B-57** · fix · `fix: treat any conflicting field of a same-version FII report as a conflict` · **[golden]**
+- [x] **F2B-57** · fix · `fix: treat any conflicting field of a same-version FII report as a conflict` · **[golden]**
   - **BUG-2B-37 (reaberto):** o conflito de mesma versão no Informe só compara DY e valor da cota; cotas e amortização ficam fora (reprodução do Codex), e a ordem das linhas muda a elegibilidade. A correção exigida cobre também a composição.
   - Conflito em qualquer campo usado (DY, VP, cotas, amortização, composição) abstém, nas duas ordens das linhas.
   - **Aceite:** regressão estrita do reaberto (as duas ordens, para cada campo) → correção → PASS; golden `--onde "caso['motor'] == 'fii'"` (esperado 0 alterados; inclusões só se a grade ganhar o caso); mutação de `sentinela.data.rendimento_fii` ≥ 80%; gate.
@@ -27,7 +27,7 @@ Branch: `v2/fase-2b` · Protocolo: `docs/loop/protocolo.md` · Diário: `docs/lo
 
 - [ ] **F2B-59** · fix · `fix: take the FII composition from the selected report version` · **[golden]**
   - **BUG-2B-47:** composição de outra versão, ou conflitante, autoriza a lente.
-  - A composição precisa ser da mesma versão do complemento selecionado; conflito abstém. Inclui a regra de células vazias da ficha 1.3 (F2B-56): vazio vale zero só em registro da mesma versão com ao menos uma posição preenchida; registro ausente ou todo vazio é tipo desconhecido.
+  - A composição precisa ser da mesma versão do complemento selecionado (o conflito de composições da mesma versão já é do F2B-57). Inclui a regra de células vazias da ficha 1.3 (F2B-56): vazio vale zero só em registro da mesma versão com ao menos uma posição preenchida; registro ausente ou todo vazio é tipo desconhecido.
   - **Aceite:** regressão estrita → correção → PASS; golden do FII; mutação de `sentinela.data.fii_elegibilidade` e `rendimento_fii` ≥ 80%; gate.
 
 - [ ] **F2B-60** · fix · `fix: validate every book value in the FII window` · **[golden]**

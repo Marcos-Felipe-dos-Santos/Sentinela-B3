@@ -79,6 +79,21 @@ def _vazio(bruto: object) -> bool:
     )
 
 
+def forma(bruto: object) -> tuple:
+    """Vazio, número ou inválido, separados, para comparar células (F2B-57, BUG-2B-37)."""
+    if _vazio(bruto):
+        return ("vazio",)
+    numero = _numero(bruto)
+    return (
+        ("numero", numero) if numero is not None else ("invalido", str(bruto).strip())
+    )
+
+
+def posicoes(linha: Mapping) -> tuple:
+    """As posições da classificação, cada uma pela `forma`, para comparar composições."""
+    return tuple(forma(linha.get(c)) for _, colunas in _GRUPOS for c in colunas)
+
+
 def tipo_pela_composicao(linha: Mapping) -> str | Abstencao:
     """Tijolo, papel ou fundo de fundos pela maioria estrita da base; senão, abstenção."""
     somas = {}

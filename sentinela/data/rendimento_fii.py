@@ -35,7 +35,13 @@ MOTIVO_MESES_INCOMPLETOS = "menos de 12 meses com DY e valor da cota do mês ant
 MOTIVO_PRECO = "preço ausente ou não positivo"
 MOTIVO_NAO_FINITO = "resultado não finito: rendimento de 12 meses do FII"
 MOTIVO_CONFLITO = "Informe com linhas conflitantes da mesma versão"
-_COLUNAS_DA_CONTA = ("Percentual_Dividend_Yield_Mes", "Valor_Patrimonial_Cotas")
+# Ficha FII 1.3 (BUG-2B-37, reaberto): todo campo usado do complemento entra no conflito.
+_COLUNAS_DA_CONTA = (
+    "Percentual_Dividend_Yield_Mes",
+    "Valor_Patrimonial_Cotas",
+    "Cotas_Emitidas",
+    "Percentual_Amortizacao_Cotas_Mes",
+)
 
 
 @dataclass(frozen=True)
@@ -80,9 +86,10 @@ def _por_mes(
 ) -> tuple[dict[tuple[int, int], Mapping], set[tuple[int, int]]]:
     """Um registro por mês, o de maior `Versao` (versão ilegível perde), e os meses em conflito.
 
-    Duas linhas da maior versão do mês com DY ou valor da cota diferentes são conflito
-    (F2B-54, BUG-2B-37): nenhuma vence pela ordem do arquivo. Duplicata nessas colunas não é
-    conflito, nem com célula vazia (as duas sem número).
+    Duas linhas da maior versão do mês com DY, valor da cota, cotas ou amortização diferentes
+    são conflito (F2B-54 e F2B-57, BUG-2B-37): nenhuma vence pela ordem do arquivo. Duplicata
+    nessas colunas não é conflito, nem com célula vazia (as duas vazias); vazio contra
+    inválido é conflito (`fii_elegibilidade.forma`).
     """
     escolhidos: dict[tuple[int, int], Mapping] = {}
     conflitos: set[tuple[int, int]] = set()
@@ -95,7 +102,9 @@ def _por_mes(
             escolhidos[mes] = registro
             conflitos.discard(mes)
         elif _versao(registro) == _versao(atual) and any(
-            _numero(registro.get(c)) != _numero(atual.get(c)) for c in _COLUNAS_DA_CONTA
+            fii_elegibilidade.forma(registro.get(c))
+            != fii_elegibilidade.forma(atual.get(c))
+            for c in _COLUNAS_DA_CONTA
         ):
             conflitos.add(mes)
     return escolhidos, conflitos
@@ -193,7 +202,7 @@ def avaliar(
     conferência com o rendimento da B3 só gera aviso. Emissões ficam em contexto.
     """
     elegiveis = [r for r in registros if _entregue(r, dia_as_of)]
-    meses, _ = _por_mes(elegiveis)
+    meses, conflitos = _por_mes(elegiveis)
     if not meses:
         return Abstencao(MOTIVO_SEM_MESES)
     final = max(meses)
@@ -209,6 +218,8 @@ def avaliar(
         linha = meses.get(mes)
         if linha is None:
             return Abstencao(MOTIVO_MESES_INCOMPLETOS)
+        if mes in conflitos:
+            return Abstencao(f"{MOTIVO_CONFLITO}: {_rotulo(mes)}")
         cotas = _numero(linha.get("Cotas_Emitidas"))
         if cotas is None or cotas <= 0:
             return Abstencao(MOTIVO_COTAS)
@@ -239,7 +250,12 @@ def avaliar(
     composicao = [c for c in composicoes if (_mes(c), _versao(c)) in entregues]
     if not composicao:
         return Abstencao(MOTIVO_SEM_COMPOSICAO)
-    tipo = fii_elegibilidade.tipo_pela_composicao(max(composicao, key=_versao))
+    maior = max(map(_versao, composicao))
+    da_maior = [c for c in composicao if _versao(c) == maior]
+    if len({fii_elegibilidade.posicoes(c) for c in da_maior}) > 1:
+        # F2B-57 (BUG-2B-37, reaberto): composições da mesma versão em conflito abstêm.
+        return Abstencao(f"{MOTIVO_CONFLITO}: {_rotulo(final)} (composição)")
+    tipo = fii_elegibilidade.tipo_pela_composicao(da_maior[0])
     if isinstance(tipo, fii_elegibilidade.Abstencao):
         return Abstencao(tipo.motivo)
     if tipo != "tijolo":
