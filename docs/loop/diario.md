@@ -95,3 +95,15 @@ Diário da fila de fechamento (`docs/loop/fila.md`). O diário da fase está em 
 - **Testes:** 2563 passed, 1 skipped, 14 xfailed → 2567 passed, 1 skipped, 14 xfailed. Gates verdes.
 - **Higiene:** os três parametrizados de `test_texto_da_abstencao_em_pt_br` (F2B-45) ganham parênteses na concatenação implícita (ISC004 do `ruff check` completo, fora do gate do CI); o C408 de `_dados` é dívida antiga do arquivo.
 - **Revisão:** PODE COMMITAR na 1ª rodada. Resíduos registrados: (1) `app.py:271` (`analise.get('fair_value', 0)`) passa a mostrar "Valor Justo R$ 0.00" para o FII abstido; o `app.py` está travado até o F3-6, e o mesmo efeito já é resíduo do F2A para ETF, BDR e `UNKNOWN` (destino F3-6); (2) `auditoria.py:868` e `:880` (cobertura 0%) ainda usam o preço como FV do FII abstido no texto de sanidade (destino 2C, com o F2C-8 da reimplementação dos métodos no `auditoria.py`); (3) falta teste da síntese do relatório com `aviso_liquidez` num FII abstido.
+
+
+### F2B-63 — fix: read the statement model where the cascade writes it in the completeness check
+- **Executor:** claude-code (claude-opus-5-5).
+- **Status:** sucesso.
+- **O que foi feito:** BUG-2B-06 reaberto. `DataQualityReport.completude` lê o modelo em `modelo_bpp`, a chave que a cascata grava desde o F2B-4 (lia `modelo`, que nenhum produtor grava; um banco completo saía com 70% e "modelo não demonstrado").
+- **Rito D27:** `tests/regressao/test_bug_2b_06_reaberto_completude_le_o_modelo_da_cascata.py`, pela saída real de `_buscar_cvm` (dublê do provedor que demonstra o modelo banco), com `xfail(strict=True)` antes; `--runxfail`: **1 failed**, `assert 70 == 100`, em `f2b63-vermelho.txt` no scratchpad. Marca retirada: PASS; registro do BUG-2B-06 com o reaberto.
+- **Testes existentes que mudam:** `tests/regressao/test_bug_2b_06_completude_penaliza_banco_e_fii.py` e dois testes de `tests/test_data_quality.py` (linhas 280 e 307) montavam a chave `modelo` à mão; passam a usar `modelo_bpp`, sem mudar asserção.
+- **Golden:** inalterado (a completude não está na grade).
+- **Mutação:** `data_quality` (V1, sem meta) 437/531.
+- **Testes:** 2567 passed, 1 skipped, 14 xfailed → 2568 passed, 1 skipped, 14 xfailed. Gates verdes.
+- **Revisão:** PODE COMMITAR na 1ª rodada. Registrados: (1) com a chave lida, uma seguradora (`modelo_bpp == "seguradora"`) passa a receber a limitação "modelo não demonstrado", texto impreciso para um modelo demonstrado fora de empresa e banco (destino 2C, com o escopo de seguradora); (2) a regressão passa pela etapa da cascata que grava a chave (`_buscar_cvm`), não por `buscar_dados_ticker` inteira, desvio da letra do aceite para o Marcos aceitar; (3) no teste, `{**campos, **dados}` deixa a saída da cascata por cima dos campos.

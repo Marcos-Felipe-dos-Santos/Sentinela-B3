@@ -145,7 +145,8 @@ class DataQualityReport:
         field_prov: dict = d.get("field_provenance") or {}
         fonte_base = _best_fonte(fonte_fund) if fonte_fund else "unknown"
         classe = str(d.get("classe_ativo") or "").strip().upper()
-        modelo = str(d.get("modelo") or "").strip().lower()
+        # F2B-63 (BUG-2B-06, reaberto): o modelo que a cascata grava (F2B-4).
+        modelo = str(d.get("modelo_bpp") or "").strip().lower()
         limitacoes = []
         if classe == "FII":
             esperados = ["preco_atual", "dy", "pvp", "vpa"]

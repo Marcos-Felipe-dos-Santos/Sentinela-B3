@@ -15,7 +15,8 @@ INAPLICAVEIS = ("receita_liquida", "margem_liquida", "divida_liq_ebitda")
 def test_banco_sem_os_campos_do_modelo_de_empresa():
     # Modelo contábil demonstrado; setor sozinho não substitui a decisão FINANCEIRAS.
     dados = {c: 1.0 for c in _CAMPOS_ESPERADOS if c not in INAPLICAVEIS}
-    completude = DataQualityReport({**dados, "modelo": "banco"}).completude()
+    # F2B-63: a chave é a que a cascata grava (`modelo_bpp`).
+    completude = DataQualityReport({**dados, "modelo_bpp": "banco"}).completude()
     assert completude["completude_pct"] == 100
 
 

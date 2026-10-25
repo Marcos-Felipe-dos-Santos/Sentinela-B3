@@ -277,7 +277,7 @@ def test_fonte_cache_tem_confianca_propria():
 
 
 def test_completude_banco_por_modelo_exclui_campos_inaplicaveis():
-    dados = {**_dados_completos(), "modelo": "banco", "setor": "Outro"}
+    dados = {**_dados_completos(), "modelo_bpp": "banco", "setor": "Outro"}
     for campo in ("receita_liquida", "margem_liquida", "divida_liq_ebitda"):
         dados.pop(campo)
     comp = DataQualityReport(dados).completude()
@@ -304,7 +304,7 @@ def test_setor_sozinho_nao_demonstra_modelo_para_completude():
 
 
 def test_completude_empresa_explicitamente_demonstrada():
-    comp = DataQualityReport({**_dados_completos(), "modelo": "empresa"}).completude()
+    comp = DataQualityReport({**_dados_completos(), "modelo_bpp": "empresa"}).completude()
     assert comp["completude_pct"] == 100
     assert comp["limitacoes"] == []
     assert comp["completude_do_modelo_determinada"]

@@ -42,7 +42,7 @@ Branch: `v2/fase-2b` · Protocolo: `docs/loop/protocolo.md` · Diário: `docs/lo
   - **BUG-2B-50:** a abstenção do FII devolve `fair_value = preço` e `upside = 0`. Sem valor e sem upside numéricos, com o motivo; o score contextual fica como decidido em 25/10/2026 (`docs/decisoes/marcador-2b.md`, seção de 25/10/2026, item 3: 50, neutro, exceção à decisão de 19/10).
   - **Aceite:** regressão estrita → correção → PASS; golden `--onde "caso['motor'] == 'fii'"` (alterados só os casos de lente abstida, nas chaves `fair_value` e `upside`, e o que a regra vigente de rótulo derivar disso; conferência campo a campo no diário); gate.
 
-- [ ] **F2B-63** · fix · `fix: read the statement model where the cascade writes it in the completeness check`
+- [x] **F2B-63** · fix · `fix: read the statement model where the cascade writes it in the completeness check`
   - **BUG-2B-06 (reaberto):** a completude lê `modelo`, e a cascata grava `modelo_bpp`: um banco completo sai com 70%. Alinhar produtor e consumidor; regressão pela saída real da cascata (dublê do provedor, `buscar_dados_ticker`), não por dicionário montado à mão.
   - **Aceite:** regressão estrita → correção → PASS; golden inalterado; mutação de `data_quality` registrada (V1, sem meta); gate.
 
