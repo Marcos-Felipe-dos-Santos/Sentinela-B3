@@ -58,3 +58,15 @@ Diário da fila de fechamento (`docs/loop/fila.md`). O diário da fase está em 
 - **Mutação:** `sentinela.data.rendimento_fii` 497/546 (91,0%); `sentinela.data.fii_elegibilidade` 176/205 (85,9%).
 - **Testes:** 2545 passed, 1 skipped, 14 xfailed → 2549 passed, 1 skipped, 14 xfailed. Gates verdes.
 - **Revisão:** 1ª rodada reprovada por `import pytest` sem uso no teste novo (sobra da marca retirada; o `ruff check .` completo acusa F401, o gate do CI não). Removido e commitado, como a revisão indica. Registrados, sem mudança: `maior`/`da_maior` em `avaliar` ficaram redundantes depois do filtro pela versão selecionada (limpeza de refactor, para a 2C); versão ilegível nos dois lados (`-inf`) ainda casa, como já casava; a data de entrega da composição continua implícita na do complemento da mesma versão.
+
+
+### F2B-60 — fix: validate every book value in the FII window
+- **Executor:** claude-code (claude-opus-5-5).
+- **Status:** sucesso.
+- **O que foi feito:** BUG-2B-48. `rendimento_fii.avaliar` confere o valor patrimonial da cota em cada um dos 13 meses da janela, inclusive o final, que o rendimento não usa (cada DY usa o VP do mês anterior); ausente, vazio, zero, negativo, não finito ou texto abstém com "valor patrimonial da cota inválido no Informe: AAAA-MM" (`MOTIVO_VP`, novo).
+- **Rito D27:** `tests/regressao/test_bug_2b_48_fii_vp_final_invalido.py` com `xfail(strict=True)` antes da correção; `--runxfail`: **7 failed** pelo motivo econômico (a lente calculava `dy` 0,12 com o VP final `None`, vazio, `"0"`, `"-1"`, `"nan"`, `"inf"` e texto), em `f2b60-vermelho.txt` no scratchpad. Marca retirada; o teste passou a conferir o motivo exato: PASS.
+- **Testes existentes que mudam:** nenhum. Nos meses anteriores, o VP inválido continua abstendo, agora com o motivo novo antes do de meses incompletos (nenhum teste fixava o motivo nesse caso).
+- **Golden:** `--onde "caso['motor'] == 'fii'"`: 0 alterados, 0 incluídos, 0 removidos, 0 fora do predicado.
+- **Mutação:** `sentinela.data.rendimento_fii` 508/558 (91,0%).
+- **Testes:** 2549 passed, 1 skipped, 14 xfailed → 2556 passed, 1 skipped, 14 xfailed. Gates verdes.
+- **Revisão:** PODE COMMITAR na 1ª rodada. Registrado para a 2C: o teste só invalida o VP do mês final; um caso num mês intermediário e no 13º mês protegeria a ordem das conferências contra uma mudança de lugar (que a mutação não pega).

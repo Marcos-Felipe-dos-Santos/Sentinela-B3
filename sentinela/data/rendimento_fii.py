@@ -161,6 +161,7 @@ MOTIVO_AMORTIZACAO = (
 )
 MOTIVO_AMORTIZACAO_INVALIDA = "amortização inválida no Informe"
 MOTIVO_COTAS = "cotas emitidas inválidas: base de cota incompatível"
+MOTIVO_VP = "valor patrimonial da cota inválido no Informe"
 MOTIVO_SEM_COMPOSICAO = "composição do Informe do mês final indisponível"
 MOTIVO_EVENTOS_INDISPONIVEIS = (
     "fonte de eventos de cota indisponível: continuidade não demonstrável"
@@ -220,6 +221,10 @@ def avaliar(
             return Abstencao(MOTIVO_MESES_INCOMPLETOS)
         if mes in conflitos:
             return Abstencao(f"{MOTIVO_CONFLITO}: {_rotulo(mes)}")
+        # F2B-60 (BUG-2B-48): os 13 VPs da janela, inclusive o do mês final.
+        vp = _numero(linha.get("Valor_Patrimonial_Cotas"))
+        if vp is None or vp <= 0:
+            return Abstencao(f"{MOTIVO_VP}: {_rotulo(mes)}")
         cotas = _numero(linha.get("Cotas_Emitidas"))
         if cotas is None or cotas <= 0:
             return Abstencao(MOTIVO_COTAS)

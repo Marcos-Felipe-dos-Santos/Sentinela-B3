@@ -30,7 +30,7 @@ Branch: `v2/fase-2b` · Protocolo: `docs/loop/protocolo.md` · Diário: `docs/lo
   - A composição precisa ser da mesma versão do complemento selecionado (o conflito de composições da mesma versão já é do F2B-57). Inclui a regra de células vazias da ficha 1.3 (F2B-56): vazio vale zero só em registro da mesma versão com ao menos uma posição preenchida; registro ausente ou todo vazio é tipo desconhecido.
   - **Aceite:** regressão estrita → correção → PASS; golden do FII; mutação de `sentinela.data.fii_elegibilidade` e `rendimento_fii` ≥ 80%; gate.
 
-- [ ] **F2B-60** · fix · `fix: validate every book value in the FII window` · **[golden]**
+- [x] **F2B-60** · fix · `fix: validate every book value in the FII window` · **[golden]**
   - **BUG-2B-48:** VP final inválido (None, 0, negativo, NaN, inf) não impede a elegibilidade. Os 13 VPs são validados, inclusive o último.
   - **Aceite:** regressão estrita → correção → PASS; golden do FII; mutação ≥ 80%; gate.
 

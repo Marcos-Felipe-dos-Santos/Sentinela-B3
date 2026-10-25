@@ -118,3 +118,5 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2B-46 | a lente de FII não confere o as_of, a data-base nem a idade do registro da NTN-B, e aceita Informe e B3 coletados depois do as_of | sentinela/data/rendimento_fii.py (entradas), fii_engine.py | auditoria de fechamento da 2B (Codex), 25/10/2026 | test_bug_2b_46_fii_sem_corte_temporal.py | F2B-58 | corrigido |
 
 | BUG-2B-47 | composição de outra versão do Informe autoriza a lente de FII | sentinela/data/rendimento_fii.py (avaliar) | auditoria de fechamento da 2B (Codex), 25/10/2026 | test_bug_2b_47_fii_composicao_de_outra_versao.py | F2B-59 | corrigido |
+
+| BUG-2B-48 | VP final inválido (ausente, zero, negativo, não finito, texto) não impede a elegibilidade do FII | sentinela/data/rendimento_fii.py (avaliar) | auditoria de fechamento da 2B (Codex), 25/10/2026 | test_bug_2b_48_fii_vp_final_invalido.py | F2B-60 | corrigido |
