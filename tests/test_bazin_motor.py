@@ -7,6 +7,7 @@ from apoio_bazin import enriquecer_bazin
 from apoio_escopo import de_empresa
 from apoio_gordon import AS_OF_GORDON
 
+from config import MACRO
 from sentinela.methods.bazin import AVISO_PREJUIZO
 from valuation_engine import ValuationEngine
 
@@ -26,7 +27,8 @@ def _acao(**kw):
 
 
 def _processar(dados, selic=0.10):
-    with patch("valuation_engine.get_selic_atual", return_value=selic):
+    # F2B-5: o motor não lê mais a Selic; ela entra no MACRO para provar a independência.
+    with patch.object(MACRO, "_selic", selic):
         return ValuationEngine().processar(de_empresa(dados), as_of=AS_OF_GORDON)
 
 

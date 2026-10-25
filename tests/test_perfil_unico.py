@@ -1,7 +1,5 @@
 """Perfil único por ativo pelo DY da relação B3 (F2B-52; decisão do Marcos de 20/10/2026)."""
 
-from unittest.mock import patch
-
 from apoio_bazin import enriquecer_bazin
 from apoio_escopo import de_empresa
 from apoio_gordon import AS_OF_GORDON
@@ -26,8 +24,7 @@ def _acao(roe, dy_cascata, dy_b3):
 
 
 def _processar(dados):
-    with patch("valuation_engine.get_selic_atual", return_value=0.1475):
-        return ValuationEngine().processar(dados, as_of=AS_OF_GORDON)
+    return ValuationEngine().processar(dados, as_of=AS_OF_GORDON)
 
 
 def test_caso_beef3_perfil_unico_pelo_dy_da_b3():
@@ -75,10 +72,9 @@ def test_relatorio_mostra_a_fonte_do_perfil():
     motor = ValuationEngine()
     original = motor.processar
     motor.processar = lambda d: original(d, as_of=AS_OF_GORDON)
-    with patch("valuation_engine.get_selic_atual", return_value=0.1475):
-        contexto = rastreabilidade.construir_contexto(
-            dados, False, AS_OF_GORDON.date(), motor, FIIEngine()
-        )
+    contexto = rastreabilidade.construir_contexto(
+        dados, False, AS_OF_GORDON.date(), motor, FIIEngine()
+    )
     assert dict(contexto["fontes"])["DY do perfil (F2B-52)"] == (
         "perfil pelo DY da cascata: x"
     )
@@ -101,10 +97,9 @@ def test_relatorio_com_serie_valida_e_sem_perfil():
         motor = ValuationEngine()
         original = motor.processar
         motor.processar = lambda d: original(d, as_of=AS_OF_GORDON)
-        with patch("valuation_engine.get_selic_atual", return_value=0.1475):
-            contexto = construir_contexto(
-                dados, False, AS_OF_GORDON.date(), motor, FIIEngine()
-            )
+        contexto = construir_contexto(
+            dados, False, AS_OF_GORDON.date(), motor, FIIEngine()
+        )
         return dict(contexto["fontes"])["DY do perfil (F2B-52)"]
 
     assert fonte(_acao(0.30, 0.05, 0.03)) == (

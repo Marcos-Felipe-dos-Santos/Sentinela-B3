@@ -11,7 +11,6 @@ from valuation_engine import ValuationEngine
 
 @pytest.mark.parametrize("qual", ["DFP", "composicao"])
 def test_reprocessamento_nao_aceita_evidencia_posterior_ao_asof(qual, monkeypatch):
-    monkeypatch.setattr("valuation_engine.get_selic_atual", lambda: 0.145)
     d = enriquecer_gordon(
         {
             "ticker": "TSTA3",
@@ -53,7 +52,6 @@ def test_reprocessamento_nao_aceita_evidencia_posterior_ao_asof(qual, monkeypatc
 def test_reprocessamento_recusa_contexto_macro_posterior_ou_sem_fuso(
     instante_macro, monkeypatch
 ):
-    monkeypatch.setattr("valuation_engine.get_selic_atual", lambda: 0.145)
     d = enriquecer_gordon(
         {
             "ticker": "TSTA3",

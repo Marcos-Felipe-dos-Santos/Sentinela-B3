@@ -5,7 +5,7 @@ from datetime import date
 import pytest
 
 from sentinela.domain.enums import AssetType, Regime
-from sentinela.domain.units import BRL, RateNominal, RateReal, Ratio
+from sentinela.domain.units import BRL, RateReal, Ratio
 from sentinela.methods.base import Abstention, MethodInputs, MethodResult
 from sentinela.methods.fii_yield import FiiYield, FiiYieldParams
 
@@ -38,13 +38,6 @@ def test_preco_justo_pela_ntnb_mais_spread():
     assert r.obter("taxa") == RateReal(0.07 + 0.02)
     assert r.obter("spread") == RateReal(0.02)
     assert r.obter("rendimento_12m") == BRL(100.0 * 0.10)
-
-
-def test_selic_liquida_nao_forma_o_preco_justo():
-    base = _fii()
-    com_selic = FiiYield().calcular(_inputs(selic=RateNominal(0.30)), PARAMS)
-    assert com_selic.valor == base.valor
-    assert "selic" not in FiiYield.requires
 
 
 def test_sem_ntnb_abstem():

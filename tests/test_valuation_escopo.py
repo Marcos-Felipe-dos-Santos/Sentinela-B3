@@ -23,8 +23,7 @@ DADOS = {
 
 
 def _processar(**extra):
-    with patch("valuation_engine.get_selic_atual", return_value=0.145):
-        return ValuationEngine().processar({**DADOS, **extra})
+    return ValuationEngine().processar({**DADOS, **extra})
 
 
 @pytest.mark.parametrize("classe", ["ETF", "BDR", "UNKNOWN"])
@@ -71,7 +70,6 @@ def test_relatorio_mostra_a_abstencao_e_o_motivo():
 
     dados = {**DADOS, "classe_ativo": "ETF", "fonte_preco": "yfinance"}
     with (
-        patch("valuation_engine.get_selic_atual", return_value=0.145),
         patch("fii_engine.get_selic_atual", return_value=0.145),
     ):
         contexto = rastreabilidade.construir_contexto(
@@ -140,11 +138,10 @@ def test_bpp_de_empresa_segue_os_metodos(classe):
 def test_evidencia_do_bpp_posterior_ao_as_of_abstem(proveniencia):
     from datetime import UTC, datetime
 
-    with patch("valuation_engine.get_selic_atual", return_value=0.145):
-        resultado = ValuationEngine().processar(
-            {**DADOS, **_EMPRESA, "modelo_bpp_proveniencia": proveniencia},
-            as_of=datetime(2026, 3, 1, 18, tzinfo=UTC),
-        )
+    resultado = ValuationEngine().processar(
+        {**DADOS, **_EMPRESA, "modelo_bpp_proveniencia": proveniencia},
+        as_of=datetime(2026, 3, 1, 18, tzinfo=UTC),
+    )
     assert resultado["riscos"] == [
         "disponibilidade do BPP consolidado não demonstrada até o as_of"
     ]
@@ -154,11 +151,10 @@ def test_evidencia_do_bpp_posterior_ao_as_of_abstem(proveniencia):
 def test_evidencia_do_bpp_anterior_ao_as_of_segue():
     from datetime import UTC, datetime
 
-    with patch("valuation_engine.get_selic_atual", return_value=0.145):
-        resultado = ValuationEngine().processar(
-            {**DADOS, **_EMPRESA, "modelo_bpp_proveniencia": _PROVENIENCIA},
-            as_of=datetime(2026, 3, 1, 18, tzinfo=UTC),
-        )
+    resultado = ValuationEngine().processar(
+        {**DADOS, **_EMPRESA, "modelo_bpp_proveniencia": _PROVENIENCIA},
+        as_of=datetime(2026, 3, 1, 18, tzinfo=UTC),
+    )
     assert resultado["metodos_usados"].startswith("Graham")
 
 
@@ -168,7 +164,6 @@ def test_relatorio_mostra_o_escopo_com_o_modelo_e_a_classe():
 
     def contexto(dados):
         with (
-            patch("valuation_engine.get_selic_atual", return_value=0.145),
             patch("fii_engine.get_selic_atual", return_value=0.145),
         ):
             return rastreabilidade.construir_contexto(

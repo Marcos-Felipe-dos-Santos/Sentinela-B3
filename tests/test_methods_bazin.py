@@ -22,13 +22,12 @@ ESCOPO = {"classe_ativo": AssetType.STOCK, "modelo": ModeloDemonstracao.EMPRESA}
 PARAMS = BazinParams(dy_min=0.05, dy_armadilha=0.15)
 
 
-def _inputs(preco=100.0, dy=0.08, selic=0.145, perfil=Perfil.RENDA, **kw):
+def _inputs(preco=100.0, dy=0.08, perfil=Perfil.RENDA, **kw):
     return MethodInputs(
         **ESCOPO,
         as_of=date(2026, 10, 2),
         preco=BRL(preco),
         dy=Ratio(dy),
-        selic=RateNominal(selic),
         perfil=perfil,
         **kw,
     )
@@ -38,16 +37,8 @@ def _bazin(**kw):
     return Bazin().calcular(_inputs(**kw), PARAMS)
 
 
-@pytest.mark.parametrize("selic", [-0.02, 0.02, 0.03, 0.05, 0.0501, 0.10, 0.1475, 0.25])
-def test_taxa_do_bazin_nao_e_a_selic(selic):
-    # Ficha Bazin 1.0: critério de rendimento mínimo de 6% fixos, em qualquer Selic.
-    r = Bazin().calcular(_inputs(preco=100.0, dy=0.08, selic=selic), PARAMS)
-    assert r.obter("taxa_aplicada") == RateNominal(0.06)
-    assert r.valor.valor == pytest.approx(0.08 * 100.0 / 0.06, abs=1e-9)
-
-
 def test_formula_dy_vezes_preco_sobre_6_por_cento():
-    r = _bazin(preco=100.0, dy=0.08, selic=0.145)
+    r = _bazin(preco=100.0, dy=0.08)
     assert isinstance(r, MethodResult)
     assert r.valor == BRL((0.08 * 100.0) / 0.06)
     assert r.obter("taxa_aplicada") == RateNominal(0.06)
@@ -58,7 +49,7 @@ def test_formula_dy_vezes_preco_sobre_6_por_cento():
 
 def test_mesma_ordem_de_operacoes():
     dy, p = 0.0713, 37.19
-    assert _bazin(preco=p, dy=dy, selic=0.1375).valor.valor == (dy * p) / 0.06
+    assert _bazin(preco=p, dy=dy).valor.valor == (dy * p) / 0.06
 
 
 def test_sem_selic_calcula():
@@ -184,7 +175,6 @@ def test_insumo_ausente_abstem_se(campo):
     base = {
         "preco": BRL(100.0),
         "dy": Ratio(0.08),
-        "selic": RateNominal(0.145),
         "perfil": Perfil.RENDA,
     }
     base[campo] = None
@@ -196,7 +186,7 @@ def test_insumo_ausente_abstem_se(campo):
 
 
 def test_resultado_que_estoura_para_infinito_abstem_se():
-    r = _bazin(preco=1e308, dy=0.9, selic=0.05)
+    r = _bazin(preco=1e308, dy=0.9)
     assert isinstance(r, Abstention)
     assert r.motivo == "resultado não finito"
     assert (r.metodo, r.versao) == ("Bazin", Bazin.version)

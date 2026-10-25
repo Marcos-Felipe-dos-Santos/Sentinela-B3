@@ -60,9 +60,6 @@ def executar(caso):
                     )
                 )
             with (
-                patch.object(
-                    valuation_engine, "get_selic_atual", return_value=caso["selic"]
-                ),
                 patch.object(valuation_engine, "DISTRESSED_TICKERS", DISTRESSED),
             ):
                 return ValuationEngine().processar(entrada, as_of=AS_OF_GORDON)

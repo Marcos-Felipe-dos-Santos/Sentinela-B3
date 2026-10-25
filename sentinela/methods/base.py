@@ -50,7 +50,6 @@ _TIPOS_CAMPOS: dict[str, type] = {
     "pvp": Ratio,
     "dy": Ratio,
     "roe": Ratio,
-    "selic": RateNominal,
     "custo_capital_real": RateReal,
     "inflacao": Inflacao,
     "teto_pib_real": RateReal,
@@ -81,7 +80,6 @@ class MethodInputs:
     pvp: Ratio | None = None
     dy: Ratio | None = None
     roe: Ratio | None = None
-    selic: RateNominal | None = None
     vacancia: Ratio | None = None
     perfil: Perfil | None = None
     pl_confiavel: bool = True
@@ -230,8 +228,6 @@ class ValuationMethod(ABC):
             raise TypeError("custo_capital_real: só método REAL pode exigi-lo")
         if "ntnb_real" in cls.requires and cls.regime is not Regime.REAL:
             raise TypeError("ntnb_real: só método REAL pode exigi-la")
-        if "selic" in cls.requires and cls.regime is not Regime.NOMINAL:
-            raise TypeError("selic é taxa nominal: só método NOMINAL pode exigi-la")
         if (
             not isinstance(cls.applies_to, frozenset)
             or not cls.applies_to

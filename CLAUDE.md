@@ -128,7 +128,7 @@ Preço: yfinance > brapi, sempre fechamento **D-1**.
 - Liquidez: nos 63 pregões, presença ≥ 80% e volume mediano diário ≥ R$ 500 mil para ações/units ou R$ 100 mil para FII. Abaixo, abstém; dado ausente, cobertura incompleta ou falha de coleta geram aviso, sem converter ausência em volume zero
 - Métodos divergindo > 2x → flag de risco, confiança reduzida
 - DY e ROE são convertidos uma vez, na fronteira do provedor (`sentinela/data/normalizacao.py`): yfinance com DY em percentual e ROE em razão (F2A-16); brapi pela regra da V1 (acima de 1 é percentual), declarada como inferência na proveniência. ROE não finito ou fora de [−2; 2] é descartado, com o motivo
-- `_normalizar_dy` (`config.py:375`) é só o invariante dos motores: fora de 0 ≤ DY ≤ 0,25, ou não finito, devolve `(0.0, False)`
+- `_normalizar_dy` (`config.py:332`) é só o invariante dos motores: fora de 0 ≤ DY ≤ 0,25, ou não finito, devolve `(0.0, False)`
 - LPA, VPA e ROE pelos controladores: lucro e PL atribuídos aos controladores, com as reservas da D20 (F2A-37); o LPA dos métodos é o divulgado da classe do ticker (D19, F2A-36), e o recalculado (ações da Composição do Capital do mesmo documento) é conferência e reserva
 - Alavancagem: dívida financeira líquida (2.01.04 + 2.02.01 − 1.01.01 − 1.01.02, regime pós-IFRS 16, arrendamento incluído) ÷ EBITDA (EBIT + D&A da DVA) e ÷ PL; banco e seguradora não recebem a medida (F2A-8)
 - Vocabulário: "classificação", "sinal positivo", "classificação heurística". Nunca "recomendação", "compra" ou "venda" em código novo, tabela, coluna ou tela. A V1 ainda exibe COMPRA/NEUTRO/VENDA; a troca é o F2C-4
@@ -176,15 +176,15 @@ atuais. `backtest_results_v1.csv` veio de versão anterior do engine. Não é ev
 `config` — contorno do E-6, não correção — e bloqueia `socket.connect`, falhando o teste e a sessão
 que tentarem rede. A semente de taxa real substitui o carregador só nos testes; não existe contingência equivalente em produção. Também ajusta `sys.path` e `basetemp` no Windows.
 
-**8. `config.py:372` faz rede no import**
+**8. `config.py:329` faz rede no import**
 `MACRO = MacroContext()` chama a API do BCB ao importar. Em CI ou daemon isso vira
 chamada externa a cada execução, e a Selic fica congelada pelo tempo do processo.
 A suíte contorna isso com a semente do `tests/conftest.py`; a correção (E-6) é anterior ao monitoramento contínuo.
 
 **9. Integrações vigentes e resíduos**
 `get_taxa_real` é chamado pela cascata; Gordon e FII consomem o registro. A antiga
-propriedade `ntnb_longa` não alimenta esse caminho; CDI/IPCA legados não são a fonte
-da nova taxa real. Limpeza é F2B-5. A lente `Bancos` está no catálogo, mas sem consumidor
+propriedade `ntnb_longa` saiu no F2B-5; CDI/IPCA legados não são a fonte da nova taxa
+real (F3-1). A lente `Bancos` está no catálogo, mas sem consumidor
 no motor (F2B-32 pendente). CVM de FII e ITR/TTM já estão ligados à cascata desde a 2A.
 
 **10. Escala da quantidade de ações na CVM**
@@ -210,7 +210,7 @@ mutante morto — por isso o `[tool.mutmut]` desliga o `xfail_strict` só na mut
 
 **14. Classe do ativo deduzida do ticker — resolvida no índice (F2A-1, F2A-20, F2A-29)**
 Para ticker do índice oficial, a classe vem dele (`dados['classe_ativo']`), nunca do sufixo, e
-ETF, BDR e `UNKNOWN` não recebem os métodos de ação (`valuation_engine.py:121`). Fora do índice
+ETF, BDR e `UNKNOWN` não recebem os métodos de ação (`valuation_engine.py:201`). Fora do índice
 (ou sem ele), a cascata grava a classe do classificador (F2A-43): fallback por `FIIS_CONHECIDOS` e
 `UNITS_CONHECIDAS`; final 11 vira `UNKNOWN`, o resto `STOCK`. A guarda do motor atua nos dois casos.
 

@@ -742,6 +742,5 @@ def test_falha_do_coletor_de_liquidez_chega_como_aviso(monkeypatch):
     engine.cotahist = FonteIndisponivel()
     dados = engine.buscar_dados_ticker("PETR4")
     assert "falha de coleta" in dados["liquidez"]["abstencao"]
-    monkeypatch.setattr("valuation_engine.get_selic_atual", lambda: .145)
     resultado = ValuationEngine().processar(de_empresa(dados))
     assert resultado["aviso_liquidez"].startswith("liquidez não medida:")  # F2B-45

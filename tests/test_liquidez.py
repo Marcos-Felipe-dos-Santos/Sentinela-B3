@@ -182,11 +182,9 @@ def test_relatorio_mostra_a_liquidez():
         "dy": 0.08,
         "liquidez": medida,
     }
-    with pytest.MonkeyPatch.context() as mp:
-        mp.setattr("valuation_engine.get_selic_atual", lambda: 0.145)
-        contexto = rastreabilidade.construir_contexto(
-            dados, False, date(2026, 10, 13), ValuationEngine(), FIIEngine()
-        )
+    contexto = rastreabilidade.construir_contexto(
+        dados, False, date(2026, 10, 13), ValuationEngine(), FIIEngine()
+    )
     texto = dict(contexto["fontes"])["Liquidez (63 pregões: presença ≥ 80%; mediana ≥ R$ 500 mil em ações/units e R$ 100 mil em FIIs)"]
     assert "21 pregões: volume mediano R$ 20.000,00/dia" in texto
     assert "63 pregões (incompleta)" in texto

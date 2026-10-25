@@ -217,7 +217,6 @@ def test_proventos_declaram_competencia(monkeypatch):
         "ttm_cvm": ttm,
     }
     with (
-        patch("valuation_engine.get_selic_atual", return_value=0.145),
         patch("fii_engine.get_selic_atual", return_value=0.145),
     ):
         contexto = rastreabilidade.construir_contexto(

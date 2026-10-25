@@ -5,10 +5,10 @@ from dataclasses import replace
 from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
-from config import DISTRESSED_TICKERS, MACRO, _normalizar_dy, get_selic_atual
+from config import DISTRESSED_TICKERS, MACRO, _normalizar_dy
 from sentinela.data import gordon_cvm, liquidez, proventos_b3
 from sentinela.domain.enums import AssetType, ModeloDemonstracao, Perfil
-from sentinela.domain.units import BRL, RateNominal, Ratio
+from sentinela.domain.units import BRL, Ratio
 from sentinela.methods.bancos import Bancos, BancosParams
 from sentinela.methods.base import MethodInputs, MethodResult
 from sentinela.methods.bazin import ALERTA_DY_ARMADILHA, Bazin, BazinParams
@@ -108,7 +108,6 @@ class ValuationEngine:
         is_growth,
         pl_confiavel,
         dy=None,
-        selic=None,
         dy_confiavel=True,
         roe=None,
         lpa=None,
@@ -119,7 +118,6 @@ class ValuationEngine:
         """Converte os dados já normalizados da V1 em MethodInputs (uma única vez)."""
         p, pl, pvp = _finito(p), _finito(pl), _finito(pvp)
         dy = None if dy is None else _finito(dy)
-        selic = None if selic is None else _finito(selic)
         roe = None if roe is None else _finito(roe)
         lpa = None if lpa is None else _finito(lpa)
         vpa = None
@@ -134,7 +132,6 @@ class ValuationEngine:
             lpa=None if lpa is None else BRL(lpa),
             roe=None if roe is None else Ratio(roe),
             dy=None if dy is None else Ratio(dy),
-            selic=None if selic is None else RateNominal(selic),
             perfil=Perfil.CRESCIMENTO if is_growth else Perfil.RENDA,
             pl_confiavel=pl_confiavel,
             dy_confiavel=dy_confiavel,
@@ -281,8 +278,6 @@ class ValuationEngine:
 
         lpa = (p / pl)  if pl  > 0 else 0
 
-        selic = get_selic_atual()
-
         confianca = 100
         riscos = []
 
@@ -342,7 +337,6 @@ class ValuationEngine:
             is_growth,
             pl_confiavel,
             dy=dy,
-            selic=selic,
             dy_confiavel=dy_confiavel,
             roe=roe,
             lpa=lpa,

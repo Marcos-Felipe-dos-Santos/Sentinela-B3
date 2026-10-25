@@ -153,7 +153,6 @@ def test_relatorio_declara_a_guarda_e_o_descarte():
         "proveniencia": {"roe_descartes": [{"fonte": "cvm", "motivo": "ROE acima de 2 (200%) depois da conversão: descartado"}]},
     }  # fmt: skip
     with (
-        patch("valuation_engine.get_selic_atual", return_value=0.145),
         patch("fii_engine.get_selic_atual", return_value=0.145),
     ):
         contexto = rastreabilidade.construir_contexto(

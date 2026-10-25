@@ -43,7 +43,6 @@ def _dados(fii=False, **extra):
 
 def _analisar(fii=False, **extra):
     with (
-        patch("valuation_engine.get_selic_atual", return_value=0.145),
         patch("fii_engine.get_selic_atual", return_value=0.145),
     ):
         dados = _dados(fii, **extra)
@@ -276,7 +275,6 @@ def test_relatorio_mostra_os_avisos_fora_de_riscos():
         _dados(liquidez={"abstencao": "falha de coleta"}, fonte_preco="yfinance")
     )
     with (
-        patch("valuation_engine.get_selic_atual", return_value=0.145),
         patch("fii_engine.get_selic_atual", return_value=0.145),
     ):
         contexto = rastreabilidade.construir_contexto(

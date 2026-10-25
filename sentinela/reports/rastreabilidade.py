@@ -119,9 +119,6 @@ Não é consultoria financeira.</p>
 {% for nome, valor in fontes %}<tr><th>{{ nome }}</th><td>{{ valor }}</td></tr>{% endfor %}
 </table>
 
-{% if selic %}<h2>Selic usada</h2>
-<p>{{ selic }} ao ano (taxa nominal).</p>
-{% endif %}
 <h2>Taxa real</h2>
 {% if taxa_real %}
 <table>{% for nome, valor in taxa_real %}<tr><th>{{ nome }}</th><td>{{ valor }}</td></tr>{% endfor %}</table>
@@ -506,13 +503,6 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         for i in instancias
     ]
 
-    # F2B-31: a Selic só aparece se algum método do relatório a exige (nenhum de ação).
-    usa_selic = any("selic" in i.requires for i in instancias)
-    entradas = next(
-        (r[1] for r in registros if r[1].selic is not None),
-        registros[0][1] if registros else None,
-    )
-    selic = entradas.selic if entradas is not None and usa_selic else None
     insumos = [
         {
             "campo": campo,
@@ -578,15 +568,6 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
             }
         )
 
-    if selic is not None:
-        insumos.append(
-            {
-                "campo": "selic",
-                "valor": _formatar(selic),
-                "unidade": "taxa nominal a.a.",
-                "proveniencia": PROVENIENCIA_DERIVADA["selic"],
-            }
-        )
     if eh_fii and "selic_liquida" in analise:
         # F2B-2: a Selic líquida é só contexto e score do FII; não forma o preço justo.
         insumos.append(
@@ -758,9 +739,6 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         "plano_url": PLANO_URL,
         "limites": LIMITES,
         "fontes": fontes,
-        "selic": (_formatar(selic) if selic is not None else "indisponível")
-        if usa_selic
-        else None,
         "insumos": insumos,
         "metodos": metodos,
         "sintese": sintese,

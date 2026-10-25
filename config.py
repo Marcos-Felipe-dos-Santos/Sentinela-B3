@@ -160,7 +160,6 @@ def get_taxa_real(
 # Fallbacks para indicadores macro dinâmicos
 CDI_FALLBACK      = 0.143   # CDI ≈ Selic (BCB SGS série 12 anualizada)
 IPCA_12M_FALLBACK = 0.055   # IPCA acumulado 12m estimado (BCB SGS série 433)
-NTNB_LONGA_FALLBACK = 0.070 # Yield real NTN-B vencimento >= 2035 (Tesouro Direto)
 
 
 # ── PARÂMETROS ECONÔMICOS CENTRALIZADOS ──────────────────────────────────────
@@ -194,7 +193,6 @@ class MacroContext:
     # Bazin
     BAZIN_DY_MIN            = 0.05     # gate: pagadoras consistentes
     BAZIN_DY_ARMADILHA      = 0.15     # DY > 15% → possível armadilha
-    BAZIN_TAXA_MIN          = 0.05     # taxa mínima (floor da Selic)
 
     # Lynch
     LYNCH_PAYOUT_MAX        = 0.95
@@ -206,7 +204,6 @@ class MacroContext:
     GORDON_DY_MIN           = 0.04
     GORDON_ROE_MIN          = 0.10
     GORDON_G_MAX            = 0.08
-    GORDON_PREMIO_RISCO     = 0.07     # k = Selic + 7% (também reutilizado em cost_of_equity_real)
     GORDON_PAYOUT_MAX       = 0.95
 
     # Divergência entre métodos
@@ -257,7 +254,6 @@ class MacroContext:
         self._selic: float = selic if selic is not None else get_selic_atual()
         self._cdi:      float | None = None
         self._ipca_12m: float | None = None
-        self._ntnb_longa: float | None = None
 
     @property
     def selic(self) -> float:
@@ -285,13 +281,6 @@ class MacroContext:
         if self._ipca_12m is None:
             self._ipca_12m = self._fetch_ipca_acumulado()
         return self._ipca_12m
-
-    @property
-    def ntnb_longa(self) -> float:
-        """Yield real NTN-B vencimento >= 2035 (Tesouro Direto). Fallback: NTNB_LONGA_FALLBACK."""
-        if self._ntnb_longa is None:
-            self._ntnb_longa = self._fetch_ntnb()
-        return self._ntnb_longa
 
     def cost_of_equity_real(self) -> float | None:
         """Custo real do F2B-30, sem contingência nem prêmio duplicado."""
@@ -334,38 +323,6 @@ class MacroContext:
         except Exception as exc:
             logger.warning("Falha IPCA BCB série 433: %s. Usando fallback.", exc)
             return IPCA_12M_FALLBACK
-
-    def _fetch_ntnb(self) -> float:
-        """Yield real médio de NTN-B com vencimento >= 2035 via Tesouro Direto. Retorna decimal."""
-        try:
-            url = (
-                "https://www.tesourodireto.com.br/json/br/com/b3/tesourodireto/"
-                "service/api/treasureList.json"
-            )
-            resp = requests.get(
-                url, timeout=10, headers={"User-Agent": "Mozilla/5.0"}
-            )
-            resp.raise_for_status()
-            bonds = resp.json()["response"]["TrsrBdTradgList"]
-            rates: list[float] = []
-            for item in bonds:
-                bd = item["TrsrBd"]
-                nm   = str(bd.get("nm", ""))
-                venc = str(bd.get("mtrtyDt", ""))
-                ano  = int(venc[:4]) if len(venc) >= 4 and venc[:4].isdigit() else 0
-                if "IPCA+" in nm and ano >= 2035:
-                    # taxa pode estar em sellr.anulInvstmtRate ou no nível do TrsrBd
-                    taxa = (
-                        bd.get("sellr", {}).get("anulInvstmtRate")
-                        or bd.get("anulInvstmtRate")
-                    )
-                    if taxa is not None:
-                        rates.append(float(taxa))
-            if rates:
-                return sum(rates) / len(rates) / 100
-        except Exception as exc:
-            logger.warning("Falha NTN-B Tesouro Direto: %s. Usando fallback.", exc)
-        return NTNB_LONGA_FALLBACK
 
 
 # Instância global — engines importam MACRO em vez de literais

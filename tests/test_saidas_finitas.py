@@ -40,8 +40,7 @@ def _fii(selic=0.145, **extra):
 
 @pytest.mark.parametrize("preco", [math.nan, math.inf, -math.inf])
 def test_acao_com_preco_nao_finito_devolve_none(preco):
-    with patch("valuation_engine.get_selic_atual", return_value=0.145):
-        assert ValuationEngine().processar({**ACAO, "preco_atual": preco}) is None
+    assert ValuationEngine().processar({**ACAO, "preco_atual": preco}) is None
     with patch("fii_engine.get_selic_atual", return_value=0.145):
         assert FIIEngine().analisar({**FII, "preco_atual": preco}) is None
 
@@ -49,8 +48,7 @@ def test_acao_com_preco_nao_finito_devolve_none(preco):
 @pytest.mark.parametrize("preco", [-10.0, -0.01])
 def test_preco_negativo_nao_e_analisado(preco):
     # F2B-20 (BUG-2A-22): preço ≤ 0 devolve `None`, como o zero (F2A-24).
-    with patch("valuation_engine.get_selic_atual", return_value=0.145):
-        assert ValuationEngine().processar({**ACAO, "preco_atual": preco}) is None
+    assert ValuationEngine().processar({**ACAO, "preco_atual": preco}) is None
     with patch("fii_engine.get_selic_atual", return_value=0.145):
         assert FIIEngine().analisar({**FII, "preco_atual": preco}) is None
 

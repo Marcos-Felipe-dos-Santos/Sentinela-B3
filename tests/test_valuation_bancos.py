@@ -1,7 +1,5 @@
 """Bancos no motor de ações pela lente de P/VP justificado (F2B-32; ficha bancos 1.1)."""
 
-from unittest.mock import patch
-
 import pytest
 from apoio_bancos import AS_OF_GORDON, VPA, enriquecer_bancos
 
@@ -28,8 +26,7 @@ INADIMPLENCIA = {
 
 
 def _processar(dados):
-    with patch("valuation_engine.get_selic_atual", return_value=0.145):
-        return ValuationEngine().processar(dados, as_of=AS_OF_GORDON)
+    return ValuationEngine().processar(dados, as_of=AS_OF_GORDON)
 
 
 def test_banco_recebe_a_lente_de_bancos():
@@ -115,10 +112,9 @@ def test_relatorio_mostra_a_lente_e_a_inadimplencia():
     original = motor.processar
     motor.processar = lambda d: original(d, as_of=AS_OF_GORDON)
     dados = enriquecer_bancos({**BANCO, **INADIMPLENCIA, "fonte_preco": "yfinance"})
-    with patch("valuation_engine.get_selic_atual", return_value=0.145):
-        contexto = rastreabilidade.construir_contexto(
-            dados, False, date(2026, 10, 20), motor, FIIEngine()
-        )
+    contexto = rastreabilidade.construir_contexto(
+        dados, False, date(2026, 10, 20), motor, FIIEngine()
+    )
     bancos = next(m for m in contexto["metodos"] if m["nome"] == "Bancos")
     assert bancos["valor"] == "R$ 26,35"
     assert dict(bancos["intermediarios"])["pvp_justificado"].startswith("1,42")
@@ -143,10 +139,9 @@ def test_relatorio_mostra_o_motivo_da_fronteira_no_bloco_da_lente():
     dados = enriquecer_bancos(
         {**BANCO, "fonte_preco": "yfinance", "classes_preferenciais": ["PNA", "PNB"]}
     )
-    with patch("valuation_engine.get_selic_atual", return_value=0.145):
-        contexto = rastreabilidade.construir_contexto(
-            dados, False, date(2026, 10, 20), motor, FIIEngine()
-        )
+    contexto = rastreabilidade.construir_contexto(
+        dados, False, date(2026, 10, 20), motor, FIIEngine()
+    )
     bancos = next(m for m in contexto["metodos"] if m["nome"] == "Bancos")
     assert bancos["abstencao"] == "classes com direitos distintos na fase 2B"
 

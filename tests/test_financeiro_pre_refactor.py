@@ -45,8 +45,9 @@ def _acao(*, com_dva=True, **kw):
 
 
 def _processar(dados, selic=SELIC):
+    # F2B-5: o motor não lê mais a Selic; ela entra no MACRO para provar a independência.
     with (
-        patch("valuation_engine.get_selic_atual", return_value=selic),
+        patch.object(MACRO, "_selic", selic),
         patch("valuation_engine.date", DiaGordon),
     ):
         return ValuationEngine().processar(de_empresa(dados), as_of=AS_OF_GORDON)

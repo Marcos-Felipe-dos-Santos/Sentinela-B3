@@ -1,7 +1,7 @@
 """Testes para MacroContext dinâmico (config.py).
 
 Todos os testes usam MacroContext(selic=0.10) para evitar chamada BCB na
-inicialização. Propriedades dinâmicas (cdi, ipca_12m, ntnb_longa) são
+inicialização. Propriedades dinâmicas (cdi, ipca_12m) são
 testadas via monkeypatch dos fetchers privados — sem tráfego de rede.
 """
 
@@ -11,7 +11,6 @@ from config import (
     CDI_FALLBACK,
     IPCA_12M_FALLBACK,
     MACRO,
-    NTNB_LONGA_FALLBACK,
     MacroContext,
 )
 
@@ -31,7 +30,6 @@ def test_existing_class_attrs_preserved():
     m = MacroContext(selic=0.10)
     assert m.BAZIN_DY_MIN == 0.05
     assert m.FII_FATOR_IR == 0.85
-    assert m.GORDON_PREMIO_RISCO == 0.07
     assert m.REC_UPSIDE_COMPRA == 0.15
     assert m.GRAHAM_PL_LIMITE == 25.0
 
@@ -103,25 +101,6 @@ def test_ipca_12m_fallback_on_error(monkeypatch):
     monkeypatch.setattr(m, "_fetch_ipca_acumulado", lambda: IPCA_12M_FALLBACK)
 
     assert m.ipca_12m == pytest.approx(IPCA_12M_FALLBACK)
-
-
-# ---------------------------------------------------------------------------
-# ntnb_longa
-# ---------------------------------------------------------------------------
-
-
-def test_ntnb_returns_value_from_fetcher(monkeypatch):
-    m = MacroContext(selic=0.10)
-    monkeypatch.setattr(m, "_fetch_ntnb", lambda: 0.0656)
-
-    assert m.ntnb_longa == pytest.approx(0.0656)
-
-
-def test_ntnb_fallback_on_error(monkeypatch):
-    m = MacroContext(selic=0.10)
-    monkeypatch.setattr(m, "_fetch_ntnb", lambda: NTNB_LONGA_FALLBACK)
-
-    assert m.ntnb_longa == pytest.approx(NTNB_LONGA_FALLBACK)
 
 
 # ---------------------------------------------------------------------------

@@ -96,7 +96,6 @@ def _contexto(dados, eh_fii=False, selic=0.145):
     analisar = motor_fii.analisar
     motor_fii.analisar = lambda dados: analisar(dados, as_of=AS_OF_GORDON)
     with (
-        patch("valuation_engine.get_selic_atual", return_value=selic),
         patch("valuation_engine.date", DiaGordon),
         patch("fii_engine.get_selic_atual", return_value=selic),
     ):

@@ -33,7 +33,8 @@ def test_campos_gordon_opcionais_e_tipados_sem_mudar_os_antigos():
     )
     assert novo.proventos_controladores is proventos
     assert novo.teto_pib_real == units.RateReal(0.02)
-    assert next(f for f in fields(MethodInputs) if f.name == "selic").default is None
+    # F2B-5: o campo `selic` saiu (nenhum método o exige; plano final, §9).
+    assert "selic" not in {f.name for f in fields(MethodInputs)}
     with pytest.raises(FrozenInstanceError):
         novo.teto_pib_real = units.RateReal(0.03)
 

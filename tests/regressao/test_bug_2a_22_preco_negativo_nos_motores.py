@@ -18,8 +18,7 @@ from valuation_engine import ValuationEngine
 @pytest.mark.parametrize("motor", ["acoes", "fii"])
 def test_preco_negativo_devolve_none(motor):
     if motor == "acoes":
-        with patch("valuation_engine.get_selic_atual", return_value=0.145):
-            resultado = ValuationEngine().processar({**ACAO, "preco_atual": -10.0})
+        resultado = ValuationEngine().processar({**ACAO, "preco_atual": -10.0})
     else:
         with patch("fii_engine.get_selic_atual", return_value=0.145):
             resultado = FIIEngine().analisar({**FII, "preco_atual": -10.0})

@@ -5,8 +5,6 @@ Representação de cada provedor (F2A-16, `docs/decisoes/fontes-fase2a.md`, seç
 e para ela vale a regra da V1 (acima de 1 é percentual), declarada como inferência.
 """
 
-from unittest.mock import patch
-
 import pytest
 from apoio_escopo import de_empresa
 
@@ -22,8 +20,7 @@ def _processar(dy):
         "pvp": 1.5,
         "dy": dy,
     }
-    with patch("valuation_engine.get_selic_atual", return_value=0.145):
-        return ValuationEngine().processar(de_empresa(dados))
+    return ValuationEngine().processar(de_empresa(dados))
 
 
 def test_motor_nao_converte_percentual():

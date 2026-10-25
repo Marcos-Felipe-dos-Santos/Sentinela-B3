@@ -91,7 +91,6 @@ def test_inputs_comecam_vazios_e_com_flags_da_v1():
         "pvp",
         "dy",
         "roe",
-        "selic",
         "vacancia",
         "perfil",
     ):
@@ -109,7 +108,6 @@ def test_inputs_checam_o_tipo_de_cada_campo():
         pvp=Ratio(1.0),
         dy=Ratio(0.05),
         roe=Ratio(0.1),
-        selic=RateNominal(0.1),
         vacancia=Ratio(0.1),
         perfil=Perfil.RENDA,
     )
@@ -122,7 +120,6 @@ def test_inputs_checam_o_tipo_de_cada_campo():
         "pvp": BRL(1.0),
         "dy": Percent(5.0),
         "roe": 0.1,
-        "selic": RateReal(0.1),
         "vacancia": Percent(10.0),
         "perfil": "renda",
     }
@@ -222,14 +219,9 @@ def test_regime_bate_com_o_tipo_da_taxa():
     assert TIPO_TAXA[Regime.NOMINAL] is RateNominal
     assert TIPO_TAXA[Regime.SEM_TAXA] is None
     assert set(TIPO_TAXA) == set(Regime)
-    # a Selic é nominal: só método NOMINAL pode exigi-la
-    for regime in (Regime.REAL, Regime.SEM_TAXA):
-        with pytest.raises(TypeError, match="selic"):
-            _metodo(regime=regime, requires=("selic",))
-    ok = _metodo(regime=Regime.NOMINAL, requires=("selic",))
-    assert ok.regime is Regime.NOMINAL
-    with pytest.raises(TypeError, match="RateReal"):
-        _inputs(selic=RateReal(0.06))
+    # F2B-5: o campo `selic` saiu; exigi-lo é insumo fora do contrato.
+    with pytest.raises(TypeError, match="requires"):
+        _metodo(regime=Regime.NOMINAL, requires=("selic",))
 
 
 def _metodo(**sobrescreve):

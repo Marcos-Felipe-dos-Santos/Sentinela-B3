@@ -324,3 +324,24 @@ Antes → depois:
 | `deptry .` | 1 achado (`pytest` no `requirements.txt`) | o mesmo |
 
 Resíduos que ficam para outras fases: `FII_MANUAL_FALLBACK` (F2C-10); os dicionários dos mapas e a fixture, até `scripts/levantamento_fase2a.py` deixar de lê-los; `scripts/invalidar_cache_cvm.py` e o teste dele (F2B-5); `erro_scraper` fora do `MethodInputs` (F3 e F3-6); a linha de vacância do relatório do F1-12 (`sentinela/reports/rastreabilidade.py`, lê `vacancia_fonte`, que nenhum motor grava agora), sem efeito enquanto a vacância for `None`.
+
+## 14. Execução do F2B-5 (Fase 2B)
+
+Executado em 25/10/2026, um commit (`chore: clean up phase 2B residue`). Decisão do Marcos de 25/10/2026: `scripts/levantamento_fase2b.py` é exceção histórica do `git grep`, reproduzível no commit `4881b83`.
+
+| # | Item | Resultado |
+|---|---|---|
+| 1 | Selic como taxa de desconto | Saíram `GORDON_PREMIO_RISCO` e `BAZIN_TAXA_MIN` do `MacroContext` e o campo `selic` do `MethodInputs`, com a checagem de método NOMINAL no contrato; o motor de ações deixou de ler a Selic (`get_selic_atual`), que só servia a esse campo, e o relatório do F1-12 perdeu a seção "Selic usada" (nenhum método a exigia desde o F2B-31). `FII_DY_SELIC_RATIO_MIN` fica: o score do FII não mudou (plano final, §9) |
+| 2 | NTN-B antiga | Saíram `_fetch_ntnb`, `ntnb_longa`, `_ntnb_longa` e `NTNB_LONGA_FALLBACK`, com os dois testes de `tests/test_macro_context.py`. `cdi`, `ipca_12m` e as contingências deles ficam para o F3-1 |
+| 3 | Script de invalidação | `scripts/invalidar_cache_cvm.py` e `tests/test_invalidar_cache_cvm.py` saíram com `git rm` (decisão de 5/10/2026) |
+| 4 | Correções automáticas seguras | Nenhuma restante em `valuation_engine.py` e `config.py`: sobram BLE001, DTZ011 e SIM102, que pedem julgamento |
+
+Antes → depois:
+
+| Ferramenta | Antes | Depois |
+|---|---|---|
+| `ruff check .` completo | 170 erros | 169 (saiu o BLE001 do `_fetch_ntnb`) |
+| `vulture --min-confidence 80` (com o whitelist) | 2 achados em `tests/` (`chunk_size`) | os mesmos 2 |
+| `deptry .` | 1 achado (`pytest` no `requirements.txt`) | o mesmo |
+
+Ocorrências que ficam dos nomes removidos: `docs/`; `README.md` (ticket C-A do Jules); `scripts/dossie_fase2.py` (tag da Fase 0) e `scripts/levantamento_fase2b.py` (commit `4881b83`), históricos; a lista de arquivos travados da seção "Fase atual" do `AGENTS.md` (cita `tests/test_invalidar_cache_cvm.py`), que é do Marcos. Resíduos para outras fases: `cdi`, `ipca_12m` e contingências (F3-1); `GORDON_DY_MIN`, `GORDON_ROE_MIN`, `GORDON_G_MAX` e `GORDON_PAYOUT_MAX`, sem leitor em produção desde o F2B-1 e fora da lista do item (o harness do golden lê os dois primeiros para as ids), para a limpeza da 2C; `get_selic_atual` e `SELIC_FALLBACK` (FII, Markowitz, E-6).

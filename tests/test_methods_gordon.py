@@ -10,7 +10,6 @@ from sentinela.domain.units import (
     BRL,
     Inflacao,
     ProventosControladores,
-    RateNominal,
     RateReal,
     Ratio,
 )
@@ -31,7 +30,6 @@ def _inputs_ficha(**kw):
         "lpa": BRL(0.9926913764),
         "roe": Ratio(15503400 / 98642139),
         "dy": Ratio(0.06),
-        "selic": RateNominal(0.145),
         "custo_capital_real": RateReal(74.38 / 1100 + 0.05),
         "inflacao": Inflacao(0.0426),
         "teto_pib_real": RateReal(0.02),

@@ -962,7 +962,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - golden (redação de 25/10/2026, pelas decisões (a) a (c)): dívida em texto pode mudar qualquer campo; dívida ausente ou não finita muda só o campo novo do aviso de alavancagem; casos com liquidez não medida (`liquidez-*-incompleta`, `-mes-ausente`, `-sem-dado`) mudam `riscos`, o campo novo do aviso e, pela regra vigente que rebaixa o rótulo quando há riscos, rótulo e score; casos com liquidez abaixo do mínimo mudam só o texto da abstenção. Predicado: `--onde "caso['motor'] in ('acoes', 'fii')"` com a conferência campo a campo dessas regras no diário (contagem por grupo; nenhuma alteração fora delas);
   - gate da fase.
 
-- [ ] **F2B-5** · limpeza · `chore: clean up phase 2B residue`
+- [x] **F2B-5** · limpeza · `chore: clean up phase 2B residue`
   - **Decisão do Marcos de 25/10/2026 (resolve o bloqueio de 22/10):** `scripts/levantamento_fase2b.py` entra nas exceções históricas do `git grep`, reproduzível no commit `4881b83`.
   - **Plano final:** docs/decisoes/plano-final-2b.md, seção 9.
   - **Bloqueio de 22/10/2026:** `scripts/levantamento_fase2b.py:533,539` ainda lê BAZIN_TAXA_MIN/GORDON_PREMIO_RISCO por AST. A exceção do aceite cita só os levantamentos anteriores (dossie_fase2/levantamento_fase2a); preservar este script como reprodução histórica precisa definição equivalente, ou permissão/escopo para atualizá-lo. Pergunta enviada, sem resposta. Nenhuma remoção executada; inventário inicial medido e registrado para revisão.

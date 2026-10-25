@@ -7,8 +7,6 @@ recebe Graham, Bazin, Lynch e Gordon. Origem: auditoria externa da Fase 2A (Gemi
 passadas e Codex, 15/10/2026).
 """
 
-from unittest.mock import patch
-
 from tests.test_market_engine_referencia import (
     FakeReferencia,
     _indice,
@@ -21,6 +19,5 @@ from valuation_engine import ROTULO_FORA_DO_ESCOPO, ValuationEngine
 def test_final_11_fora_do_indice_fica_fora_do_escopo(monkeypatch):
     engine = _motor(monkeypatch, FakeReferencia(_indice(_registro())))
     dados = engine.buscar_dados_ticker("BPAC11")
-    with patch("valuation_engine.get_selic_atual", return_value=0.145):
-        resultado = ValuationEngine().processar(dados)
+    resultado = ValuationEngine().processar(dados)
     assert resultado["recomendacao"] == ROTULO_FORA_DO_ESCOPO
