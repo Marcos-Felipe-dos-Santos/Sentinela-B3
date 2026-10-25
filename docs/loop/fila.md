@@ -791,7 +791,7 @@ Legenda: `[ ]` pendente · `[x]` feito · `[!]` bloqueado · `[DECISÃO]` o loop
   - diário: cobertura (`python -m sentinela.data.referencia --cobertura`) antes → depois, o registro do BPAC11 e o LPA da unit;
   - gate da fase.
 
-- [ ] **F2B-55** · fix · `fix: accept fractional FII quota counts from the Informe` · **[golden]** **[FII]**
+- [x] **F2B-55** · fix · `fix: accept fractional FII quota counts from the Informe` · **[golden]** **[FII]**
   - **Decisão do Marcos de 25/10/2026 (ficha FII 1.2, §3b):** `Cotas_Emitidas` positiva e finita vale, com ou sem fração; a quantidade só serve à detecção de eventos (emissões em contexto). O spread de 3,5058% fica como constante datada.
   - `rendimento_fii.avaliar`: sai a guarda de quantidade não inteira; cotas não positivas, ausentes ou não finitas continuam abstendo com `MOTIVO_COTAS`. As emissões comparam as quantidades como vieram, sem arredondar.
   - Calibração refeita com `scripts/calibrar_spread_fii.py` (mesmo mês final, 2026-09): spread, quartis, fundos por mês e exclusões registrados na ficha FII, §6a, como recalibração informativa; `MacroContext.FII_SPREAD_TIJOLO` não muda.

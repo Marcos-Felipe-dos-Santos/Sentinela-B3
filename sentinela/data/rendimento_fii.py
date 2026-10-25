@@ -143,7 +143,7 @@ def rendimento_12_meses(
     }
 
 
-# ── guardas da ficha FII 1.1 (F2B-2) ─────────────────────────────────────────
+# ── guardas da ficha FII 1.2 (F2B-2, F2B-55) ──────────────────────────────────
 
 MOTIVO_IDADE = "Informe mais recente com mais de 3 meses"
 MOTIVO_DY_NEGATIVO = "DY mensal negativo declarado no Informe"
@@ -184,11 +184,11 @@ def avaliar(
     preco: object,
     dia_as_of: date,
 ) -> dict | Abstencao:
-    """Rendimento de 12 meses do FII com as guardas da ficha FII 1.1, ou a abstenção.
+    """Rendimento de 12 meses do FII com as guardas da ficha FII 1.2, ou a abstenção.
 
     Só as linhas do Informe entregues antes do dia do as_of; janela terminada no último mês
     elegível, até 3 meses civis antes do as_of; DY mensal negativo, amortização e cotas
-    inválidas abstêm; só tijolo pela composição do mês final; desdobramento ou grupamento
+    não positivas abstêm (a fração vale, ficha FII 1.2); só tijolo pela composição do mês final; desdobramento ou grupamento
     da B3 na janela (do primeiro VP ao as_of), ou a B3 sem resposta válida, abstêm. A
     conferência com o rendimento da B3 só gera aviso. Emissões ficam em contexto.
     """
@@ -210,9 +210,10 @@ def avaliar(
         if linha is None:
             return Abstencao(MOTIVO_MESES_INCOMPLETOS)
         cotas = _numero(linha.get("Cotas_Emitidas"))
-        if cotas is None or cotas <= 0 or cotas % 1:
+        if cotas is None or cotas <= 0:
             return Abstencao(MOTIVO_COTAS)
-        cotas_por_mes[mes] = int(cotas)
+        # Ficha FII 1.2: quantidade fracionária vale; só detecta eventos (emissões).
+        cotas_por_mes[mes] = int(cotas) if cotas.is_integer() else cotas
         if mes == janela[-1]:
             continue  # o 13º mês só dá o VP
         dy_mes = _numero(linha.get("Percentual_Dividend_Yield_Mes"))

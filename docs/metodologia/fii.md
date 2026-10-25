@@ -278,6 +278,17 @@ cada fundo candidato, coletada em 21/10/2026.
   conflitantes 21; desdobramento 19; grupamento 1.
 - **Sensibilidade (não é a constante):** com as cotas fracionárias arredondadas, em vez de
   inválidas, o spread seria 3,5124% (p25 3,1738%, p75 3,7345%; 30 a 44 fundos por mês).
+- **Recalibração com a regra 1.2 (F2B-55, 25/10/2026; informativa, a constante não muda):**
+  mesmos arquivos e mês final, cotas fracionárias válidas. Spread 3,5124%
+  (0,035124386653470424); p25 3,1738%, p75 3,7345%; 30 a 44 fundos por mês, mediana 39,5;
+  2.351 fundos-mês válidos (eram 2.162). Exclusões que mudam: cotas emitidas inválidas
+  1.757 → 35 (só não positivas ou ausentes); tipo fora do escopo 4.842 → 5.090; liquidez
+  abaixo do mínimo 3.133 → 3.372; menos de 12 meses 2.247 → 2.650; rendimento anual não
+  positivo 1.035 → 1.422; DY mensal negativo 1.320 → 1.336; amortização na janela 685 →
+  815; classificação desconhecida 182 → 244; DY acima de 25% 168 → 196; amortização
+  inválida 150 → 165; linhas conflitantes 21 → 25; grupamento 1 → 2. As demais ficam
+  iguais. É o mesmo número da sensibilidade acima. As medianas mensais abaixo são as da
+  constante (regra 1.1).
 - **Medianas mensais (%, fundos):** 2021-10 2,24 (30); 2021-11 3,13 (32); 2021-12 2,68 (35);
   2022-01 2,31 (37); 2022-02 2,82 (39); 2022-03 3,20 (36); 2022-04 2,80 (37); 2022-05 2,72
   (37); 2022-06 2,99 (39); 2022-07 2,44 (38); 2022-08 2,02 (37); 2022-09 2,50 (34); 2022-10

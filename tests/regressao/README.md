@@ -108,3 +108,5 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2B-41 | gate atribui presença zero a ticker ausente sem prova de cobertura da janela | sentinela/data/liquidez.py (avaliar) | revisão do F2A-10 antes do commit, 21/10/2026 | test_bug_2b_41_liquidez_cobertura_ausente.py | F2A-10 | corrigido |
 
 | BUG-2B-42 | download falha com cache antigo, coletor não sinaliza mês indisponível e aplica gate à janela desatualizada | sentinela/data/providers/b3_cotahist.py (baixar_mes, HistoricoRecente.coletar) | revisão1 F2A-10, 21/10/2026 | test_bug_2b_42_liquidez_cache_antigo.py | F2A-10 | corrigido |
+
+| BUG-2B-43 | quantidade de cotas fracionária no Informe (35% das linhas de 2026) tira o FII da lente de rendimento | sentinela/data/rendimento_fii.py (avaliar) | revisão do F2B-2 e decisão do Marcos de 25/10/2026 (ficha FII 1.2) | test_bug_2b_43_cotas_fracionarias_no_fii.py | F2B-55 | corrigido |

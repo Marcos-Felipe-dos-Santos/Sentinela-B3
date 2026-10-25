@@ -134,12 +134,31 @@ def test_informe_com_tres_meses_vale():
         ("Percentual_Amortizacao_Cotas_Mes", "0.01", rf.MOTIVO_AMORTIZACAO),
         ("Percentual_Amortizacao_Cotas_Mes", "-0.01", rf.MOTIVO_AMORTIZACAO_INVALIDA),
         ("Cotas_Emitidas", "0", rf.MOTIVO_COTAS),
-        ("Cotas_Emitidas", "10.5", rf.MOTIVO_COTAS),
+        ("Cotas_Emitidas", "-10", rf.MOTIVO_COTAS),
+        ("Cotas_Emitidas", "inf", rf.MOTIVO_COTAS),
+        ("Cotas_Emitidas", "nan", rf.MOTIVO_COTAS),
+        ("Cotas_Emitidas", None, rf.MOTIVO_COTAS),
     ],
 )
 def test_guardas_da_matriz(campo, valor, motivo):
     r = _avaliar(_registros(**{"2026-03": {campo: valor}}))
     assert r == rf.Abstencao(motivo)
+
+
+def test_cotas_fracionarias_valem():
+    r = _avaliar(_registros(**{"2026-03": {"Cotas_Emitidas": "10.5"}}))
+    assert r["rendimento_12m"] == pytest.approx(12.0)
+
+
+def test_variacao_so_na_fracao_fica_em_contexto():
+    depois = {
+        f"2026-{m:02d}": {"Cotas_Emitidas": "1000.00003248"} for m in range(5, 10)
+    }
+    r = _avaliar(_registros(**depois))
+    assert r["rendimento_12m"] == pytest.approx(12.0)
+    assert r["emissoes"] == [
+        {"mes": "2026-05", "cotas_antes": 1000, "cotas_depois": 1000.00003248}
+    ]
 
 
 def test_mes_sem_rendimento_vale_como_zero():
