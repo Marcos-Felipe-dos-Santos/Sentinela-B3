@@ -20,7 +20,7 @@ Branch: `v2/fase-2b` · Protocolo: `docs/loop/protocolo.md` · Diário: `docs/lo
   - Conflito em qualquer campo usado (DY, VP, cotas, amortização, composição) abstém, nas duas ordens das linhas.
   - **Aceite:** regressão estrita do reaberto (as duas ordens, para cada campo) → correção → PASS; golden `--onde "caso['motor'] == 'fii'"` (esperado 0 alterados; inclusões só se a grade ganhar o caso); mutação de `sentinela.data.rendimento_fii` ≥ 80%; gate.
 
-- [ ] **F2B-58** · fix · `fix: hold the FII lens to the same time cut as the real rate and the reports` · **[golden]**
+- [x] **F2B-58** · fix · `fix: hold the FII lens to the same time cut as the real rate and the reports` · **[golden]**
   - **BUG-2B-46:** a lente de FII não confere o as_of, a data-base nem a idade do registro da NTN-B; a coleta do Informe e da B3 posterior ao as_of é aceita.
   - Mesmo corte do F2B-30 e do Gordon: registro da taxa com as_of ≤ análise e idade válida (data-base e dias úteis do registro); coleta e entrega do Informe e da B3 até o as_of. Sem prova, a lente abstém com o motivo.
   - **Aceite:** regressão estrita → correção → PASS; golden `--onde "caso['motor'] == 'fii'"` com a conferência de cada alteração no diário; mutação ≥ 80% nos módulos de `sentinela/data/` e `sentinela/methods/` tocados; `fii_engine.py` (V1) registrado, sem meta; gate.

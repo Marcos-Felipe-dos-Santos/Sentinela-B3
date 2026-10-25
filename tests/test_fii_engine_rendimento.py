@@ -49,8 +49,9 @@ def test_selic_fica_no_score_e_nao_no_preco_justo():
 @pytest.mark.parametrize(
     ("ajuste", "motivo"),
     [
-        (lambda d: d.update(taxa_real={"abstencao": "x"}), "insumo ausente: ntnb_real"),
-        (lambda d: d.pop("taxa_real"), "insumo ausente: ntnb_real"),
+        # F2B-58: a taxa é conferida nas entradas, com os motivos do Gordon.
+        (lambda d: d.update(taxa_real={"abstencao": "x"}), "taxa real indisponível: x"),
+        (lambda d: d.pop("taxa_real"), "insumo ausente: taxa real"),
         (lambda d: d.pop("informe_fii"), "insumo ausente: Informe Mensal do FII"),
         (
             lambda d: d["informe_fii"]["composicoes"][0].update(CRI="9000"),

@@ -294,6 +294,62 @@ def avaliar(
 
 MOTIVO_SEM_INFORME = "insumo ausente: Informe Mensal do FII"
 FUSO = ZoneInfo("America/Sao_Paulo")
+# F2B-58 (BUG-2B-46): o mesmo corte temporal do F2B-30 e do Gordon na lente de FII.
+IDADE_MAXIMA_NTNB_DIAS_UTEIS = 5
+MOTIVO_TAXA_POSTERIOR = "contexto da taxa real posterior ao as_of"
+MOTIVO_TAXA_SEM_CORTE = "corte temporal da taxa real não demonstrado"
+MOTIVO_COLETA_INFORME = "coleta do Informe não demonstrada até o as_of"
+MOTIVO_COLETA_B3 = "coleta da B3 não demonstrada até o as_of"
+
+
+def _instante(bruto: object) -> datetime | None:
+    """Instante com fuso, ou `None` (ausente, ilegível ou sem fuso)."""
+    try:
+        valor = datetime.fromisoformat(str(bruto))
+    except (TypeError, ValueError):
+        return None
+    return valor if valor.utcoffset() is not None else None
+
+
+def ntnb_ate(taxa: object, instante: datetime) -> float | Abstencao:
+    """A NTN-B real do registro da taxa, se o registro é do as_of ou de antes (F2B-58).
+
+    Exige o instante do registro até o as_of e no mesmo dia local (o cache da taxa real é por
+    dia, e a idade em dias úteis é medida no dia do registro), a data-base anterior ao dia do
+    as_of e a idade até 5 dias úteis, como na cesta do F2B-30; a NTN-B finita.
+    """
+    if not isinstance(taxa, Mapping) or not taxa:
+        return Abstencao("insumo ausente: taxa real")
+    if "abstencao" in taxa:
+        return Abstencao(f"taxa real indisponível: {taxa['abstencao']}")
+    corte = _instante(taxa.get("as_of"))
+    if corte is None:
+        return Abstencao(MOTIVO_TAXA_SEM_CORTE)
+    if corte > instante:
+        return Abstencao(MOTIVO_TAXA_POSTERIOR)
+    if corte.astimezone(FUSO).date() != instante.astimezone(FUSO).date():
+        return Abstencao(f"{MOTIVO_TAXA_SEM_CORTE}: registro de outro dia")
+    try:
+        data_base = date.fromisoformat(str(taxa.get("data_base")))
+    except ValueError:
+        return Abstencao(f"{MOTIVO_TAXA_SEM_CORTE}: data-base ilegível")
+    if data_base >= instante.astimezone(FUSO).date():
+        return Abstencao(f"{MOTIVO_TAXA_SEM_CORTE}: data-base não anterior ao as_of")
+    idade = taxa.get("dias_uteis")
+    if (
+        isinstance(idade, bool)
+        or not isinstance(idade, int)
+        or not 0 <= idade <= IDADE_MAXIMA_NTNB_DIAS_UTEIS
+    ):
+        return Abstencao(f"{MOTIVO_TAXA_SEM_CORTE}: idade da NTN-B")
+    ntnb = taxa.get("ntnb")
+    if (
+        isinstance(ntnb, bool)
+        or not isinstance(ntnb, (int, float))
+        or not math.isfinite(ntnb)
+    ):
+        return Abstencao("NTN-B real inválida no registro da taxa")
+    return float(ntnb)
 
 
 def entradas(dados: Mapping, instante: datetime) -> dict | Abstencao:
@@ -309,9 +365,17 @@ def entradas(dados: Mapping, instante: datetime) -> dict | Abstencao:
         return Abstencao(
             f"{MOTIVO_SEM_INFORME}: {motivo}" if motivo else MOTIVO_SEM_INFORME
         )
+    prov = informe.get("proveniencia")
+    coleta = _instante(prov.get("data_coleta")) if isinstance(prov, Mapping) else None
+    if coleta is None or coleta > instante:
+        return Abstencao(MOTIVO_COLETA_INFORME)
     b3 = dados.get("b3_fundo")
     resposta = b3.get("resposta") if isinstance(b3, Mapping) else None
-    return avaliar(
+    if resposta is not None:
+        coleta_b3 = _instante(b3.get("coleta"))
+        if coleta_b3 is None or coleta_b3 > instante:
+            return Abstencao(MOTIVO_COLETA_B3)
+    medida = avaliar(
         informe.get("registros") or (),
         informe.get("composicoes") or (),
         b3=resposta,
@@ -320,3 +384,10 @@ def entradas(dados: Mapping, instante: datetime) -> dict | Abstencao:
         preco=dados.get("preco_atual"),
         dia_as_of=instante.astimezone(FUSO).date(),
     )
+    if isinstance(medida, Abstencao):
+        return medida
+    # Revisão do F2B-58: o escopo e as guardas do Informe vêm antes da taxa.
+    ntnb = ntnb_ate(dados.get("taxa_real"), instante)
+    if isinstance(ntnb, Abstencao):
+        return ntnb
+    return {**medida, "ntnb_real": ntnb}

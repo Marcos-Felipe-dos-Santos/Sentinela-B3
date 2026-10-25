@@ -31,6 +31,9 @@ def enriquecer_fii(dados: dict, ntnb: float | None = 0.07) -> dict:
                 "custo_capital_real": ntnb + 0.05,
                 "premio": 0.05,
                 "data_base": "2026-10-16",
+                # F2B-58: o corte temporal do registro, antes do as_of do harness.
+                "dias_uteis": 2,
+                "as_of": "2026-10-20T12:00:00+00:00",
                 "fonte": "Tesouro Nacional, cenário sintético",
                 "inflacao": {"abstencao": "janela contábil anual não demonstrada"},
                 "pib": {"valor": 0.02, "ano": 2030},
@@ -72,7 +75,10 @@ def enriquecer_fii(dados: dict, ntnb: float | None = 0.07) -> dict:
             }
         ],
         "isin": ISIN,
-        "proveniencia": {"fonte": "Informe Mensal sintético de teste"},
+        "proveniencia": {
+            "fonte": "Informe Mensal sintético de teste",
+            "data_coleta": "2026-10-20T12:00:00+00:00",
+        },
     }
     ticker = str(dados.get("ticker") or "TST11")
     dados["b3_fundo"] = {

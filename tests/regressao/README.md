@@ -114,3 +114,5 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2B-44 | o backtest grava "OK" para a abstenção de escopo do motor e quebra ao ler `score_final` | backtesting/backtest_engine.py (simular_analise_mensal) | revisão do F2B-4, 25/10/2026 | test_bug_2b_44_backtest_abstencao_de_escopo.py | F2B-4 | corrigido |
 
 | BUG-2B-45 | a falha na coleta do relatório 16 do IF.data descarta a Basileia já lida | sentinela/data/providers/ifdata.py (ler_capital) | revisão do F2B-32, 25/10/2026 | test_bug_2b_45_ifdata_carteira_derruba_basileia.py | F2B-32 | corrigido |
+
+| BUG-2B-46 | a lente de FII não confere o as_of, a data-base nem a idade do registro da NTN-B, e aceita Informe e B3 coletados depois do as_of | sentinela/data/rendimento_fii.py (entradas), fii_engine.py | auditoria de fechamento da 2B (Codex), 25/10/2026 | test_bug_2b_46_fii_sem_corte_temporal.py | F2B-58 | corrigido |

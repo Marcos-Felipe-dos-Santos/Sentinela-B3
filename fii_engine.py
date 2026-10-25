@@ -37,18 +37,12 @@ class FIIEngine:
             dados["rendimento_fii_cvm"] = {"abstencao": entradas.motivo}
             return entradas
         dados["rendimento_fii_cvm"] = entradas
-        taxa = dados.get("taxa_real")
-        ntnb = taxa.get("ntnb") if isinstance(taxa, dict) else None
-        ntnb_valida = (
-            isinstance(ntnb, (int, float))
-            and not isinstance(ntnb, bool)
-            and math.isfinite(ntnb)
-        )
+        # F2B-58 (BUG-2B-46): a NTN-B já vem conferida pelo corte temporal das entradas.
         inputs = MethodInputs(
             as_of=instante.astimezone(ZoneInfo("America/Sao_Paulo")).date(),
             preco=BRL(p),
             dy=Ratio(entradas["dy"]),
-            ntnb_real=RateReal(ntnb) if ntnb_valida else None,
+            ntnb_real=RateReal(entradas["ntnb_real"]),
             classe_ativo=AssetType.FII,  # F2B-4: motor de FII, classe oficial FII
         )
         return _FII_YIELD.calcular(
