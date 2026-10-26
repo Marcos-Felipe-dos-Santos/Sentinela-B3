@@ -13,7 +13,7 @@ from tests.test_market_engine_acoes_cvm import _banrisul, _por_classe
 
 @pytest.mark.xfail(
     strict=True,
-    reason="BUG-2B-05 · divergência de ações da classe contra o total da espécie · corrige: a decidir no marcador",
+    reason="BUG-2B-05 · divergência de ações da classe contra o total da espécie · corrige: F2C-15",
 )
 def test_classe_preferencial_com_varias_classes_nao_e_comparada(monkeypatch):
     dados = _por_classe(

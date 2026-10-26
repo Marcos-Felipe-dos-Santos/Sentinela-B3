@@ -14,7 +14,7 @@ from tests.test_referencia import _indice as _indice_oficial
 
 BUG = pytest.mark.xfail(
     strict=True,
-    reason="BUG-2B-11 · sigla da classe preferencial sem caixa alta · corrige: a decidir no marcador",
+    reason="BUG-2B-11 · sigla da classe preferencial sem caixa alta · corrige: F2C-20",
 )
 
 

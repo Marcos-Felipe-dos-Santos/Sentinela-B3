@@ -318,8 +318,9 @@ da fase em `docs/loop/historico/fase-2b/pr-fase-2b.md`.
 | F2B-64 | test: redo the D27 counterproof for F2B-54 and F2B-2 | entregue |
 | F2B-65 | docs: remeasure the FII spread after the closing fixes | entregue |
 | F2B-66 | docs: sync CLAUDE.md and the plan with the phase 2B delivery | entregue |
-| F2B-67 | docs: add the phase 2B closing caveats to the phase 2C proposal | pendente |
-| F2B-68 | docs: record the phase 2B closing and archive the closing queue | pendente |
+| F2B-67 | docs: add the phase 2B closing caveats to the phase 2C proposal | entregue (`e6d7da3`) |
+| F2B-68 | docs: record the phase 2B closing and archive the closing queue | entregue (`6b6f989`) |
+| F2B-69 | fix: close the phase 2B quick audit caveats | entregue (commit do item) |
 
 **Gate:** seção A muda só no F2B-7 ([SEÇÃO A] em (c), decisão de 18/10/2026); seção B virou exatamente onde marcada; mutation ≥ 80%; os resultados antes e depois da taxa real estão comparados no diário.
 
@@ -350,7 +351,7 @@ da fase em `docs/loop/historico/fase-2b/pr-fase-2b.md`.
 | F3-3 | Demonstrações ponto-no-tempo: contas, entregas, versões e composição do capital |
 | F3-4 | Histórico longo de preços pelo COTAHIST, com eventos societários e série ajustada para retorno |
 | F3-5 | Universo ponto-no-tempo, a partir dos dados de referência do F2A-1, incluindo empresas deslistadas |
-| F3-6 | `AnalysisService.analisar(ticker, as_of)` conectado; `app.py` passa a chamar o serviço; abstenção (FII, banco, ETF, BDR, `UNKNOWN`) aparece como motivo, sem número (`app.py:271` mostrava R$ 0,00; F2B-67) |
+| F3-6 | `AnalysisService.analisar(ticker, as_of)` conectado; `app.py` passa a chamar o serviço; abstenção (FII, banco, ETF, BDR, `UNKNOWN`) aparece como motivo, sem número (o card "Valor Justo" já mostra "—" e o motivo desde o F2B-69; antes, R$ 0,00) |
 | F3-7 | Reconstrução histórica (backfill) do universo |
 | F3-8 | Backtest ponto-no-tempo; os CSVs fabricados saem do repositório |
 | F3-9 | Limpeza: os dois bancos antigos (com backup antes), o cache de 7 dias da cascata antiga, a orquestração duplicada do `app.py`, `limpar_banco.py` (substituído pelas migrações) e `auditar_recomendacoes.py` (substituído pelo backtest), conforme o inventário |

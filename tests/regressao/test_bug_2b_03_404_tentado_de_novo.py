@@ -15,7 +15,7 @@ import cvm_download
 
 @pytest.mark.xfail(
     strict=True,
-    reason="BUG-2B-03 · HTTP 404 tentado três vezes no download · corrige: a decidir no marcador",
+    reason="BUG-2B-03 · HTTP 404 tentado três vezes no download · corrige: F2C-14",
 )
 def test_404_nao_e_tentado_de_novo(tmp_path, monkeypatch):
     erro = requests.HTTPError("404 Client Error: Not Found")

@@ -1,4 +1,4 @@
-"""Lacuna de cobertura BTCI11/TRPL11, destino F2B-34 (2C).
+"""Lacuna de cobertura BTCI11/TRPL11, destino F2C-21 (proposta da 2C).
 
 Fontes B3, consultadas em 20/10/2026, anteriores ao corte da auditoria:
 TRPL11: https://sistemasweb.b3.com.br/PlantaoNoticias/Noticias/Detail?agencia=18&dataNoticia=2026-01-07+14%3A20%3A39&idNoticia=3196072
@@ -21,7 +21,7 @@ from sentinela.data.referencia.montagem import montar_outros
 
 @pytest.mark.xfail(
     strict=True,
-    reason="BUG-2B-21 · FII da B3 fora do Informe vira UNKNOWN · corrige: F2B-34 (2C)",
+    reason="BUG-2B-21 · FII da B3 fora do Informe vira UNKNOWN · corrige: F2C-21",
 )
 @pytest.mark.parametrize(
     "ticker,isin", [("BTCI11", "BRBTCICTF005"), ("TRPL11", "BRTRPLCTF015")]

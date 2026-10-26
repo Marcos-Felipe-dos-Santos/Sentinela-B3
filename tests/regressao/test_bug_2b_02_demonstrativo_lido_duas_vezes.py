@@ -16,7 +16,7 @@ from tests.test_cvm_series import CD_CVM, CNPJ, COLUNAS
 
 @pytest.mark.xfail(
     strict=True,
-    reason="BUG-2B-02 · demonstrativo lido duas vezes para a série e o TTM · corrige: a decidir no marcador",
+    reason="BUG-2B-02 · demonstrativo lido duas vezes para a série e o TTM · corrige: F2C-13",
 )
 def test_mesmo_demonstrativo_e_lido_uma_vez(tmp_path, monkeypatch):
     dt, ini = "2025-12-31", "2025-01-01"

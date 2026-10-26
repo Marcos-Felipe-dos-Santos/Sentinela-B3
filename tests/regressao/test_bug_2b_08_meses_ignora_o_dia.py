@@ -14,7 +14,7 @@ from sentinela.data import series_cvm
 
 @pytest.mark.xfail(
     strict=True,
-    reason="BUG-2B-08 · _meses ignora o dia do intervalo · corrige: a decidir no marcador",
+    reason="BUG-2B-08 · _meses ignora o dia do intervalo · corrige: F2C-17",
 )
 def test_intervalo_de_um_mes_e_um_dia_nao_e_trimestre():
     assert series_cvm._meses(date(2026, 1, 31), date(2026, 3, 1)) != 3
