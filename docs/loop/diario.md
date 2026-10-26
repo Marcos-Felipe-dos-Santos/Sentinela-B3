@@ -167,3 +167,13 @@
 - **Testes:** 2708passed,1skip,2xfail → 2708passed,1skip,2xfail,1warning; Ruff CI/data/methods verdes, diff sem erros. Nenhum código/teste do repositório mudou; mutação não se aplica à constatação documental de já entregue. Golden inalterado.
 - **D27:** nenhum defeito confirmado, nenhuma regressão artificial adicionada. **Decisões provisórias:** nenhuma nova.
 - **Resíduos:** ensaio/log apenas em /tmp; sem push e sem banco do mantenedor. **Para o Claude revisar:** refutação no HEAD e preservação do negativo da CVM, inclusive origem por campo.
+
+### F2C-29 — docs: specify annual and trailing CVM input contracts
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso; contrato documental prospectivo sem produção.
+- **O que foi feito:** docs/decisoes/contrato-insumos-cvm-2c.md distingue BPP lido/mesma versão de vazio/ilegível, reserva D20, independência DRE/DVA, TTM monetário sem ações, quantidades por documento, comparabilidade de perímetros, exercício não civil, cobertura4/5, competência DVA/dataexB3/JCP e adicional proposto. Matriz F2B-37/46/48 e consumidores evitam duplicação; exemplos sintéticos de aritmética e pendências econômicas explícitos.
+- **Fontes:** ZIPs oficiais de metadados CVM DFP/ITR conferidos26/10, hashes no documento e /tmp/2c29-fontes.json; TXT direto404, encontrado ZIP no portal e obtido200 após retry de rede autorizado. Nenhuma ausência de fonte oficial impeditiva.
+- **decisão provisória: balanço não demonstrado como lido do documento correspondente → não usar ausência aparente da rubrica para autorizar reserva.** Regra de disponibilidade já exigida no aceite30; não bloqueia leitura direta válida da DRE. F2C-30 deve reproduzir em regressão estrita antes de corrigir; nenhuma produção corrigida por nota.
+- **Testes:** 2708passed,1skip,2xfail → 2708passed,1skip,2xfail,1warning; Ruff CI/data/methods verdes, diff sem erros. Mutação não se aplica a docs; golden sem alteração.
+- **Dificuldades:** dicionário oficial descreve campos, não escolhe regra econômica. Regra vem das decisões aprovadas, fonte separada explicitamente; mudanças estruturais/CAGR/classes vão a ficha/decisão, sem número inventado.
+- **Resíduos:** metadados/logs em /tmp; sem push. **Para o Claude revisar:** ligação entre evidência de BPP e reserva, alcance informativo do TTM e pendências da futura ficha.
