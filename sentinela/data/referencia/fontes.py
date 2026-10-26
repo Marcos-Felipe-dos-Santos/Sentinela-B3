@@ -19,7 +19,11 @@ import requests
 
 from sentinela.data import proveniencia
 from sentinela.data.providers import b3_cotahist
-from sentinela.data.referencia.correcoes import Correcao, ler_correcoes
+from sentinela.data.referencia.correcoes import (
+    Correcao,
+    ler_correcoes,
+    ler_identidades_fii,
+)
 from sentinela.data.referencia.indice import carregar_indice, salvar_indice
 from sentinela.data.referencia.montagem import montar_indice
 from sentinela.data.referencia.registro import Indice
@@ -235,6 +239,13 @@ def carregar_fontes(agora: datetime, pasta_dados: Path) -> Fontes:
 def construir_indice(agora: datetime, pasta_dados: Path) -> Indice:
     """Baixa as fontes e monta o índice (não grava)."""
     f = carregar_fontes(agora, pasta_dados)
+    try:
+        identidades = [i for i in ler_identidades_fii() if i.get("data", "") <= f.data]
+    except (OSError, ValueError):
+        logger.warning(
+            "Identidades complementares de FII indisponíveis; sem enriquecimento"
+        )
+        identidades = []
     return montar_indice(
         f.fcas,
         f.cadastro,
@@ -243,6 +254,7 @@ def construir_indice(agora: datetime, pasta_dados: Path) -> Indice:
         f.meta_com_proveniencia(),
         f.data,
         f.correcoes,
+        identidades_fii=identidades,
     )
 
 

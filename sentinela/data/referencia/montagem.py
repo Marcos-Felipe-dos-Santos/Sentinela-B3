@@ -14,7 +14,11 @@ from collections.abc import Iterable
 import pandas as pd
 
 from sentinela.data.providers.b3_cotahist import Cotacao
-from sentinela.data.referencia.correcoes import Correcao, validar_correcoes
+from sentinela.data.referencia.correcoes import (
+    Correcao,
+    identidade_fii_valida,
+    validar_correcoes,
+)
 from sentinela.data.referencia.registro import Excecao, Indice, Registro
 from sentinela.domain.enums import AssetType
 
@@ -337,11 +341,22 @@ def montar_outros(
     conhecidos: set[str],
     fonte: dict,
     isins_de_fii: frozenset[str] = frozenset(),
+    identidades_fii: Iterable[dict[str, str]] = (),
 ) -> list[Registro]:
-    """BDR pelo `CODBDI` e `ESPECI` do COTAHIST; cota de fundo fora do Informe vira UNKNOWN.
+    """BDR pelo COTAHIST; FII fora do Informe exige identidade oficial complementar.
 
     Um código antigo de FII do Informe (mesmo ISIN, outro ticker) não vira `UNKNOWN`.
+    Sem identidade completa, ou com conflito, a cota de fundo continua UNKNOWN.
     """
+    cotacoes = list(cotacoes)
+    identidades_fii = list(identidades_fii)
+    isins_por_codigo: dict[str, set[str]] = {}
+    categorias_por_codigo: dict[str, set[str]] = {}
+    for cotacao in cotacoes:
+        isins_por_codigo.setdefault(cotacao.codigo_negociacao, set()).add(cotacao.isin)
+        categorias_por_codigo.setdefault(cotacao.codigo_negociacao, set()).add(
+            cotacao.codbdi
+        )
     registros: dict[str, Registro] = {}
     for c in cotacoes:
         codigo = c.codigo_negociacao
@@ -355,12 +370,38 @@ def montar_outros(
                 fonte=fonte,
             )
         elif c.especificacao.startswith("CI"):
+            candidatas = [i for i in identidades_fii if i.get("ticker") == codigo]
+            identidade = candidatas[0] if len(candidatas) == 1 else None
+            isins = isins_por_codigo[codigo]
+            if (
+                identidade is not None
+                and identidade_fii_valida(identidade)
+                and isins == {identidade["isin"]}
+                and categorias_por_codigo[codigo] == {"12"}
+            ):
+                registros[codigo] = Registro(
+                    ticker=codigo,
+                    classe=AssetType.FII.value,
+                    regra="fii:identidade_oficial+cotahist",
+                    fonte={
+                        "arquivo": identidade["fonte"],
+                        "data": identidade["data"],
+                        "sha256": identidade["sha256"],
+                        "isin": identidade["isin"],
+                        "cotahist": fonte,
+                    },
+                    cnpj=identidade["cnpj"],
+                    nome=identidade["nome"],
+                )
+                continue
             registros[codigo] = Registro(
                 ticker=codigo,
                 classe=AssetType.UNKNOWN.value,
                 regra="cotahist:cota_de_fundo",
                 fonte=fonte,
-                motivo="cota de fundo listada que não é FII do Informe Mensal nem ETF identificado",
+                motivo="identidade oficial complementar de FII ausente, inválida ou conflitante"
+                if candidatas
+                else "cota de fundo listada que não é FII do Informe Mensal nem ETF identificado",
             )
     return list(registros.values())
 
@@ -421,6 +462,7 @@ def montar_indice(
     fontes: dict,
     gerado_em: str,
     correcoes: Iterable[Correcao] = (),
+    identidades_fii: Iterable[dict[str, str]] = (),
 ) -> Indice:
     """Junta companhias, FIIs e outros; em ticker repetido entre CNPJs, vale a fonte mais forte.
 
@@ -445,7 +487,7 @@ def montar_indice(
         normalizar_codigo(i) for i in fiis_em_bolsa(informe)["Codigo_ISIN"]
     )
     for registro in montar_outros(
-        cotacoes, conhecidos, fontes["cotahist"], isins_de_fii
+        cotacoes, conhecidos, fontes["cotahist"], isins_de_fii, identidades_fii
     ):
         indice.registros[registro.ticker] = registro
     return indice
