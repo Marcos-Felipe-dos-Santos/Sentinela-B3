@@ -320,6 +320,7 @@ def especie_da_classe(classe: str | None) -> str | None:
     """Espécie de uma classe da composição ou do FCA: ON fica ON; PN, PNA, PNB… viram PN."""
     if classe is None:
         return None
+    classe = classe.strip().upper()
     return "PN" if classe.startswith("PN") else classe
 
 

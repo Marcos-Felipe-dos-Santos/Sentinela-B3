@@ -229,7 +229,10 @@ def montar_companhias(
                 correcao=correcao.para_dict() if correcao else None,
                 classe_preferencial=None
                 if eh_unit or especie_corrigida == "ON"
-                else _texto(linha.get("Sigla_Classe_Acao_Preferencial")),
+                else normalizar_codigo(
+                    _texto(linha.get("Sigla_Classe_Acao_Preferencial"))
+                )
+                or None,
                 classes_preferenciais=classes.get(cnpj),
             )
         )

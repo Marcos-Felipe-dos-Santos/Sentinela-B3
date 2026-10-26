@@ -100,3 +100,15 @@
 - **Decisões provisórias:** nenhuma; apenas higiene de espaços externos do identificador conforme ticket.
 - **Resíduos:** artefatos locais ignorados, sem push.
 - **Para o Claude revisar:** normalização restrita às duas colunas de CNPJ existentes e seleção exata dos demais identificadores.
+
+### F2C-20 — fix: normalize preferred share class casing
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso; pronto para revisão interna.
+- **O que foi feito:** montagem normaliza a sigla avulsa com o normalizador existente (depois de _texto, preservando ausência e não aceitando número como sigla); `especie_da_classe` normaliza caixa/espaços antes de reconhecer PN. A lista preferencial e o parser da unit já normalizavam caixa: não reimplementar. Nenhuma composição inferida, ticker ou regra de método muda.
+- **D27 / BUG-2B-11:** os dois casos estritos preexistentes falharam com --runxfail antes (`/tmp/2c20-vermelho.txt`); retirados só o marcador compartilhado e decoradores após a correção, ambas as asserções preservadas; registro atualizado.
+- **Testes novos:** pna/PNA/pNa com espaços na ação avulsa e lista; PNA/PNB distintas na mesma companhia e unit sintética 1 ON + 2 PNA + 1 PNB; unit sem composição permanece sem quantidade e sem classe avulsa; helper reconhece espécie PN nas duas classes. Tudo pela sigla/composição fornecida, sem deduzir por caixa ou ticker.
+- **Testes:** 2648 passed, 1 skipped, 6 xfailed → 2660 passed, 1 skipped, 4 xfailed, 1 warning; alvo 233 passed. Ruff CI e completos data/methods verdes; Ruff completo permanece 166; golden SHA256 inicial inalterado; diff sem erros.
+- **Mutação:** `python -m mutmut run "sentinela.data.acoes_cvm*" "sentinela.data.referencia.montagem*"`; módulos integrais acoes_cvm 516/568 = 90,85% e montagem 640/691 = 92,62%, sem pendentes; export-cicd-stats concluído; `/tmp/2c20-mutmut.txt`, `/tmp/2c20-mutacao-export.txt`.
+- **Decisões provisórias:** nenhuma; normalização textual definida no aceite.
+- **Resíduos:** artefatos locais ignorados, sem push.
+- **Para o Claude revisar:** ausência/não string preservadas, classes preferenciais não colapsam em PN no registro e unit segue exigindo composição informada.

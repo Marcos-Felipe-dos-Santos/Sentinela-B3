@@ -28,7 +28,7 @@ Regras de parada: pacote §9/plano final §1 e seção "Decisões e divisão" da
 
 - [x] **F2C-19** · fix · `fix: trim CNPJ before provenance lookup` — BUG-2B-10. Arquivos: `proveniencia.py`, regressão 10. **Aceite:** CNPJ com espaços nas pontas encontra a mesma entrega/versão; não aproxima CNPJ distinto; regressão em PASS; G.
 
-- [ ] **F2C-20** · fix · `fix: normalize preferred share class casing` — BUG-2B-11. Arquivos: `referencia/montagem.py`, `acoes_cvm.py`, regressão 11. **Aceite:** pna/PNA produzem PNA na ação avulsa, lista de classes e unit; PNA/PNB continuam distintas; composição/ticker não inferidos pela caixa; regressão em PASS; G.
+- [x] **F2C-20** · fix · `fix: normalize preferred share class casing` — BUG-2B-11. Arquivos: `referencia/montagem.py`, `acoes_cvm.py`, regressão 11. **Aceite:** pna/PNA produzem PNA na ação avulsa, lista de classes e unit; PNA/PNB continuam distintas; composição/ticker não inferidos pela caixa; regressão em PASS; G.
 
 - [ ] **F2C-21** · fix · `fix: enrich listed fund classes with official identities` — BUG-2B-21. Arquivos: referência/fontes/correções/classificador, contratos e regressão 21. **Aceite:** BTCI11/TRPL11 FII pelas identidades oficiais (CNPJ/ISIN/ticker), com fonte, data e hash; fixture complementar pode ser adicionada mantendo as duas asserções permanentes; ausência/conflito da identidade mantém UNKNOWN com motivo; CI genérico não vira FII e lista manual não ganha precedência; cobertura antes/depois e exclusões por D32; regressões em PASS; G. Notícias B3 de 07/01 e 09/02/2026 estão citadas no diário F2B-48; não usar a lista antiga que dizia TRPL11 unit.
 
