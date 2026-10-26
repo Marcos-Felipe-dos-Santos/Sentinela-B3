@@ -1130,3 +1130,25 @@ def test_unit_com_componente_pna_usa_a_linha_da_classe(monkeypatch):
     assert dados["lpa"] == pytest.approx(2.1 + 2 * 2.3)
     assert dados["lpa_cvm"]["componentes"]["PNA"]["classe"] == "PNA"
     assert dados["lpa_cvm"]["componentes"]["PNA"]["notas"] == []
+
+
+@pytest.mark.parametrize("ticker,classe", [("USIM5", "PNA"), ("BRSR5", "PNA"), ("BRSR6", "PNB")])
+def test_comparacao_preferencial_indisponivel_preserva_valores(
+    monkeypatch: pytest.MonkeyPatch, ticker: str, classe: str
+) -> None:
+    """F2C-15: controles cadastrais públicos, números contábeis sintéticos.
+
+    FCA 2026 do índice identifica PNA e PNB nos três controles; Composição do Capital
+    não separa sua quantidade. Não se presume divisão proporcional entre as classes.
+    """
+    dados = _por_classe(
+        monkeypatch,
+        ticker,
+        {"ON": [2.1], classe: [2.3]},
+        registro=_banrisul(ticker, "PN", classe),
+    )
+    assert dados["divergencia_acoes"] is None
+    assert "quantidade oficial por classe" in dados["divergencia_acoes_motivo"]
+    assert dados["lpa"] == pytest.approx(2.3)
+    assert dados["vpa"] == pytest.approx(10.0)
+    assert dados["lpa_cvm"]["origem"] == "divulgado"

@@ -40,3 +40,15 @@
 - **Decisões provisórias:** nenhuma regra econômica nova; política 404 definida no próprio ticket.
 - **Resíduos:** artefatos do mutmut ignorados e logs em /tmp; nada removido além de temporários próprios dos testes; sem push.
 - **Para o Claude revisar:** condição response is not None, limpeza do temporário no 404, preservação da política transitória e alcance do requisito de mutação no transporte.
+
+### F2C-15 — fix: compare share quantities within the same preferred class
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso; pronto para revisão interna.
+- **O que foi feito:** a conferência recebe as classes preferenciais do índice; com mais de uma classe PN, não compara a quantidade da classe do yfinance ao agregado da Composição. A cascata informa `divergencia_acoes_motivo`, sem converter indisponibilidade em risco ou mudar insumos. ON, unit e PN única mantêm conferência anterior. Campo opcional aditivo, sem alteração do contrato público de fontes.
+- **Fonte e limites:** FCA 2026 do índice local (`data/referencia/indice.json`, hash da baseline) traz PNA/PNB para USIM5/BRSR5/BRSR6, fonte fca_cia_aberta_2026.zip coletada em 21/10/2026. Composição do Capital não fornece a quantidade separada por classe; nenhuma quantidade foi inferida ou dividida. Sem quantidade oficial da classe demonstrada, aplica-se o ramo indisponível previsto no aceite. Se fonte futura demonstrar essa quantidade, conferência só da mesma classe, não do total. Os testes usam identidades públicas com valores sintéticos, sem representar demonstrações reais desses emissores.
+- **D27 / BUG-2B-05:** regressão estrita preexistente falhou antes, com `--runxfail` (`/tmp/2c15-vermelho.txt`), por dict de divergência em vez de None; marca retirada depois, asserção intacta, registro corrigido. Uma primeira tentativa usou nome inexistente; repetida no arquivo real antes da implementação.
+- **Testes:** três controles cadastrais (LPA 2,3 e VPA 10 sintéticos preservados), duas listas de preferenciais múltiplas (duplicata não cria classe), cinco controles de PN única e ON/unit; nenhum teste existente enfraquecido. 2584 passed, 1 skipped, 12 xfailed → 2596 passed, 1 skipped, 11 xfailed, 1 warning. Golden com hash inicial inalterado, Ruff CI e completos data/methods verdes; Ruff completo permanece 166. Diff restrito ao item e sem erros.
+- **Mutação:** `python -m mutmut run "sentinela.data.acoes_cvm*" "market_engine*por_acao_cvm*"`; módulo acoes_cvm 502/551 = 91,11%; função `_por_acao_cvm` da cascata 298/337 = 88,43%; não declarar mutação de todo market_engine. Exportação concluída em `mutants/mutmut-cicd-stats.json`, log `/tmp/2c15-mutmut.txt`; nenhum pendente nesses alvos. Módulo de cálculo tocado medido integralmente acima de 80%.
+- **Decisões provisórias:** nenhuma; comparação indisponível está no aceite do item.
+- **Resíduos:** artefatos ignorados do mutmut, sem push.
+- **Para o Claude revisar:** distinção espécie/classe, motivo apenas informativo, preservação da conferência ON/unit e ausência de quantidade inferida.

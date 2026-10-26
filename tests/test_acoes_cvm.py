@@ -660,3 +660,26 @@ def test_pl_invalido_preserva_lpa_e_multiplo_de_lucro(valor):
     assert resultado.lpa == 2.0 and resultado.pl == 10.0
     assert resultado.vpa is None and resultado.pvp is None
     assert "inválido" in resultado.motivos["vpa"]
+
+
+@pytest.mark.parametrize("classes", [["PNA", "PNB"], ["PNB", "PNA", "PNA"]])
+def test_divergencia_nao_compara_total_pn_a_classe(classes: list[str]) -> None:
+    """Quantidades agregadas de PNA+PNB não são a quantidade da classe do ticker."""
+    assert _div(especie="PN", classes_preferenciais=classes) is None
+
+
+@pytest.mark.parametrize("classes", [None, [], ["PN"], ["PNA"], ["PNA", "PNA"]])
+def test_divergencia_preserva_especie_preferencial_unica(
+    classes: list[str] | None,
+) -> None:
+    resultado = _div(especie="PN", classes_preferenciais=classes)
+    assert resultado["acoes_cvm"] == 360.0
+
+
+def test_multiplas_preferenciais_nao_impedem_conferencia_on_ou_unit() -> None:
+    classes = ["PNA", "PNB"]
+    assert _div(classes_preferenciais=classes)["acoes_cvm"] == 640.0
+    resultado = _div(
+        eh_unit=True, acoes_por_unit={"ON": 1, "PNA": 2}, classes_preferenciais=classes
+    )
+    assert resultado["acoes_cvm"] == pytest.approx(1000 / 3)

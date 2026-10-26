@@ -1356,7 +1356,14 @@ class MarketEngine:
             eh_unit=eh_unit,
             acoes_por_unit=acoes_por_unit,
             shares_outstanding=_as_float(dados.get('_shares_outstanding')),
+            classes_preferenciais=dados.get('classes_preferenciais'),
         )
+        if (
+            not eh_unit
+            and dados.get('especie') == 'PN'
+            and len(set(dados.get('classes_preferenciais') or ())) > 1
+        ):
+            dados['divergencia_acoes_motivo'] = acoes_cvm.MOTIVO_COMPARACAO_CLASSES
         campos.update({'vpa': por_acao.vpa, 'pvp': por_acao.pvp})
         return {k: v for k, v in campos.items() if v is not None}
 

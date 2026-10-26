@@ -38,6 +38,10 @@ MOTIVO_ESCALA = "escala das ações indeterminada"
 MOTIVO_ESCALA_NAO_CONFIRMADA = "escala inferida pelo lucro consolidado sem a confirmação da quantidade do yfinance (7.7)"
 MOTIVO_TOTAL = "total de ações da Composição do Capital ≤ 0"
 MOTIVO_UNIT = "unit sem composição oficial (ações por unit)"
+MOTIVO_COMPARACAO_CLASSES = (
+    "comparação indisponível: quantidade oficial por classe preferencial ausente; "
+    "total PN não corresponde à classe do ticker"
+)
 MOTIVO_ROE_PL = "PL dos controladores ≤ 0"
 MOTIVO_ROE_SEM_PL = "PL dos controladores não identificado no documento"
 MOTIVO_ROE_SEM_LUCRO = "lucro dos controladores não identificado no documento"
@@ -515,11 +519,13 @@ def divergencia_acoes(
     eh_unit: bool,
     acoes_por_unit: dict | None,
     shares_outstanding: float | None,
+    classes_preferenciais: list[str] | None = None,
 ) -> dict | None:
     """Ações da espécie do ticker na CVM × `sharesOutstanding` do yfinance (alerta, não abstenção).
 
     Ação ON: ON − tesouraria ON; ação PN: PN − tesouraria PN; unit: total ÷ ações por unit.
-    `None` se falta a espécie ou o número do yfinance.
+    `None` se falta a espécie ou o número do yfinance. Com várias classes PN, o total
+    da espécie não é comparável à quantidade de uma classe: comparação indisponível.
     """
     if not shares_outstanding or shares_outstanding <= 0:
         return None
@@ -530,6 +536,8 @@ def divergencia_acoes(
     elif especie == "ON":
         bruto, rotulo = composicao.on - composicao.tesouraria_on, "ON"
     elif especie == "PN":
+        if len(set(classes_preferenciais or ())) > 1:
+            return None
         bruto, rotulo = composicao.pn - composicao.tesouraria_pn, "PN"
     else:
         return None
