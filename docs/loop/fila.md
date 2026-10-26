@@ -14,7 +14,7 @@ Regras de parada: pacote §9/plano final §1 e seção "Decisões e divisão" da
 
 - [x] **ETAPA-0** · docs · `docs: activate phase 2C-a with approved decisions`. Pacote copiado, aceites e divisão revisados; condições 1/4 e limitações registradas no diário.
 
-- [ ] **F2C-13** · refactor · `refactor: share CVM parse cache entries` — BUG-2B-02. Unificar leitura da DRE com/sem período preservando colunas exigidas e contexto/versão do documento. Arquivos: `cvm_provider.py`, regressão 02 e testes de cache/parse. **Aceite:** regressão 02 em PASS sem xfail; prova de uma leitura para série+TTM e igualdade dos valores/metadados; medir memória/chamadas antes/depois; golden intacto; G. Mudança no resultado pertence a outro fix.
+- [x] **F2C-13** · refactor · `refactor: share CVM parse cache entries` — BUG-2B-02. Unificar leitura da DRE com/sem período preservando colunas exigidas e contexto/versão do documento. Arquivos: `cvm_provider.py`, regressão 02 e testes de cache/parse. **Aceite:** regressão 02 em PASS sem xfail; prova de uma leitura para série+TTM e igualdade dos valores/metadados; medir memória/chamadas antes/depois; golden intacto; G. Mudança no resultado pertence a outro fix.
 
 - [ ] **F2C-14** · fix · `fix: stop retrying missing CVM downloads` — BUG-2B-03. Arquivos: `cvm_download.py`, regressão 03 e testes do download. **Aceite:** 404 faz uma chamada e nenhuma espera; falha transitória conserva política de tentativas/backoff; regressão em PASS, sem xfail; G. Não confundir achado citado como COTAHIST com o helper real reproduzido em `cvm_download.baixar_arquivo`.
 

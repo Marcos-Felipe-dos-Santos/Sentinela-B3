@@ -392,7 +392,6 @@ class CVMProvider:
             tipo,
             include_cd_cvm,
             include_versao,
-            include_periodo,
         )
         with _cache_trava:
             trava = _travas_chave.setdefault(chave[:1] + chave[3:], threading.Lock())
@@ -400,14 +399,22 @@ class CVMProvider:
             with _cache_trava:
                 if chave in _cache_parse:
                     _cache_parse.move_to_end(chave)
-                    return _cache_parse[chave].copy()
-            df = self._parsear_sem_cache(
-                zip_path, tipo, include_cd_cvm, include_versao, include_periodo
-            )
-            with _cache_trava:
-                _cache_parse[chave] = df
-                while len(_cache_parse) > _CACHE_MAX_ENTRADAS:
-                    _cache_parse.popitem(last=False)
+                    df = _cache_parse[chave]
+                else:
+                    df = None
+            if df is None:
+                # Guarda o período uma vez; cada consumidor recebe sua projeção.
+                df = self._parsear_sem_cache(
+                    zip_path, tipo, include_cd_cvm, include_versao, True
+                )
+                with _cache_trava:
+                    _cache_parse[chave] = df
+                    while len(_cache_parse) > _CACHE_MAX_ENTRADAS:
+                        _cache_parse.popitem(last=False)
+        if not include_periodo:
+            return df.drop(
+                columns=["DT_INI_EXERC", "DT_FIM_EXERC"], errors="ignore"
+            ).copy()
         return df.copy()
 
     def _parsear_sem_cache(
