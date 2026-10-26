@@ -146,3 +146,14 @@
 - **Resíduos:** só artefatos locais ignorados; nenhum arquivo não rastreado do usuário removido, sem push.
 - **Para o Claude revisar:** validade estrita da coleta B3 (e alcance limitado do ganho), identidade do snapshot CSV e modo literal, cópias isoladas e memória, preservação dos contratos/gates de liquidez e dois timeouts conservadores da mutação.
 - **Revisão interna 1 / D27 BUG-2C-02:** NÃO PODE COMMITAR: leitores distintos com __eq__/__hash__ iguais podiam misturar snapshots. Criada regressão estrita antes da correção; --runxfail reproduziu2FAIL (proventos e fundos) e1controlePASS (`/tmp/2c26-bug02-vermelho.txt`). Chave agora envolve IdentidadeLeitor congelada, hash por identidade e comparação com `is`, mantendo a referência e liberando-a após a evicção. Marca retirada, registro atualizado; controles de vida da referência e identidade adicionados. Teste NOVO do próprio item para leitor semhash foi fortalecido de6para3chamadas: exige memoização por identidade sem avaliar o hash do leitor, mantendo igualdade dos dados. Nenhum teste anterior do projeto mudou. Suíte/mutação/medição repetidas após a correção.
+
+### F2C-27 — docs: bound persisted analysis payloads
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso; levantamento documental, sem alteração de produção/schema.
+- **O que foi feito:** docs/decisoes/payload-analise-2c.md mede dois controles públicos de Informe e uma série anual de cobertura limitada, com SQLite novo em /tmp e roundtrip real; inventaria leitores e propõe bruto/referência/saída com retenção e adaptador. Limites e hashes registrados; não extrapola análises completas nem cinco exercícios. Dados de carteira não acessados.
+- **Medição:** HGLG21+21linhas, campo65097/payload65152bytes; KNRI21+21,65044/65099; CVM9512umexercício,766/818. Scripts/resultados em /tmp/2c27-medida.py/json. Sem teto inventado ou remoção de evidência; adaptador F2C-4 e migração F3-6/D29.
+- **Testes:** 2708passed,1skip,2xfail → 2708passed,1skip,2xfail,1warning; Ruff CI/data/methods verdes e diff sem erros. Nenhum teste/código modificado; mutação não se aplica a docs. Golden preservado por ausência de alteração.
+- **Dificuldades/limites:** amostra parcial e um exercício disponível; coleta/metadados influenciam bytes. Expostos no documento, sem generalizar.
+- **Resíduos:** somente arquivos locais /tmp; sem push, sem deleção do usuário.
+- **Decisões provisórias:** nenhuma nova. **Para o Claude revisar:** capacidade de reproduzir sem truncamento, inventário e compatibilidade de leitores, limites da medição.
+- **Revisão interna 1:** reprovação apenas documental: relatório expõe exercícios/base, não motivos; consumidor do Informe chama-se entradas, não avaliar_dados. Corrigidos nomes/descrição sem código, seguindo a regra de continuar por texto.
