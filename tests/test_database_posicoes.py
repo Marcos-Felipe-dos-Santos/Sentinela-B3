@@ -30,7 +30,14 @@ def test_aporte_adicional_media_ponderada(db):
     # PM = (100 * 10.0 + 50 * 16.0) / 150 = (1000 + 800) / 150 = 1800 / 150 = 12.0
     assert posicao['preco_medio'] == pytest.approx(12.0)
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason="Bug: Venda parcial recalcula o preço médio erroneamente. 50 de 100 a preço diferente do PM muda o PM, contrariando a regra do custo médio.")
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "BUG-2B-51 · venda parcial recalcula o preço médio pelo preço de venda, contra a "
+        "regra do custo médio · corrige: F2C-48"
+    ),
+)
 def test_venda_parcial_preserva_preco_medio(db):
     db.adicionar_posicao("TST3", 100, 10.0)
     # Vende 50 a um preço de 20.0
