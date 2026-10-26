@@ -14,26 +14,17 @@ Suíte em 25/10/2026: 2.575 passed, 1 skipped, 14 xfailed (~10 s).
 
 ## Fase atual
 
-**Fase 2B — Taxa real, bancos e escopo.** O mantenedor trabalha num branch local por fase e só
-publica no fim de cada fase. Baseie seu branch sempre na `main` mais recente.
+**Entre fases: a 2B (Taxa real, bancos e escopo) foi concluída** (tag `v2-fase-2b`;
+histórico em `docs/loop/historico/fase-2b/`). A **Fase 2C (Qualidade e apresentação)**
+está em proposta, em `docs/loop/fila-fase2c-proposta.md`, aguardando auditoria e
+aprovação. O mantenedor trabalha num branch local por fase e só publica no fim de cada
+fase. Baseie seu branch sempre na `main` mais recente.
 
-Arquivos travados enquanto esta fase estiver em andamento. Não abra PR que toque
-em nenhum deles:
-
-market_engine.py  cvm_provider.py  cvm_fii_provider.py  fii_engine.py  valuation_engine.py
-data_quality.py  config.py  ai_core.py  pytest.ini  vulture_whitelist.py
-sentinela/data/  sentinela/domain/  sentinela/methods/  sentinela/services/  sentinela/reports/
-scripts/  tests/conftest.py  tests/fixtures/  tests/golden_motores.py
-tests/test_market_engine*.py  tests/test_cvm_*.py  tests/test_fii_*.py  tests/test_valuation_*.py
-tests/test_data_quality*.py  tests/test_methods_*.py  tests/test_registry.py  tests/test_rastreabilidade.py
-tests/test_acoes_cvm.py  tests/test_controladores.py  tests/test_contas_cvm*.py  tests/test_referencia*.py
-tests/test_asset_classifier*.py  tests/test_saidas_finitas.py  tests/test_roe_fronteira.py
-tests/test_dy_fronteira.py  tests/test_liquidez*.py  tests/test_macro_context.py  tests/test_units.py
-tests/test_contratos_*.py  tests/test_invalidar_cache_cvm.py  tests/test_tesouro.py  tests/test_taxa*.py
-tests/regressao/  tests/test_cotahist.py
-
-Tickets com janela nesta fase, se ainda abertos: B1, B3, C-A, C-B e C-C (a última janela
-do C-C). B2, C-D e C-E não têm mais janela.
+Até a 2C ser ativada, nenhum arquivo está travado por fase. Ainda assim, PR que toque
+`sentinela/methods/`, `sentinela/data/`, os motores (`valuation_engine.py`,
+`fii_engine.py`, `market_engine.py`), `config.py` ou `tests/fixtures/` precisa de
+aprovação do mantenedor antes de abrir. A lista de arquivos travados da 2C entra aqui
+na ativação.
 
 ## Regra fundamental: especificação externa
 
