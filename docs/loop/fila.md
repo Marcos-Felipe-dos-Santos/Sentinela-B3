@@ -26,7 +26,7 @@ Regras de parada: pacote §9/plano final §1 e seção "Decisões e divisão" da
 
 - [x] **F2C-18** · fix · `fix: isolate concurrent provenance writes` — BUG-2B-09. Arquivos: `proveniencia.py`, regressão 09, testes de proveniência. **Aceite:** duas gravações concorrentes concluem sem colisão de `.tmp`, JSON final íntegro e correspondente a um registro completo; barreira testa efetivamente a colisão, falha/timeout da sincronização é falha do teste, nunca captura aceita como bug reproduzido; checar exceções dos dois workers e cleanup de temporários; regressão em PASS; G.
 
-- [ ] **F2C-19** · fix · `fix: trim CNPJ before provenance lookup` — BUG-2B-10. Arquivos: `proveniencia.py`, regressão 10. **Aceite:** CNPJ com espaços nas pontas encontra a mesma entrega/versão; não aproxima CNPJ distinto; regressão em PASS; G.
+- [x] **F2C-19** · fix · `fix: trim CNPJ before provenance lookup` — BUG-2B-10. Arquivos: `proveniencia.py`, regressão 10. **Aceite:** CNPJ com espaços nas pontas encontra a mesma entrega/versão; não aproxima CNPJ distinto; regressão em PASS; G.
 
 - [ ] **F2C-20** · fix · `fix: normalize preferred share class casing` — BUG-2B-11. Arquivos: `referencia/montagem.py`, `acoes_cvm.py`, regressão 11. **Aceite:** pna/PNA produzem PNA na ação avulsa, lista de classes e unit; PNA/PNB continuam distintas; composição/ticker não inferidos pela caixa; regressão em PASS; G.
 

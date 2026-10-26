@@ -215,6 +215,12 @@ def registrar_sem_falhar(
         return None
 
 
+def _identidade_da_coluna(coluna: str, valor: object) -> str:
+    """Remove só espaços externos do CNPJ; não aproxima identificadores diferentes."""
+    texto = str(valor)
+    return texto.strip() if coluna in ("CNPJ_CIA", "CNPJ_Fundo_Classe") else texto
+
+
 def entrega_no_indice(
     linhas: list[dict], documento: dict[str, str | None], coluna: str = "DT_RECEB"
 ) -> str | None:
@@ -229,7 +235,10 @@ def entrega_no_indice(
     if any(valor is None for valor in documento.values()):
         return None
     for linha in linhas:
-        if all(str(linha.get(k)) == str(v) for k, v in documento.items()):
+        if all(
+            _identidade_da_coluna(k, linha.get(k)) == _identidade_da_coluna(k, v)
+            for k, v in documento.items()
+        ):
             entrega = str(linha.get(coluna) or "").strip()
             return entrega if _DATA_ISO.match(entrega) else None
     return None

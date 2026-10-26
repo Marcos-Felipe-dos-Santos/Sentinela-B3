@@ -88,3 +88,15 @@
 - **Decisões provisórias:** nenhuma nova; vencedor da última troca é sempre registro completo, como exige o aceite (não se promete ordem das threads).
 - **Resíduos:** somente artefatos ignorados e logs locais; nenhum arquivo não rastreado do usuário removido, sem push.
 - **Para o Claude revisar:** barreira confiável, propagação dos erros dos dois workers, atomicidade e cleanup restrito ao arquivo próprio; alcance do gate de mutação em IO.
+
+### F2C-19 — fix: trim CNPJ before provenance lookup
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso; pronto para revisão interna.
+- **O que foi feito:** comparação dos identificadores aplica strip somente às colunas CNPJ_CIA e CNPJ_Fundo_Classe (as usadas pelos provedores DFP/Informe); em ambos os lados da busca. Período, versão, pontuação e dígitos continuam exatos. Não adiciona validação por aproximação ou troca de documento.
+- **D27 / BUG-2B-10:** regressão estrita preexistente falhou com --runxfail antes (`/tmp/2c19-vermelho.txt`), entrega None contra 2026-03-01. Marca retirada depois, asserção intacta, registro corrigido.
+- **Testes novos na própria regressão:** espaços só no índice, só no documento e nos dois, nas duas colunas CNPJ; versão 2 escolhida, sem cair na 1; identificador com dígito diferente, sem pontuação ou texto extra não casa; outros campos não ganham strip. Nenhum teste existente enfraquecido.
+- **Testes:** 2636 passed, 1 skipped, 7 xfailed → 2648 passed, 1 skipped, 6 xfailed, 1 warning; alvo 84 passed. Ruff CI e completo data/methods verdes, Ruff completo na dívida inicial; golden SHA256 inicial inalterado; diff sem erros.
+- **Mutação:** módulo integral `python -m mutmut run "sentinela.data.proveniencia*"`, 178/221 = 80,54%, sem pendentes; export-cicd-stats concluído; `/tmp/2c19-mutmut.txt` e `/tmp/2c19-mutacao-export.txt`.
+- **Decisões provisórias:** nenhuma; apenas higiene de espaços externos do identificador conforme ticket.
+- **Resíduos:** artefatos locais ignorados, sem push.
+- **Para o Claude revisar:** normalização restrita às duas colunas de CNPJ existentes e seleção exata dos demais identificadores.
