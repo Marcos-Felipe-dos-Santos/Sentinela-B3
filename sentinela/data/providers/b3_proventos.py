@@ -18,8 +18,9 @@ codificados em base64, no fim do caminho:
   busca pelo nome falha com barra ("AMBEV S/A" devolve zero registros; "AMBEV SA", 40;
   "AMBEV", 134).
 
-Os registros voltam literais; a conta é de `sentinela.data.proventos_b3`. Sem cache: a
-cascata consulta a cada análise. `agora` é o instante da coleta (sem leitura de relógio aqui).
+Os registros voltam literais; a conta é de `sentinela.data.proventos_b3`. Cache somente
+da mesma coleta explícita completa; outro instante volta à fonte, sem criar observação.
+`agora` é o instante da coleta (sem leitura de relógio aqui).
 """
 
 from __future__ import annotations
@@ -33,6 +34,8 @@ from datetime import datetime
 from typing import Any
 
 import requests
+
+from sentinela.data.cache_leitura import CacheCopia, IdentidadeLeitor
 
 URL_BASE = "https://sistemaswebb3-listados.b3.com.br/listedCompaniesProxy/CompanyCall"
 POR_PAGINA = 120
@@ -70,7 +73,26 @@ class Relacao:
     coleta: str
 
 
+_COLETAS: CacheCopia[Relacao] = CacheCopia()
+
+
 def coletar(
+    cd_cvm: int | str,
+    agora: datetime,
+    obter: Callable[[str], tuple[Any, dict]] = obter_json,
+) -> Relacao:
+    """Reutiliza somente a mesma coleta explícita; outra observação volta à fonte."""
+    chave = (str(cd_cvm), agora.isoformat(), IdentidadeLeitor(obter))
+    existente = _COLETAS.buscar(chave)
+    if existente is not None:
+        return existente
+    relacao = _coletar_sem_cache(cd_cvm, agora, obter)
+    if type(relacao.total) is int and relacao.total == len(relacao.registros):
+        _COLETAS.guardar(chave, relacao)
+    return relacao
+
+
+def _coletar_sem_cache(
     cd_cvm: int | str,
     agora: datetime,
     obter: Callable[[str], tuple[Any, dict]] = obter_json,

@@ -7,7 +7,6 @@ Schema verificado contra inf_mensal_fii_*_2024.csv (CVM, 2024-06):
 
 Observação: vacância física NÃO está disponível no informe mensal.
 """
-import io
 import logging
 import zipfile
 from datetime import date
@@ -17,6 +16,7 @@ import pandas as pd
 
 from cvm_download import baixar_arquivo
 from sentinela.data import proveniencia
+from sentinela.data.cache_leitura import ler_csv_zip
 
 logger = logging.getLogger(__name__)
 
@@ -94,14 +94,7 @@ class CVMFIIProvider:
             if csv_name is None:
                 logger.warning("Arquivo complemento não encontrado em %s", zip_path.name)
                 return pd.DataFrame()
-            with zf.open(csv_name) as f:
-                return pd.read_csv(
-                    io.TextIOWrapper(f, encoding="latin-1"),
-                    sep=";",
-                    dtype=str,
-                    low_memory=False,
-                    keep_default_na=not literal,
-                )
+        return ler_csv_zip(zip_path, csv_name, literal=literal)
 
     def _proveniencia(self, zip_path: Path, ano: int, row) -> dict | None:
         """Proveniência do informe usado (F2A-32): mês, versão e `Data_Entrega` do `geral`.
@@ -120,12 +113,7 @@ class CVMFIIProvider:
             "Versao": row.get("Versao"),
         }
         try:
-            with zipfile.ZipFile(zip_path) as zf, zf.open(
-                f"inf_mensal_fii_geral_{ano}.csv"
-            ) as f:
-                geral = pd.read_csv(
-                    io.TextIOWrapper(f, encoding="latin-1"), sep=";", dtype=str
-                )
+            geral = ler_csv_zip(zip_path, f"inf_mensal_fii_geral_{ano}.csv")
             entrega = proveniencia.entrega_no_indice(
                 geral.to_dict("records"), documento, coluna="Data_Entrega"
             )
@@ -228,14 +216,7 @@ class CVMFIIProvider:
             )
             if nome is None:
                 return pd.DataFrame()
-            with zf.open(nome) as f:
-                return pd.read_csv(
-                    io.TextIOWrapper(f, encoding="latin-1"),
-                    sep=";",
-                    dtype=str,
-                    low_memory=False,
-                    keep_default_na=not literal,
-                )
+        return ler_csv_zip(zip_path, nome, literal=literal)
 
     def _linhas_do_fundo(
         self, cnpj: str, ano: int

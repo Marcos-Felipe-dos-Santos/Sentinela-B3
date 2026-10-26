@@ -11,7 +11,8 @@ e `subscriptions`.
 Comportamentos observados em 21/10/2026: código desconhecido devolve um registro genérico
 (`fund` "ISIN GENERIC", listas vazias); fundo deslistado (MALL) devolve corpo vazio. A
 validade da resposta é conferida por `sentinela.data.fii_elegibilidade.resposta_b3_valida`;
-aqui só se lê. Sem cache: a cascata consulta a cada análise. `agora` é o instante da coleta.
+aqui só se lê. Cache somente da mesma coleta explícita válida; outro instante volta à
+fonte. `agora` é o instante da coleta, sem leitura de relógio.
 """
 
 from __future__ import annotations
@@ -23,10 +24,13 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
+from sentinela.data.cache_leitura import CacheCopia, IdentidadeLeitor
+from sentinela.data.fii_elegibilidade import resposta_b3_valida
 from sentinela.data.providers.b3_proventos import obter_json
 
 URL_BASE = "https://sistemaswebb3-listados.b3.com.br/fundsProxy/fundsCall"
 TIPO_FII = 7
+_COLETAS: CacheCopia[dict] = CacheCopia()
 
 
 def url(cnpj: str, codigo: str) -> str:
@@ -49,10 +53,18 @@ def coletar(
 
     Falha de rede ou corpo que não é JSON (fundo deslistado): a exceção sobe para a cascata.
     """
-    corpo, fonte = obter(url(cnpj, ticker))
-    return {
+    endereco = url(cnpj, ticker)
+    chave = (endereco, agora.isoformat(), IdentidadeLeitor(obter))
+    existente = _COLETAS.buscar(chave)
+    if existente is not None:
+        return existente
+    corpo, fonte = obter(endereco)
+    registro = {
         "resposta": corpo,
         "codigo": ticker[:4].upper(),
         "fonte": fonte,
         "coleta": agora.isoformat(),
     }
+    if resposta_b3_valida(corpo, registro["codigo"]):
+        _COLETAS.guardar(chave, registro)
+    return registro

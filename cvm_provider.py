@@ -28,6 +28,7 @@ from sentinela.data.acoes_cvm import (
     Composicao,
     roe_dos_controladores,
 )
+from sentinela.data.cache_leitura import ler_csv_zip
 
 logger = logging.getLogger(__name__)
 
@@ -354,13 +355,7 @@ class CVMProvider:
 
     def _read_raw(self, zip_path: Path, tipo: str) -> pd.DataFrame:
         csv_name = self._find_csv_name(zip_path, tipo)
-        with zipfile.ZipFile(zip_path) as zf, zf.open(csv_name) as f:
-            return pd.read_csv(
-                io.TextIOWrapper(f, encoding="latin-1"),
-                sep=";",
-                dtype=str,
-                low_memory=False,
-            )
+        return ler_csv_zip(zip_path, csv_name)
 
     def parsear_demonstrativo(
         self,
