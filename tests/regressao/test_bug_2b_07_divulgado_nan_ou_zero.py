@@ -14,7 +14,7 @@ from sentinela.data import acoes_cvm
 
 @pytest.mark.xfail(
     strict=True,
-    reason="BUG-2B-07 · LPA divulgado NaN ou zero aceito como coerente · corrige: a decidir no marcador",
+    reason="BUG-2B-07 · LPA divulgado NaN ou zero aceito como coerente · corrige: F2C-16",
 )
 @pytest.mark.parametrize("valor", [math.nan, 0.0])
 def test_divulgado_invalido_se_abstem(valor):

@@ -17,7 +17,7 @@ from sentinela.data import proveniencia
 
 @pytest.mark.xfail(
     strict=True,
-    reason="BUG-2B-09 · gravações simultâneas da proveniência colidem no .tmp · corrige: a decidir no marcador",
+    reason="BUG-2B-09 · gravações simultâneas da proveniência colidem no .tmp · corrige: F2C-18",
 )
 def test_duas_gravacoes_simultaneas_do_mesmo_registro(tmp_path):
     origem = tmp_path / "arquivo.zip"

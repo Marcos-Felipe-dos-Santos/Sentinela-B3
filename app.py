@@ -1,3 +1,5 @@
+import math
+import numbers
 import time
 from typing import Any, Dict, Optional
 
@@ -57,6 +59,21 @@ def _safe_confidence(value: Any) -> str:
         return f"{float(value):.2f}"
     except (TypeError, ValueError):
         return str(value)
+
+
+def _texto_valor_justo(analise: dict) -> tuple[str, str | None]:
+    """Card "Valor Justo": o número só quando a análise o traz.
+
+    Abstenção (sem `fair_value` numérico e finito) mostra "—" e o motivo, nunca R$ 0,00
+    (decisão do Marcos de 25/10/2026, F2B-69).
+    """
+    valor = analise.get('fair_value')
+    if isinstance(valor, numbers.Real) and not isinstance(valor, bool) and math.isfinite(valor):
+        return f"R$ {valor:.2f}", None
+    motivo = analise.get('metodos_usados') or "; ".join(
+        str(risco) for risco in analise.get('riscos') or []
+    )
+    return "—", motivo or "Análise sem valor justo; motivo não informado."
 
 
 def _cor_recomendacao(rec: str) -> str:
@@ -268,7 +285,11 @@ if modo == "Terminal":
 
             k1, k2, k3, k4 = st.columns(4)
             k1.metric("Preço", f"R$ {dados.get('preco_atual', 0):.2f}")
-            k2.metric("Valor Justo", f"R$ {analise.get('fair_value', 0):.2f}")
+            valor_justo, motivo_sem_valor = _texto_valor_justo(analise)
+            k2.metric("Valor Justo", valor_justo)
+            if motivo_sem_valor:
+                # O motivo pode trazer dois "R$" (liquidez), que o Markdown leria como fórmula.
+                k2.caption(motivo_sem_valor.replace("$", r"\$"))
             k3.markdown(_cor_recomendacao(recomendacao), unsafe_allow_html=True)
             k4.metric("Score", f"{analise.get('score_final', 0)}/100")
 

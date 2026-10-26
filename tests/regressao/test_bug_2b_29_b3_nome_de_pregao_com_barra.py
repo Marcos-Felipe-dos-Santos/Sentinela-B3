@@ -6,7 +6,7 @@ nome de pregão "AMBEV S/A", e GetListedCashDividends com esse nome devolve zero
 tem proventos recentes, então o Bazin se abstém pela conferência do emissor, embora a
 companhia pague proventos. A B3 falsa abaixo reproduz esse comportamento. Esta regressão
 assume que o correto é a série do emissor chegar ao Bazin; a forma da correção (variação
-do nome ou outra chamada) não está decidida e vai para a proposta da 2C.
+do nome ou outra chamada) não está decidida: é o [DECISÃO] da proposta da 2C, antes do F2C-23.
 """
 
 import base64
@@ -58,7 +58,7 @@ def _b3_como_a_real(endereco):
 
 @pytest.mark.xfail(
     strict=True,
-    reason="BUG-2B-29 · relação B3 vazia pelo nome de pregão com barra · corrige: proposta da 2C",
+    reason="BUG-2B-29 · relação B3 vazia pelo nome de pregão com barra · corrige: F2C-23",
 )
 def test_nome_de_pregao_com_barra_traz_a_relacao_do_emissor():
     relacao = b3_proventos.coletar(

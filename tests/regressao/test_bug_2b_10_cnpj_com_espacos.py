@@ -12,7 +12,7 @@ from sentinela.data import proveniencia
 
 @pytest.mark.xfail(
     strict=True,
-    reason="BUG-2B-10 · CNPJ com espaços não acha a entrega no índice · corrige: a decidir no marcador",
+    reason="BUG-2B-10 · CNPJ com espaços não acha a entrega no índice · corrige: F2C-19",
 )
 def test_cnpj_com_espacos_acha_a_entrega():
     linhas = [{"CNPJ_CIA": " 11.111.111/0001-11 ", "DT_RECEB": "2026-03-01"}]

@@ -25,7 +25,7 @@ Python + Streamlit (V1; interface FastAPI + HTMX prevista para a Fase 7), local-
 
 ```bash
 streamlit run app.py                               # app (V1)
-python -m pytest tests/ -x --tb=short              # suíte (2.568 passed, 1 skipped, 14 xfailed; ~10 s)
+python -m pytest tests/ -x --tb=short              # suíte (2.575 passed, 1 skipped, 14 xfailed; ~10 s)
 python -m pytest tests/test_x.py::test_y -v        # teste único
 python -m pytest tests/ --cov=. --cov-report=term-missing
 python -m mutmut run "technical_engine*"           # mutação de um módulo (config em [tool.mutmut])

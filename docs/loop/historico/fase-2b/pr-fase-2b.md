@@ -1,6 +1,6 @@
 # Fase 2B — Taxa real, bancos e escopo
 
-Branch `v2/fase-2b`, de `895fe0a` (ativação) a `f40c123` (F2B-5), mais o commit deste resumo (`e75ebe7`) e a fila de fechamento da auditoria externa (`4ee5bec` a F2B-68; seção "Fechamento da auditoria externa", abaixo). Fonte: o diário da fase (`docs/loop/historico/fase-2b/diario.md`) e o do fechamento (`docs/loop/historico/fase-2b/diario-fechamento.md`), que trazem o detalhe de cada item; os números abaixo são os de lá. Sem push pelo loop.
+Branch `v2/fase-2b`, de `895fe0a` (ativação) a `f40c123` (F2B-5), mais o commit deste resumo (`e75ebe7`) e a fila de fechamento da auditoria externa (`4ee5bec` a F2B-69; seção "Fechamento da auditoria externa", abaixo). Fonte: o diário da fase (`docs/loop/historico/fase-2b/diario.md`) e o do fechamento (`docs/loop/historico/fase-2b/diario-fechamento.md`), que trazem o detalhe de cada item; os números abaixo são os de lá. Sem push pelo loop.
 
 ## O que revisar primeiro (plano final, §9, nesta ordem)
 
@@ -117,21 +117,33 @@ Fila de fechamento montada a partir de `docs/loop/historico/fase-2b/auditoria-ex
 | F2B-65 | docs: remeasure the FII spread after the closing fixes | `54ab5d6` |
 | F2B-66 | docs: sync CLAUDE.md and the plan with the phase 2B delivery | `5e584ba` |
 | F2B-67 | docs: add the phase 2B closing caveats to the phase 2C proposal | `e6d7da3` |
-| F2B-68 | docs: record the phase 2B closing and archive the closing queue | commit deste registro |
+| F2B-68 | docs: record the phase 2B closing and archive the closing queue | `6b6f989` |
+| F2B-69 | fix: close the phase 2B quick audit caveats (auditoria rápida do fechamento; BUG-2B-50 reaberto no `app.py`) | commit deste registro |
 
-- **Testes:** 2.517 passed, 1 skipped, 14 xfailed → **2.568 passed, 1 skipped, 14 xfailed**. Cada `fix:` registrou o bug em `tests/regressao/` com xfail estrito, mostrou o vermelho pelo motivo econômico com `--runxfail`, retirou a marca e atualizou o registro (D27).
+- **Testes:** 2.517 passed, 1 skipped, 14 xfailed → 2.568 (F2B-68) → **2.575 passed, 1 skipped, 14 xfailed** (F2B-69). Cada `fix:` registrou o bug em `tests/regressao/` com xfail estrito, mostrou o vermelho pelo motivo econômico com `--runxfail`, retirou a marca e atualizou o registro (D27).
 - **Golden** (`--onde "caso['motor'] == 'fii'"`): F2B-58, 1 alterado, só o texto do motivo de `fii/sem-taxa-real`; F2B-62, 77 alterados, todos abstenções, só nas chaves `fair_value` e `upside` (saem; eram o preço e 0,0), sem mudança de rótulo ou score; os demais itens, idêntico. Nenhum caso fora do predicado.
 - **Mutação:** `sentinela.data.rendimento_fii` 508/558 (91,0%) no F2B-60; `sentinela.data.fii_elegibilidade` 176/205 (85,9%); `cvm_fii_provider` (V1, sem meta) 445/545 (81,7%); `data_quality` (V1, sem meta) 437/531.
 - **Ficha FII 1.3** (F2B-56): célula vazia da composição vale zero só em registro da mesma versão com ao menos uma posição preenchida; amortização vazia dentro de complemento válido vale zero, e `NaN` declarado, texto ou negativo abstêm; a leitura do CSV separa o vazio do `NaN` literal (F2B-61).
 - **Contraprova D27** (F2B-64, `docs/loop/historico/fase-2b/contraprova-d27/`): a mesma entrada no commit pai e no do item, teste a teste. F2B-54: o pai falha nos 3 cenários da escala pelo valor, o item passa; dispensas escritas só para os dois avisos do perfil (sem número). F2B-2: no pai, todos os cenários dão R$ 97,36 pela Selic; no item, R$ 114,22 pela NTN-B + spread, e cada regra de elegibilidade abstém com o próprio motivo.
 - **Spread medido** (F2B-65, só medição): **3,5124%** (p25 3,1738%, p75 3,7345%; 30 a 44 fundos por mês; 2.351 fundos-mês válidos), os mesmos números do F2B-55; a constante datada de 3,5058% fica (decisão de 25/10/2026). Só os motivos das exclusões se redistribuem (VP inválido 0 → 105).
-- **Desvios e decisões provisórias para o Marcos:** (1) F2B-56, commit complementar `178b5fe`; (2) F2B-58: registro da taxa do mesmo dia local da análise; sem resposta da B3, a abstenção é a dos eventos indisponíveis; (3) F2B-63: a regressão passa por `_buscar_cvm`, não por `buscar_dados_ticker` inteira (o teste pela cascata inteira está no F2C-43); (4) revisões reprovadas e corrigidas antes do commit: F2B-57 (comparação de formas; depois só a contagem de testes), F2B-58 (taxa antes do escopo, validade da taxa, motivos), F2B-59 (import sem uso), F2B-64 (3 rodadas; a 3ª só por texto), F2B-66 (texto), F2B-67 (cobertura e texto) e F2B-68 (texto); as reprovações só por texto foram corrigidas e commitadas sem nova parada (plano final, §1, regra 5).
-- **Resíduos:** `app.py:271` mostra "Valor Justo R$ 0.00" para o FII e o banco abstidos (F3-6); `auditoria.py:868/880` usa o preço como valor justo do FII abstido (F2C-8); demais na proposta da 2C (F2C-33 a F2C-47). Fora do git: `outputs/f2b65_spread*` e as worktrees temporárias da contraprova (removidas).
+- **Desvios e decisões provisórias para o Marcos:** (1) F2B-56, commit complementar `178b5fe`; (2) F2B-58: registro da taxa do mesmo dia local da análise; sem resposta da B3, a abstenção é a dos eventos indisponíveis; (3) F2B-63: a regressão passa por `_buscar_cvm`, não por `buscar_dados_ticker` inteira: **dispensa explícita do Marcos de 25/10/2026** (F2B-69), com o teste pela cascata inteira no F2C-43; (4) revisões reprovadas e corrigidas antes do commit: F2B-57 (comparação de formas; depois só a contagem de testes), F2B-58 (taxa antes do escopo, validade da taxa, motivos), F2B-59 (import sem uso), F2B-64 (3 rodadas; a 3ª só por texto), F2B-66 (texto), F2B-67 (cobertura e texto) e F2B-68 (texto); as reprovações só por texto foram corrigidas e commitadas sem nova parada (plano final, §1, regra 5).
+- **Resíduos:** `app.py:271` mostrava "Valor Justo R$ 0.00" para o FII e o banco abstidos: corrigido no F2B-69 (abaixo); `auditoria.py:868/880` usa o preço como valor justo do FII abstido (F2C-8); demais na proposta da 2C (F2C-33 a F2C-47). Fora do git: `outputs/f2b65_spread*` e as worktrees temporárias da contraprova (removidas).
+
+### Auditoria rápida do fechamento (F2B-69, 25/10/2026)
+
+Codex, modo FASE, `e75ebe7..6b6f989`: **"pode seguir com ressalvas"** (não rodou a suíte: `No usable temporary directory`). As quatro ressalvas, fechadas no F2B-69 pelas decisões do Marcos da mesma data (detalhe no `diario-fechamento.md`):
+
+1. **F2B-63:** dispensa explícita do teste pela cascata inteira; destino F2C-43.
+2. **`app.py`:** sem `fair_value` numérico (abstenção), o card "Valor Justo" mostra "—" e o motivo (`metodos_usados` ou `riscos`), nunca R$ 0,00. Rito D27 pela regressão `test_bug_2b_50_reaberto_app_valor_justo_da_abstencao.py` (BUG-2B-50 reaberto): vermelho pelo R$ 0.00 com `--runxfail`, PASS sem a marca. Limitação: a função é lida do código-fonte e testada isolada; a tela desenhada e o resto do `app.py` seguem sem cobertura.
+3. **Marcas xfail:** BUG-2B-02/03/05/07/08/09/10/11/21/29 com o item da 2C no `reason` (F2C-13 a F2C-21 e F2C-23), igual ao README e à proposta.
+4. **`docs/PLANO.md`:** F2B-67 e F2B-68 entregues, com os commits, e a linha do F2B-69.
+
+Ficam para o Marcos: o xfail de `tests/test_database_posicoes.py` (venda parcial) sem ID nem destino; e o preço como valor justo quando nenhum método de ação devolve número (`valuation_engine.py:466`) e no caminho DISTRESSED (`:252`), que não é ausência e ficou fora da decisão 2.
 
 ## Testes antes → depois
 
 - **Início da fase:** 1.362 passed, 1 skipped, 18 xfailed (F2B-35).
-- **Fim da fila da fase:** **2.517 passed, 1 skipped, 14 xfailed** (depois da fila de fechamento, 2.568), depois do F2B-5, que tirou os testes do que saiu.
+- **Fim da fila da fase:** **2.517 passed, 1 skipped, 14 xfailed** (depois da fila de fechamento, 2.568; depois do F2B-69, 2.575), depois do F2B-5, que tirou os testes do que saiu.
 - **Gates:** Ruff CI e completo em `sentinela/methods` e `sentinela/data` verdes. O `ruff check .` completo terminou em 169 (era 170 antes do F2B-5).
 - **Bugs:** registrados na fase com regressão em `tests/regressao/`, de BUG-2B-01 a BUG-2B-45, e corrigidos conforme o registro; a fase também corrigiu BUG-2A-01 e BUG-2A-10 a BUG-2A-23. Abertos com xfail estrito e destino na proposta da 2C: BUG-2B-02, 03, 05, 07, 08, 09, 10, 11, 21 e 29.
 
