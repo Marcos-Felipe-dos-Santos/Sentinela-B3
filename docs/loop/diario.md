@@ -52,3 +52,16 @@
 - **Decisões provisórias:** nenhuma; comparação indisponível está no aceite do item.
 - **Resíduos:** artefatos ignorados do mutmut, sem push.
 - **Para o Claude revisar:** distinção espécie/classe, motivo apenas informativo, preservação da conferência ON/unit e ausência de quantidade inferida.
+
+### F2C-16 — fix: reject invalid reported EPS at the public boundary
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso; pronto para revisão interna.
+- **O que foi feito:** `divulgados_coerentes` valida finitude/tipo antes de deduplicar e conferir sinal. Qualquer linha inválida impede a espécie, mesmo junto de linha válida/zero, sem reserva. Linha zero significa não informada; zeros são ignorados junto de linha válida, e espécie só com zeros devolve abstenção explícita de ausência de divulgado. `lpa_dos_metodos` trata apenas esse motivo de zero como a ausência que a coleta já produz; não contorna os motivos de inválido/conflito/sinal. Sem alteração do provedor, de métodos ou fórmulas.
+- **Definição externa:** ficha por ação 1.1 aprovada, §4.8 (incoerência não autoriza reserva), §4.10 (não numérico/não finito inválido), §4.11 (zero não informado), §4.12 (prejuízo válido). Mantido contrato da coleta, que já remove zeros. Zero não foi reclassificado como inválido para fazer a regressão passar.
+- **D27 / BUG-2B-07:** os dois casos estritos preexistentes falharam com `--runxfail` antes da implementação (`/tmp/2c16-vermelho.txt`). Após correção, retiradas só as marcas; asserções permanentes preservadas, registro atualizado. Sem enfraquecer teste.
+- **Testes novos:** NaN/±infinito/None/texto/bool, isolados e com linha válida/zero; resultado inválido bloqueia reserva e escala. Zero isolado equivale à ausência no consumo, sem dispensar a regra de múltiplas preferenciais; zero junto de LPA negativo coerente não cria conflito. Não converte prejuízo em ausente.
+- **Testes:** 2596 passed, 1 skipped, 11 xfailed → 2618 passed, 1 skipped, 9 xfailed, 1 warning; Ruff CI e completos data/methods verdes; golden SHA256 inicial inalterado; diff sem erros. Ruff completo permanece na dívida inicial.
+- **Mutação:** `python -m mutmut run "sentinela.data.acoes_cvm*"`, módulo integral 514/566 = 90,81%, sem pendentes; `export-cicd-stats` concluído; `/tmp/2c16-mutmut.txt` e `/tmp/2c16-mutacao-export.txt`.
+- **Decisões provisórias:** nenhuma; domínio já aprovado na ficha 1.1.
+- **Resíduos:** somente logs em /tmp e mutantes ignorados, sem push.
+- **Para o Claude revisar:** distinção zero/ausência/inválido e que o motivo de zero é o único que permite tratar o divulgado como não informado na escolha do insumo.

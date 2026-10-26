@@ -49,6 +49,7 @@ MOTIVO_SINAL_CONTROLADORES = "LPA divulgado com sinal oposto ao lucro dos contro
 MOTIVO_SINAL_CONSOLIDADO = "LPA divulgado com sinal oposto ao lucro consolidado"
 MOTIVO_LINHAS_CONFLITANTES = "LPA divulgado com linhas conflitantes para a espécie"
 MOTIVO_LPA_INVALIDO = "LPA divulgado inválido para a espécie"
+MOTIVO_LPA_ZERO = "LPA divulgado não informado: linha igual a zero"
 MOTIVO_LUCRO_ZERO = "LPA divulgado diferente de zero com lucro zero no documento"
 MOTIVO_SINAL_NAO_CONFERIVEL = (
     "sinal do LPA divulgado não conferível: lucro não identificado no documento"
@@ -250,8 +251,9 @@ def divulgados_coerentes(
 ) -> dict[str, LpaDivulgado | Abstencao]:
     """Classe → LPA divulgado coerente, ou a abstenção da classe (ficha, abstenções 8 e 9).
 
-    `linhas`: os valores das linhas 3.99.01.xx por classe da descrição (ON, PN, PNA…), sem
-    zeros. Linhas repetidas com o mesmo valor contam como uma; valores diferentes na mesma
+    `linhas`: os valores das linhas 3.99.01.xx por classe da descrição (ON, PN, PNA…).
+    Zero é linha não informada (ficha 1.1, §4.11); não finito invalida a classe (§4.10).
+    Linhas repetidas com o mesmo valor contam como uma; valores diferentes na mesma
     classe são conflito. O sinal é conferido contra o lucro dos controladores ou, quando ele se
     abstém, contra o lucro consolidado.
     """
@@ -272,7 +274,13 @@ def divulgados_coerentes(
         if isinstance(valores, Abstencao):
             resultado[classe] = valores
             continue
-        distintos = set(valores)
+        if any(not _finito(valor) for valor in valores):
+            resultado[classe] = Abstencao(MOTIVO_LPA_INVALIDO)
+            continue
+        distintos = {valor for valor in valores if valor != 0}
+        if not distintos:
+            resultado[classe] = Abstencao(MOTIVO_LPA_ZERO)
+            continue
         if len(distintos) != 1:
             resultado[classe] = Abstencao(MOTIVO_LINHAS_CONFLITANTES)
             continue
@@ -371,6 +379,12 @@ def lpa_dos_metodos(
     `None` quando a escala é indeterminada. `classes_preferenciais`: as siglas do FCA da
     companhia (PNA, PNB…); com mais de uma, o recalculado comum não vale para preferenciais.
     """
+    # Zero tem a mesma ausência que a coleta já declara; inválido continua bloqueando reserva.
+    divulgados = {
+        classe: achado
+        for classe, achado in divulgados.items()
+        if not (isinstance(achado, Abstencao) and achado.motivo == MOTIVO_LPA_ZERO)
+    }
     varias = len({c for c in classes_preferenciais or () if c.startswith("PN")}) > 1
     if not eh_unit:
         return _lpa_da_classe(

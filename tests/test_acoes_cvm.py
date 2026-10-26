@@ -683,3 +683,42 @@ def test_multiplas_preferenciais_nao_impedem_conferencia_on_ou_unit() -> None:
         eh_unit=True, acoes_por_unit={"ON": 1, "PNA": 2}, classes_preferenciais=classes
     )
     assert resultado["acoes_cvm"] == pytest.approx(1000 / 3)
+
+
+@pytest.mark.parametrize(
+    "valor", [float("nan"), float("inf"), -float("inf"), None, "texto", True]
+)
+@pytest.mark.parametrize("outros", [[], [-2.0], [0.0]])
+def test_lpa_nao_numerico_ou_nao_finito_bloqueia_reserva(
+    valor: object, outros: list[float]
+) -> None:
+    """Ficha por ação 1.1, §4.10: inválido não vira ausência ou reserva."""
+    resultado = divulgados_coerentes({"PN": [*outros, valor]}, -100.0, -100.0)
+    assert isinstance(resultado["PN"], Abstencao)
+    assert resultado["PN"].motivo == "LPA divulgado inválido para a espécie"
+    assert _metodos(divulgados=resultado, recalculado=-2.0) == resultado["PN"]
+    assert divulgado_da_escala(resultado) is None
+
+
+def test_lpa_zero_e_nao_informado_sem_invalidar_reserva() -> None:
+    """Ficha por ação 1.1, §4.11: linha zero equivale à ausência, não ao inválido."""
+    resultado = divulgados_coerentes({"PN": [0.0, 0.0]}, -100.0, -100.0)
+    assert isinstance(resultado["PN"], Abstencao)
+    assert resultado["PN"].motivo == "LPA divulgado não informado: linha igual a zero"
+    assert divulgado_da_escala(resultado) is None
+    assert _metodos(divulgados=resultado, recalculado=-2.0) == _metodos(
+        divulgados={}, recalculado=-2.0
+    )
+    assert _metodos(divulgados=resultado, recalculado=None) == Abstencao(
+        MOTIVO_SEM_RECALCULADO
+    )
+    assert _metodos(
+        classe="PNA", classes_preferenciais=["PNA", "PNB"], divulgados=resultado
+    ) == Abstencao(MOTIVO_CLASSES_PREFERENCIAIS)
+
+
+def test_zero_com_lpa_negativo_coerente_nao_e_conflito() -> None:
+    """Zeros removidos na coleta também são ignorados na fronteira pública."""
+    resultado = divulgados_coerentes({"PN": [0.0, -2.0, -2.0]}, -100.0, -100.0)
+    assert resultado == {"PN": LpaDivulgado(-2.0)}
+    assert _metodos(divulgados=resultado)[0] == -2.0
