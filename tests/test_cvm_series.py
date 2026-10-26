@@ -10,6 +10,8 @@ import zipfile
 from datetime import date
 from unittest.mock import patch
 
+import pytest
+
 from cvm_provider import CVMProvider
 from fii_engine import FIIEngine
 from sentinela.data import acoes_cvm, series_cvm
@@ -731,3 +733,36 @@ def test_ttm_preserva_proventos_com_uma_rubrica_no_arquivo_real_sintetico(tmp_pa
         resultado = series_cvm.ttm(acumulados, date(2026, 1, 1))
         assert resultado["valores"][campo] == 4000
         assert resultado["valores"]["proventos"] == 4000
+
+
+@pytest.mark.parametrize(
+    "inicio,fim,meses",
+    [
+        (date(2026, 1, 1), date(2026, 3, 31), 3),
+        (date(2024, 1, 1), date(2024, 3, 31), 3),
+        (date(2023, 12, 1), date(2024, 2, 29), 3),
+        (date(2024, 12, 1), date(2025, 2, 28), 3),
+        (date(2024, 1, 1), date(2024, 12, 31), 12),
+        (date(2023, 3, 1), date(2024, 2, 29), 12),
+        (date(2024, 3, 1), date(2025, 2, 28), 12),
+        (date(2026, 1, 31), date(2026, 3, 1), 0),
+        (date(2026, 1, 2), date(2026, 3, 31), 0),
+        (date(2026, 1, 1), date(2026, 3, 30), 0),
+        (date(2023, 12, 1), date(2024, 2, 28), 0),
+        (date(2026, 3, 1), date(2026, 2, 28), 0),
+        (date(2026, 1, 1), date(2025, 12, 31), 0),
+    ],
+)
+def test_meses_declarados_exigem_limites_de_calendario(
+    inicio: date, fim: date, meses: int
+) -> None:
+    """F2C-17: mês inteiro pelo calendário, inclusive fevereiro bissexto e ano não civil."""
+    assert series_cvm._meses(inicio, fim) == meses
+
+
+def test_periodo_parcial_nao_produz_trimestre() -> None:
+    documento = series_cvm.Acumulado(
+        "ITR", "2026-03-01", 1, date(2026, 1, 31), date(2026, 3, 1),
+        {"lucro_liquido": 30.0},
+    )
+    assert series_cvm.trimestres([documento]) == []

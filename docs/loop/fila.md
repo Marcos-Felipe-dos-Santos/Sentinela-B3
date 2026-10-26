@@ -22,7 +22,7 @@ Regras de parada: pacote §9/plano final §1 e seção "Decisões e divisão" da
 
 - [x] **F2C-16** · fix · `fix: reject invalid reported EPS at the public boundary` — BUG-2B-07. Arquivos: `acoes_cvm.py`, regressão 07 e testes por ação. **Aceite:** NaN/infinito/zero seguem domínio da ficha por ação vigente com motivo; divulgado incoerente não vira ausente para autorizar reserva; prejuízo coerente continua aceito; regressão em PASS; G. Conferir política vigente de zero e preservar o contrato da coleta, sem filtro genérico de negativos.
 
-- [ ] **F2C-17** · fix · `fix: validate complete reporting periods by calendar boundaries` — BUG-2B-08. Arquivos: `series_cvm.py`, regressão 08, testes de TTM. **Aceite:** 31/01–01/03 não prova trimestre completo; trimestre/exercício inteiro e ano bissexto são controles; regra baseada nas datas de início/fim oficiais, documentada antes; regressão em PASS; G.
+- [x] **F2C-17** · fix · `fix: validate complete reporting periods by calendar boundaries` — BUG-2B-08. Arquivos: `series_cvm.py`, regressão 08, testes de TTM. **Aceite:** 31/01–01/03 não prova trimestre completo; trimestre/exercício inteiro e ano bissexto são controles; regra baseada nas datas de início/fim oficiais, documentada antes; regressão em PASS; G.
 
 - [ ] **F2C-18** · fix · `fix: isolate concurrent provenance writes` — BUG-2B-09. Arquivos: `proveniencia.py`, regressão 09, testes de proveniência. **Aceite:** duas gravações concorrentes concluem sem colisão de `.tmp`, JSON final íntegro e correspondente a um registro completo; barreira testa efetivamente a colisão, falha/timeout da sincronização é falha do teste, nunca captura aceita como bug reproduzido; checar exceções dos dois workers e cleanup de temporários; regressão em PASS; G.
 

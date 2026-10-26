@@ -22,6 +22,7 @@ do exercício (início no primeiro dia do exercício) e o trimestre, e a DVA só
 
 from __future__ import annotations
 
+from calendar import monthrange
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -252,6 +253,9 @@ def mais_recentes(acumulados: Iterable[Acumulado]) -> list[Acumulado]:
 
 
 def _meses(inicio: date, fim: date) -> int:
+    """Meses civis completos declarados; limites parciais não provam um trimestre."""
+    if fim < inicio or inicio.day != 1 or fim.day != monthrange(fim.year, fim.month)[1]:
+        return 0
     return (fim.year - inicio.year) * 12 + fim.month - inicio.month + 1
 
 

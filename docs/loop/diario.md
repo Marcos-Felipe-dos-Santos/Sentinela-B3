@@ -65,3 +65,15 @@
 - **Decisões provisórias:** nenhuma; domínio já aprovado na ficha 1.1.
 - **Resíduos:** somente logs em /tmp e mutantes ignorados, sem push.
 - **Para o Claude revisar:** distinção zero/ausência/inválido e que o motivo de zero é o único que permite tratar o divulgado como não informado na escolha do insumo.
+
+### F2C-17 — fix: validate complete reporting periods by calendar boundaries
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso; regra registrada antes da correção e pronto para revisão interna.
+- **Regra de validação prévia:** para o contrato mensal de DFP/ITR usado nesta série, só contar meses completos: início no dia 1, fim no último dia do mês e fim ≥ início; caso contrário, `_meses` devolve 0 e o intervalo não é promovido a trimestre. Com limites válidos, diferença de ano/mês inclusiva (3 para trimestre, 12 para exercício). O calendário determina fevereiro de 28/29 dias; não usar duração fixa em dias. Exercício não civil (por exemplo março–fevereiro) continua válido. Datas são as DT_INI_EXERC/DT_FIM_EXERC declaradas no documento, não a data de coleta.
+- **decisão provisória: período com início/fim fora de meses civis completos → não considerar trimestre neste contrato; não aproximar por diferença de números dos meses.** Regra conservadora de borda de dado, sem alterar janela de método; contratos de períodos especiais ficam no levantamento F2C-29.
+- **D27 / BUG-2B-08:** regressão estrita existente falhou com `--runxfail` antes (`/tmp/2c17-vermelho.txt`): 31/01–01/03 era contado como 3 meses. Regra acima precede a edição do código.
+- **O que foi feito:** `_meses` recusa intervalos invertidos ou parciais antes da diferença ano/mês; usa `calendar.monthrange` para o último dia, sem duração fixa. Nenhuma outra função de produção foi alterada; períodos informativos, sem mudança de método.
+- **Testes:** mantida a asserção da regressão, retirada só a marca/import sem uso; controles de trimestre, exercício inteiro, fevereiro comum/bissexto, março–fevereiro, bordas parciais/invertidas e integração que não promove intervalo parcial a Trimestre. 2618 passed, 1 skipped, 9 xfailed → 2633 passed, 1 skipped, 8 xfailed, 1 warning. Na primeira rodada de coleta faltava import pytest no novo teste parametrizado; corrigido antes da rodada válida da suíte e mutação. Alvo final 44 passed. Ruff CI e completo data/methods verdes; Ruff completo permanece 166; golden SHA256 inicial inalterado; diff sem erros.
+- **Mutação:** `python -m mutmut run "sentinela.data.series_cvm*"`, módulo integral 413/442 = 93,44%, sem pendentes; export-cicd-stats concluído (`/tmp/2c17-mutacao-export.txt`), log `/tmp/2c17-mutmut.txt`. A rodada anterior falhou na coleta pelo import, não conta como medição.
+- **Resíduos:** nenhum novo fora dos artefatos ignorados; sem push.
+- **Para o Claude revisar:** a decisão provisória de restringir este contrato a meses civis completos, especialmente períodos especiais, sem generalizar isso a janela de método.
