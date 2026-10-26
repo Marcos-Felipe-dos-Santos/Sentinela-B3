@@ -123,9 +123,9 @@ constância real da distribuição; sustentabilidade permanece hipótese declara
   e o critério de abstenção continua o evento oficial da B3 (§3a). Ela não entra no
   rendimento, no VP nem no preço justo.
 - **Spread.** A constante de 3,5058% fica (decisão de 25/10/2026, constante datada); a
-  calibração refeita com a regra 1.2 é registrada na §6a, sem trocar a constante. A
-  recalibração com as cotas fracionárias válidas deu 3,5124% contra 3,5058%: diferença de
-  0,0066 ponto percentual, imaterial, e por isso a constante foi mantida.
+  calibração refeita com a regra 1.2 é registrada na §6a, sem trocar a constante. Mantida
+  por decisão de 25/10/2026; a recalibração posterior (3,5124% contra 3,5058%, diferença de
+  0,0066 pp) confirma que a diferença é imaterial.
 
 ## 3c. Revisão 1.3 — células vazias (Marcos, 25/10/2026)
 
@@ -316,10 +316,10 @@ cada fundo candidato, coletada em 21/10/2026.
   positivo 1.035 → 1.422; DY mensal negativo 1.320 → 1.336; amortização na janela 685 →
   815; classificação desconhecida 182 → 244; DY acima de 25% 168 → 196; amortização
   inválida 150 → 165; linhas conflitantes 21 → 25; grupamento 1 → 2. As demais ficam
-  iguais. É o mesmo número da sensibilidade acima. **Por que a constante foi mantida:**
-  3,5124% contra 3,5058%, diferença de 0,0066 ponto percentual (0,035124386653470424 −
-  0,03505842448151178), imaterial. As medianas mensais abaixo são as da constante
-  (regra 1.1).
+  iguais. É o mesmo número da sensibilidade acima. **Constante:** mantida por decisão de
+  25/10/2026; a recalibração posterior (3,5124% contra 3,5058%, diferença de 0,0066 pp:
+  0,035124386653470424 − 0,03505842448151178) confirma que a diferença é imaterial. As
+  medianas mensais abaixo são as da constante (regra 1.1).
 - **Medição depois do fechamento da 2B (F2B-65, 25/10/2026; só medição, a constante não
   muda):** mesmos arquivos e mês final, com as regras dos F2B-57 a F2B-62 (conflito em qualquer
   campo, composição da versão selecionada, os 13 VPs, amortização pela ficha 1.3) e a leitura
