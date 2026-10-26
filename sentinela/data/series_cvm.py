@@ -69,6 +69,7 @@ class Acumulado:
     valores: Mapping[str, float | None] = field(default_factory=dict)
     # F2B-37: o motivo de cada campo abstido no documento (por exemplo, a decisão 7.2).
     motivos: Mapping[str, str] = field(default_factory=dict)
+    proveniencia: Mapping[str, dict] = field(default_factory=dict)
 
     def origem(self) -> dict:
         return {
@@ -84,6 +85,25 @@ class Trimestre:
     fim: date
     valores: Mapping[str, float | None]
     documentos: tuple[Acumulado, ...]
+    motivos: Mapping[str, str] = field(default_factory=dict)
+
+
+MOTIVO_PERIMETROS = "comparabilidade dos perímetros não demonstrada para o TTM"
+
+
+def _comparaveis(documentos: Iterable[Acumulado], campo: str) -> bool:
+    """Exige perímetro e evidência explícitos por campo; igualdade de modelo não basta."""
+    perimetros = set()
+    for documento in documentos:
+        fonte = documento.proveniencia.get(campo, {})
+        perimetro = fonte.get("perimetro")
+        evidencia = fonte.get("evidencia_comparabilidade")
+        if not isinstance(perimetro, str) or not perimetro.strip():
+            return False
+        if not isinstance(evidencia, str) or not evidencia.strip():
+            return False
+        perimetros.add(perimetro)
+    return len(perimetros) == 1
 
 
 def _linha_ausente(motivo: str | None) -> bool:
@@ -274,6 +294,7 @@ def trimestres(acumulados: Iterable[Acumulado]) -> list[Trimestre]:
     resultado: list[Trimestre] = []
     anterior: Acumulado | None = None
     for acumulado in mais_recentes(acumulados):
+        motivos_trimestre: dict[str, str] = {}
         if anterior is None or anterior.inicio != acumulado.inicio:
             inicio, valores, documentos = (
                 acumulado.inicio,
@@ -290,8 +311,12 @@ def trimestres(acumulados: Iterable[Acumulado]) -> list[Trimestre]:
                 for campo in acumulado.valores
             }
             documentos = (anterior, acumulado)
+            for campo, valor in valores.items():
+                if valor is not None and not _comparaveis(documentos, campo):
+                    valores[campo] = None
+                    motivos_trimestre[campo] = MOTIVO_PERIMETROS
         if _meses(inicio, acumulado.fim) == 3:
-            resultado.append(Trimestre(inicio, acumulado.fim, valores, documentos))
+            resultado.append(Trimestre(inicio, acumulado.fim, valores, documentos, motivos_trimestre))
         anterior = acumulado
     return resultado
 
@@ -330,13 +355,18 @@ def ttm(acumulados: Iterable[Acumulado], data_referencia: date) -> dict | Absten
                 for d in t.documentos
                 if campo in d.motivos and not _linha_ausente(d.motivos[campo])
             ]
+            do_documento += [t.motivos[campo] for t in ultimos if campo in t.motivos]
             motivos[campo] = (
                 f"{MOTIVO_CAMPO_AUSENTE}: {do_documento[0]}"
                 if do_documento
                 else MOTIVO_CAMPO_AUSENTE
             )
         else:
-            valores[campo] = sum(parcelas)
+            if _comparaveis(documentos_do_campo, campo):
+                valores[campo] = sum(parcelas)
+            else:
+                valores[campo] = None
+                motivos[campo] = MOTIVO_PERIMETROS
     valores["proventos"] = proventos(
         valores["dividendos"], valores["jcp"], motivos=motivos
     )
@@ -360,5 +390,17 @@ def ttm(acumulados: Iterable[Acumulado], data_referencia: date) -> dict | Absten
             for t in ultimos
         ],
         "documentos": documentos,
+        "proveniencia": {
+            campo: [
+                {
+                    **d.origem(),
+                    **d.proveniencia[campo],
+                }
+                for t in ultimos
+                for d in t.documentos
+                if campo in d.proveniencia
+            ]
+            for campo in CAMPOS_TTM
+        },
         "proventos_base": COMPETENCIA,
     }

@@ -1111,8 +1111,11 @@ class CVMProvider:
             bpp = self.parsear_demonstrativo(
                 zip_path, "BPP_con", include_cd_cvm=True, include_versao=True
             )
+            exigidas = {"CD_CVM", "DT_REFER", "VERSAO", "CD_CONTA", "DS_CONTA", "VL_CONTA"}
+            if not exigidas.issubset(bpp.columns):
+                raise ValueError("BPP sem colunas do contrato")
             bpp = bpp[bpp["CD_CVM"] == cd_cvm]
-        except (OSError, KeyError, ValueError):
+        except (OSError, KeyError, ValueError, zipfile.BadZipFile):
             bpp = pd.DataFrame(columns=["DT_REFER", "VERSAO", "CD_CONTA", "DS_CONTA", "VL_CONTA"])
         acumulados = []
         for (dt_refer, versao), doc in linhas.groupby(["DT_REFER", "VERSAO"]):
@@ -1135,9 +1138,41 @@ class CVMProvider:
                 & (bpp["VERSAO"].astype(str) == str(versao))
             ]
             controladores_doc = lucro_controladores_com_reserva(doc, bpp_doc)
+            # F2C-30: rubrica ausente só autoriza reserva dentro de BPP efetivamente lido.
+            # Uma leitura direta válida da DRE independe deste balanço de conferência.
+            if bpp_doc.empty and controladores_doc.reserva:
+                controladores_doc = controladores.Resultado(
+                    None, motivo="BPP do mesmo documento indisponível para a reserva"
+                )
             valores["lucro_controladores"] = controladores_doc.valor
             if controladores_doc.valor is None and controladores_doc.motivo:
                 motivos["lucro_controladores"] = controladores_doc.motivo
+            # Um marcador positivo de outro modelo não autoriza combinar trimestres.
+            modelos_bpp = {
+                candidato for candidato in ("empresa", "banco")
+                if isinstance(_ler(bpp_doc, "pl_total", candidato), contas_cvm.Leitura)
+            }
+            if modelos_bpp and modelos_bpp != {modelo}:
+                valores = dict.fromkeys(valores)
+                motivos = dict.fromkeys(valores, "modelo do BPP incompatível com os fluxos do TTM")
+                controladores_doc = controladores.Resultado(
+                    None, motivo=motivos["lucro_controladores"]
+                )
+            fontes_campos = {
+                campo: {
+                    "arquivo": zip_path.name,
+                    "demonstrativo": "DVA_con" if campo in ("dividendos", "jcp") else "DRE_con",
+                    "modelo": modelo,
+                    "inicio": str(inicio),
+                    "fim": str(fim),
+                    "motivo": motivos.get(campo),
+                }
+                for campo in valores
+            }
+            fontes_campos["lucro_controladores"].update(
+                reserva=controladores_doc.reserva,
+                bpp_correspondente_lido=not bpp_doc.empty,
+            )
             acumulados.append(
                 series_cvm.Acumulado(
                     documento=documento,
@@ -1147,6 +1182,7 @@ class CVMProvider:
                     fim=date.fromisoformat(str(fim)),
                     valores=valores,
                     motivos=motivos,
+                    proveniencia=fontes_campos,
                 )
             )
         return acumulados

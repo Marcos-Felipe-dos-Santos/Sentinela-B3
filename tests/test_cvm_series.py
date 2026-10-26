@@ -7,6 +7,7 @@ Os valores esperados saem da aritmética do TTM, nunca do código.
 """
 
 import zipfile
+from dataclasses import replace
 from datetime import date
 from unittest.mock import patch
 
@@ -25,6 +26,31 @@ CD_CVM = 9999
 CNPJ = "00.000.000/0001-00"
 
 
+def proveniencia_sintetica() -> dict:
+    """A construção dos casos assume explicitamente um mesmo perímetro fictício."""
+    return {
+        campo: {
+            "perimetro": "companhia fictícia consolidada, sem mudança de perímetro",
+            "evidencia_comparabilidade": "hipótese declarada dos fluxos sintéticos deste teste",
+        }
+        for campo in series_cvm.CAMPOS_TTM
+    }
+
+
+def com_perimetro_sintetico(acumulados: list[Acumulado]) -> list[Acumulado]:
+    """Acrescenta a premissa do caso sintético sem alterar os dados lidos do ZIP."""
+    prova = proveniencia_sintetica()
+    return [
+        replace(
+            a,
+            proveniencia={
+                c: {**a.proveniencia.get(c, {}), **p} for c, p in prova.items()
+            },
+        )
+        for a in acumulados
+    ]
+
+
 def _acumulado(documento, inicio, fim, versao=1, **valores):
     return Acumulado(
         documento=documento,
@@ -33,6 +59,7 @@ def _acumulado(documento, inicio, fim, versao=1, **valores):
         inicio=date.fromisoformat(inicio),
         fim=date.fromisoformat(fim),
         valores=valores,
+        proveniencia=proveniencia_sintetica(),
     )
 
 
@@ -621,7 +648,7 @@ def test_ttm_em_fevereiro_usa_o_itr_de_dois_anos_antes(tmp_path):
     provider.baixar_itr = baixar("itr")
     provider.baixar_dfp = baixar("dfp")
     data = date(2027, 2, 15)
-    resultado = series_cvm.ttm(provider.acumulados_ttm(CD_CVM, data), data)
+    resultado = series_cvm.ttm(com_perimetro_sintetico(provider.acumulados_ttm(CD_CVM, data)), data)
     assert ("itr", 2025) in pedidos
     assert (resultado["inicio"], resultado["fim"]) == ("2025-10-01", "2026-09-30")
     # (70 − 45) + 12 + 18 + 20, em mil.
@@ -730,7 +757,7 @@ def test_ttm_preserva_proventos_com_uma_rubrica_no_arquivo_real_sintetico(tmp_pa
         provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
         acumulados = provider._acumulados_do_arquivo(itr, "ITR", CD_CVM, "empresa")
         acumulados += provider._acumulados_do_arquivo(dfp, "DFP", CD_CVM, "empresa")
-        resultado = series_cvm.ttm(acumulados, date(2026, 1, 1))
+        resultado = series_cvm.ttm(com_perimetro_sintetico(acumulados), date(2026, 1, 1))
         assert resultado["valores"][campo] == 4000
         assert resultado["valores"]["proventos"] == 4000
 

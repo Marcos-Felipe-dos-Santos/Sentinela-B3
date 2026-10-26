@@ -128,3 +128,9 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2C-01 | complemento cadastral de FII aceita CODBDI conflitante conforme a ordem do COTAHIST | sentinela/data/referencia/montagem.py (montar_outros) | revisão interna F2C-21, 26/10/2026 | test_bug_2c_01_fii_codbdi_conflitante.py | F2C-21 | corrigido em 26/10/2026; todas as categorias do grupo devem ser 12 |
 
 | BUG-2C-02 | leitores B3 distintos com igualdade/hash iguais compartilham dados e proveniência no cache | sentinela/data/providers/b3_proventos.py e b3_fundos.py | revisão interna F2C-26, 26/10/2026 | test_bug_2c_02_cache_identidade_leitor.py | F2C-26 | corrigido em 26/10/2026; chave por identidade com referência retida |
+
+| BUG-2C-03 | BPP não lido/correspondente autoriza reserva | cvm_provider._acumulados_do_arquivo; seis estados reproduzidos | F2C-29/30, Codex26/10 | test_bug_2c_03_ttm_bpp_nao_demonstrado.py | F2C-30 | corrigido |
+
+| BUG-2C-04 | Fluxos aceitos com marcador BPP de outro modelo | cvm_provider._acumulados_do_arquivo | Codex26/10, F2C-30 | test_bug_2c_04_ttm_modelo_incompativel.py | F2C-30 | corrigido |
+
+| BUG-2C-05 | TTM subtrai perímetros distintos ou sem demonstração | series_cvm.trimestres/ttm | revisão interna F2C-30,26/10 | test_bug_2c_05_ttm_perimetros.py | F2C-30 | corrigido |
