@@ -13,10 +13,6 @@ import requests
 import cvm_download
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG-2B-03 · HTTP 404 tentado três vezes no download · corrige: F2C-14",
-)
 def test_404_nao_e_tentado_de_novo(tmp_path, monkeypatch):
     erro = requests.HTTPError("404 Client Error: Not Found")
     erro.response = MagicMock(status_code=404)
@@ -25,10 +21,12 @@ def test_404_nao_e_tentado_de_novo(tmp_path, monkeypatch):
     resposta.raise_for_status.side_effect = erro
     get = MagicMock(return_value=resposta)
     monkeypatch.setattr(cvm_download.requests, "get", get)
-    monkeypatch.setattr(cvm_download.time, "sleep", lambda segundos: None)
+    sleep = MagicMock()
+    monkeypatch.setattr(cvm_download.time, "sleep", sleep)
     with pytest.raises(requests.RequestException):
         cvm_download.baixar_arquivo(
             "https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_A2099.ZIP",
             tmp_path / "ausente.zip",
         )
     assert get.call_count == 1
+    sleep.assert_not_called()

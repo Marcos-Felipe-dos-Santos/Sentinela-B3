@@ -28,3 +28,15 @@
 - **Decisões provisórias:** nenhuma.
 - **Resíduos:** somente artefatos locais ignorados do mutmut e medições em /tmp; nenhum arquivo do usuário removido, nenhum push.
 - **Para o Claude revisar:** projeções e isolamento do cache, chave sem período e preservação de flags/metadados; limites da medição de memória.
+
+### F2C-14 — fix: stop retrying missing CVM downloads
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso; pronto para revisão interna.
+- **O que foi feito:** HTTPError com response explícita e status 404 encerra na primeira tentativa; remove temporário próprio e relança a mesma exceção. Não testa a truthiness de Response (404 é falsa em requests). Outras falhas mantêm o fluxo e o backoff existentes. Não altera cache válido nem resultado financeiro.
+- **D27 / BUG-2B-03:** regressão estrita preexistente executada com `--runxfail` antes da correção: FAIL por 3 chamadas contra 1 (`/tmp/2c14-vermelho.txt`). Marca retirada após correção, asserção de contagem preservada e acrescentada ausência de espera; registro atualizado. A primeira tentativa local usou nome de arquivo incorreto; foi repetida com o caminho real antes de editar código.
+- **Controles novos:** respostas reais requests com status 429/500/503 mantêm 3 chamadas e esperas [1,2]; 404 preserva ZIP antigo, limpa temporário e mantém identidade da exceção; interrupção seguida de ZIP íntegro mantém recuperação/substituição atômica. Somente arquivos sintéticos em tmp_path, sem rede.
+- **Testes:** 2578 passed, 1 skipped, 13 xfailed → 2584 passed, 1 skipped, 12 xfailed, 1 warning; Ruff CI e data/methods verdes, golden com SHA256 inicial inalterado, diff limpo.
+- **Mutação:** `python -m mutmut run "cvm_download*"`, exportação concluída (`/tmp/2c14-mutacao-export.txt`, `mutants/mutmut-cicd-stats.json`). Módulo 64/99 = 64,65% bruto; baixar_arquivo 58/92, is_fresh 6/7. Nenhum módulo de cálculo financeiro foi tocado e este é item fix de transporte, não item test; o ≥80% do gate G para cálculo/itens test não é declarado atendido por este score. Sobreviventes completos em `/tmp/2c14-sobreviventes.txt`: incluem logs, parâmetros HTTP/chunk_size não contratados neste item, limite TTL e ramo CRC preexistente; não escrever testes que só espelham strings internas para elevar nota. Sem exclusão de mutantes no score informado. Todos os mutantes da guarda 404 introduzida morreram.
+- **Decisões provisórias:** nenhuma regra econômica nova; política 404 definida no próprio ticket.
+- **Resíduos:** artefatos do mutmut ignorados e logs em /tmp; nada removido além de temporários próprios dos testes; sem push.
+- **Para o Claude revisar:** condição response is not None, limpeza do temporário no 404, preservação da política transitória e alcance do requisito de mutação no transporte.
