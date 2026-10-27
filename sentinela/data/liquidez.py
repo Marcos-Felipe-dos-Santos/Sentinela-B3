@@ -102,12 +102,18 @@ def avaliar(
         return {"aviso": f"liquidez não medida: {motivo}"}
 
     def abaixo(presenca: float, volume: float) -> dict[str, str]:
+        limite_texto = _reais(volume_min)
+        volume_texto = _reais(volume)
+        if volume < volume_min and volume_texto == limite_texto:
+            # O limite estrito é verdadeiro mesmo quando os centavos arredondam
+            # para o mínimo; não inventar um valor truncado para a medição.
+            volume_texto = f"< {limite_texto}"
         return {
             "abstencao": (
                 "liquidez abaixo do mínimo para análise: "
                 f"presença de {_percentual(presenca)} e volume mediano de "
-                f"{_reais(volume)} nos últimos {janela} pregões "
-                f"(mínimo: {_percentual(presenca_min)} e {_reais(volume_min)})"
+                f"{volume_texto} nos últimos {janela} pregões "
+                f"(mínimo: {_percentual(presenca_min)} e {limite_texto})"
             )
         }
 

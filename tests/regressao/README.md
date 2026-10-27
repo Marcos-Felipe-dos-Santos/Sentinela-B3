@@ -189,3 +189,9 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2C-23 | Documento bancário ausente vira datas None no relatório | rastreabilidade.construir_contexto | F2C-44,27/10/2026 | `test_bug_2c_23_documento_banco_relatorio.py` | F2C-44 | corrigido |
 | BUG-2C-24 | NTN-B recusada aparece como taxa da lente | rastreabilidade.construir_contexto | F2C-44,27/10/2026 | `test_bug_2c_24_taxa_recusada_relatorio_fii.py` | F2C-44 | corrigido |
 | BUG-2C-25 | Limites do relatório de ação dizem Selic usada | rastreabilidade.LIMITES | F2C-44,27/10/2026 | `test_bug_2c_25_selic_usada_relatorio_acao.py` | F2C-44 | corrigido |
+
+### Correção F2C-46 (27/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-26 | Volume inferior ao mínimo arredonda para o próprio mínimo no texto da abstenção | liquidez.avaliar | F2C-46,27/10/2026 | `test_bug_2c_26_volume_arredondado_no_minimo.py` | F2C-46 | corrigido |
