@@ -181,3 +181,11 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 |---|---|---|---|---|---|---|
 | BUG-2C-21 | Aviso de alavancagem omite motivo CVM já informado | ValuationEngine.processar | F2C-40,27/10/2026 | `test_bug_2c_21_motivo_aviso_alavancagem.py` | F2C-40 | corrigido |
 | BUG-2C-22 | Inteiro numérico é tratado como ausência/valor inválido, diferente do mesmo inteiro nativo | ValuationEngine.processar | F2C-40,27/10/2026 | `test_bug_2c_22_inteiro_numerico_alavancagem.py` | F2C-40 | corrigido |
+
+### Correções F2C-44 (27/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-23 | Documento bancário ausente vira datas None no relatório | rastreabilidade.construir_contexto | F2C-44,27/10/2026 | `test_bug_2c_23_documento_banco_relatorio.py` | F2C-44 | corrigido |
+| BUG-2C-24 | NTN-B recusada aparece como taxa da lente | rastreabilidade.construir_contexto | F2C-44,27/10/2026 | `test_bug_2c_24_taxa_recusada_relatorio_fii.py` | F2C-44 | corrigido |
+| BUG-2C-25 | Limites do relatório de ação dizem Selic usada | rastreabilidade.LIMITES | F2C-44,27/10/2026 | `test_bug_2c_25_selic_usada_relatorio_acao.py` | F2C-44 | corrigido |

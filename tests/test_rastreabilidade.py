@@ -99,9 +99,7 @@ def _contexto(dados, eh_fii=False, selic=0.145):
         patch("valuation_engine.date", DiaGordon),
         patch("fii_engine.get_selic_atual", return_value=selic),
     ):
-        return rastreabilidade.construir_contexto(
-            dados, eh_fii, HOJE, motor, motor_fii
-        )
+        return rastreabilidade.construir_contexto(dados, eh_fii, HOJE, motor, motor_fii)
 
 
 def _html(dados, eh_fii=False):
@@ -359,9 +357,12 @@ def test_relatorio_mostra_a_taxa_real_e_a_fonte():
         "4,26%",
         "2025-01-01",
         "IBGE SIDRA 1737",
-        "Selic usada",
     ):
         assert texto in html
+
+    assert "<h2>Taxa real</h2>" in html
+    assert "Selic usada" not in html
+    assert "os métodos de ação não usam Selic" in html
 
 
 def test_gordon_real_exibe_versao_intermediarios_e_dva():

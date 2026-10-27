@@ -61,7 +61,8 @@ PROVENIENCIA_DERIVADA = {
 }
 LIMITES = (
     (
-        "E-6: a Selic usada não carrega proveniência (fonte, data de coleta); vem do BCB (SGS 432) "
+        "E-6: os métodos de ação não usam Selic. No FII, ela é contexto e score, sem "
+        "proveniência de fonte/data de coleta; vem do BCB (SGS 432) "
         "com cache de 24 horas ou de um valor de contingência fixo."
     ),
     (
@@ -607,18 +608,24 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
     ]
 
     fonte_gordon = dados.get("gordon_cvm")
-    if fonte_gordon and (
-        fonte_gordon.get("modelo") == "banco" or dados.get("modelo_bpp") == "banco"
+    if (fonte_gordon and fonte_gordon.get("modelo") == "banco") or (
+        dados.get("modelo_bpp") == "banco"
     ):
+        fonte_gordon = fonte_gordon or {}
         # F2B-32: o exercício e a entrega da DFP da lente de bancos (ficha bancos 1.1, §3).
-        fontes.append(
-            (
-                "DFP da lente de bancos",
-                f"exercício {fonte_gordon.get('inicio')} a {fonte_gordon.get('fim')}, "
-                f"entrega {fonte_gordon.get('data_entrega')}; "
-                f"{fonte_gordon.get('proveniencia') or 'sem proveniência'}",
+        campos_documento = ("inicio", "fim", "data_entrega")
+        if fonte_gordon.get("abstencao"):
+            texto_documento = f"não utilizada: {fonte_gordon['abstencao']}"
+        elif all(fonte_gordon.get(campo) for campo in campos_documento):
+            texto_documento = (
+                f"exercício {fonte_gordon['inicio']} a {fonte_gordon['fim']}, "
+                f"entrega {fonte_gordon['data_entrega']}; "
+                f"{fonte_gordon.get('proveniencia') or 'sem proveniência'}"
             )
-        )
+        else:
+            motivo = dados.get("bancos_diagnostico") or "documento da DFP não demonstrado"
+            texto_documento = f"não utilizada: {motivo}"
+        fontes.append(("DFP da lente de bancos", texto_documento))
     elif fonte_gordon:
         fontes.append(
             (
@@ -659,7 +666,12 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
             )
         )
     if eh_fii:
-        fontes.append(("Taxa da lente do FII (F2B-2)", _texto_taxa_fii(dados)))
+        texto_taxa = (
+            f"não utilizada: {rendimento['abstencao']}"
+            if rendimento and "abstencao" in rendimento
+            else _texto_taxa_fii(dados)
+        )
+        fontes.append(("Taxa da lente do FII (F2B-2)", texto_taxa))
     if not eh_fii:
         fontes.append(
             ("Proventos do Bazin (relação B3, F2B-31)", _texto_proventos_bazin(dados))
@@ -738,7 +750,11 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         )
 
     return {
-        "taxa_real": _taxa_real(dados),
+        "taxa_real": (
+            [("Taxa não utilizada pela lente do FII", rendimento["abstencao"])]
+            if eh_fii and rendimento and "abstencao" in rendimento
+            else _taxa_real(dados)
+        ),
         "ticker": dados.get("ticker", ""),
         "data": hoje.isoformat(),
         "classe": _classe_do_cabecalho(dados, eh_fii, fora_do_escopo),
