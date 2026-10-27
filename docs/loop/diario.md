@@ -228,3 +228,13 @@
 - **Resíduos:** ensaios/logs em/tmp; sem rede em testes, clienteIA não inicializado, sem credenciais/carteira/push ou remoção de arquivo do usuário.
 - **Para o Claude revisar:** alcance limitado da contraprovaPNA, conferênciaunit sem mexer no método, proveniência do sinal versus origem doLPA, literalOData sem alegar instituição real afetada e destinos propostos não ativados.
 - **Gate final:** 2819passed,1skipped,7xfailed,1warning (/tmp/2c32-suite.txt); RuffCI/data/methods verdes, goldenSHA256original e diff sem erros. Cinco novos casos xfail correspondem aos quatro bugs, nenhum teste antigo alterado.
+
+### F2C-33 — docs: confirm or refute the FII COTAHIST quote caveat
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso; ressalva refutada no código e no recorte de entrada doGemini.
+- **O que foi feito:** ressalva-cotahist-fii-2c.md registra busca literal/histórico, seção integral do provedor no pacote parte04linha3407 (314linhas) e caminhos efetivos de preço/VP/liquidez. `_preco_cotahist` não existe; provedorInforme não entrega cotação negociada. Cascata preço yfinance/brapi; COTAHIST no bloco liquidez passa meses_ausentes e também fornece datas para conferência de dataexB3, sem cotação ao motorFII; outros leitores cadastrais/levantamentos distinguidos.
+- **Dificuldades:** parecer integral não foi inventado a partir do pacote de entrada. A refutação é do símbolo/caminho descrito, não garantia de toda atualidade de cotação no sistema. Sem fonte externa nova necessária para provar ausência de leitor no código; nenhuma idade máxima escolhida.
+- **D27/decisões provisórias:** nenhum bug confirmado ou regra nova; nenhuma regressão artificial.
+- **Testes:** base2819passed,1skip,7xfail; suíte final abaixo. Mutação não se aplica a docs sem produção; golden original preservado.
+- **Resíduos:** somente documento/diário/fila, sem push ou remoção. **Para o Claude revisar:** correspondência da ressalva com o pacote de entrada e distinção de preço, cadastro e liquidez.
+- **Gate final:**2819passed,1skipped,7xfailed,1warning (/tmp/2c33-suite.txt); RuffCI/data/methods verdes, diff sem erros, goldenSHA256original.
