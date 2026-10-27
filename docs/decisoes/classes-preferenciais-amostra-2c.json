@@ -1,0 +1,212 @@
+{
+  "indice_sha256": "b29e5b882f7a585517594afa1e8113f9211195cd07eb386f0527b7ecdc952a2b",
+  "criterio": "STOCK/UNIT com mais de uma sigla preferencial no índice; isto não prova direitos diferentes",
+  "emissores": 15,
+  "tickers": 46,
+  "emissores_nas_tabelas_universo": 2,
+  "casos": {
+    "62.002.886/0001-60": {
+      "nome": "SÃO PAULO TURISMO S.A.",
+      "classes": [
+        "PNA",
+        "PNB"
+      ],
+      "tickers_indice": [
+        "AHEB3",
+        "AHEB5",
+        "AHEB6"
+      ],
+      "tickers_universo_tabelas": []
+    },
+    "42.150.391/0001-70": {
+      "nome": "BRASKEM S.A.",
+      "classes": [
+        "PNA",
+        "PNB"
+      ],
+      "tickers_indice": [
+        "BRKM3",
+        "BRKM5",
+        "BRKM6"
+      ],
+      "tickers_universo_tabelas": []
+    },
+    "92.702.067/0001-96": {
+      "nome": "BANCO DO ESTADO DO RIO GRANDE DO SUL SA",
+      "classes": [
+        "PNA",
+        "PNB"
+      ],
+      "tickers_indice": [
+        "BRSR3",
+        "BRSR5",
+        "BRSR6"
+      ],
+      "tickers_universo_tabelas": [
+        "BRSR3",
+        "BRSR5",
+        "BRSR6"
+      ]
+    },
+    "00.070.698/0001-11": {
+      "nome": "COMPANHIA ENERGÉTICA DE BRASÍLIA - CEB",
+      "classes": [
+        "PNA",
+        "PNB"
+      ],
+      "tickers_indice": [
+        "CEBR3",
+        "CEBR5",
+        "CEBR6"
+      ],
+      "tickers_universo_tabelas": []
+    },
+    "15.139.629/0001-94": {
+      "nome": "CIA DE ELETRICIDADE DO ESTADO DA BAHIA - COELBA",
+      "classes": [
+        "PNA",
+        "PNB"
+      ],
+      "tickers_indice": [
+        "CEEB3",
+        "CEEB5",
+        "CEEB6"
+      ],
+      "tickers_universo_tabelas": []
+    },
+    "04.895.728/0001-80": {
+      "nome": "EQUATORIAL PARÁ DISTRIBUIDORA DE ENERGIA S.A.",
+      "classes": [
+        "PNA",
+        "PNB",
+        "PNC"
+      ],
+      "tickers_indice": [
+        "CELP3",
+        "CELP5",
+        "CELP6",
+        "CELP7"
+      ],
+      "tickers_universo_tabelas": []
+    },
+    "07.047.251/0001-70": {
+      "nome": "CIA ENERG CEARA - COELCE",
+      "classes": [
+        "PNA",
+        "PNB"
+      ],
+      "tickers_indice": [
+        "COCE3",
+        "COCE5",
+        "COCE6"
+      ],
+      "tickers_universo_tabelas": []
+    },
+    "15.115.504/0001-24": {
+      "nome": "TRONOX PIGMENTOS DO BRASIL S.A.",
+      "classes": [
+        "PNA",
+        "PNB"
+      ],
+      "tickers_indice": [
+        "CRPG3",
+        "CRPG5",
+        "CRPG6"
+      ],
+      "tickers_universo_tabelas": []
+    },
+    "01.417.222/0001-77": {
+      "nome": "MRS LOGÍSTICA S/A",
+      "classes": [
+        "PNA",
+        "PNB"
+      ],
+      "tickers_indice": [
+        "MRSA3",
+        "MRSA5",
+        "MRSA6"
+      ],
+      "tickers_universo_tabelas": []
+    },
+    "60.651.809/0001-05": {
+      "nome": "SUZANO HOLDING S.A.",
+      "classes": [
+        "PNA",
+        "PNB"
+      ],
+      "tickers_indice": [
+        "NEMO3",
+        "NEMO5",
+        "NEMO6"
+      ],
+      "tickers_universo_tabelas": []
+    },
+    "17.167.396/0001-69": {
+      "nome": "ALFA HOLDINGS S.A.",
+      "classes": [
+        "PNA",
+        "PNB"
+      ],
+      "tickers_indice": [
+        "RPAD3",
+        "RPAD5",
+        "RPAD6"
+      ],
+      "tickers_universo_tabelas": []
+    },
+    "14.807.945/0001-24": {
+      "nome": "SANSUY SA INDÚSTRIA  DE PLASTICOS",
+      "classes": [
+        "PNA",
+        "PNB"
+      ],
+      "tickers_indice": [
+        "SNSY3",
+        "SNSY5",
+        "SNSY6"
+      ],
+      "tickers_universo_tabelas": []
+    },
+    "33.386.210/0001-19": {
+      "nome": "SONDOTECNICA ENGENHARIA SOLOS S.A.",
+      "classes": [
+        "PNA",
+        "PNB"
+      ],
+      "tickers_indice": [
+        "SOND3",
+        "SOND5",
+        "SOND6"
+      ],
+      "tickers_universo_tabelas": []
+    },
+    "33.958.695/0001-78": {
+      "nome": "UNIPAR CARBOCLORO S.A.",
+      "classes": [
+        "PNA",
+        "PNB"
+      ],
+      "tickers_indice": [
+        "UNIP3",
+        "UNIP5",
+        "UNIP6"
+      ],
+      "tickers_universo_tabelas": []
+    },
+    "60.894.730/0001-05": {
+      "nome": "USINAS SID DE MINAS GERAIS S.A.-USIMINAS",
+      "classes": [
+        "PNA",
+        "PNB"
+      ],
+      "tickers_indice": [
+        "USIM3",
+        "USIM5",
+        "USIM6"
+      ],
+      "tickers_universo_tabelas": [
+        "USIM5"
+      ]
+    }
+  }
+}
