@@ -238,3 +238,14 @@
 - **Testes:** base2819passed,1skip,7xfail; suíte final abaixo. Mutação não se aplica a docs sem produção; golden original preservado.
 - **Resíduos:** somente documento/diário/fila, sem push ou remoção. **Para o Claude revisar:** correspondência da ressalva com o pacote de entrada e distinção de preço, cadastro e liquidez.
 - **Gate final:**2819passed,1skipped,7xfailed,1warning (/tmp/2c33-suite.txt); RuffCI/data/methods verdes, diff sem erros, goldenSHA256original.
+
+### F2C-34 — docs: decide the share-count confirmation of the recent composition
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso documental; sem produção ou nova regra de método.
+- **O que foi feito:** confirmacao-composicao-recente-2c.md e amostraJSON pública confrontam Gordon1.1§3 com por-ação1.1§7.7. Não são guardas equivalentes: a prova recente/DFP é a aprovada paraGordon;§7.7é o ramo especial do consolidado/controladoresabstidos paraVPA/capitalização, não usado para liberar escala recente. Clarificação textual na fichaGordon permitida pelo aceite34; nenhuma fórmula/limiar/versão econômica muda.
+- **Medição:**90nomes únicos extraídos de TODAS as tabelas do documento público universo (inclui sucessores/BTG; não redefineD32);55STOCK/UNIT no índice;44com duas escalas,38dentro/6fora do intervalo aberto,11sem razão. ControlesABEV/BBAS/BRSR/MGLU/USIM/SBSP/KLBN com quantidades no documento. ArquivosDFP2025/ITR2026 locais, hashes noJSON; fotografia de conteúdo, sem afirmar disponibilidade histórica/último documento global ou elegibilidade de método. Não coletouyfinance para simular passado.
+- **Dificuldades:** primeira chamada do script em/tmp semPYTHONPATH falhou na importação, repetida comPYTHONPATH=. antes da medição válida. Razão não garante escala absoluta se ambas erradas pelo mesmo fator; limite explícito, determinação continua por documento. Nenhum evento econômico reconciliado automaticamente.
+- **D27/decisões provisórias:** nenhum bug contra contratoGordon vigente; nenhum fix/xfail artificial ou decisão nova.
+- **Testes:** base2819passed,1skip,7xfail; gate final abaixo. Mutação não se aplica a docs; golden original preservado.
+- **Resíduos:** script/log temporários; JSON versionado só dados públicos da amostra, nenhum dado de carteira, push ou remoção. **Para o Claude revisar:** diferença do ramo§7.7, ausência de equivalência matemática alegada e denominador/limites da medição.
+- **Gate final:**2819passed,1skipped,7xfailed,1warning (/tmp/2c34-suite.txt); RuffCI/data/methods verdes, diff sem erros, goldenSHA256original.
