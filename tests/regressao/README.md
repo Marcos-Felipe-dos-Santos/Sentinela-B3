@@ -159,3 +159,9 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
 |---|---|---|---|---|---|---|
 | BUG-2C-15 | IF.data selecionado pelo setor em vez do BPP | MarketEngine._buscar_ifdata | F2C-36,27/10/2026 | `test_bug_2c_15_ifdata_modelo_bpp.py` | F2C-36 | corrigido, quatro casos permanentes |
+
+### Achado F2C-37 (27/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-16 | Inadimplência é lida sem prova de publicação da data-base até o corte | ifdata.ler_capital | F2C-37,27/10/2026 | `test_bug_2c_16_ifdata_sem_calendario.py` | F2C-37 | corrigido, dois casos permanentes |

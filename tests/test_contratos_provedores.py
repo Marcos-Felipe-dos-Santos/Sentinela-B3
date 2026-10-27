@@ -402,16 +402,26 @@ def test_contrato_ifdata_com_proveniencia(tmp_path, monkeypatch):
     from sentinela.data.providers import ifdata
     from tests.regressao.test_bug_2a_19_ifdata_sem_proveniencia import _get_falso
 
+    from tests.apoio_ifdata_calendario import calendario_sintetico
+
+    # Calendário SINTÉTICO: premissa apenas para exercitar os três relatórios do contrato.
+    calendario = calendario_sintetico("202609")
     monkeypatch.setattr(ifdata.requests, "get", _get_falso)
-    capital = ifdata.IFDataProvider(str(tmp_path)).capital(
+    capital = ifdata.IFDataProvider(str(tmp_path), calendario=calendario).capital(
         "00.000.000/0001-91",
         date(2026, 10, 13),
         as_of=datetime(2026, 10, 13, 12, tzinfo=UTC),
     )
     assert capital.codinst == "C0080329"
     assert capital.basileia == pytest.approx(0.151297835513664)
-    assert len(capital.proveniencia) == 3  # cadastro, capital e carteira (F2B-32)
-    for registro in capital.proveniencia:
+    registro_calendario = calendario.proveniencia.para_dict()
+    assert registro_calendario in capital.proveniencia
+    assert len(capital.proveniencia) == 4
+    registros_relatorios = tuple(
+        r for r in capital.proveniencia if r != registro_calendario
+    )
+    assert len(registros_relatorios) == 3  # cadastro, capital e carteira (F2B-32)
+    for registro in registros_relatorios:
         assert registro["documento"] == "IF.data"
         assert registro["periodo_referencia"] == "202609"
         assert registro["data_entrega"] is None

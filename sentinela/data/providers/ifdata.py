@@ -27,10 +27,12 @@ import json
 import logging
 import math
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime
 from pathlib import Path
+from urllib.parse import urlsplit
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -73,6 +75,58 @@ class Capital:
     fonte: str = FONTE
     motivos: dict[str, str] = field(default_factory=dict)
     proveniencia: tuple[dict, ...] = ()
+
+
+@dataclass(frozen=True)
+class CalendarioPublicacoes:
+    """Datas efetivas já conferidas na fonte oficial, não prazos ou datas-base.
+
+    Sem produtor oficial verificado, o consumidor deixa o calendário ausente.
+    A proveniência refere-se ao arquivo que demonstra as datas, não ao relatório16.
+    """
+
+    publicacoes: Mapping[str, date]
+    proveniencia: proveniencia.Proveniencia
+
+
+def _motivo_publicacao(
+    calendario: CalendarioPublicacoes | None,
+    data_base: str,
+    corte: date,
+    instante: datetime | None,
+) -> str | None:
+    """Sem hora oficial da divulgação, só admitir após o dia local de publicação."""
+    if calendario is None:
+        return "calendário oficial de publicação IF.data indisponível"
+    if instante is not None:
+        corte = min(corte, instante.astimezone(ZoneInfo("America/Sao_Paulo")).date())
+    registro = calendario.proveniencia
+    host = urlsplit(registro.fonte).hostname or ""
+    if registro.documento != "IF.data" or not (
+        host == "bcb.gov.br" or host.endswith(".bcb.gov.br")
+    ):
+        return "calendário de publicação sem fonte oficial IF.data demonstrada"
+    try:
+        coleta = datetime.fromisoformat(registro.data_coleta)
+        if coleta.utcoffset() is None:
+            return "coleta do calendário de publicação sem fuso horário"
+        futura = (
+            coleta > instante
+            if instante is not None
+            else coleta.astimezone(ZoneInfo("America/Sao_Paulo")).date() > corte
+        )
+        if futura:
+            return "calendário de publicação com coleta posterior ao corte"
+    except ValueError:
+        return "coleta do calendário de publicação inválida"
+    publicada = calendario.publicacoes.get(data_base)
+    if type(publicada) is not date:
+        return "publicação da data-base não demonstrada no calendário oficial"
+    if publicada >= corte:
+        return "publicação posterior ao corte ou no mesmo dia sem hora demonstrada"
+    if publicada > coleta.astimezone(ZoneInfo("America/Sao_Paulo")).date():
+        return "publicação efetiva não demonstrada: calendário coletado antes da data informada"
+    return None
 
 
 def raiz_do_cnpj(cnpj: str | None) -> str | None:
@@ -169,7 +223,12 @@ def basileia(linhas: list[dict]) -> float | None:
 
 
 def ler_capital(
-    cnpj: str | None, data_referencia: date, buscar: Callable[[str], list[dict]]
+    cnpj: str | None,
+    data_referencia: date,
+    buscar: Callable[[str], list[dict]],
+    *,
+    calendario: CalendarioPublicacoes | None = None,
+    as_of: datetime | None = None,
 ) -> Capital:
     """Basileia da data-base mais recente com dado, entre as `DATAS_BASE_TENTADAS` anteriores."""
     raiz = raiz_do_cnpj(cnpj)
@@ -189,6 +248,21 @@ def ler_capital(
             continue
         valor = basileia(buscar(caminho_capital(ano_mes, codinst)))
         if valor is not None:
+            motivo_publicacao = _motivo_publicacao(
+                calendario, ano_mes, data_referencia, as_of
+            )
+            registros_calendario = (
+                (calendario.proveniencia.para_dict(),) if calendario is not None else ()
+            )
+            if motivo_publicacao is not None:
+                return Capital(
+                    valor,
+                    None,
+                    ano_mes,
+                    codinst,
+                    motivos={"inadimplencia": motivo_publicacao},
+                    proveniencia=registros_calendario,
+                )
             try:
                 razao, motivo_carteira = inadimplencia(
                     buscar(caminho_carteira(ano_mes, codinst))
@@ -204,17 +278,29 @@ def ler_capital(
                 # BUG-2B-45: a carteira é só leitura; a falha dela não derruba a Basileia.
                 razao, motivo_carteira = None, f"relatório 16 indisponível: {exc}"
             motivos = {"inadimplencia": motivo_carteira} if motivo_carteira else {}
-            return Capital(valor, razao, ano_mes, codinst, motivos=motivos)
+            return Capital(
+                valor,
+                razao,
+                ano_mes,
+                codinst,
+                motivos=motivos,
+                proveniencia=registros_calendario,
+            )
         motivo = MOTIVO_SEM_BASILEIA
     return Capital(None, None, None, None, motivos={**motivos, "basileia": motivo})
 
 
 class IFDataProvider:
     def __init__(
-        self, cache_dir: str = "data/ifdata", ttl_segundos: int = TTL_SEGUNDOS
+        self,
+        cache_dir: str = "data/ifdata",
+        ttl_segundos: int = TTL_SEGUNDOS,
+        *,
+        calendario: CalendarioPublicacoes | None = None,
     ):
         self.cache_dir = Path(cache_dir)
         self.ttl_segundos = ttl_segundos
+        self.calendario = calendario
 
     def _arquivo(self, caminho: str) -> Path:
         return self.cache_dir / f"{hashlib.sha256(caminho.encode()).hexdigest()}.json"
@@ -284,5 +370,9 @@ class IFDataProvider:
                 registros.append(registro.para_dict())
             return valor
 
-        resultado = ler_capital(cnpj, data_referencia, buscar)
-        return replace(resultado, proveniencia=tuple(registros))
+        resultado = ler_capital(
+            cnpj, data_referencia, buscar, calendario=self.calendario, as_of=as_of
+        )
+        return replace(
+            resultado, proveniencia=tuple(registros) + resultado.proveniencia
+        )

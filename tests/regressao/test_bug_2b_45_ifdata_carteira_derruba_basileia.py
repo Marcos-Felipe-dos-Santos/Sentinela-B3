@@ -11,6 +11,7 @@ import pytest
 import requests
 
 from sentinela.data.providers import ifdata
+from tests.apoio_ifdata_calendario import calendario_sintetico
 from tests.test_cvm_bancos import CADASTRO_BB, CAPITAL_BB
 
 
@@ -24,7 +25,12 @@ def test_falha_da_carteira_preserva_a_basileia():
             return CAPITAL_BB
         return []
 
-    capital = ifdata.ler_capital("00.000.000/0001-91", date(2026, 10, 13), buscar)
+    capital = ifdata.ler_capital(
+        "00.000.000/0001-91",
+        date(2026, 10, 13),
+        buscar,
+        calendario=calendario_sintetico(),
+    )
     assert capital.basileia == pytest.approx(0.151297835513664)
     assert capital.inadimplencia is None
     assert capital.motivos["inadimplencia"] == "relatório 16 indisponível: sem rede"

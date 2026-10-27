@@ -9,6 +9,7 @@ from datetime import date
 import pytest
 
 from sentinela.data.providers import ifdata
+from tests.apoio_ifdata_calendario import calendario_sintetico
 from tests.test_cvm_bancos import CADASTRO_BB, CAPITAL_BB, _buscar_falso
 
 AUSENTE = "relatório 16 sem as contas 148834 (Inadimplência) e 24454 (Total Geral)"
@@ -28,7 +29,12 @@ def _capital(carteira):
             "@AnoMes=202606&@TipoInstituicao=1&@Relatorio='16'": carteira,
         }
     )
-    return ifdata.ler_capital("00.000.000/0001-91", date(2026, 10, 13), buscar), pedidos
+    return ifdata.ler_capital(
+        "00.000.000/0001-91",
+        date(2026, 10, 13),
+        buscar,
+        calendario=calendario_sintetico(),
+    ), pedidos
 
 
 def test_inadimplencia_pelo_relatorio_16_do_mesmo_conglomerado_e_data():

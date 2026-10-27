@@ -15,6 +15,7 @@ from datetime import UTC, date, datetime, timedelta
 import pytest
 
 from sentinela.data.providers import ifdata
+from tests.apoio_ifdata_calendario import calendario_sintetico
 from tests.regressao.test_bug_2a_19_ifdata_sem_proveniencia import _get_falso, _Resposta
 from tests.test_cvm_bancos import CADASTRO_BB, CAPITAL_BB
 
@@ -90,7 +91,10 @@ def test_cache_expira_no_instante_explicito_apos_sete_dias(tmp_path, monkeypatch
         return _get_falso(url, timeout)
 
     monkeypatch.setattr(ifdata.requests, "get", buscar)
-    capital = ifdata.IFDataProvider(cache_dir=str(tmp_path)).capital(
+    # Calendário sintético explícito mantém a carteira elegível no ensaio de TTL.
+    capital = ifdata.IFDataProvider(
+        cache_dir=str(tmp_path), calendario=calendario_sintetico("202609")
+    ).capital(
         "00.000.000/0001-91",
         date(2026, 10, 13),
         as_of=inicio + timedelta(days=7, seconds=1),
