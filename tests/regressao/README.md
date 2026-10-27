@@ -143,3 +143,13 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2C-09 | Leitura da escala deixa erro de formato escapar | CVMProvider._escala_da_composicao | Codex26/10, F2C-31 | test_bug_2c_09_escala_itr_formato.py | F2C-31 | corrigido |
 
 | BUG-2C-10 | Escala do ITR reserva lucro total sem BPP lido | CVMProvider._escala_da_composicao | Codex26/10, F2C-31 | test_bug_2c_10_escala_itr_bpp_ausente.py | F2C-31 | corrigido |
+
+
+### Achados do F2C-32 (27/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-11 | Conferência da unit compara média recalculada com primeira classe em vez da soma ponderada | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_11_unit_conferencia_ponderada.py` | F2C-50 (2C-b, não ativado) | aberto, xfail estrito |
+| BUG-2C-12 | Falha do Informe não é propagada a riscos_dados | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_12_informe_risco_ausente.py` | F2C-51 (2C-b, não ativado) | aberto, xfail estrito |
+| BUG-2C-13 | Literal OData CodInst interpola apóstrofo sem escape | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_13_odata_literal_codinst.py` | F2C-52 (2C-b, não ativado) | aberto, xfail estrito |
+| BUG-2C-14 | Prompt não distingue classe inferida de classe oficial | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_14_prompt_classe_inferida.py` | F2C-53 (2C-b, não ativado) | aberto, xfail estrito |

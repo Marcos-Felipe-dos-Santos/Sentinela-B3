@@ -162,3 +162,16 @@ Ressalvas não bloqueantes da auditoria externa de fechamento (`docs/loop/histor
 **Fontes lidas:** `AGENTS.md`, `.claude/agents/fable-architect.md`, `docs/loop/protocolo.md`, fila/diário ativos 2B, diário e diário de fechamento 2A, `docs/PLANO.md`, ADR-0002 e ADR-0003, checkpoint Fase 0 §4, dossiê Fase 2 §4–5, `fontes-fase2b.md` §7–8, marcador-2b, plano-final-2b, auditoria externa consolidada 2A, red-team F-28/achados referidos, inventário e registro de regressões. Conferências pontuais no motor, Lynch, série CVM, IF.data, referência e prompt da IA. As fontes locais documentam consultas primárias anteriores; não houve nova coleta nem validação bibliográfica de fórmulas neste levantamento.
 
 **Lacunas que permanecem abertas:** auditoria final e decisões provisórias da 2B; evidência de modelo seguradora do F2B-4; fichas/janelas/limiares da 2C; método exato de resolver emissor B3 com barra; estado final B1/C-C; fonte complementar reproduzível de fundos com cobertura além dos dois controles; suporte individual e novas lentes de FII/reverso; contrato completo dos candidatos F2C-32. Esses pontos possuem destino, mas não aceite de implementação satisfeito. A ativação deve desdobrar os levantamentos em fixes próprios quando houver definição externa; não tratar esta lista como autorização para escolher metodologia.
+
+
+## Destinos documentados pelo F2C-32 (27/10/2026, não ativados)
+
+IDs48/49 reservados no branch pós-2B, sem reuso. Abaixo são propostas de2C-b; não entram na execução2C-a ou nos quatro rascunhos autorizados. Contrato/arquivos/aceites detalhados em `docs/decisoes/contratos-fronteiras-dados-2c.md`.
+
+- [ ] **F2C-50** · fix · `fix: compare unit EPS on a weighted common basis` — BUG-2C-11. Cascata/qualidade: soma por componente na mesma base, sem alterar LPA dos métodos ou limiar; composição incompleta não usa primeira classe; D27/G.
+- [ ] **F2C-51** · fix · `fix: propagate monthly fund report failures to data risks` — BUG-2C-12. Cascata/Informe: conservar abstenção/motivo e propagar aviso; sucesso e ausência de interface controlados, distinguir programação de fonte; D27/G.
+- [ ] **F2C-52** · fix · `fix: escape IF.data OData institution literals` — BUG-2C-13. ProviderIFData/contratos: apóstrofo duplicado antes de codificar query, Unicode/reservados/número preservados, sem rede ou seleção de outra instituição; D27/G.
+- [ ] **F2C-53** · fix · `fix: identify inferred asset classes in AI context` — BUG-2C-14. Cascata/classificador/prompt: origem e motivo explícitos, oficial sem aviso falso, UNKNOWN sem elegibilidade inventada; sem duplicação nos serviços desconectados; D27/G.
+- [ ] **F2C-54** · levantamento · `docs: reconcile preferred share identity without an FCA class code`. Fonte oficial por identidade/documento/versão para DRE PNA e FCA PN sem sigla; sem vínculo, abstenção, sem adivinhar pelo ticker. D19/ficha por ação1.1; eventual fix separado só após prova e aceite. Nenhuma regra econômica nova.
+
+Versão de schema do índice → F3-6, porque exige compatibilidade persistida/migração/restauração D29; nenhum número de versão implantado no levantamento.
