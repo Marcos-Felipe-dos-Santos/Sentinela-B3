@@ -1,0 +1,1192 @@
+{
+  "limite": "fotografia de conteúdo do índice/DFP2025 local; maior referência/versão BPP por código; não afirma disponibilidade histórica, companhia ativa ou último documento global",
+  "indice_sha256": "b29e5b882f7a585517594afa1e8113f9211195cd07eb386f0527b7ecdc952a2b",
+  "dfp_sha256": "d7aec54e7c67998e4cd3ef94c463ab247f09a6baaa2254878d1e431f28130e2a",
+  "fonte": "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2025.zip",
+  "tickers": 455,
+  "codigos_cvm_distintos": 342,
+  "cruzamento": [
+    {
+      "setor": "banco",
+      "bpp": "banco",
+      "tickers": 19
+    },
+    {
+      "setor": "banco",
+      "bpp": null,
+      "tickers": 16
+    },
+    {
+      "setor": "empresa",
+      "bpp": "empresa",
+      "tickers": 326
+    },
+    {
+      "setor": "empresa",
+      "bpp": "seguradora",
+      "tickers": 5
+    },
+    {
+      "setor": "empresa",
+      "bpp": null,
+      "tickers": 83
+    },
+    {
+      "setor": "seguradora",
+      "bpp": "empresa",
+      "tickers": 2
+    },
+    {
+      "setor": "seguradora",
+      "bpp": "seguradora",
+      "tickers": 4
+    }
+  ],
+  "modelos_bpp": {
+    "empresa": 328,
+    "não demonstrado": 99,
+    "banco": 19,
+    "seguradora": 9
+  },
+  "divergencias_demonstradas": [
+    {
+      "ticker": "CXSE3",
+      "cd_cvm": 23795,
+      "setor": "Emp. Adm. Part. - Seguradoras e Corretoras",
+      "modelo_setor": "seguradora",
+      "modelo_bpp": "empresa",
+      "documento": {
+        "referencia": "2025-12-31",
+        "versao": "1"
+      },
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "HAPV3",
+      "cd_cvm": 24392,
+      "setor": "Serviços Médicos",
+      "modelo_setor": "empresa",
+      "modelo_bpp": "seguradora",
+      "documento": {
+        "referencia": "2025-12-31",
+        "versao": "1"
+      },
+      "descricoes_seguro": [
+        {
+          "CD_CONTA": "2.01.05.02.08",
+          "DS_CONTA": "Passivo de contratos de seguros"
+        },
+        {
+          "CD_CONTA": "2.01.06.02.04",
+          "DS_CONTA": "Provisões técnicas de operações de assistência à saúde"
+        },
+        {
+          "CD_CONTA": "2.02.04.02.06",
+          "DS_CONTA": "Provisões técnicas de operações de assistência à saúde (PNC)"
+        }
+      ]
+    },
+    {
+      "ticker": "PEAB3",
+      "cd_cvm": 18708,
+      "setor": "Emp. Adm. Part. - Sem Setor Principal",
+      "modelo_setor": "empresa",
+      "modelo_bpp": "seguradora",
+      "documento": {
+        "referencia": "2025-12-31",
+        "versao": "1"
+      },
+      "descricoes_seguro": [
+        {
+          "CD_CONTA": "2.01.05.02.06",
+          "DS_CONTA": "Passivos de contratos de seguros"
+        },
+        {
+          "CD_CONTA": "2.01.05.02.07",
+          "DS_CONTA": "Outras operações de passivos de contratos de seguros e resseguros"
+        },
+        {
+          "CD_CONTA": "2.02.04.02.06",
+          "DS_CONTA": "Passivos de contratos de seguros"
+        }
+      ]
+    },
+    {
+      "ticker": "PEAB4",
+      "cd_cvm": 18708,
+      "setor": "Emp. Adm. Part. - Sem Setor Principal",
+      "modelo_setor": "empresa",
+      "modelo_bpp": "seguradora",
+      "documento": {
+        "referencia": "2025-12-31",
+        "versao": "1"
+      },
+      "descricoes_seguro": [
+        {
+          "CD_CONTA": "2.01.05.02.06",
+          "DS_CONTA": "Passivos de contratos de seguros"
+        },
+        {
+          "CD_CONTA": "2.01.05.02.07",
+          "DS_CONTA": "Outras operações de passivos de contratos de seguros e resseguros"
+        },
+        {
+          "CD_CONTA": "2.02.04.02.06",
+          "DS_CONTA": "Passivos de contratos de seguros"
+        }
+      ]
+    },
+    {
+      "ticker": "RDOR3",
+      "cd_cvm": 24821,
+      "setor": "Serviços Médicos",
+      "modelo_setor": "empresa",
+      "modelo_bpp": "seguradora",
+      "documento": {
+        "referencia": "2025-12-31",
+        "versao": "1"
+      },
+      "descricoes_seguro": [
+        {
+          "CD_CONTA": "2.01.05.02.09",
+          "DS_CONTA": "Passivos de contratos de seguro"
+        },
+        {
+          "CD_CONTA": "2.02.02.02.09",
+          "DS_CONTA": "Passivos de contratos de seguro"
+        }
+      ]
+    },
+    {
+      "ticker": "SAUD3",
+      "cd_cvm": 20125,
+      "setor": "Serviços Médicos",
+      "modelo_setor": "empresa",
+      "modelo_bpp": "seguradora",
+      "documento": {
+        "referencia": "2025-12-31",
+        "versao": "1"
+      },
+      "descricoes_seguro": [
+        {
+          "CD_CONTA": "2.01.05.02.04",
+          "DS_CONTA": "Passivos de Contratos de Seguro e Resseguro"
+        },
+        {
+          "CD_CONTA": "2.01.06.02.07",
+          "DS_CONTA": "Outras Provisões Técnicas (OUTRAS)"
+        }
+      ]
+    },
+    {
+      "ticker": "WIZC3",
+      "cd_cvm": 23590,
+      "setor": "Seguradoras e Corretoras",
+      "modelo_setor": "seguradora",
+      "modelo_bpp": "empresa",
+      "documento": {
+        "referencia": "2025-12-31",
+        "versao": "1"
+      },
+      "descricoes_seguro": []
+    }
+  ],
+  "sem_modelo": [
+    {
+      "ticker": "ABCB4",
+      "cd_cvm": 20958,
+      "setor": "Bancos",
+      "modelo_setor": "banco",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "AFLT3",
+      "cd_cvm": 22179,
+      "setor": "Energia Elétrica",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "AGXY3",
+      "cd_cvm": 25658,
+      "setor": "Comércio (Atacado e Varejo)",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "AHEB3",
+      "cd_cvm": 9415,
+      "setor": "Emp. Adm. Part. - Hospedagem e Turismo",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "AHEB5",
+      "cd_cvm": 9415,
+      "setor": "Emp. Adm. Part. - Hospedagem e Turismo",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "AHEB6",
+      "cd_cvm": 9415,
+      "setor": "Emp. Adm. Part. - Hospedagem e Turismo",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "AMBP3",
+      "cd_cvm": 24961,
+      "setor": "Saneamento, Serv. Água e Gás",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "ASAI3",
+      "cd_cvm": 25372,
+      "setor": "Comércio (Atacado e Varejo)",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "BAUH3",
+      "cd_cvm": 1570,
+      "setor": "Alimentos",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "BAUH4",
+      "cd_cvm": 1570,
+      "setor": "Alimentos",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "BAZA3",
+      "cd_cvm": 922,
+      "setor": "Bancos",
+      "modelo_setor": "banco",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "BETP3",
+      "cd_cvm": 17884,
+      "setor": "Emp. Adm. Part. - Crédito Imobiliário",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "BGIP3",
+      "cd_cvm": 1120,
+      "setor": "Bancos",
+      "modelo_setor": "banco",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "BGIP4",
+      "cd_cvm": 1120,
+      "setor": "Bancos",
+      "modelo_setor": "banco",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "BMIN3",
+      "cd_cvm": 1309,
+      "setor": "Bancos",
+      "modelo_setor": "banco",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "BMIN4",
+      "cd_cvm": 1309,
+      "setor": "Bancos",
+      "modelo_setor": "banco",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "BMKS3",
+      "cd_cvm": 1694,
+      "setor": "Brinquedos e Lazer",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "BNBR3",
+      "cd_cvm": 1228,
+      "setor": "Bancos",
+      "modelo_setor": "banco",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "BPAN4",
+      "cd_cvm": 21199,
+      "setor": "Bancos",
+      "modelo_setor": "banco",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "BPAR3",
+      "cd_cvm": 1171,
+      "setor": "Bancos",
+      "modelo_setor": "banco",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "BPHA3",
+      "cd_cvm": 22500,
+      "setor": "Farmacêutico e Higiene",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "BRAP3",
+      "cd_cvm": 18724,
+      "setor": "Emp. Adm. Part. - Extração Mineral",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "BRAP4",
+      "cd_cvm": 18724,
+      "setor": "Emp. Adm. Part. - Extração Mineral",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "BSLI3",
+      "cd_cvm": 14206,
+      "setor": "Bancos",
+      "modelo_setor": "banco",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "BSLI4",
+      "cd_cvm": 14206,
+      "setor": "Bancos",
+      "modelo_setor": "banco",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CASN3",
+      "cd_cvm": 16861,
+      "setor": "Saneamento, Serv. Água e Gás",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CASN4",
+      "cd_cvm": 16861,
+      "setor": "Saneamento, Serv. Água e Gás",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CBEE3",
+      "cd_cvm": 3050,
+      "setor": "Energia Elétrica",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CCTY3",
+      "cd_cvm": 27570,
+      "setor": "Construção Civil, Mat. Constr. e Decoração",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CEDO3",
+      "cd_cvm": 3077,
+      "setor": "Têxtil e Vestuário",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CEDO4",
+      "cd_cvm": 3077,
+      "setor": "Têxtil e Vestuário",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CEEB3",
+      "cd_cvm": 14524,
+      "setor": "Energia Elétrica",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CEEB5",
+      "cd_cvm": 14524,
+      "setor": "Energia Elétrica",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CEEB6",
+      "cd_cvm": 14524,
+      "setor": "Energia Elétrica",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CEED3",
+      "cd_cvm": 20648,
+      "setor": "Energia Elétrica",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CEED4",
+      "cd_cvm": 20648,
+      "setor": "Energia Elétrica",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CEGR3",
+      "cd_cvm": 16616,
+      "setor": "Saneamento, Serv. Água e Gás",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CELP3",
+      "cd_cvm": 18309,
+      "setor": "Energia Elétrica",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CELP5",
+      "cd_cvm": 18309,
+      "setor": "Energia Elétrica",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CELP6",
+      "cd_cvm": 18309,
+      "setor": "Energia Elétrica",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CELP7",
+      "cd_cvm": 18309,
+      "setor": "Energia Elétrica",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CGAS3",
+      "cd_cvm": 15636,
+      "setor": "Emp. Adm. Part. - Saneamento, Serv. Água e Gás",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CGAS5",
+      "cd_cvm": 15636,
+      "setor": "Emp. Adm. Part. - Saneamento, Serv. Água e Gás",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CLSA3",
+      "cd_cvm": 26093,
+      "setor": "Comunicação e Informática",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "COCE3",
+      "cd_cvm": 14869,
+      "setor": "Energia Elétrica",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "COCE5",
+      "cd_cvm": 14869,
+      "setor": "Energia Elétrica",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "COCE6",
+      "cd_cvm": 14869,
+      "setor": "Energia Elétrica",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CRPG3",
+      "cd_cvm": 11398,
+      "setor": "Petroquímicos e Borracha",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CRPG5",
+      "cd_cvm": 11398,
+      "setor": "Petroquímicos e Borracha",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CRPG6",
+      "cd_cvm": 11398,
+      "setor": "Petroquímicos e Borracha",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CRTE3",
+      "cd_cvm": 19208,
+      "setor": "Serviços Transporte e Logística",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CTNM3",
+      "cd_cvm": 3158,
+      "setor": "Têxtil e Vestuário",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CTNM4",
+      "cd_cvm": 3158,
+      "setor": "Têxtil e Vestuário",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CTSA3",
+      "cd_cvm": 4081,
+      "setor": "Têxtil e Vestuário",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "CTSA4",
+      "cd_cvm": 4081,
+      "setor": "Têxtil e Vestuário",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "DMFN3",
+      "cd_cvm": 6076,
+      "setor": "Bancos",
+      "modelo_setor": "banco",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "DOHL3",
+      "cd_cvm": 5207,
+      "setor": "Têxtil e Vestuário",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "DOHL4",
+      "cd_cvm": 5207,
+      "setor": "Têxtil e Vestuário",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "DTCY3",
+      "cd_cvm": 18597,
+      "setor": "Telecomunicações",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "EKTR3",
+      "cd_cvm": 17485,
+      "setor": "Energia Elétrica",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "EKTR4",
+      "cd_cvm": 17485,
+      "setor": "Energia Elétrica",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "ELMD3",
+      "cd_cvm": 25569,
+      "setor": "Emp. Adm. Part. - Comunicação e Informática",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "ENMT3",
+      "cd_cvm": 14605,
+      "setor": "Energia Elétrica",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "ENMT4",
+      "cd_cvm": 14605,
+      "setor": "Energia Elétrica",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "FHER3",
+      "cd_cvm": 20621,
+      "setor": "Petroquímicos e Borracha",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "FIGE3",
+      "cd_cvm": 6041,
+      "setor": "Bancos",
+      "modelo_setor": "banco",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "FIGE4",
+      "cd_cvm": 6041,
+      "setor": "Bancos",
+      "modelo_setor": "banco",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "GPAR3",
+      "cd_cvm": 21393,
+      "setor": "Emp. Adm. Part. - Energia Elétrica",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "GRAO3",
+      "cd_cvm": 25933,
+      "setor": "Comércio (Atacado e Varejo)",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "HETA3",
+      "cd_cvm": 6629,
+      "setor": "Metalurgia e Siderurgia",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "HETA4",
+      "cd_cvm": 6629,
+      "setor": "Metalurgia e Siderurgia",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "MERC3",
+      "cd_cvm": 8540,
+      "setor": "Bancos",
+      "modelo_setor": "banco",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "MERC4",
+      "cd_cvm": 8540,
+      "setor": "Bancos",
+      "modelo_setor": "banco",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "MMAQ3",
+      "cd_cvm": 8818,
+      "setor": "Máquinas, Equipamentos, Veículos e Peças",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "MMAQ4",
+      "cd_cvm": 8818,
+      "setor": "Máquinas, Equipamentos, Veículos e Peças",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "MOAR3",
+      "cd_cvm": 8893,
+      "setor": "Emp. Adm. Part. - Sem Setor Principal",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "NRTQ3",
+      "cd_cvm": 22985,
+      "setor": "Farmacêutico e Higiene",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "NTCO3",
+      "cd_cvm": 24783,
+      "setor": "Farmacêutico e Higiene",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "OIBR3",
+      "cd_cvm": 11312,
+      "setor": "Telecomunicações",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "OIBR4",
+      "cd_cvm": 11312,
+      "setor": "Telecomunicações",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "OPGM3",
+      "cd_cvm": 17965,
+      "setor": "Emp. Adm. Part. - Sem Setor Principal",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "OPSE3",
+      "cd_cvm": 16586,
+      "setor": "Emp. Adm. Part. - Sem Setor Principal",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "PORT3",
+      "cd_cvm": 26247,
+      "setor": "Emp. Adm. Part. - Serviços Transporte e Logística",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "PPAR3",
+      "cd_cvm": 13447,
+      "setor": "Emp. Adm. Part. - Sem Setor Principal",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "PRPT3",
+      "cd_cvm": 18333,
+      "setor": "Emp. Adm. Part. - Sem Setor Principal",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "QVQP3",
+      "cd_cvm": 16284,
+      "setor": "Emp. Adm. Part. - Sem Setor Principal",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "RPAD3",
+      "cd_cvm": 9954,
+      "setor": "Emp. Adm. Part. - Intermediação Financeira",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "RPAD5",
+      "cd_cvm": 9954,
+      "setor": "Emp. Adm. Part. - Intermediação Financeira",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "RPAD6",
+      "cd_cvm": 9954,
+      "setor": "Emp. Adm. Part. - Intermediação Financeira",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "SAPR11",
+      "cd_cvm": 18627,
+      "setor": "Saneamento, Serv. Água e Gás",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "SAPR3",
+      "cd_cvm": 18627,
+      "setor": "Saneamento, Serv. Água e Gás",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "SAPR4",
+      "cd_cvm": 18627,
+      "setor": "Saneamento, Serv. Água e Gás",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "SGPS3",
+      "cd_cvm": 20966,
+      "setor": "Emp. Adm. Part. - Têxtil e Vestuário",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "SHOW3",
+      "cd_cvm": 21326,
+      "setor": "Brinquedos e Lazer",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "TELB3",
+      "cd_cvm": 11258,
+      "setor": "Telecomunicações",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "TELB4",
+      "cd_cvm": 11258,
+      "setor": "Telecomunicações",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "VSPT3",
+      "cd_cvm": 15369,
+      "setor": "Serviços Transporte e Logística",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "VSPT4",
+      "cd_cvm": 15369,
+      "setor": "Serviços Transporte e Logística",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    },
+    {
+      "ticker": "WEST3",
+      "cd_cvm": 25518,
+      "setor": "Comércio (Atacado e Varejo)",
+      "modelo_setor": "empresa",
+      "modelo_bpp": null,
+      "documento": null,
+      "descricoes_seguro": []
+    }
+  ],
+  "saude": [
+    {
+      "ticker": "HAPV3",
+      "cd_cvm": 24392,
+      "setor": "Serviços Médicos",
+      "modelo_setor": "empresa",
+      "modelo_bpp": "seguradora",
+      "documento": {
+        "referencia": "2025-12-31",
+        "versao": "1"
+      },
+      "descricoes_seguro": [
+        {
+          "CD_CONTA": "2.01.05.02.08",
+          "DS_CONTA": "Passivo de contratos de seguros"
+        },
+        {
+          "CD_CONTA": "2.01.06.02.04",
+          "DS_CONTA": "Provisões técnicas de operações de assistência à saúde"
+        },
+        {
+          "CD_CONTA": "2.02.04.02.06",
+          "DS_CONTA": "Provisões técnicas de operações de assistência à saúde (PNC)"
+        }
+      ]
+    },
+    {
+      "ticker": "QUAL3",
+      "cd_cvm": 22497,
+      "setor": "Seguradoras e Corretoras",
+      "modelo_setor": "seguradora",
+      "modelo_bpp": "seguradora",
+      "documento": {
+        "referencia": "2025-12-31",
+        "versao": "1"
+      },
+      "descricoes_seguro": [
+        {
+          "CD_CONTA": "2.01.02.01.04",
+          "DS_CONTA": "Provisões técnicas de operações de assistência a saúde"
+        }
+      ]
+    },
+    {
+      "ticker": "RDOR3",
+      "cd_cvm": 24821,
+      "setor": "Serviços Médicos",
+      "modelo_setor": "empresa",
+      "modelo_bpp": "seguradora",
+      "documento": {
+        "referencia": "2025-12-31",
+        "versao": "1"
+      },
+      "descricoes_seguro": [
+        {
+          "CD_CONTA": "2.01.05.02.09",
+          "DS_CONTA": "Passivos de contratos de seguro"
+        },
+        {
+          "CD_CONTA": "2.02.02.02.09",
+          "DS_CONTA": "Passivos de contratos de seguro"
+        }
+      ]
+    },
+    {
+      "ticker": "SAUD3",
+      "cd_cvm": 20125,
+      "setor": "Serviços Médicos",
+      "modelo_setor": "empresa",
+      "modelo_bpp": "seguradora",
+      "documento": {
+        "referencia": "2025-12-31",
+        "versao": "1"
+      },
+      "descricoes_seguro": [
+        {
+          "CD_CONTA": "2.01.05.02.04",
+          "DS_CONTA": "Passivos de Contratos de Seguro e Resseguro"
+        },
+        {
+          "CD_CONTA": "2.01.06.02.07",
+          "DS_CONTA": "Outras Provisões Técnicas (OUTRAS)"
+        }
+      ]
+    }
+  ],
+  "universo_inicial_todas_tabelas": {
+    "tickers_primeira_coluna": 89,
+    "adicional_textual_aprovado": [
+      "BPAC11"
+    ],
+    "tickers_com_adicional": 90,
+    "fora_indice": [
+      "AZUL4",
+      "BCFF11",
+      "ELET3",
+      "GOLL4",
+      "IRDM11",
+      "JBSS3",
+      "PETZ3",
+      "RBRF11"
+    ],
+    "regra": "89 códigos na primeira coluna das tabelas mais BPAC11 da seção BTG após o F2A-39; não inclui os demais códigos citados apenas como controles no texto; não redefine D32",
+    "stock_unit_no_indice": 55
+  }
+}
