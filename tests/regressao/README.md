@@ -134,3 +134,12 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2C-04 | Fluxos aceitos com marcador BPP de outro modelo | cvm_provider._acumulados_do_arquivo | Codex26/10, F2C-30 | test_bug_2c_04_ttm_modelo_incompativel.py | F2C-30 | corrigido |
 
 | BUG-2C-05 | TTM subtrai perímetros distintos ou sem demonstração | series_cvm.trimestres/ttm | revisão interna F2C-30,26/10 | test_bug_2c_05_ttm_perimetros.py | F2C-30 | corrigido |
+
+| BUG-2C-06 | Fronteira anual apaga TTM e converte erro de programação em ausência | MarketEngine._serie_cvm/_buscar_cvm; CVMProvider.calcular_indicadores/acumulados_ttm | Codex, F2C-31,26/10 | test_bug_2c_06_cvm_fronteiras_independentes.py | F2C-31 | corrigido |
+
+| BUG-2C-07 | Seleção civil omite DFP corrente de exercício encerrado em fevereiro | CVMProvider.acumulados_ttm; MarketEngine._serie_cvm | Codex26/10, F2C-31 | test_bug_2c_07_cvm_exercicio_nao_civil.py | F2C-31 | corrigido |
+
+| BUG-2C-08 | Download de proventos elimina indicadores anuais já lidos | CVMProvider.indicadores_da_serie | Codex26/10, F2C-31 | test_bug_2c_08_serie_dva_independente.py | F2C-31 | corrigido |
+| BUG-2C-09 | Leitura da escala deixa erro de formato escapar | CVMProvider._escala_da_composicao | Codex26/10, F2C-31 | test_bug_2c_09_escala_itr_formato.py | F2C-31 | corrigido |
+
+| BUG-2C-10 | Escala do ITR reserva lucro total sem BPP lido | CVMProvider._escala_da_composicao | Codex26/10, F2C-31 | test_bug_2c_10_escala_itr_bpp_ausente.py | F2C-31 | corrigido |

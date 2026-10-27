@@ -700,7 +700,7 @@ class CVMProvider:
 
                 resultado[ano] = ind
 
-            except Exception as exc:
+            except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
                 logger.warning("Erro ao calcular indicadores cd_cvm=%d ano=%d: %s", cd_cvm, ano, exc)
 
         return resultado
@@ -819,6 +819,8 @@ class CVMProvider:
 
         def do_documento(tipo: str) -> pd.DataFrame:
             df = self._read_raw(caminho, tipo)
+            if not {"CD_CONTA", "DS_CONTA", "VL_CONTA"}.issubset(df.columns):
+                raise ValueError("demonstração sem colunas do contrato da escala")
             df = df[
                 (df["CNPJ_CIA"] == cnpj)
                 & (df["DT_REFER"].astype(str) == dt_refer)
@@ -840,15 +842,17 @@ class CVMProvider:
                 dre = dre[dre["DT_INI_EXERC"] == dre["DT_INI_EXERC"].min()]
             try:
                 bpp = em_reais(do_documento("BPP_con"))
-            except FileNotFoundError:
+            except (OSError, KeyError, ValueError, zipfile.BadZipFile):
                 bpp = pd.DataFrame(columns=["CD_CONTA", "DS_CONTA", "VL_CONTA"])
         except (OSError, KeyError, ValueError, zipfile.BadZipFile):
             return None
         e_lpa = dre["CD_CONTA"].astype(str).str.startswith("3.99")
         divulgado = lpa_divulgado(dre[e_lpa])
-        lucro = lucro_controladores_com_reserva(em_reais(dre[~e_lpa]), bpp).valor
+        leitura_lucro = lucro_controladores_com_reserva(em_reais(dre[~e_lpa]), bpp)
+        if leitura_lucro.reserva and bpp.empty:
+            return None
         inferida = acoes_cvm.inferir_escala(
-            lucro, composicao.total, divulgado["valor"] if divulgado else None
+            leitura_lucro.valor, composicao.total, divulgado["valor"] if divulgado else None
         )
         return None if inferida is None else inferida[0].name
 
@@ -1066,6 +1070,29 @@ class CVMProvider:
                 saida["proventos_motivos"][campo] = f"{leitura.motivo} {leitura.detalhe}".strip()
         return saida
 
+    def exercicio_anual_mais_recente(self, cd_cvm: int, referencia: date) -> int:
+        """Inclui exercício não civil encerrado neste ano, se demonstrado pela DFP.
+
+        Só disponibilidade anual da série informativa; não altera o exercício dos
+        métodos vigentes. Falha de consulta não prova ausência do documento.
+        """
+        try:
+            arquivo = self.baixar_dfp(referencia.year)
+        except OSError as exc:
+            if getattr(getattr(exc, "response", None), "status_code", None) == 404:
+                return referencia.year - 1
+            raise
+        dre = self.parsear_demonstrativo(
+            arquivo, "DRE_con", include_cd_cvm=True, include_versao=True, include_periodo=True
+        )
+        da_companhia = dre[dre["CD_CVM"] == cd_cvm]
+        for _, linha in da_companhia.iterrows():
+            inicio = date.fromisoformat(str(linha["DT_INI_EXERC"]))
+            fim = date.fromisoformat(str(linha["DT_FIM_EXERC"]))
+            if fim.year == referencia.year and fim <= referencia and series_cvm._meses(inicio, fim) == 12:
+                return fim.year
+        return referencia.year - 1
+
     def indicadores_da_serie(
         self, cd_cvm: int, ano_final: int, modelo: str = "empresa"
     ) -> dict[int, dict]:
@@ -1074,12 +1101,20 @@ class CVMProvider:
             cd_cvm, anos=series_cvm.MAX_EXERCICIOS, modelo=modelo, ano_final=ano_final
         )
         for ano, ind in indicadores.items():
-            ind.update(
-                self.proventos_do_documento(
+            try:
+                proventos = self.proventos_do_documento(
                     self.baixar_dfp(ano), cd_cvm,
                     ind.get("cvm_dt_refer"), ind.get("cvm_versao"), modelo,
                 )
-            )
+            except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
+                proventos = {
+                    "dividendos": None,
+                    "jcp": None,
+                    "proventos_motivos": {
+                        campo: f"DVA indisponível: {exc}" for campo in ("dividendos", "jcp")
+                    },
+                }
+            ind.update(proventos)
         return indicadores
 
     def _acumulados_do_arquivo(
@@ -1200,6 +1235,7 @@ class CVMProvider:
             ("ITR", self.baixar_itr, data_referencia.year),
             ("ITR", self.baixar_itr, data_referencia.year - 1),
             ("ITR", self.baixar_itr, data_referencia.year - 2),
+            ("DFP", self.baixar_dfp, data_referencia.year),
             ("DFP", self.baixar_dfp, data_referencia.year - 1),
             ("DFP", self.baixar_dfp, data_referencia.year - 2),
         ]
@@ -1207,7 +1243,7 @@ class CVMProvider:
         for documento, baixar, ano in fontes:
             try:
                 acumulados += self._acumulados_do_arquivo(baixar(ano), documento, cd_cvm, modelo)
-            except Exception as exc:
+            except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
                 logger.warning(
                     "Sem %s %d para o TTM de cd_cvm=%d: %s", documento, ano, cd_cvm, exc
                 )

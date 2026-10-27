@@ -673,7 +673,8 @@ def test_cvm_failure_falls_back_gracefully(monkeypatch):
     """Exceção no CVM não impede retorno dos dados das fontes existentes."""
     class ErrorCVM:
         def calcular_indicadores(self, *args, **kwargs):
-            raise RuntimeError("simulated CVM failure")
+            # Falha de fonte usa o contrato de IO; RuntimeError de programação deve propagar.
+            raise OSError("simulated CVM failure")
 
     engine = _engine(
         monkeypatch,

@@ -1,5 +1,6 @@
 import logging
 import math
+import zipfile
 from datetime import UTC, date, datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -1167,7 +1168,7 @@ class MarketEngine:
                 logger.info(f"[{ticker}] CVM preencheu {len(campos_fund)} campos (cd_cvm={cd_cvm})")
                 return True
 
-        except Exception as exc:
+        except (OSError, zipfile.BadZipFile) as exc:
             logger.warning(f"[{ticker}] CVM error: {exc}")
 
         dados['cvm_disponivel'] = False
@@ -1215,14 +1216,27 @@ class MarketEngine:
         """
         indicadores_da_serie = getattr(cvm, 'indicadores_da_serie', None)
         acumulados_ttm = getattr(cvm, 'acumulados_ttm', None)
-        if indicadores_da_serie is None or acumulados_ttm is None:
+        if indicadores_da_serie is None and acumulados_ttm is None:
             return
         hoje = date.today()
+        exercicios = []
         try:
+            selecionar_exercicio = getattr(cvm, 'exercicio_anual_mais_recente', None)
+            ano_final = (
+                selecionar_exercicio(cd_cvm, hoje)
+                if selecionar_exercicio is not None else hoje.year - 1
+            )
+            indicadores = (
+                indicadores_da_serie(cd_cvm, ano_final, modelo)
+                if indicadores_da_serie is not None else {}
+            )
+        except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
+            dados['serie_cvm'] = {'exercicios': [], 'abstencao': f"série anual indisponível: {exc}"}
+        else:
             classifier = getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER)
             exercicios = series_cvm.serie_anual(
-                indicadores_da_serie(cd_cvm, hoje.year - 1, modelo),
-                hoje.year - 1,
+                indicadores,
+                ano_final,
                 especie=dados.get('especie'),
                 classe=dados.get('classe_preferencial') or dados.get('especie'),
                 classes_preferenciais=dados.get('classes_preferenciais'),
@@ -1232,8 +1246,23 @@ class MarketEngine:
             dados['serie_cvm'] = {
                 'exercicios': exercicios,
                 'proventos_base': series_cvm.COMPETENCIA,
+                'cobertura': {
+                    'esperados': series_cvm.MAX_EXERCICIOS,
+                    'disponiveis': len(exercicios),
+                    'anos_ausentes': sorted(
+                        set(range(ano_final - series_cvm.MAX_EXERCICIOS + 1, ano_final + 1))
+                        - {e['exercicio'] for e in exercicios}
+                    ),
+                },
             }
+        try:
+            if acumulados_ttm is None:
+                dados['ttm_cvm'] = {'abstencao': 'interface TTM indisponível no provedor'}
+                return
             acumulados = acumulados_ttm(cd_cvm, hoje, modelo)
+        except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
+            dados['ttm_cvm'] = {'abstencao': f"TTM indisponível: {exc}"}
+        else:
             if exercicios:
                 atual = exercicios[-1]
                 janelas = {(a.inicio, a.fim) for a in acumulados
@@ -1245,8 +1274,6 @@ class MarketEngine:
             dados['ttm_cvm'] = (
                 {'abstencao': ttm.motivo} if isinstance(ttm, series_cvm.Abstencao) else ttm
             )
-        except Exception as exc:
-            logger.warning(f"[{ticker}] CVM série/TTM error: {exc}")
 
     def _por_acao_cvm(
         self, ticker: str, dados: dict[str, Any], ind: dict[str, Any]
