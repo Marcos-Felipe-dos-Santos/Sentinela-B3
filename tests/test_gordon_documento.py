@@ -171,3 +171,89 @@ def test_pl_de_empresa_e_de_banco_no_mesmo_bpp_abstem(documento, monkeypatch):
     )
     r = p.gordon_do_documento(23264, ind, datetime(2026, 10, 20, 18, tzinfo=UTC))
     assert r == {"abstencao": cvm_provider.MOTIVO_MODELO_DO_BPP}
+
+
+@pytest.mark.parametrize("valor,identificado", [(0.0, False), (1.0, True)])
+def test_dva_extraordinaria_no_leiaute_banco_abstem_so_quando_nao_zero(
+    documento, monkeypatch, valor: float, identificado: bool
+) -> None:
+    """F2C-35: cenário sintético banco7.09, não uma DFP real da Ambev bancária.
+
+    Tabela de contas/ficha bancos§2 e Gordon§3: dividendos/JCP mantêm soma,
+    minoritários não entram; distribuição extraordinária identificada impede projeção.
+    O zero explícito não identifica distribuição efetiva.
+    """
+    from sentinela.data import gordon_cvm
+    from tests.test_gordon_cvm import _dados
+
+    p, ind = documento
+    banco = _como_banco(p._read_raw)
+
+    def ler(caminho, tipo):
+        df = banco(caminho, tipo)
+        if tipo == "DVA_con":
+            extra = (
+                df[
+                    (df["CD_CVM"].astype(float) == 23264)
+                    & (df["ORDEM_EXERC"] == "ÚLTIMO")
+                ]
+                .iloc[[0]]
+                .copy()
+            )
+            extra["CD_CONTA"] = "7.09.04.99"
+            extra["DS_CONTA"] = "Distribuição extraordinária identificada"
+            extra["VL_CONTA"] = valor
+            df = pd.concat([df, extra], ignore_index=True)
+        return df
+
+    monkeypatch.setattr(p, "_read_raw", ler)
+    instante = datetime(2026, 10, 20, 18, tzinfo=UTC)
+    fonte = p.gordon_do_documento(23264, ind, instante)
+    assert "abstencao" not in fonte, fonte
+    assert fonte["modelo"] == "banco"
+    # Dividendos10.903.280mil +JCP0; não inclui a linha adicional nem terceiros485.033mil.
+    assert fonte["proventos_controladores"] == 10_903_280_000.0
+    assert fonte["distribuicao_extraordinaria_identificada"] is identificado
+    dados = _dados()
+    dados["modelo_bpp"] = "banco"
+    dados["gordon_cvm"].update(fonte)
+    # Entrada sintética independente: a cascata fornece o VPA do mesmo documento.
+    dados["gordon_cvm"]["vpa"] = 10.0
+    resultado = gordon_cvm.entradas(dados, instante, modelo="banco")
+    if identificado:
+        assert resultado == gordon_cvm.Abstencao(
+            "fluxo não representativo: evento identificado sem reconciliação"
+        )
+    else:
+        assert isinstance(resultado, dict), resultado
+
+
+def test_dva_extraordinaria_invalida_no_leiaute_banco_nao_vira_zero(
+    documento, monkeypatch
+) -> None:
+    """Valor declarado inválido não prova ausência de evento (D18/fichaGordon§3)."""
+    p, ind = documento
+    banco = _como_banco(p._read_raw)
+
+    def ler(caminho, tipo):
+        df = banco(caminho, tipo)
+        if tipo == "DVA_con":
+            extra = (
+                df[
+                    (df["CD_CVM"].astype(float) == 23264)
+                    & (df["ORDEM_EXERC"] == "ÚLTIMO")
+                ]
+                .iloc[[0]]
+                .copy()
+            )
+            extra["CD_CONTA"] = "7.09.04.99"
+            extra["DS_CONTA"] = "Distribuição extraordinária identificada"
+            extra["VL_CONTA"] = float("nan")
+            df = pd.concat([df, extra], ignore_index=True)
+        return df
+
+    monkeypatch.setattr(p, "_read_raw", ler)
+    resultado = p.gordon_do_documento(
+        23264, ind, datetime(2026, 10, 20, 18, tzinfo=UTC)
+    )
+    assert resultado == {"abstencao": "distribuição extraordinária com valor inválido"}

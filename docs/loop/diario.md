@@ -249,3 +249,14 @@
 - **Testes:** base2819passed,1skip,7xfail; gate final abaixo. Mutação não se aplica a docs; golden original preservado.
 - **Resíduos:** script/log temporários; JSON versionado só dados públicos da amostra, nenhum dado de carteira, push ou remoção. **Para o Claude revisar:** diferença do ramo§7.7, ausência de equivalência matemática alegada e denominador/limites da medição.
 - **Gate final:**2819passed,1skipped,7xfailed,1warning (/tmp/2c34-suite.txt); RuffCI/data/methods verdes, diff sem erros, goldenSHA256original.
+
+### F2C-35 — test: cover extraordinary DVA lines in the bank layout
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso; somente testes do contrato vigente.
+- **O que foi feito:** três casos no test_gordon_documento.py usando o recorte já existente daDFPAmbev convertido explicitamente em cenário sintético bancário7.09 (não é documento real de banco): linha7.09.04.99com descrição extraordinária e valores1/0/NaN. Dividendos10.903.280mil+JCP0 permanecem10.903.280.000reais, sem somar extra ou terceiros485.033mil; identificação nãozero impede projeção pelo consumidor com modelo=banco, zero explícito não identifica distribuição, inválido abstém com motivo. Esperados vêm da soma declarada e das fichas bancos§2/Gordon§3, não de motor como oráculo. A tabela do modelo e premissa de hipóteseDVAanual ficam explícitas.
+- **Prova de sensibilidade:** alteração deliberada somente no processo de teste força dividendos/JCP/terceiros do banco a serem lidos como empresa;2FAIL nos dois casos (/tmp/2c35-dva-quebrada.txt), por perda do fluxo bancário. Nenhum arquivo de produção foi editado. Primeira contraprova mais ampla também alteravaBPP e falhava antes daDVA; substituída pela variante restrita às três rubricasDVA.
+- **Dificuldades:** controlezero novo inicialmente omitiaVPA que a cascata adiciona ao fato para lente banco; recebeu entrada sintéticaVPA10, sem mudar asserção nem produção. Primeiro mutmut parou na suíte limpa por essa fixture incompleta e não conta como medição. Rodada final após correção é integral. Nenhum teste antigo enfraquecido/modificado.
+- **Testes:**2819passed,1skip,7xfail →2822passed,1skip,7xfail,1warning (/tmp/2c35-suite.txt); alvo13PASS; RuffCI/data/methods e teste completo verdes, diff sem erros, goldenSHA256original.
+- **Mutação:** módulo integral sentinela.data.gordon_cvm511/579=88,26%,68sobreviventes, sem pendente/timeout; mutmut3 e export-cicd-stats concluídos (/tmp/2c35-mutmut-final.txt e -mutacao-export.txt). Dois timeoutsglobais pertencem a módulos antigos, não ao alvo e não contados como mortos.
+- **D27/decisões provisórias:** sem bug novo ou alteração de regra; itemtest, nãofix. **Resíduos:** somente logs/scripts locais; sem push, carteira/credenciais ou remoção.
+- **Para o Claude revisar:** natureza sintética explícita do leiaute7.09, separação da leituraDVA do modeloempresa e guarda de fluxo extraordinário no consumidor banco, sem afirmar evento real daAmbev.
