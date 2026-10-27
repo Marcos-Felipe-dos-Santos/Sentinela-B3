@@ -1,0 +1,130 @@
+{
+  "denominador": 455,
+  "antes": 35,
+  "depois": 19,
+  "divergencias": [
+    {
+      "ticker": "ABCB4",
+      "setor": "Bancos",
+      "modelo_bpp": null,
+      "antes": true,
+      "depois": false
+    },
+    {
+      "ticker": "BAZA3",
+      "setor": "Bancos",
+      "modelo_bpp": null,
+      "antes": true,
+      "depois": false
+    },
+    {
+      "ticker": "BGIP3",
+      "setor": "Bancos",
+      "modelo_bpp": null,
+      "antes": true,
+      "depois": false
+    },
+    {
+      "ticker": "BGIP4",
+      "setor": "Bancos",
+      "modelo_bpp": null,
+      "antes": true,
+      "depois": false
+    },
+    {
+      "ticker": "BMIN3",
+      "setor": "Bancos",
+      "modelo_bpp": null,
+      "antes": true,
+      "depois": false
+    },
+    {
+      "ticker": "BMIN4",
+      "setor": "Bancos",
+      "modelo_bpp": null,
+      "antes": true,
+      "depois": false
+    },
+    {
+      "ticker": "BNBR3",
+      "setor": "Bancos",
+      "modelo_bpp": null,
+      "antes": true,
+      "depois": false
+    },
+    {
+      "ticker": "BPAN4",
+      "setor": "Bancos",
+      "modelo_bpp": null,
+      "antes": true,
+      "depois": false
+    },
+    {
+      "ticker": "BPAR3",
+      "setor": "Bancos",
+      "modelo_bpp": null,
+      "antes": true,
+      "depois": false
+    },
+    {
+      "ticker": "BSLI3",
+      "setor": "Bancos",
+      "modelo_bpp": null,
+      "antes": true,
+      "depois": false
+    },
+    {
+      "ticker": "BSLI4",
+      "setor": "Bancos",
+      "modelo_bpp": null,
+      "antes": true,
+      "depois": false
+    },
+    {
+      "ticker": "DMFN3",
+      "setor": "Bancos",
+      "modelo_bpp": null,
+      "antes": true,
+      "depois": false
+    },
+    {
+      "ticker": "FIGE3",
+      "setor": "Bancos",
+      "modelo_bpp": null,
+      "antes": true,
+      "depois": false
+    },
+    {
+      "ticker": "FIGE4",
+      "setor": "Bancos",
+      "modelo_bpp": null,
+      "antes": true,
+      "depois": false
+    },
+    {
+      "ticker": "MERC3",
+      "setor": "Bancos",
+      "modelo_bpp": null,
+      "antes": true,
+      "depois": false
+    },
+    {
+      "ticker": "MERC4",
+      "setor": "Bancos",
+      "modelo_bpp": null,
+      "antes": true,
+      "depois": false
+    }
+  ],
+  "sem_modelo": 99,
+  "limite": "conteúdo DFP2025 local, maior referencia/versao por código; não certifica as_of nem disponibilidade histórica; elegibilidade contextoIFData, sem valor de método",
+  "fonte_dfp_sha256": "d7aec54e7c67998e4cd3ef94c463ab247f09a6baaa2254878d1e431f28130e2a",
+  "indice_sha256": "b29e5b882f7a585517594afa1e8113f9211195cd07eb386f0527b7ecdc952a2b",
+  "universo_inicial_tabelas": {
+    "nomes_unicos": 90,
+    "acoes_units_com_registro": 55,
+    "antes": 11,
+    "depois": 11,
+    "divergencias": []
+  }
+}

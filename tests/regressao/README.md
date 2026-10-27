@@ -153,3 +153,9 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2C-12 | Falha do Informe não é propagada a riscos_dados | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_12_informe_risco_ausente.py` | F2C-51 (2C-b, não ativado) | aberto, xfail estrito |
 | BUG-2C-13 | Literal OData CodInst interpola apóstrofo sem escape | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_13_odata_literal_codinst.py` | F2C-52 (2C-b, não ativado) | aberto, xfail estrito |
 | BUG-2C-14 | Prompt não distingue classe inferida de classe oficial | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_14_prompt_classe_inferida.py` | F2C-53 (2C-b, não ativado) | aberto, xfail estrito |
+
+### Correção F2C-36 (27/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-15 | IF.data selecionado pelo setor em vez do BPP | MarketEngine._buscar_ifdata | F2C-36,27/10/2026 | `test_bug_2c_15_ifdata_modelo_bpp.py` | F2C-36 | corrigido, quatro casos permanentes |

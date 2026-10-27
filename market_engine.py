@@ -1177,9 +1177,9 @@ class MarketEngine:
     def _buscar_ifdata(self, dados: dict[str, Any], *, as_of: datetime) -> None:
         """Basileia e inadimplência do IF.data para banco (F2A-9), com a fonte e a data-base.
 
-        Só para o setor de banco (F2A-2). O que falta vira limitação declarada em `riscos_dados`.
+        Só com modelo banco demonstrado no BPP (F2C-36). Ausências ficam em `riscos_dados`.
         """
-        if contas_cvm.modelo_do_setor(dados.get('setor')) != 'banco':
+        if dados.get('modelo_bpp') != 'banco':
             return
         riscos = dados.setdefault('riscos_dados', [])
         ifdata = getattr(self, 'ifdata', None)

@@ -179,7 +179,12 @@ def test_falha_do_ifdata_chega_com_o_motivo(monkeypatch):
 
     engine = _engine(monkeypatch, info={"currentPrice": 20.0})
     engine.ifdata = _Falha()
-    dados = {"setor": "Bancos", "cnpj": "00.000.000/0001-91", "riscos_dados": []}
+    dados = {
+        "setor": "Bancos",
+        "modelo_bpp": "banco",
+        "cnpj": "00.000.000/0001-91",
+        "riscos_dados": [],
+    }
     engine._buscar_ifdata(dados, as_of=datetime(2026, 10, 13, 12, tzinfo=UTC))
     r = _processar(enriquecer_bancos({**BANCO, **dados}))
     assert r["inadimplencia_ifdata"] == (
