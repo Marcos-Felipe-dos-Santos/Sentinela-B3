@@ -174,3 +174,10 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2C-18 | Instante sem fuso recebe motivo de indisponibilidade documental | ValuationEngine.processar | F2C-39,27/10/2026 | `test_bug_2c_18_motor_asof_sem_fuso.py` | F2C-39 | corrigido |
 | BUG-2C-19 | Classe vazia recebe motivo de classe fora de escopo | ValuationEngine.processar | F2C-39,27/10/2026 | `test_bug_2c_19_classe_vazia_ausente.py` | F2C-39 | corrigido |
 | BUG-2C-20 | Modelo válido é recusado por caixa/espaços | ValuationEngine.processar | F2C-39,27/10/2026 | `test_bug_2c_20_caixa_modelo_bpp_motor.py` | F2C-39 | corrigido |
+
+### Correções F2C-40 (27/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-21 | Aviso de alavancagem omite motivo CVM já informado | ValuationEngine.processar | F2C-40,27/10/2026 | `test_bug_2c_21_motivo_aviso_alavancagem.py` | F2C-40 | corrigido |
+| BUG-2C-22 | Inteiro numérico é tratado como ausência/valor inválido, diferente do mesmo inteiro nativo | ValuationEngine.processar | F2C-40,27/10/2026 | `test_bug_2c_22_inteiro_numerico_alavancagem.py` | F2C-40 | corrigido |

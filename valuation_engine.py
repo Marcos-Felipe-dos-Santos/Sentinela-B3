@@ -3,6 +3,7 @@ import math
 import statistics
 from dataclasses import replace
 from datetime import UTC, date, datetime
+from numbers import Real
 from zoneinfo import ZoneInfo
 
 from config import DISTRESSED_TICKERS, MACRO, _normalizar_dy
@@ -498,7 +499,7 @@ class ValuationEngine:
         divida_liq_ebitda = dados.get('divida_liq_ebitda')
         aviso_alavancagem = None
         if (
-            isinstance(divida_liq_ebitda, (int, float))
+            isinstance(divida_liq_ebitda, Real)
             and not isinstance(divida_liq_ebitda, bool)
             and math.isfinite(divida_liq_ebitda)
         ):
@@ -512,6 +513,13 @@ class ValuationEngine:
                 else "em texto" if isinstance(divida_liq_ebitda, str)
                 else "não numérica ou não finita"
             )
+            motivos_cvm = dados.get('alavancagem_motivos')
+            motivo_cvm = (
+                motivos_cvm.get('divida_liq_ebitda')
+                if isinstance(motivos_cvm, dict) else None
+            )
+            if isinstance(motivo_cvm, str) and motivo_cvm.strip():
+                motivo_divida = motivo_cvm.strip()
             aviso_alavancagem = (
                 f"alavancagem não avaliada: dívida líquida/EBITDA {motivo_divida}"
             )
