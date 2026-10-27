@@ -165,3 +165,12 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
 |---|---|---|---|---|---|---|
 | BUG-2C-16 | Inadimplência é lida sem prova de publicação da data-base até o corte | ifdata.ler_capital | F2C-37,27/10/2026 | `test_bug_2c_16_ifdata_sem_calendario.py` | F2C-37 | corrigido, dois casos permanentes |
+
+### Correções F2C-39 (27/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-17 | Seguradora conhecida recebe motivo de modelo desconhecido | data_quality.completude | F2C-39,27/10/2026 | `test_bug_2c_17_motivo_seguradora_qualidade.py` | F2C-39 | corrigido |
+| BUG-2C-18 | Instante sem fuso recebe motivo de indisponibilidade documental | ValuationEngine.processar | F2C-39,27/10/2026 | `test_bug_2c_18_motor_asof_sem_fuso.py` | F2C-39 | corrigido |
+| BUG-2C-19 | Classe vazia recebe motivo de classe fora de escopo | ValuationEngine.processar | F2C-39,27/10/2026 | `test_bug_2c_19_classe_vazia_ausente.py` | F2C-39 | corrigido |
+| BUG-2C-20 | Modelo válido é recusado por caixa/espaços | ValuationEngine.processar | F2C-39,27/10/2026 | `test_bug_2c_20_caixa_modelo_bpp_motor.py` | F2C-39 | corrigido |

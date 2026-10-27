@@ -188,6 +188,10 @@ class ValuationEngine:
             # F2A-24 e F2B-20: preço não finito ou negativo, como preço zero, não é analisado.
             return None
 
+        instante = as_of if as_of is not None else datetime.now(UTC)
+        if instante.utcoffset() is None:
+            return _abstencao_de_escopo("as_of exige fuso horário", "INSTANTE SEM FUSO")
+
         # ── GUARD: CLASSE FORA DO ESCOPO (F2A-29, P7) ─────────────────────────
         # Só STOCK e UNIT recebem os métodos de ação; ETF, BDR, UNKNOWN e a ausência de
         # classe (F2B-4) se abstêm antes de qualquer método, sem número no lugar.
@@ -198,6 +202,8 @@ class ValuationEngine:
         # volta para `dados`, para os métodos lerem a mesma.
         classe = str(getattr(classe, 'value', classe)).strip().upper()
         dados['classe_ativo'] = classe
+        if not classe:
+            return _abstencao_de_escopo(MOTIVO_SEM_CLASSE, 'SEM CLASSE')
         if classe not in (AssetType.STOCK.value, AssetType.UNIT.value):
             logger.info(f"[{ticker}] Classe {classe} fora do escopo dos métodos de ação")
             return _abstencao_de_escopo(
@@ -207,9 +213,9 @@ class ValuationEngine:
         # ── GUARD: MODELO DO BPP CONSOLIDADO (F2B-4) ──────────────────────────
         # Banco e seguradora não recebem os métodos de empresa; sem modelo demonstrado,
         # abstenção (não há padrão empresa). A evidência, quando gravada, vale até o as_of.
-        instante = as_of if as_of is not None else datetime.now(UTC)
         modelo = dados.get('modelo_bpp')
-        modelo = getattr(modelo, 'value', modelo)
+        modelo = str(getattr(modelo, 'value', modelo) or '').strip().lower()
+        dados['modelo_bpp'] = modelo
         if modelo not in MODELOS_COM_LENTE:
             motivo = (
                 f"modelo {modelo} fora do escopo dos métodos de empresa"
