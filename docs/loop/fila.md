@@ -82,7 +82,7 @@ Regras de parada: pacote §9/plano final §1 e seção "Decisões e divisão" da
 
 - [x] **F2C-9** · chore · `chore: retire portfolio allocation optimization`. Arquivos: otimizador de `portfolio_engine.py`, leitores, dependências/testes exclusivos e UI somente se autorizada. **Aceite:** nenhum caminho produz pesos/alocação sugerida nem divisão fixa 40/60; concentração/volatilidade/correlação existentes preservadas e não renomeadas como retorno esperado; mapa de leitores antes da remoção, cada teste removido cobre somente otimizador aposentado; nova camada de risco completa continua Fase 4; sem usar carteira real em fixture; G. Remoção de constante compartilhada só depois de prova de ausência de leitor. **Decisão/aceite de 26/10/2026 (prevalece sobre redação anterior):** Permissão específica app.py §8: remover seção do otimizador e seus leitores exclusivos, linhas exatas no diário antes; preservar concentração, volatilidade e correlação.
 
-- [ ] **RESUMO-2C-A** · docs · `docs: summarize phase 2C-a for external audit`. **Aceite:** `docs/loop/resumo-2c-a.md` com itens/commits, testes antes/depois, mutação, bugs e decisões provisórias em seção própria; sem arquivar a fase antes da 2C-b.
+- [x] **RESUMO-2C-A** · docs · `docs: summarize phase 2C-a for external audit`. **Aceite:** `docs/loop/resumo-2c-a.md` com itens/commits, testes antes/depois, mutação, bugs e decisões provisórias em seção própria; sem arquivar a fase antes da 2C-b.
 
 - [DECISÃO] **Auditoria da 2C-a pelo Claude.** O pedido de 26/10 autoriza prosseguir apenas com os quatro rascunhos documentais abaixo, sem implementar 2C-b.
 
