@@ -207,3 +207,9 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
 |---|---|---|---|---|---|---|
 | BUG-2C-28 | P/L negativo entra silenciosamente na média dos pares | F2C-7 exige política aprovada ou comparação indisponível | F2C-7 | `test_bug_2c_28_peers_pl_negativo.py` | F2C-7 | corrigido |
+
+### Achado F2C-8 (27/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-29 | Auditoria fabrica valor justo/preço e upside zero em FII abstido ou com exceção | D24 e aceite F2B-67 | F2C-8 | `test_bug_2c_29_auditoria_fii_abstido.py` | F2C-8 | corrigido |

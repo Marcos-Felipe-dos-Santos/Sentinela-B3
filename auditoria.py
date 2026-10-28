@@ -1,7 +1,7 @@
 """
 SENTINELA B3 — SCRIPT DE AUDITORIA INTERNA
 ============================================
-Expõe tudo que a UI esconde: dados brutos do scraper, cada passo do cálculo
+Expõe tudo que a UI esconde: dados brutos do scraper, os resultados e motivos do contrato
 de valuation, o prompt exato enviado à IA, e o conteúdo real do banco.
 
 Ao terminar, salva DOIS arquivos na mesma pasta:
@@ -21,6 +21,7 @@ import re
 import io
 import json
 import math
+import logging
 import sqlite3
 from datetime import datetime
 
@@ -113,23 +114,8 @@ def auditar_selic():
     except Exception as e:
         resultado['serie_11_status'] = str(e)
 
-    print(sub("Impacto no Valuation"))
-    exemplos = []
-    for selic_val, label in [
-        (resultado.get('serie_11_decimal', 0.0006), "BUGADA"),
-        (resultado.get('serie_432_decimal', 0.15),  "CORRETA")
-    ]:
-        p = 42
-        dy = 0.07
-        bazin  = (dy * p) / (selic_val * 0.85)
-        g_cr = 0.04
-        k_cr = selic_val + 0.06
-        gordon = (dy*p*(1+g_cr))/(k_cr-g_cr) if k_cr > g_cr else 0
-        exemplos.append({"label": label, "selic": selic_val,
-                         "bazin_EGIE3": round(bazin,2), "gordon_EGIE3": round(gordon,2)})
-        print(f"  Selic {label} ({selic_val*100:.2f}%): Bazin(EGIE3)=R${bazin:.2f}, Gordon=R${gordon:.2f}")
+    print("  Selic é contexto; esta auditoria não replica fórmulas de valuation.")
 
-    resultado['impacto_exemplos'] = exemplos
     _rel['selic'] = resultado
 
 
@@ -207,8 +193,9 @@ def auditar_dados_scraper(ticker: str):
     if extras:
         print(sub("Campos adicionais"))
         for k, v in extras.items():
-            dados_json[k] = v
-            print(f"  {k:<25}: {v}")
+            exibido = resumo_serie(v) if k == "serie_cvm" else v
+            dados_json[k] = exibido
+            print(f"  {k:<25}: {exibido}")
 
     hist_json = {}
     if hist is not None and not hist.empty:
@@ -244,277 +231,80 @@ def auditar_dados_scraper(ticker: str):
 # 3. VALUATION — CÁLCULO PASSO A PASSO
 # ══════════════════════════════════════════════════════════════════════════════
 
-def auditar_valuation(ticker: str, dados: dict):
-    print(hdr(f"3. VALUATION PASSO A PASSO — {ticker}"))
+def resumo_serie(serie: object) -> object:
+    """Resume a cobertura sem despejar documentos ou listas de observações."""
+    from dataclasses import asdict, is_dataclass
+
+    if is_dataclass(serie):
+        serie = asdict(serie)
+    if isinstance(serie, dict):
+        return {chave: resumo_serie(valor) for chave, valor in serie.items()}
+    if isinstance(serie, (list, tuple)):
+        return {"observacoes": len(serie)}
+    return serie if isinstance(serie, (str, int, float, bool, type(None))) else type(serie).__name__
+
+
+def invariantes_resultado(analise: dict) -> list[str]:
+    """Domínios externos: finitude, score [0,100] e ausência sem número fabricado."""
+    problemas = []
+    for campo in ("fair_value", "upside", "score_final"):
+        valor = analise.get(campo)
+        if valor is not None and (
+            isinstance(valor, bool) or not isinstance(valor, (int, float))
+            or not math.isfinite(valor)
+        ):
+            problemas.append(f"{campo}: número não finito ou inválido")
+    score = analise.get("score_final")
+    if isinstance(score, (int, float)) and not 0 <= score <= 100:
+        problemas.append("score_final: fora de [0,100]")
+    if analise.get("fair_value") is None and analise.get("upside") is not None:
+        problemas.append("upside presente sem valor da lente")
+    return problemas
+
+
+def auditar_valuation(ticker: str, dados: dict) -> tuple[float | None, float | None, dict]:
+    """Usa a orquestração vigente e captura o contrato, sem repetir suas contas."""
+    from dataclasses import asdict
+
+    from sentinela.methods.registry import entradas
+    from valuation_engine import ValuationEngine
+
+    print(hdr(f"3. VALUATION PELO CONTRATO — {ticker}"))
+    engine = ValuationEngine()
+    avaliar = engine._avaliar_metodos
+    resultados = {}
+
+    def capturar(*args, **kwargs):
+        resposta = avaliar(*args, **kwargs)
+        resultados.update({nome: asdict(valor) for nome, valor in resposta.items()})
+        return resposta
+
+    engine._avaliar_metodos = capturar
+    analise = engine.processar(dados)
+    problemas = invariantes_resultado(analise)
+    registro = [{"nome": e.nome, "version": e.version, "regime": str(e.regime)} for e in entradas()]
+    resumo = resumo_serie(dados.get("serie_cvm"))
+    print(f"  Série: {resumo}")
+    for nome, resultado in resultados.items():
+        print(f"  {nome}: {resultado}")
+    print(f"  Invariantes: {problemas or 'domínios conferidos'}")
+    _rel['tickers'].setdefault(ticker, {})['valuation'] = {
+        "registro": registro, "metodos": resultados, "resultado": analise,
+        "invariantes": problemas, "serie": resumo,
+    }
+    return analise.get("fair_value"), analise.get("upside"), analise
+
+
+def auditar_fii(dados: dict) -> dict:
+    """Mantém ausência e motivo inclusive se a fonte falhar."""
+    from fii_engine import FIIEngine
 
     try:
-        from config import get_selic_atual
-    except ImportError:
-        def get_selic_atual(): return 0.15
-
-    p   = float(dados.get('preco_atual', 0) or 0)
-    roe = float(dados.get('roe', 0) or 0)
-    pl  = float(dados.get('pl',  0) or 0)
-    pvp = float(dados.get('pvp', 0) or 0)
-    selic = get_selic_atual()
-
-    # Invariante do DY — o mesmo do valuation_engine (F2A-4): o DY já chega em razão da
-    # cascata, convertido na fronteira do provedor.
-    from config import _normalizar_dy
-
-    dy_raw = float(dados.get('dy', 0) or 0)
-    dy, dy_confiavel = _normalizar_dy(dy_raw)
-    if dy_confiavel:
-        print(f"  {ok(f'DY={dy_raw:.4f} em razão = {dy_raw*100:.2f}%')}")
-    else:
-        print(f"  {err(f'DY={dy_raw:.4f} fora de 0 a 25% → dado suspeito → desconsiderado')}")
-
-    print("\n  Inputs brutos (do scraper):")
-    print(f"    DY bruto (scraper) : {dy_raw}  (confiável={dy_confiavel})")
-    print(f"    Preço atual : R$ {p:.2f}")
-    print(f"    P/L         : {pl:.2f}")
-    print(f"    P/VP        : {pvp:.2f}")
-    print(f"    DY (usado)  : {dy:.4f} = {dy*100:.2f}%")
-    print(f"    ROE         : {roe*100:.2f}%")
-    print(f"    Selic       : {selic*100:.2f}% a.a.")
-
-    vpa = (p / pvp) if pvp > 0 else 0
-    if dy_confiavel:
-        is_growth = roe > 0.20 and dy < 0.04
-    else:
-        is_growth = False  # sem DY confiável, não assumir crescimento
-
-    # pl_confiavel: False quando Yahoo retornou PL negativo ou >80 (TTM atípico)
-    pl_confiavel = bool(dados.get('pl_confiavel', True))
-
-    print("\n  Variáveis derivadas:")
-    print(f"    VPA (P / P/VP)     : R$ {vpa:.2f}")
-    if pl > 0:
-        print(f"    LPA real (P / P/L) : R$ {p/pl:.2f}")
-    print(f"    dy_confiavel       : {dy_confiavel}")
-    pl_status = '(OK)' if pl_confiavel else warn(
-        'PL do Yahoo suspeito — Graham será ignorado'
-    )
-    print(f"    pl_confiavel       : {pl_confiavel}  {pl_status}")
-    print(f"    is_growth          : {is_growth}  "
-          f"({'ROE>20% AND DY<4%' if dy_confiavel else 'False (DY não confiável)'})")
-    print(f"    → Perfil: {'CRESCIMENTO (Lynch)' if is_growth else 'RENDA/VALOR (Graham+Bazin+Gordon)'}")
-
-    metodos      = {}
-    metodos_log  = {}
-
-    # Graham — limite PL=25 para ambos os perfis (era 20 para RENDA/VALOR)
-    limite_pvp = 3.0 if is_growth else 2.5
-    limite_pl  = 25.0
-    print(sub("Método Graham"))
-    if not pl_confiavel:
-        r = "pl_confiavel=False (Yahoo TTM suspeito) — IGNORADO"
-        print(f"  {warn(r)}")
-        metodos_log['Graham'] = {"status": "IGNORADO", "motivo": r}
-    elif pl <= 0:
-        r = "P/L ausente ou negativo — IGNORADO"
-        print(f"  {err(r)}")
-        metodos_log['Graham'] = {"status": "IGNORADO", "motivo": r}
-    elif pvp <= 0:
-        r = "P/VP ausente — IGNORADO"
-        print(f"  {err(r)}")
-        metodos_log['Graham'] = {"status": "IGNORADO", "motivo": r}
-    elif pl > limite_pl:
-        r = f"P/L={pl:.1f} > limite {limite_pl:.0f} — IGNORADO"
-        print(f"  {warn(r)}")
-        metodos_log['Graham'] = {"status": "IGNORADO", "motivo": r}
-    elif pvp > limite_pvp:
-        r = f"P/VP={pvp:.2f} > limite {limite_pvp:.1f} — IGNORADO"
-        print(f"  {warn(r)}")
-        metodos_log['Graham'] = {"status": "IGNORADO", "motivo": r}
-    else:
-        pl_g    = max(pl, 7.0)
-        lpa_adj = p / pl_g
-        g_val   = (22.5 * lpa_adj * vpa) ** 0.5
-        metodos['Graham'] = g_val
-        print(f"  pl_graham = max({pl:.1f}, 7.0) = {pl_g:.1f}")
-        print(f"  LPA_adj   = {p:.2f} / {pl_g:.1f} = {lpa_adj:.4f}")
-        print(f"  Graham    = √(22.5 × {lpa_adj:.4f} × {vpa:.4f}) = {ok(f'R$ {g_val:.2f}')}")
-        metodos_log['Graham'] = {"status": "OK", "valor": round(g_val, 2),
-                                  "pl_graham": pl_g, "lpa_adj": round(lpa_adj, 4)}
-
-    # Bazin
-    print(sub("Método Bazin"))
-    if is_growth:
-        r = "Perfil CRESCIMENTO — IGNORADO"
-        print(f"  {warn(r)}")
-        metodos_log['Bazin'] = {"status": "IGNORADO", "motivo": r}
-    elif not dy_confiavel:
-        r = "DY não confiável (dado suspeito) — IGNORADO"
-        print(f"  {warn(r)}")
-        metodos_log['Bazin'] = {"status": "IGNORADO", "motivo": r}
-    elif dy <= 0:
-        r = "DY = 0 — IGNORADO"
-        print(f"  {warn(r)}")
-        metodos_log['Bazin'] = {"status": "IGNORADO", "motivo": r}
-    else:
-        taxa_b = max(selic, 0.05)
-        b_val  = (dy * p) / taxa_b
-        div_anual = dy * p
-        metodos['Bazin'] = b_val
-        print(f"  Dividendo anual = {dy*100:.2f}% × R${p:.2f} = R$ {div_anual:.2f}")
-        print(f"  Taxa mínima = max(Selic, 5%) = max({selic*100:.2f}%, 5.00%) = {taxa_b*100:.2f}%")
-        print(f"  Bazin = R${div_anual:.2f} / {taxa_b:.4f} = {ok(f'R$ {b_val:.2f}')}")
-        if b_val < p:
-            msg = (
-                f"Bazin ({b_val:.2f}) < Preço ({p:.2f}): "
-                "DY insuficiente vs Selic — correto com juros altos"
-            )
-            print(f"  {warn(msg)}")
-        metodos_log['Bazin'] = {"status": "OK", "valor": round(b_val, 2),
-                                 "div_anual": round(div_anual, 4), "taxa_bazin": round(taxa_b, 4)}
-
-    # Lynch
-    print(sub("Método Lynch (Crescimento)"))
-    if not is_growth:
-        r = "Perfil RENDA/VALOR — IGNORADO"
-        print(f"  {warn(r)}")
-        metodos_log['Lynch'] = {"status": "IGNORADO", "motivo": r}
-    elif not dy_confiavel:
-        r = "DY não confiável — Lynch não aplicado (evita FV inflado)"
-        print(f"  {warn(r)}")
-        metodos_log['Lynch'] = {"status": "IGNORADO", "motivo": r}
-    elif pl <= 0:
-        r = "P/L ausente ou negativo — IGNORADO"
-        print(f"  {warn(r)}")
-        metodos_log['Lynch'] = {"status": "IGNORADO", "motivo": r}
-    else:
-        lpa_l = p / pl if pl > 0 else 0
-        if lpa_l > 0 and roe > 0:
-            payout_ratio = min((dy * p) / lpa_l, 0.95)
-            retencao = 1 - payout_ratio
-            g = roe * retencao
-            g = min(g, 0.25)
-            pl_justo = 1.5 * (g * 100)
-            pl_justo = min(pl_justo, 35)
-            l_val = lpa_l * pl_justo
-            metodos['Lynch'] = l_val
-            print(f"  LPA real = {p:.2f} / {pl:.1f} = {lpa_l:.4f}")
-            print(f"  Payout = {payout_ratio*100:.1f}%")
-            print(f"  Retenção = {retencao*100:.1f}%")
-            print(f"  g = min(ROE×retenção, 25%) = {g*100:.1f}%")
-            print(f"  P/L justo = min(1.5×g×100, 35) = {pl_justo:.1f}")
-            print(f"  Lynch = {lpa_l:.4f} × {pl_justo:.1f} = {ok(f'R$ {l_val:.2f}')}")
-            metodos_log['Lynch'] = {"status": "OK", "valor": round(l_val, 2),
-                                      "lpa": round(lpa_l, 4),
-                                      "payout_ratio": round(payout_ratio, 4),
-                                      "g": round(g, 4),
-                                      "pl_justo": round(pl_justo, 2)}
-
-    # Gordon
-    print(sub("Método Gordon"))
-    if not dy_confiavel:
-        r = "DY não confiável — IGNORADO"
-        print(f"  {warn(r)}")
-        metodos_log['Gordon'] = {"status": "IGNORADO", "motivo": r}
-    elif dy <= 0.04:
-        r = f"DY={dy*100:.2f}% ≤ 4% — IGNORADO"
-        print(f"  {warn(r)}")
-        metodos_log['Gordon'] = {"status": "IGNORADO", "motivo": r}
-    elif roe <= 0.10:
-        r = f"ROE={roe*100:.2f}% ≤ 10% — IGNORADO"
-        print(f"  {warn(r)}")
-        metodos_log['Gordon'] = {"status": "IGNORADO", "motivo": r}
-    else:
-        lpa = p / pl if pl > 0 else 0
-        payout_ratio_g = min((dy * p) / lpa, 0.95) if lpa > 0 else 0.5
-        retencao_g = 1 - payout_ratio_g
-        g_cr = roe * retencao_g
-        g_cr = min(g_cr, 0.08)
-        k_cr = selic + 0.04
-        if k_cr <= g_cr:
-            r = "k <= g: modelo instável — IGNORADO"
-            print(f"  {err(r)}")
-            metodos_log['Gordon'] = {"status": "IGNORADO", "motivo": r}
-        else:
-            div_prox = (dy * p) * (1 + g_cr)
-            go_val   = div_prox / (k_cr - g_cr)
-            metodos['Gordon'] = go_val
-            print(f"  Payout = {payout_ratio_g*100:.1f}%")
-            print(f"  Retenção = {retencao_g*100:.1f}%")
-            print(f"  g (cresc. dividendo) = min(ROE×retenção, 8%) = {g_cr*100:.2f}%")
-            print(f"  k (taxa desconto)    = Selic + 4% = {k_cr*100:.2f}%")
-            print(f"  Div próximo          = R${dy*p:.4f} × (1+{g_cr:.4f}) = R${div_prox:.4f}")
-            print(f"  Gordon = {div_prox:.4f} / ({k_cr:.4f}-{g_cr:.4f}) = {ok(f'R$ {go_val:.2f}')}")
-            metodos_log['Gordon'] = {"status": "OK", "valor": round(go_val, 2),
-                                      "g": round(g_cr, 4), "k": round(k_cr, 4)}
-
-    # Resultado
-    print(sub("Resultado Final"))
-    vals = list(metodos.values())
-    if not vals:
-        fv = p
-        upside = 0.0
-        print(f"  {warn('Nenhum método aplicado → Fair Value = Preço atual (Fallback)')}")
-    else:
-        fv     = sum(vals) / len(vals)
-        upside = (fv / p) - 1
-        for nome, val in metodos.items():
-            peso = val / sum(vals) * 100
-            print(f"  {nome:<20}: R$ {val:.2f}  ({peso:.0f}% do peso)")
-        print(f"  {'─'*38}")
-        print(f"  Média simples    : R$ {fv:.2f}")
-
-    upside_pct = (fv / p - 1) * 100
-    score = 50 + 48 * (2 / (1 + math.exp(-upside * 3)) - 1)
-    score = max(0, min(100, score))
-
-    # Ajustes de qualidade — idênticos ao valuation_engine.py de produção
-    if roe > 0.20:
-        score += 10
-    if roe < 0.05:
-        score -= 15
-    if not dy_confiavel:
-        score -= 5
-    if not pl_confiavel:
-        score -= 5
-    score = max(0, min(100, score))
-
-    rec = "NEUTRO"
-    if upside > 0.15 or (is_growth and upside > 0.05):
-        rec = "COMPRA"
-    if upside < -0.15:
-        rec = "VENDA"
-    if score >= 75 and upside > 0.05:
-        rec = "COMPRA FORTE"
-    if score >= 75 and upside <= 0:
-        rec = "QUALIDADE — AGUARDAR"
-
-    cor = GRN if upside_pct > 15 else (RED if upside_pct < -15 else YLW)
-    print(f"\n  Preço Atual  : R$ {p:.2f}")
-    print(f"  Fair Value   : R$ {fv:.2f}")
-    print(f"  Upside       : {cor}{upside_pct:+.1f}%{RST}")
-    print(f"  Score        : {score:.0f}/100")
-    print(f"  Recomendação : {rec}")
-
-    _rel['tickers'][ticker]['valuation'] = {
-        "inputs": {"preco": p, "pl": pl, "pvp": pvp, "dy": dy, "roe": roe,
-                   "selic": selic, "is_growth": is_growth,
-                   "dy_confiavel": dy_confiavel, "pl_confiavel": pl_confiavel},
-        "metodos": metodos_log,
-        "resultado": {
-            "fair_value":    round(fv, 2),
-            "upside_pct":    round(upside_pct, 1),
-            "score":         round(score, 1),
-            "recomendacao":  rec,
-        }
-    }
-
-    analise_dict = {
-        'fair_value':     round(fv, 2),
-        'upside':         round(upside_pct, 1),
-        'score_final':    int(score),
-        'recomendacao':   rec,
-        'perfil':         'CRESCIMENTO' if is_growth else 'RENDA/VALOR',
-        'metodos_usados': ', '.join([f"{k}: R${v:.2f}" for k, v in metodos.items()]),
-        'pl_confiavel':   pl_confiavel,
-    }
-    return fv, upside, analise_dict
+        return FIIEngine().analisar(dados)
+    except Exception as erro:
+        logging.exception("Falha na auditoria do FII")
+        return {"fair_value": None, "upside": None, "perfil": "FII",
+                "motivo": f"FIIEngine indisponível no audit: {erro}"}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -583,7 +373,7 @@ def auditar_prompt(ticker: str, dados: dict, fv: float = 0, upside: float = 0, a
     if analise_dict:
         dados_simulados.update(analise_dict)
 
-    excluir  = {'historico', 'analise_ia', 'tech'}
+    excluir  = {'historico', 'analise_ia', 'tech', 'serie_cvm'}
     linhas   = [f"- {k}: {v}" for k, v in dados_simulados.items()
                 if v is not None and k not in excluir]
     dados_txt = "\n".join(linhas)
@@ -862,26 +652,14 @@ def main():
                 print(hdr(f"3. VALUATION — {ticker}"))
                 print(f"\n  {warn('Perfil FII detectado (quoteType='+repr(qt)+')')}")
                 print("  Em produção: fii_engine.analisar() é chamado em vez de val_engine.processar()")
-                try:
-                    from fii_engine import FIIEngine
-                    analise = FIIEngine().analisar(dados)
-                    fv     = analise.get('fair_value', dados.get('preco_atual', 0))
-                    upside_val = analise.get('upside', 0)
-                    rec_fii = analise.get('recomendacao', '?')
-                    print(
-                        f"\n  FII Engine → FV=R${fv:.2f}  "
-                        f"Upside={upside_val:+.1f}%  Rec={rec_fii}"
-                    )
-                    _rel['tickers'][ticker]['valuation'] = {
-                        "perfil": "FII",
-                        "resultado": analise,
-                    }
-                except Exception as e:
-                    analise = {'fair_value': dados.get('preco_atual', 0), 'upside': 0,
-                               'score_final': 50, 'recomendacao': 'NEUTRO', 'perfil': 'FII'}
-                    fv, upside_val = analise['fair_value'], 0.0
-                    print(f"  {warn(f'FIIEngine indisponível no audit: {e}')}")
-                    _rel['tickers'][ticker]['valuation'] = {"perfil": "FII", "nota": str(e)}
+                analise = auditar_fii(dados)
+                fv = analise.get('fair_value')
+                upside_val = analise.get('upside')
+                print(f"  FII: {analise}")
+                _rel['tickers'][ticker]['valuation'] = {
+                    "perfil": "FII", "resultado": analise,
+                    "invariantes": invariantes_resultado(analise),
+                }
             else:
                 fv, upside_val, analise = auditar_valuation(ticker, dados)
             # CORRIGIDO: mergear resultado do valuation em dados antes do prompt
