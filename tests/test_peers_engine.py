@@ -1,7 +1,7 @@
 """Testes para peers_engine.py — foco em resiliência a falhas do scraper."""
 
-import sys
 import os
+import sys
 from unittest.mock import MagicMock
 
 # Garantir que o diretório raiz do projeto está no path
@@ -14,19 +14,52 @@ def _make_engine(side_effect_fn):
     """Cria PeersEngine com market_engine mockado."""
     market = MagicMock()
     market.buscar_dados_ticker = MagicMock(side_effect=side_effect_fn)
+    from sentinela.data.referencia.registro import Indice, Registro
+
+    nomes = ["PETR4", "PRIO3", "BRAV3", "RECV3", "CSAN3"]
+    market.referencia.indice.return_value = Indice(
+        "2026-10-27",
+        {},
+        {
+            t: Registro(
+                t,
+                "STOCK",
+                "controle sintético",
+                {},
+                especie="ON",
+                setor="petroleo",
+                cnpj=t,
+            )
+            for t in nomes
+        },
+    )
+    original = market.buscar_dados_ticker.side_effect
+
+    def com_modelo(ticker):
+        dado = original(ticker)
+        if ticker == "PETR4":
+            return {"ticker": ticker, "modelo_bpp": "empresa"}
+        return {**dado, "modelo_bpp": "empresa"} if dado else dado
+
+    market.buscar_dados_ticker.side_effect = com_modelo
     return PeersEngine(market)
 
 
 # ── Cenário 1: Todos os peers retornam erro_scraper ──────────────────────────
 
+
 def test_all_peers_erro_scraper_no_fundamentals_returns_safe_default():
     """Quando TODOS os peers devolvem {erro_scraper: True} sem campos fundamentais,
     não deve crashar. Deve retornar resultado seguro com Peers_Utilizados vazio.
     """
-    engine = _make_engine(lambda t: {
-        "erro_scraper": True, "ticker": t, "preco_atual": 10.0
-        # sem pl, pvp, roe → não passa no filtro _peer_valido
-    })
+    engine = _make_engine(
+        lambda t: {
+            "erro_scraper": True,
+            "ticker": t,
+            "preco_atual": 10.0,
+            # sem pl, pvp, roe → não passa no filtro _peer_valido
+        }
+    )
 
     result = engine.comparar("PETR4")
 
@@ -38,8 +71,10 @@ def test_all_peers_erro_scraper_no_fundamentals_returns_safe_default():
 
 # ── Cenário 2: Mix de peers válidos e inválidos ──────────────────────────────
 
+
 def test_mixed_valid_and_invalid_peers():
     """Peers sem dados fundamentais devem ser filtrados; com dados devem ser mantidos."""
+
     def fake_buscar(ticker):
         if ticker == "PRIO3":
             # Sem pl/pvp/roe → inválido para comparação
@@ -63,6 +98,7 @@ def test_mixed_valid_and_invalid_peers():
 
 # ── Cenário 3: Peer retorna None (falha de rede) ────────────────────────────
 
+
 def test_peers_returning_none_are_ignored():
     """Peers que retornam None (timeout, rede) não devem crashar."""
     engine = _make_engine(lambda t: None)
@@ -74,6 +110,7 @@ def test_peers_returning_none_are_ignored():
 
 
 # ── Cenário 4: Peer dict sem chave 'ticker' ─────────────────────────────────
+
 
 def test_peer_dict_without_ticker_key_filtered():
     """Dict sem 'ticker' (mas com preco_atual) deve ser filtrado, não crashar."""
@@ -87,8 +124,10 @@ def test_peer_dict_without_ticker_key_filtered():
 
 # ── Cenário 5: Todos válidos (happy path) ────────────────────────────────────
 
+
 def test_all_valid_peers_happy_path():
     """Quando todos os peers são válidos, resultado deve conter médias corretas."""
+
     def fake_buscar(ticker):
         return {
             "ticker": ticker,
@@ -111,6 +150,7 @@ def test_all_valid_peers_happy_path():
 
 # ── Cenário 6: Setor não cadastrado ─────────────────────────────────────────
 
+
 def test_ticker_sem_setor_retorna_erro():
     """Ticker sem setor mapeado deve retornar erro sem crash."""
     engine = _make_engine(lambda t: None)
@@ -122,8 +162,10 @@ def test_ticker_sem_setor_retorna_erro():
 
 # ── Cenário 7: Peers com erro_scraper mas dados yfinance válidos ──────────
 
+
 def test_peers_com_erro_scraper_mas_fundamentals_aceitos():
     """Peer com erro_scraper=True mas com pl/pvp/roe (via yfinance) deve ser aceito."""
+
     def fake_buscar(ticker):
         return {
             "ticker": ticker,
@@ -140,4 +182,3 @@ def test_peers_com_erro_scraper_mas_fundamentals_aceitos():
     assert "erro" not in result
     assert len(result["Peers_Utilizados"]) == 4  # todos aceitos
     assert result["PL_Media_Peers"] == 10.0
-

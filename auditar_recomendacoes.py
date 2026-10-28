@@ -11,12 +11,13 @@ Uso:
 import logging
 import os
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from io import StringIO
 from typing import Any
 
 import pandas as pd
 
+from config import DISTRESSED_TICKERS
 from fii_engine import FIIEngine
 from market_engine import MarketEngine
 from sentinela.services.asset_classifier import AssetClassifier
@@ -27,14 +28,29 @@ from valuation_engine import ValuationEngine
 # CONFIGURAÇÃO
 # ══════════════════════════════════════════════════════════════════════════════
 
-TICKERS_AUDITORIA: list[str] = [
-    "AMER3", "OIBR3", "MGLU3", "CASH3", "VIIA3",
-    "PETR4", "VALE3", "ITUB4", "WEGE3", "BBAS3",
-    "HGLG11", "MXRF11", "CVBI11",
-]
+# Situação especial tem uma única fonte; a lista de diagnóstico não a replica.
+TICKERS_AUDITORIA: list[str] = sorted(
+    DISTRESSED_TICKERS
+    | {
+        "PETR4",
+        "VALE3",
+        "ITUB4",
+        "WEGE3",
+        "BBAS3",
+        "HGLG11",
+        "MXRF11",
+        "CVBI11",
+    }
+)
+HIGH_RISK_SHOULD_NOT_BE_STRONG_BUY = DISTRESSED_TICKERS
 
-# ── Buckets de sanidade ──────────────────────────────────────────────────────
-HIGH_RISK_SHOULD_NOT_BE_STRONG_BUY = ["AMER3", "OIBR3", "CASH3", "VIIA3"]
+
+def tickers_oficiais(indice, candidatos: list[str]) -> list[str]:
+    """Não presume que um código antigo é alias de uma identidade atual."""
+    if indice is None:
+        return []
+    return sorted({t for t in candidatos if indice.buscar(t) is not None})
+
 
 LOG_DIR = "logs"
 LOG_FILE = os.path.join(LOG_DIR, "auditoria_recomendacoes.txt")
@@ -164,7 +180,12 @@ def auditar() -> str:
     amostras_dados: list[dict[str, Any] | None] = []
     registros_operacionais: list[dict[str, Any]] = []
 
-    for ticker in TICKERS_AUDITORIA:
+    indice = market.referencia.indice(datetime.now(UTC))
+    selecionados = tickers_oficiais(indice, TICKERS_AUDITORIA)
+    ausentes = sorted(set(TICKERS_AUDITORIA) - set(selecionados))
+    if ausentes:
+        log(f"Identidade oficial indisponível; não auditados: {', '.join(ausentes)}")
+    for ticker in selecionados:
         log("")
         log("─" * 80)
         log(f"  TICKER: {ticker}")

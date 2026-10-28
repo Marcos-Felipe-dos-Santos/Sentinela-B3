@@ -136,6 +136,7 @@ def test_operational_failure_rate_counts_full_normal_asset_as_success():
 def _run_single_ticker_audit(monkeypatch, ticker, dados):
     market = MagicMock()
     market.buscar_dados_ticker.return_value = dados
+    market.referencia.indice.return_value.buscar.side_effect = lambda t: object() if t == ticker else None
 
     val_engine = MagicMock()
     val_engine.processar.return_value = {
