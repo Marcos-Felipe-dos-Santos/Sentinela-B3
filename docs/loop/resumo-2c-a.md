@@ -130,3 +130,9 @@ Relatório fornecido pelo Marcos: `C:\Users\marcos\Downloads\auditoria-2c-a-lote
 4. Revisar remoções do9, depois os quatro rascunhos via auditoria FICHA por Claude. Permanecem para limpeza F2C-10 os marcadores f15 e referências históricas do otimizador, além da ressalva FNET.
 
 A UI atual ainda não apresenta Cobertura/Avisos/Motivo_PL dos pares; revisão interna7 registrou essa limitação, sem ampliar permissões de app.py. Código legado de classificação/sigmoide nos motores continua para2C-b; a saída separada futura não está implementada. Não ler credenciais, carteira real ou banco do mantenedor para auditar. Nenhum arquivo de outputs/mutants entra no git. Nada foi publicado.
+
+## Rascunhos entregues após o resumo
+
+Somente documentação, todos aguardando auditoriaFICHA e aprovação doMarcos: [Graham2.0](../metodologia/graham.md) em1e24869; [Lynch2.0](../metodologia/lynch.md) emcc2bc7c; [qualidade1.0](../metodologia/qualidade.md) emc815e37; [apresentação1.0](../metodologia/apresentacao.md) no commit próprioFICHA-APRESENTACAO-1 (consultar git log pelo arquivo). O `[x]` atesta entrega do rascunho, não ficha aprovada.
+
+Conferir primeiro as pendências explícitas: Graham(piso/guardas e índice), Lynch(5observações/4intervalos versus5anosdecorridos/6observações e função do payout), qualidade(cobertura e fontes reconciliadas), apresentação(banda candidata33,49869727% de sondagem parcial10/51 e validação após as novas janelas). A histerese é somente contratoF4-2. Nenhum desses pontos foi implementado ou decidido definitivamente pelo executor.
