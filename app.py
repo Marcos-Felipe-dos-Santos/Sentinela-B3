@@ -11,7 +11,6 @@ from market_engine import MarketEngine
 from valuation_engine import ValuationEngine
 from fii_engine import FIIEngine
 from technical_engine import TechnicalEngine
-from portfolio_engine import PortfolioEngine
 from peers_engine import PeersEngine
 from ai_core import SentinelaAI
 from config import APP_VERSION
@@ -174,16 +173,15 @@ def load_engines():
         val = ValuationEngine()
         fii = FIIEngine()
         tech = TechnicalEngine()
-        port = PortfolioEngine()
         peers = PeersEngine(market)
         ai = SentinelaAI()
         asset_classifier = AssetClassifier()
-        return db, market, val, fii, tech, port, peers, ai, asset_classifier
+        return db, market, val, fii, tech, peers, ai, asset_classifier
     except Exception as e:
         st.error(f"Erro Init: {e}")
         st.stop()
 
-db, market, val_engine, fii_engine, tech_engine, port_engine, peers_engine, ai_engine, asset_classifier = load_engines()
+db, market, val_engine, fii_engine, tech_engine, peers_engine, ai_engine, asset_classifier = load_engines()
 
 
 @st.cache_data(ttl=300)
@@ -200,7 +198,7 @@ def buscar_dados_ticker_cached(ticker: str) -> Optional[Dict[str, Any]]:
 
 
 st.sidebar.title("🦅 Sentinela B3")
-modo = st.sidebar.radio("Menu", ["Terminal", "Carteira", "Gestor", "Config"])
+modo = st.sidebar.radio("Menu", ["Terminal", "Carteira", "Config"])
 
 # Quarentena da V1 (F0-9): vale para todas as telas, antes de qualquer resultado.
 PLANO_URL = "https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3/blob/main/docs/PLANO.md"
@@ -498,56 +496,6 @@ elif modo == "Carteira":
         
     else:
         st.info("Carteira vazia.")
-
-# ==========================================
-# 3. GESTOR
-# ==========================================
-elif modo == "Gestor":
-    st.title("⚖️ Otimizador de Carteira")
-    carteira = db.listar_carteira()
-    if not carteira:
-        st.warning("Adicione ativos à carteira primeiro.")
-    else:
-        if st.button("Gerar Otimização Markowitz"):
-            with st.spinner("Otimizando fronteira eficiente..."):
-                df_hist = pd.DataFrame()
-                tickers = [c['ticker'] for c in carteira]
-                
-                # Busca histórico em batch
-                for t in tickers:
-                    d = buscar_dados_ticker_cached(t)
-                    if d and 'historico' in d and not d['historico'].empty:
-                        df_hist[t] = d['historico']['Close']
-                
-                res = port_engine.otimizar(df_hist)
-                
-                if not res or "erro" in res:
-                    st.error(res.get('erro', 'Erro desconhecido'))
-                else:
-                    st.success("Otimização Concluída!")
-                    sharpe = res.get('_sharpe_otimizado', 0)
-                    retorno = res.get('_retorno_anual', 0)
-                    vol = res.get('_volatilidade_anual', 0)
-
-                    col1, col2, col3 = st.columns(3)
-                    col1.metric(
-                        "Sharpe Otimizado", f"{sharpe:.2f}",
-                        help="Retorno ajustado ao risco, estimado com um ano de dados: sem significância estatística."
-                    )
-                    col2.metric(
-                        "Retorno Anual Est.", f"{retorno:.1f}%",
-                        help="Retorno anual esperado com base no histórico de 1 ano."
-                    )
-                    col3.metric(
-                        "Volatilidade Anual", f"{vol:.1f}%",
-                        help="Desvio padrão anualizado dos retornos da carteira otimizada."
-                    )
-
-                    st.info(
-                        "A divisão por ativo foi retirada da tela: a otimização usa um ano "
-                        "de dados e uma divisão fixa entre FIIs e ações, sem significância "
-                        "estatística. O otimizador será aposentado na Fase 2C."
-                    )
 
 # ==========================================
 # 4. CONFIG (RESTAURADA v12.1)

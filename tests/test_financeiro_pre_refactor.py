@@ -14,8 +14,6 @@ import itertools
 import re
 from unittest.mock import patch
 
-import numpy as np
-import pandas as pd
 import pytest
 from apoio_bazin import enriquecer_bazin
 from apoio_escopo import de_empresa
@@ -25,7 +23,6 @@ from apoio_gordon import AS_OF_GORDON, DiaGordon, enriquecer_gordon
 import market_engine
 from config import MACRO, _normalizar_dy
 from fii_engine import FIIEngine
-from portfolio_engine import PortfolioEngine
 from valuation_engine import ValuationEngine
 
 SELIC = 0.10
@@ -223,39 +220,6 @@ def test_b_alavancagem_acima_de_3x_penaliza_score_e_confianca_sem_distinguir_set
     assert normal["score_final"] - alavancada["score_final"] == 15
     assert normal["confianca"] - alavancada["confianca"] == 15
     assert "Dívida elevada" in alavancada["riscos"]
-
-
-@pytest.mark.quebra_esperada
-@pytest.mark.f15_markowitz_um_ano
-def test_b_markowitz_divide_40_por_cento_fiis_e_60_por_cento_acoes_fixo():
-    # QUEBRA ESPERADA: F-15 — divisão fixa independente de risco ou retorno (F2C-9).
-    datas = pd.date_range("2023-01-01", periods=35)
-    precos = pd.DataFrame(
-        {"ITUB4": np.linspace(10, 20, 35), "HGLG11": np.linspace(100, 110, 35)},
-        index=datas,
-    )
-    with patch("portfolio_engine.get_selic_atual", return_value=SELIC):
-        r = PortfolioEngine().otimizar(precos)
-    assert r["HGLG11"] == 40.0
-    assert r["ITUB4"] == 60.0
-
-
-@pytest.mark.quebra_esperada
-@pytest.mark.f15_markowitz_um_ano
-def test_b_markowitz_aceita_trinta_pregoes_e_rejeita_menos():
-    # QUEBRA ESPERADA: F-15 — retorno esperado estimado com janela curta (aqui, 30 pregões;
-    # na tela, um ano) não tem significância estatística.
-    datas30 = pd.date_range("2023-01-01", periods=30)
-    datas29 = pd.date_range("2023-01-01", periods=29)
-    with patch("portfolio_engine.get_selic_atual", return_value=SELIC):
-        ok = PortfolioEngine().otimizar(
-            pd.DataFrame({"ITUB4": np.linspace(10, 20, 30)}, index=datas30)
-        )
-        curto = PortfolioEngine().otimizar(
-            pd.DataFrame({"ITUB4": np.linspace(10, 20, 29)}, index=datas29)
-        )
-    assert "erro" not in ok
-    assert "erro" in curto
 
 
 # ══════════════════════════════════════════════════════════════════════════════

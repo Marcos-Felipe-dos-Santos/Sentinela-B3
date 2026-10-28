@@ -9,7 +9,7 @@ The tests are designed to validate core financial logic and ensure the robustnes
 - **Valuation Engine (`test_valuation_engine.py`)**: Checks boundary handling, safe parsing of malformed numeric data (e.g. debt formats), and verifies no logic crashes during recommendations. Includes economic baseline tests: Bazin gate (DY ≥ 5% required), fair value median with three diverging methods (Graham + Bazin + Gordon), and distressed-ticker guards.
 - **FII Engine (`test_fii_engine.py`)**: Validates missing optional data handling and expected output structures. Includes economic baseline test: fair value uses net Selic (Selic × 0.85) as the IR-exempt benchmark instead of gross Selic.
 - **Technical Engine (`test_technical_engine.py`)**: Tests indicator logic (RSI, MA) with varying lengths of price history.
-- **Portfolio Engine (`test_portfolio_engine.py`)**: Validates the Markowitz optimization against edge cases like empty portfolios or NaN data handling.
+- O otimizador de carteira e seus testes exclusivos foram aposentados no F2C-9; a camada de risco completa permanece na Fase 4.
 - **Scraper (`test_fundamentus_scraper.py`)**: Ensures robust numeric formatting specific to Brazilian numbers (e.g., `1.234,56` -> `1234.56`).
 - **Database (`test_database.py`)**: Checks DB initialization and state management using isolated temporary environments.
 - **AI Core (`test_ai_core.py`)**: Verifies the fallback chain (Groq -> Gemini -> Ollama) by mocking clients.
