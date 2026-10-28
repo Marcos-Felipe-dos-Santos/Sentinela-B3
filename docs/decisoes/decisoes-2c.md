@@ -37,8 +37,8 @@ Ganho: o loop não para esperando ficha, e as fichas são escritas sobre um cód
 - **Lynch:** **CAGR de 5 anos do LPA dos controladores**. Abstém com LPA ≤ 0 no início ou no fim, e com menos de 5 exercícios contínuos. **Ficha Lynch 2.0.**
 - **Regras comuns:**
   - 5 exercícios completos e contínuos, senão abstém;
-  - evento societário no período só entra com o fator oficial (F2C-22), senão abstém;
-  - mudança estrutural sem reconciliação abstém.
+  - pela revisão 2.1 aprovada em 28/10 (§12), razões de ações consecutivas estritamente em (0,9; 1,1) demonstram compatibilidade; fora, fator oficial B3 ou abstenção;
+  - reorganização societária recebe aviso fixo sem abstenção; detecção destinada à Fase 3 (§12).
 
 ## 4. Lynch e perfil (F2C-12)
 
@@ -102,3 +102,14 @@ Após `auditoria-2c-a-final-e-fichas-claude-relatorio.md` (Claude,D30), 2C-a pod
 - Ativar2C-b:1,12,2,3,5,4; merge da main antesdofechamento emcommitpróprio;10limpeza(inclusiveFNETtrechomínimo+hashoriginal),11resumo/arquivo. Parar “Checkpointda2C”. Sempush.
 
 Aprovação da fila não aprova novos critérios econômicos além dessas fichas/decisões. Mesmasregrasdeparada/D27/G; golden só nopredicado préviodecadaitem.
+
+
+## 12. Desbloqueio do F2C-1 — fichas 2.1 aprovadas em 28/10/2026
+
+Decisões expressas do Marcos posteriores ao §11, que prevalecem sobre as exigências anteriores de reconciliação histórica:
+
+1. **Compatibilidade da base de ações:** aplicar a mesma regra do Gordon 1.1 entre cada par de exercícios consecutivos dos cinco documentos. A razão ações em circulação posteriores ÷ anteriores, com a escala de cada documento pela ficha por ação 1.1, estritamente em **(0,9; 1,1)** demonstra ausência de desdobramento/grupamento. Fora do intervalo, ajustar o LPA pelo fator oficial B3 quando existir; sem fator oficial, abster com motivo. Limites 0,9 e 1,1 não pertencem ao intervalo; não usar a razão como fator estimado. Acumular os fatores oficiais até a base final. Quantidade ou escala ausente não prova compatibilidade.
+2. **Reorganização societária:** exibir o aviso fixo **"reorganização societária no período não é detectada"**, sem abstenção por fusão/cisão/perímetro. **Destino: Fase 3**, detecção com fonte e contrato próprios antes da implementação. Não confundir essa limitação com escala, fator ou direitos de classe ausentes, que mantêm seus motivos próprios.
+3. **IPCA do Graham:** estender o produtor existente do SIDRA **1737, variável 63**, com produto dos fatores mensais e corte pelo calendário de publicação do IBGE, à janela de cinco exercícios e aos respectivos encerramentos. Cobertura incompleta, IPCA indisponível ou não publicado até as_of produz abstenção com motivo. Não substituir pela variável de número-índice. **Lynch continua nominal, sem IPCA.**
+
+Fichas Graham e Lynch passam a **2.1**, aprovadas, com exemplos e matriz da compatibilidade. O F2C-1 deve completar produtores, testes e gates antes de fechar; retirar o bloqueio não equivale a declarar entrega parcial aceita. Registrar no diário novas contagens antes → depois e abstenções por motivo no universo inicial. A ordem restante e a parada no "Checkpoint da 2C" permanecem; sem push.

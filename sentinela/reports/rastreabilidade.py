@@ -136,6 +136,7 @@ Não é consultoria financeira.</p>
 <div class="metodo{% if m.abstencao or m.nao_calculado %} abstencao{% endif %}">
 <h3>{{ m.nome }} <small>versão {{ m.versao }} · regime {{ m.regime }}</small></h3>
 <p>Aplica-se a: {{ m.applies_to }}</p>
+{% if m.janela is defined %}<p>Janela, fonte e cobertura: {{ m.janela }}</p>{% endif %}
 <p>Premissas:</p>
 <ul>{% for a in m.premissas %}<li>{{ a }}</li>{% endfor %}</ul>
 {% if m.params %}<p>Parâmetros:</p>
@@ -579,6 +580,16 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
                 "proveniencia": PROVENIENCIA_DERIVADA["selic"],
             }
         )
+
+    janelas = dados.get("janelas_fundamentais") or {}
+    for metodo in metodos:
+        chave = {"Graham": "graham", "Lynch": "lynch"}.get(metodo["nome"])
+        if chave and chave in janelas:
+            janela = janelas[chave]
+            metodo["janela"] = {**janela, "cobertura": janelas.get("cobertura"),
+                                "fontes_exigidas": "CVM por documento; fatores oficiais; IPCA IBGE no Graham"}
+            if "abstencao" in janela and str(metodo.get("abstencao") or "").startswith("insumo ausente:"):
+                metodo["abstencao"] = janela["abstencao"]
 
     if dados.get("bazin_diagnostico"):
         for metodo in metodos:

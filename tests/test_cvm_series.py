@@ -508,6 +508,7 @@ def test_exercicio_com_composicao_traz_o_documento_inteiro():
     exercicio = series_cvm.serie_anual({2025: ind}, 2025, especie="ON", classe="ON")[0]
     # 1.000 mil ações (700 + 400 − 100, escala MIL pelo LPA divulgado); VPA = 10 mi ÷ 1 mi.
     assert exercicio == {
+        **{c: None for c in ("inicio", "fim", "proveniencia", "perimetro", "evidencia_comparabilidade", "pl_inicial_controladores", "divida_liquida", "ebitda")},
         "exercicio": 2025,
         "dt_refer": "2025-12-31",
         "versao": "2",

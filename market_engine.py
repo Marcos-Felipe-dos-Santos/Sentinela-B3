@@ -493,6 +493,7 @@ class MarketEngine:
         self._buscar_proventos_b3(ticker, dados)
         self._buscar_liquidez(ticker, dados)
         self._buscar_taxa_real(dados)
+        self._contexto_janelas(dados, datetime.now(UTC))
 
         if list_missing_required_fields(dados, classifier):
             self._aplicar_cache_fundamentos(ticker, dados)
@@ -730,6 +731,25 @@ class MarketEngine:
             dados['b3_fundo'] = {
                 'abstencao': f"complemento da B3 do fundo indisponível: {exc}"
             }
+
+    def _contexto_janelas(self, dados: dict[str, Any], instante: datetime) -> None:
+        """Disponibiliza fontes existentes; não presume eventos/perímetros conciliados."""
+        from sentinela.data.janelas_fundamentais import entradas
+
+        from sentinela.data.providers.macro import (
+            MacroProvider, FALHAS_DA_FONTE, ERROS_DO_CODIGO,
+            _falha_da_fonte, _erro_do_codigo,
+        )
+
+        exercicios = (dados.get("serie_cvm") or {}).get("exercicios") or []
+        if len(exercicios) == 5 and not dados.get("ipca_serie"):
+            try:
+                dados["ipca_serie"] = MacroProvider().ipca_serie(exercicios, instante)
+            except FALHAS_DA_FONTE as erro:
+                dados["ipca_serie"] = _falha_da_fonte(erro)
+            except ERROS_DO_CODIGO as erro:
+                dados["ipca_serie"] = _erro_do_codigo(erro)
+        dados["janelas_fundamentais"] = entradas(dados, instante)
 
     def _buscar_taxa_real(self, dados: dict[str, Any]) -> None:
         """Registro aditivo, fora dos métodos e do prompt (F2B-30).

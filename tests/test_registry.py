@@ -9,8 +9,8 @@ import sentinela.methods as pacote
 from config import MACRO
 from sentinela.domain.enums import AssetType, ModeloDemonstracao, Regime
 from sentinela.methods import registry
-from sentinela.methods.base import ValuationMethod
 from sentinela.methods.bancos import BancosParams
+from sentinela.methods.base import ValuationMethod
 from sentinela.methods.bazin import BazinParams
 from sentinela.methods.fii_nav import FiiNavParams
 from sentinela.methods.fii_yield import FiiYieldParams
@@ -30,17 +30,9 @@ NOMES = [
 
 # Valores da 1.0.0, lidos hoje do MacroContext: mudar uma constante sem criar versão
 # nova do método quebra este teste. campo do método -> (constante do MacroContext, valor)
-PARAMETROS_1_0_0 = {
+PARAMETROS_VIGENTES = {
     "Bancos": (BancosParams, {}),
-    "Graham": (
-        GrahamParams,
-        {
-            "pl_limite": ("GRAHAM_PL_LIMITE", 25.0),
-            "pl_piso": ("GRAHAM_PL_FLOOR", 7.0),
-            "pvp_limite_renda": ("GRAHAM_PVP_LIMITE_RENDA", 2.5),
-            "pvp_limite_crescimento": ("GRAHAM_PVP_LIMITE_CRESCIMENTO", 3.0),
-        },
-    ),
+    "Graham": (GrahamParams, {}),
     "Bazin": (
         BazinParams,
         {
@@ -48,15 +40,7 @@ PARAMETROS_1_0_0 = {
             "dy_armadilha": ("BAZIN_DY_ARMADILHA", 0.15),
         },
     ),
-    "Lynch": (
-        LynchParams,
-        {
-            "payout_max": ("LYNCH_PAYOUT_MAX", 0.95),
-            "g_max": ("LYNCH_G_MAX", 0.25),
-            "pl_multiplicador": ("LYNCH_PL_MULTIPLICADOR", 1.5),
-            "pl_max": ("LYNCH_PL_MAX", 35.0),
-        },
-    ),
+    "Lynch": (LynchParams, {}),
     "Gordon": (GordonParams, {}),
     "Rendimento do FII": (
         FiiYieldParams,
@@ -168,9 +152,9 @@ def test_applies_to_descreve_o_escopo_aplicado():
     assert AssetType.BDR not in todos
 
 
-def test_parametros_da_1_0_0_fixados():
-    assert set(PARAMETROS_1_0_0) == set(NOMES)
-    for nome, (tipo, campos) in PARAMETROS_1_0_0.items():
+def test_parametros_vigentes_fixados():
+    assert set(PARAMETROS_VIGENTES) == set(NOMES)
+    for nome, (tipo, campos) in PARAMETROS_VIGENTES.items():
         assert registry.obter(nome).params_type is tipo
         assert {f.name for f in dataclasses.fields(tipo)} == set(campos)
         for campo, (constante, valor) in campos.items():
@@ -184,9 +168,9 @@ def test_changelog_tem_a_1_0_0():
     for nome in NOMES:
         mudancas = registry.CHANGELOG[nome]
         esperado = {
-            "Graham": ["1.0.0", "1.1.0", "1.2.0"],
+            "Graham": ["1.0.0", "1.1.0", "1.2.0", "2.0.0", "2.1.0"],
             "Bazin": ["1.0.0", "1.0.1", "2.0.0", "2.1.0"],
-            "Lynch": ["1.0.0", "1.1.0"],
+            "Lynch": ["1.0.0", "1.1.0", "2.0.0", "2.1.0"],
             "Gordon": ["1.0.0", "1.1.0", "2.0.0", "2.1.0"],
             "P/VP do FII": ["1.0.0", "1.1.0", "1.2.0"],
             "Rendimento do FII": ["1.0.0", "2.0.0", "2.1.0"],
@@ -208,7 +192,7 @@ def test_nomes_sao_unicos():
 
 def test_validar_rejeita_registro_inconsistente():
     g = registry.obter("Graham")
-    ok = {"Graham": (registry.Mudanca("1.2.0", "x"),)}
+    ok = {"Graham": (registry.Mudanca("2.1.0", "x"),)}
     registry.validar((g,), ok)
     with pytest.raises(ValueError, match="repetido"):
         registry.validar((g, g), ok)

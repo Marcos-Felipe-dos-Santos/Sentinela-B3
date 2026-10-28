@@ -11,15 +11,16 @@ import pytest
 
 from sentinela.domain.enums import AssetType
 from valuation_engine import ValuationEngine
+from apoio_janelas import enriquecer_janelas
 
-DADOS = {
+DADOS = enriquecer_janelas({
     "ticker": "TST3",
     "preco_atual": 100.0,
     "roe": 0.15,
     "pl": 10.0,
     "pvp": 1.5,
     "dy": 0.08,
-}
+})
 
 
 def _processar(**extra):

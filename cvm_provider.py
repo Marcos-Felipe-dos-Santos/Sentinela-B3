@@ -1102,6 +1102,15 @@ class CVMProvider:
         )
         for ano, ind in indicadores.items():
             try:
+                dre_periodo = self.parsear_demonstrativo(self.baixar_dfp(ano), "DRE_con", include_cd_cvm=True, include_versao=True, include_periodo=True)
+                if {"CD_CVM", "DT_REFER", "VERSAO", "DT_INI_EXERC", "DT_FIM_EXERC"}.issubset(dre_periodo.columns):
+                    doc = dre_periodo[(dre_periodo["CD_CVM"] == cd_cvm) & (dre_periodo["DT_REFER"].astype(str) == str(ind.get("cvm_dt_refer"))) & (dre_periodo["VERSAO"].astype(str) == str(ind.get("cvm_versao")))]
+                    janelas = set(zip(doc["DT_INI_EXERC"].astype(str), doc["DT_FIM_EXERC"].astype(str), strict=True))
+                    if len(janelas) == 1:
+                        ind["inicio"], ind["fim"] = next(iter(janelas))
+            except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
+                ind["janela_motivo"] = f"janela anual indisponível: {exc}"
+            try:
                 proventos = self.proventos_do_documento(
                     self.baixar_dfp(ano), cd_cvm,
                     ind.get("cvm_dt_refer"), ind.get("cvm_versao"), modelo,

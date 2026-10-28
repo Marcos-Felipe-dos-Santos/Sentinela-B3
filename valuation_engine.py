@@ -1,3 +1,5 @@
+from sentinela.domain.units import RateNominal
+from sentinela.data import janelas_fundamentais
 import logging
 import math
 import statistics
@@ -141,18 +143,12 @@ class ValuationEngine:
         )
 
     def _avaliar_metodos(
-        self, inputs, inputs_gordon=None, inputs_bazin=None, inputs_bancos=None
+        self, inputs, inputs_gordon=None, inputs_bazin=None, inputs_bancos=None, inputs_graham=None, inputs_lynch=None
     ):
         """Resultado de cada método extraído, na ordem da V1, e a lente de bancos (F2B-32)."""
         return {
             "Graham": _GRAHAM.calcular(
-                inputs,
-                GrahamParams(
-                    pl_limite=MACRO.GRAHAM_PL_LIMITE,
-                    pl_piso=MACRO.GRAHAM_PL_FLOOR,
-                    pvp_limite_renda=MACRO.GRAHAM_PVP_LIMITE_RENDA,
-                    pvp_limite_crescimento=MACRO.GRAHAM_PVP_LIMITE_CRESCIMENTO,
-                ),
+                inputs if inputs_graham is None else inputs_graham, GrahamParams(),
             ),
             "Bazin": _BAZIN.calcular(
                 inputs if inputs_bazin is None else inputs_bazin,
@@ -162,13 +158,7 @@ class ValuationEngine:
                 ),
             ),
             "Lynch": _LYNCH.calcular(
-                inputs,
-                LynchParams(
-                    payout_max=MACRO.LYNCH_PAYOUT_MAX,
-                    g_max=MACRO.LYNCH_G_MAX,
-                    pl_multiplicador=MACRO.LYNCH_PL_MULTIPLICADOR,
-                    pl_max=MACRO.LYNCH_PL_MAX,
-                ),
+                inputs if inputs_lynch is None else inputs_lynch, LynchParams(),
             ),
             "Gordon": _GORDON.calcular(
                 inputs if inputs_gordon is None else inputs_gordon, GordonParams()
@@ -283,7 +273,8 @@ class ValuationEngine:
                 f"— dado suspeito. Desconsiderado."
             )
 
-        lpa = (p / pl)  if pl  > 0 else 0
+        lpa = dados.get('lpa')
+        lpa = lpa if isinstance(lpa, (int, float)) and not isinstance(lpa, bool) and math.isfinite(lpa) else None
 
         confianca = 100
         riscos = []
@@ -404,8 +395,17 @@ class ValuationEngine:
             else:
                 dados.pop("bancos_diagnostico", None)
                 inputs_bancos = replace(inputs, as_of=dia_gordon, **entradas_bancos)
+        janelas = janelas_fundamentais.entradas(dados, instante)
+        dados["janelas_fundamentais"] = janelas
+        graham_janela, lynch_janela = janelas["graham"], janelas["lynch"]
+        inputs_graham = replace(inputs, lpa=None, vpa=None)
+        inputs_lynch = replace(inputs, lpa=None, crescimento_lpa=None)
+        if "abstencao" not in graham_janela:
+            inputs_graham = replace(inputs, lpa=BRL(graham_janela["lpa"]), vpa=BRL(graham_janela["vpa"]))
+        if "abstencao" not in lynch_janela:
+            inputs_lynch = replace(inputs, lpa=BRL(lynch_janela["lpa"]), crescimento_lpa=RateNominal(lynch_janela["crescimento_lpa"]))
         resultados = self._avaliar_metodos(
-            inputs, inputs_gordon, inputs_bazin, inputs_bancos
+            inputs, inputs_gordon, inputs_bazin, inputs_bancos, inputs_graham, inputs_lynch,
         )
         bancos = resultados["Bancos"]
         if modelo == ModeloDemonstracao.BANCO.value and not isinstance(

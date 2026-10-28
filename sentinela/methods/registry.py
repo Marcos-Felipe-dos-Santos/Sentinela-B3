@@ -115,6 +115,28 @@ CHANGELOG["Bancos"] += (
 )
 
 
+CHANGELOG["Graham"] += (
+    Mudanca(
+        "2.0.0",
+        "ficha2.0aprovada28/10: média de cinco exercícios normalizada por IPCA, VPA final; retirados piso e guardas de múltiplos",
+    ),
+)
+CHANGELOG["Lynch"] += (
+    Mudanca(
+        "2.0.0",
+        "ficha2.0aprovada28/10: CAGR de cinco observações/quatro intervalos, m1, teto g25%, sem teto PL, payout contextual",
+    ),
+)
+
+for _nome in ("Graham", "Lynch"):
+    CHANGELOG[_nome] += (
+        Mudanca(
+            "2.1.0",
+            "ficha2.1: base documental por razão(0,9;1,1) ou fator B3; reorganização apenas aviso, detecção na Fase3",
+        ),
+    )
+
+
 def validar(
     metodos: tuple[ValuationMethod, ...], changelog: dict[str, tuple[Mudanca, ...]]
 ) -> None:

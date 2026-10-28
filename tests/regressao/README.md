@@ -213,3 +213,25 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
 |---|---|---|---|---|---|---|
 | BUG-2C-29 | Auditoria fabrica valor justo/preço e upside zero em FII abstido ou com exceção | D24 e aceite F2B-67 | F2C-8 | `test_bug_2c_29_auditoria_fii_abstido.py` | F2C-8 | corrigido |
+
+### Achados da implementação F2C-1 (28/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-30 | Grahamreconstrói lucro por preço/PLe ignora3,20direto | fichaGraham2.0aprovada | F2C-1 | test_bug_2c_30_graham_insumo_direto.py | F2C-1 | corrigido |
+| BUG-2C-31 | Lynchaplica1,5ao crescimento emvezdem1 | fichaLynch2.0aprovada41,472 | F2C-1 | test_bug_2c_31_lynch_multiplicador.py | F2C-1 | corrigido |
+
+### Achado da revisão F2C-1 (28/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-32 | Motivo da janela encobre inaplicabilidade por modelo no relatório | D24: motivo da abstenção efetiva por lente | revisão F2C-1 | `test_bug_2c_32_motivo_relatorio_janela.py` | F2C-1 | corrigido |
+
+### Achados da revisão 2 e integração B3 do F2C-1 (28/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-33 | Motivo documental das ações perdido na janela | Fichas2.1: causa e documento explícitos | revisão2 F2C-1 | `test_bug_2c_33_motivo_acoes_janela.py` | F2C-1 | corrigido |
+| BUG-2C-34 | Abstenção apaga janela/fontes/regime/aviso | D24 e fichas2.1, metadados mesmo sem valor | revisão2 F2C-1 | `test_bug_2c_34_metadados_abstencao_janela.py` | F2C-1 | corrigido |
+| BUG-2C-35 | Fator oficial B3 coletado não consumido pela janela | Fichas2.1: fator existente ajusta LPA | integração F2C-1 | `test_bug_2c_35_fator_b3_janela.py` | F2C-1 | corrigido |
+| BUG-2C-36 | Evento fora do par documental bloqueia fator elegível por espécie desconhecida | Datas oficiais delimitam o par antes da espécie | revisão3 F2C-1 | `test_bug_2c_36_evento_fora_janela.py` | F2C-1 | corrigido |

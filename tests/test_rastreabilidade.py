@@ -115,7 +115,9 @@ def test_relatorio_mostra_cada_metodo_com_versao():
     assert "SEM_TAXA" in html and "NOMINAL" in html
     # premissas, parâmetros e resultado de um método que calculou
     assert "raiz de 22,5" in html
-    assert "<td><code>pl_limite</code></td><td>25.0</td>" in html
+    assert "<td><code>pl_limite</code></td><td>25.0</td>" not in html
+    assert "lpa_medio_normalizado" in html
+    assert "Janela, fonte e cobertura" in html
     assert "R$ 122,47" in html
     # F2B-31: nenhum método de ação usa a Selic; a taxa do Bazin e a fonte dos proventos
     assert "<h2>Selic usada</h2>" not in html

@@ -26,6 +26,9 @@ def test_dy_normalization_percentual() -> None:
     }
     dados = enriquecer_bazin(dados)
 
+    # Sem fonte IPCA neste controle: Graham se abstém pela janela, não por múltiplosV1.
+    dados["ipca_serie"] = None
+
     resultado = ValuationEngine().processar(de_empresa(dados))
 
     assert resultado['fair_value'] == pytest.approx(207.83, abs=0.01)
@@ -42,6 +45,9 @@ def test_dy_invalido_acima_25pct() -> None:
         'pvp': 4.0,
         'dy': 0.45,
     }
+
+    # Sem fonte IPCA neste controle: Graham se abstém pela janela, não por múltiplosV1.
+    dados["ipca_serie"] = None
 
     resultado = ValuationEngine().processar(de_empresa(dados))
 
@@ -62,6 +68,9 @@ def test_recomendacao_compra_forte_exige_upside() -> None:
         'dy': 0.051,
     }
     dados = enriquecer_bazin(dados)  # F2B-31: Bazin 85,00 a 6% fixos
+
+    # Sem fonte IPCA neste controle: Graham se abstém pela janela, não por múltiplosV1.
+    dados["ipca_serie"] = None
 
     with (
         patch('valuation_engine.math.exp', return_value=0.2),
@@ -84,6 +93,9 @@ def test_recomendacao_qualidade_aguardar() -> None:
         'dy': 0.054,
     }
     dados = enriquecer_bazin(dados)  # F2B-31: Bazin 90,00 a 6% fixos
+
+    # Sem fonte IPCA neste controle: Graham se abstém pela janela, não por múltiplosV1.
+    dados["ipca_serie"] = None
 
     with (
         patch('valuation_engine.math.exp', return_value=0.2),
@@ -122,7 +134,7 @@ def test_compra_forte_sem_risco_continua_possivel() -> None:
         'preco_atual': 100.0,
         'roe': 0.25,
         'pl': 5.0,
-        'pvp': 4.0,
+        'pvp': 0.5,  # ambas as lentes válidas, sem divergência>2 após retirar guardaV1
         'dy': 0.01,
         'divida_liq_ebitda': 0.0,
     }
@@ -135,8 +147,8 @@ def test_compra_forte_sem_risco_continua_possivel() -> None:
     assert resultado['recomendacao'] == 'COMPRA FORTE'
 
 
-def test_graham_ignorado_pl_negativo() -> None:
-    """pl_confiavel=False deve excluir Graham dos métodos usados."""
+def test_graham_nao_e_recusado_so_pelo_flag_pl() -> None:
+    """Ficha2.0: o PLnãoéinsumo; documentos completos sustentamGraham."""
     dados = {
         'ticker': 'RUIM3',
         'preco_atual': 100.0,
@@ -149,11 +161,11 @@ def test_graham_ignorado_pl_negativo() -> None:
 
     resultado = ValuationEngine().processar(de_empresa(dados))
 
-    assert 'Graham' not in resultado['metodos_usados']
+    assert 'Graham: R$150.00' in resultado['metodos_usados']
 
 
-def test_lynch_desconta_payout() -> None:
-    """ROE 25% com payout 40% deve usar crescimento real próximo de 15%."""
+def test_lynch_usa_cagr_sem_reaplicar_retencao() -> None:
+    """Cenário nominal20%emquatrointervalos; payoutnãoalteraCAGR aprovado."""
     dados = {
         'ticker': 'GROW3',
         'preco_atual': 100.0,
@@ -163,10 +175,11 @@ def test_lynch_desconta_payout() -> None:
         'dy': 0.032,
     }
 
+    dados["ipca_serie"] = None  # Lynch não precisa de IPCA, isola a lente.
     resultado = ValuationEngine().processar(de_empresa(dados))
 
-    assert resultado['fair_value'] == pytest.approx(180.0, abs=0.01)
-    assert 'Lynch: R$180.00' in resultado['metodos_usados']
+    assert resultado['fair_value'] == pytest.approx(160.0, abs=0.01)
+    assert 'Lynch: R$160.00' in resultado['metodos_usados']
 
 
 def test_fii_score_penaliza_pvp_alto() -> None:

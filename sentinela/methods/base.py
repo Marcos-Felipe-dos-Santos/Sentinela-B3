@@ -50,6 +50,7 @@ _TIPOS_CAMPOS: dict[str, type] = {
     "pvp": Ratio,
     "dy": Ratio,
     "roe": Ratio,
+    "crescimento_lpa": RateNominal,
     "custo_capital_real": RateReal,
     "inflacao": Inflacao,
     "teto_pib_real": RateReal,
@@ -97,6 +98,7 @@ class MethodInputs:
     base_acionaria_compativel: bool | None = None
     lucro_anual_controladores: BRL | None = None
     pl_inicial_controladores: BRL | None = None
+    crescimento_lpa: RateNominal | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.as_of, date) or isinstance(self.as_of, datetime):

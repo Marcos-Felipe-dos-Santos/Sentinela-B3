@@ -1,9 +1,4 @@
-"""Lynch 1.0.0: comportamento da V1, extraído na Fase 1, sem mudança de número.
-
-Valor justo = LPA × P/L justo, com P/L justo = multiplicador × g (em pontos
-percentuais), g = ROE × retenção e tetos de payout, de g e de P/L justo. Só no
-perfil crescimento, com DY confiável e P/L, LPA e ROE positivos. O g é nominal.
-"""
+"""Lynch2.0: CAGR nominal de cinco observações/quatro intervalos, m1 e gmax25%."""
 
 from __future__ import annotations
 
@@ -21,31 +16,25 @@ from sentinela.methods.base import (
 )
 
 MOTIVO_PERFIL_RENDA = "perfil renda"
-MOTIVO_DY_NAO_CONFIAVEL = "DY não confiável"
-MOTIVO_PL_NAO_POSITIVO = "P/L não positivo"
 MOTIVO_LPA_NAO_POSITIVO = "LPA não positivo"
-MOTIVO_ROE_NAO_POSITIVO = "ROE não positivo"
 MOTIVO_NAO_FINITO = "resultado não finito"
 
 
 @dataclass(frozen=True)
 class LynchParams:
-    payout_max: float
-    g_max: float
-    pl_multiplicador: float
-    pl_max: float
+    """Teto aprovado; não há multiplicador, teto de P/L ou truncamento de payout."""
 
 
 class Lynch(ValuationMethod):
     nome = "Lynch"
-    version = "1.1.0"
+    version = "2.1.0"
     regime = Regime.NOMINAL
-    requires = ("preco", "lpa", "pl", "roe", "dy", "perfil")
+    requires = ("lpa", "crescimento_lpa", "perfil")
     assumptions = (
-        "valor justo = LPA × P/L justo; P/L justo = multiplicador × g em pontos percentuais",
-        "g = ROE × (1 − payout), nominal, com tetos de payout, de g e de P/L justo",
-        "só para o perfil crescimento, com DY confiável",
-        "exige P/L, LPA e ROE positivos",
+        "reorganização societária no período não é detectada",
+        "CAGR nominal de cinco observações em quatro intervalos anuais",
+        "P/L de referência = crescimento em pontos percentuais, m=1; teto g25%",
+        "payout somente contexto, mesma fonte do perfil; extremos positivos",
     )
     applies_to = frozenset({AssetType.STOCK, AssetType.UNIT})
     modelos = frozenset({ModeloDemonstracao.EMPRESA})
@@ -56,24 +45,14 @@ class Lynch(ValuationMethod):
     ) -> MethodResult | Abstention:
         if inputs.perfil is not Perfil.CRESCIMENTO:
             return Abstention(self.nome, self.version, MOTIVO_PERFIL_RENDA)
-        if not inputs.dy_confiavel:
-            return Abstention(self.nome, self.version, MOTIVO_DY_NAO_CONFIAVEL)
-        if not inputs.pl.valor > 0:
-            return Abstention(self.nome, self.version, MOTIVO_PL_NAO_POSITIVO)
         lpa = inputs.lpa.valor
-        if not lpa > 0:
+        if lpa <= 0:
             return Abstention(self.nome, self.version, MOTIVO_LPA_NAO_POSITIVO)
-        roe = inputs.roe.valor
-        if not roe > 0:
-            return Abstention(self.nome, self.version, MOTIVO_ROE_NAO_POSITIVO)
-        payout_ratio = min(
-            (inputs.dy.valor * inputs.preco.valor) / lpa, params.payout_max
-        )
-        retencao = 1 - payout_ratio
-        g = roe * retencao
-        g = min(g, params.g_max)
-        pl_justo = params.pl_multiplicador * (g * 100)
-        pl_justo = min(pl_justo, params.pl_max)
+        crescimento = inputs.crescimento_lpa.valor
+        if crescimento <= 0:
+            return Abstention(self.nome, self.version, "CAGR não positivo")
+        g = min(crescimento, 0.25)
+        pl_justo = g * 100
         valor = lpa * pl_justo
         if not math.isfinite(valor):
             return Abstention(self.nome, self.version, MOTIVO_NAO_FINITO)
@@ -82,7 +61,6 @@ class Lynch(ValuationMethod):
             versao=self.version,
             valor=BRL(valor),
             intermediarios=(
-                Intermediario("payout", Ratio(payout_ratio)),
                 Intermediario("g", RateNominal(g)),
                 Intermediario("pl_justo", Ratio(pl_justo)),
             ),
