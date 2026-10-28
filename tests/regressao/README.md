@@ -195,3 +195,9 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
 |---|---|---|---|---|---|---|
 | BUG-2C-26 | Volume inferior ao mínimo arredonda para o próprio mínimo no texto da abstenção | liquidez.avaliar | F2C-46,27/10/2026 | `test_bug_2c_26_volume_arredondado_no_minimo.py` | F2C-46 | corrigido |
+
+### Achado F2C-47 (27/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-27 | Complemento e composição com todas as versões ilegíveis casam por -inf e produzem rendimento | Dicionário CVM / ficha FII 1.3 §3/§3c | F2C-47,27/10/2026 | `test_bug_2c_27_versao_fii_ilegivel.py` | proposta F2C-55, 2C-b; não ativada | aberto |
