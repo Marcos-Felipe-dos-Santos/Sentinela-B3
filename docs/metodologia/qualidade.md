@@ -1,6 +1,6 @@
 # Qualidade descritiva — versão 1.0
 
-**Status:** rascunho de 28/10/2026, aguarda auditoria FICHA pelo Claude e aprovação do Marcos; não implementado.
+**Status:** aprovada pelo Marcos em 28/10/2026, após auditoria Claude D30. Implementação autorizada na 2C-b conforme as decisões abaixo.
 **Itens que dependem:** F2C-2; apresentação em F2C-3/5. Pacote26/10 §2, ADR-0003 D20–D25/D28. Cinco exercícios, faixas descritivas, **sem nota única, pesos, sigmoide ou alteração de valores de outras lentes**.
 
 ## 1. Fórmulas e referências
@@ -14,7 +14,7 @@ ROE_t=Lucro_{controladores,t}/PL_{controladores,inicial,t};\quad
 N_+=\sum1_{Lucro_{controladores,t}>0}.
 \]
 
-ROE com PLinicial≤0 fica sem razão interpretável, com motivo; não converter em ROEpositivo pela divisão de dois negativos. O início do primeiro exercício requer BPP de abertura equivalente (pode exigir o documento anual anterior aos cinco); cinco DRE não garantem cinco denominadores. Este denominador é proposta explícita de coerência com as fichas Gordon/bancos, sujeita à ratificação para a lente de qualidade.
+ROE com PLinicial≤0 fica sem razão interpretável, com motivo; não converter em ROEpositivo pela divisão de dois negativos. O início do primeiro exercício requer BPP de abertura equivalente (pode exigir o documento anual anterior aos cinco); cinco DRE não garantem cinco denominadores. Este denominador é proposta explícita de coerência com as fichas Gordon/bancos, aprovada pelo Marcos em28/10 para a lente de qualidade.
 
 Margem consolidada=`Lucro líquido consolidado / Receita líquida consolidada` do mesmo exercício/perímetro, receita>0. Não rotular essa margem como dos controladores. Alavancagem=`Dívida financeira líquida / EBITDA` somente quando ambos estiverem demonstrados no mesmo documento/período e EBITDA>0. Regularidade de proventos=`N de exercícios com provento bruto positivo`, com cobertura integral por exercício demonstrada.
 
@@ -84,8 +84,8 @@ Matriz futura: controle acima; lucrozero não positivo; PLzero/negativo; receita
 
 Aumentar apenas o último lucrocontroladores15→25, mantendo PL100: médiaROE10%→12%, lucropositivo continua4/5. Retirar o último dado: cobertura4/5 e positivos3/4; não mostrar3/5 como se faltasse lucro naquele ano. Selic/NTN-B maiores, com demonstrações idênticas: nenhum indicador muda. EBITDA10→5 com dívida30: razão3→6, sem mudar o valor das lentes de valuation por efeito automático deste quadro. Na passagemEBITDApositivo→zero, a razão deixa de existir; não aproximar para um número muito grande/pequeno.
 
-## 7. Parâmetros, governança e aprovação
+## 7. Convenções aprovadas
 
-Cinco exercícios: decisão26/10, não janela ajustada para maximizar score. Desvio populacional usaN porque descreve a própria janela, não estima população futura; confirmar essa convenção e PLinicial na auditoriaFICHA. Faixasmin–max são estatísticas observadas, não níveis de classificação econômica. ProventosB3data-ex são proposta coerente com o contextoBazin, com alternativaDVAcompetência separada para ratificação.
+Marcos28/10: **PL inicial**, **desvio populacional**, **proventos B3 por data-ex**, **quadro parcial com cobertura**. Faixas observadasmin–max, sem pesos/nota única; não criar rótulo de qualidade econômica. Semfonte, indicador indisponívelcom motivo; semcoerção parazero. O quadro parcial mostraN/5 e não penaliza como desempenho ruim. DadosDVA podem aparecer separados como contexto de competência, sem compor a contagemB3.
 
-Antes de implementar: confirmar cobertura mínima de cada descritor, fonte/reconciliação de EBITDA e dívida, disponibilidade da base inicial e política de quadroparcial. Não há obrigação de inventar um número com ausência de fonte. D24 mantém qualidade empresarial, valuation e qualidade dos dados em blocos separados. F2C-2 não pode alterar valores/preços-limite das lentes existentes; testes e predicado do golden somente após a ficha aprovada.
+D24 mantém qualidade empresarial, valuation e qualidade dos dados separados. A aprovação não autoriza inventar EBITDA/dívida reconciliada nem modificar valores das lentes existentes. F2C-2 deve verificar independência dos juros e usar exemplos da ficha, com mutação≥80% e predicado restrito do golden para o quadro adicional.

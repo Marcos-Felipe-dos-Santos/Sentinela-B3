@@ -1,7 +1,7 @@
 # Graham — versão 2.0
 
-**Status:** rascunho de 28/10/2026, aguarda auditoria FICHA pelo Claude e aprovação do Marcos. Não implementado. A ficha 2.0 não é a versão do método atualmente registrado (1.2.0).
-**Itens que dependem:** F2C-1 e consumidores autorizados da 2C-b. D19–D25/D28. Direção aprovada: pacote de 26/10, §3, em `docs/decisoes/decisoes-2c.md` e fila; detalhes propostos abaixo ainda não são decisões aprovadas.
+**Status:** aprovada pelo Marcos em 28/10/2026, após auditoria Claude D30. Implementação autorizada na 2C-b conforme as decisões abaixo.
+**Itens que dependem:** F2C-1 e consumidores autorizados da 2C-b. D19–D25/D28. Direção aprovada: pacote de 26/10, §3, em `docs/decisoes/decisoes-2c.md` e fila; detalhes ratificados em 28/10/2026.
 
 ## 1. Fórmula e referência
 
@@ -28,9 +28,9 @@ A identidade algébrica vem de `(P/L)×(P/VPA)=P²/(L×VPA)`. Ela explica22,5, n
 |`A(t,T)`|Fator oficial acumulado de desdobramento/grupamento até a baseT; fatorq de novas por antigas implica dividir o LPA antigo porq|Adimensional; sem fator demonstrado, não assumir1|
 |`I_t`,`I_T`|IPCA mensal oficial IBGE/SIDRA, agregado1737, número-índice no mês final de cada exercício; equivalência por produto dos fatores mensais quando a cobertura é completa|Mesmo índice/base; valores positivos, publicados até o corte|
 |VPA final|PL dos controladores/ações do documento final, por classe/unit segundo a ficha por ação|R$/ação ou unit, moeda finalT|
-|Preço|FechamentoD-1 da cascata, apenas comparação/apresentação e guardas legadas em discussão|R$/mesma unidade, data/fonte explícitas|
+|Preço|FechamentoD-1 da cascata, apenas comparação/apresentação; guardas legadas retiradas por decisão28/10|R$/mesma unidade, data/fonte explícitas|
 
-O índice do fim do exercício é uma **convenção proposta** de normalização dos lucros anuais; não promete corrigir cada receita intranual como uma reapresentação contábil. A ficha de taxa real e o catálogo IBGE já usados pelo projeto fornecem o produtor de IPCA; este rascunho não cria outro coletor.
+O índice do fim do exercício é uma **convenção aprovada em 28/10/2026** de normalização dos lucros anuais; não promete corrigir cada receita intranual como uma reapresentação contábil. A ficha de taxa real e o catálogo IBGE já usados pelo projeto fornecem o produtor de IPCA; este rascunho não cria outro coletor.
 
 ## 3. Regime, janela e data
 
@@ -65,7 +65,7 @@ valor = (D('22.5') * media * D(20)).sqrt()
 print(media, valor)  # 3.20, 37.94733192202055198398672253
 ```
 
-Não importa nenhum motor/método do projeto. Esse exemplo poderá virar esperado no F2C-1 somente depois de aprovar os detalhes da ficha.
+Não importa nenhum motor/método do projeto. Esse exemplo é o esperado independente do F2C-1.
 
 Matriz futura: controle acima; quatro exercícios→abstenção; exercício não civil completo→mesma regra; trimestre/TTM no lugar deDFP→não preenche; LPA[-1,2,3,4,5] com fatores iguais→média2,6; médiazero/negativa→abstenção; VPAzero/negativo→abstenção; split2:1→LPAantigo dividido por2 antes da moeda; fator ausente→abstenção; IPCAfaltante/futuro→abstenção; duasPN sem direito reconciliado→abstenção; unit→soma ponderada oficial, sem inferir pelo sufixo. Comparar todas as lentes não alteradas com o golden anterior, sem regenerá-lo neste rascunho.
 
@@ -80,10 +80,8 @@ Matriz futura: controle acima; quatro exercícios→abstenção; exercício não
 
 Elasticidade deV em cada fator positivo é1/2. Uma distribuição societária que reduzaPL ou uma mudança estrutural não pode ser representada simplesmente por essa elasticidade: exige tratamento documental. A média atenua um exercício extraordinário, mas não garante sustentabilidade.
 
-## 7. Parâmetros, compatibilidade e perguntas de auditoria
+## 7. Decisões aprovadas e implementação
 
-- Cinco exercícios: decisão doMarcos26/10, não calibração para elevar valores.22,5: relação histórica15×1,5; IPCA: normalização monetária brasileira proposta no pacote.
-- **Ponto para ratificação FICHA:** fórmula proposta usa diretamente a média corrigida, sem reconstruir lucro por preço/P/L nem aplicar o pisoP/L7 que altera o LPA naV1. Não implementar a retirada desse piso sem aprovação expressa da ficha e enumeração do predicado do golden.
-- Guardas legadas P/L25 e P/VP2,5/3 por perfil não são justificadas pelo simples uso de cinco exercícios. Antes do código, Marcos/Claude devem decidir se permanecem como elegibilidade separada ou se saem. Nenhum número foi escolhido aqui como novo limite. Sem essa ratificação não há contrato completo para alterar esses predicados.
-- Confirmar convenção de índice de fim de exercício versus média anual, reconciliação de eventos e disponibilidade histórica. Essas pendências não são resolvidas pelo exemplo aritmético.
-- Impacto2C-b: mudar somente ações/units em que a janela/normalização/regra explicitamente aprovada mudar. Publicar antes→depois e motivos, versões e fontes por lente. Sem implementação enquanto a ficha estiver emrascunho.
+Marcos,28/10/2026, após auditoriaClaude: cinco exercícios completos contínuos, LPA de cada documento ajustado por fator oficial e IPCA do **fim de cada exercício**, VPA do último. Retirar o pisoP/L7 e as guardasP/L25 e P/VP2,5/3. O limite heurístico é a própria fórmula22,5=15×1,5; não reconstruir o lucro por preço/P/L, nem aplicar os tetos legados como elegibilidade. PLde mercado não é insumo desta versão. Média≤0/VPA≤0 e insumo/base/perímetro não demonstrados continuam abstenções.
+
+Esta aprovação resolve as pendências do rascunho sobre piso, guardas e convençãoIPCA. Não altera as fichas Gordon/bancos/Bazin. No F2C-1, enumerar antes→depois e predicado de cada mudança no golden, com testes independentes de histórico curto, prejuízo, eventos, IPCA e VPA. Auditoria original: relatório Claude `auditoria-2c-a-final-e-fichas-claude-relatorio.md`, decisões expressas do Marcos em28/10.

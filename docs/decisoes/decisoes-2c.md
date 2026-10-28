@@ -89,3 +89,16 @@ Valem as regras da seção 1 do plano final da 2B (`docs/decisoes/plano-final-2b
 2. O executor grava as decisões na proposta (marcadores e aceites) e divide a fila em 2C-a e 2C-b.
 3. Auditoria DOCUMENTO da proposta revisada (Codex).
 4. Ativação da 2C-a, enquanto as fichas Graham 2.0, Lynch 2.0, qualidade e apresentação são escritas e auditadas (FICHA).
+
+## 11. Aprovação e decisões finais do Marcos — 28/10/2026
+
+Após `auditoria-2c-a-final-e-fichas-claude-relatorio.md` (Claude,D30), 2C-a pode seguir. As decisões seguintes prevalecem sobre propostas anteriores e fichas emrascunho:
+
+- Qualidade1.0 aprovada: PLinicial, desvio populacional, B3data-ex, quadroparcial com cobertura; sem pesos/nota e sem alterarvalores.
+- Graham2.0 aprovada: LPA médio de5exercícios, ações/fatoresoficiais por documento, IPCA do fim de cadaexercício eVPAúltimo. Retirar pisoP/L7 e guardasP/L25/PVP2,5/3; limiteé22,5=15×1,5 na fórmula.
+- Lynch2.0 aprovada:5observações/4intervalos, expoente1/4; m1; teto g25%; semPLmáximo; payoutapenascontexto, fontecomumDYperfil; prejuízointermediáriopermitido comextremospositivos.
+- Apresentação1.0 aprovada: **sem rótulo por lente na2C**; valoroumotivo,regime,janela,distânciaaopreçoem%; Bazin “atinge/nãoatinge6%”. Banda/sinaisFase3combacktest; rejeitada banda33,50% da discordânciaentremétodos. HisteresesomentecontratoF4-2.
+- F2C-3/4semrótulosporlente; F2C-4vocabulário “distânciaaopreço” e adaptadordeleiturahistórica, semmigração.
+- Ativar2C-b:1,12,2,3,5,4; merge da main antesdofechamento emcommitpróprio;10limpeza(inclusiveFNETtrechomínimo+hashoriginal),11resumo/arquivo. Parar “Checkpointda2C”. Sempush.
+
+Aprovação da fila não aprova novos critérios econômicos além dessas fichas/decisões. Mesmasregrasdeparada/D27/G; golden só nopredicado préviodecadaitem.
