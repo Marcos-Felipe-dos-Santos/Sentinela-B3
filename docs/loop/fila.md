@@ -87,7 +87,7 @@ Regras de parada: pacote §9/plano final §1 e seção "Decisões e divisão" da
 - [DECISÃO] **Auditoria da 2C-a pelo Claude.** O pedido de 26/10 autoriza prosseguir apenas com os quatro rascunhos documentais abaixo, sem implementar 2C-b.
 
 - [x] **FICHA-GRAHAM-2** · docs · `docs: draft Graham methodology 2.0`. D21; pacote §3; rascunho, aguarda auditoria FICHA pelo Claude e aprovação do Marcos.
-- [ ] **FICHA-LYNCH-2** · docs · `docs: draft Lynch methodology 2.0`. D21; pacote §§3–4; mesmo status.
+- [x] **FICHA-LYNCH-2** · docs · `docs: draft Lynch methodology 2.0`. D21; pacote §§3–4; mesmo status.
 - [ ] **FICHA-QUALIDADE-1** · docs · `docs: draft descriptive quality methodology 1.0`. D21; pacote §2; mesmo status.
 - [ ] **FICHA-APRESENTACAO-1** · docs · `docs: draft separate lens presentation methodology 1.0`. D21; pacote §§1–2; mesmo status. Banda neutra justificada por dispersão medida; histerese apenas contrato F4-2.
 
