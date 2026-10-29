@@ -235,3 +235,11 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2C-34 | Abstenção apaga janela/fontes/regime/aviso | D24 e fichas2.1, metadados mesmo sem valor | revisão2 F2C-1 | `test_bug_2c_34_metadados_abstencao_janela.py` | F2C-1 | corrigido |
 | BUG-2C-35 | Fator oficial B3 coletado não consumido pela janela | Fichas2.1: fator existente ajusta LPA | integração F2C-1 | `test_bug_2c_35_fator_b3_janela.py` | F2C-1 | corrigido |
 | BUG-2C-36 | Evento fora do par documental bloqueia fator elegível por espécie desconhecida | Datas oficiais delimitam o par antes da espécie | revisão3 F2C-1 | `test_bug_2c_36_evento_fora_janela.py` | F2C-1 | corrigido |
+
+### Achado F2C-12 (28/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-37 | DY da cascata chegava a Lynch com perfilB3 e payout não tinha contexto comum | FichaLynch2.1, DYzero válido/preço mesma referência | F2C-12 | `test_bug_2c_37_lynch_fonte_payout.py` | F2C-12 | corrigido |
+| BUG-2C-38 | Underflow final transforma payout positivo em zero | Positividade de DY×preço/LPA, aritméticaDecimal | F2C-12 | `test_bug_2c_38_payout_underflow.py` | F2C-12 | corrigido |
+| BUG-2C-39 | DY ausente/bool/vazio vira zero confiável no perfil quando falta B3 | FichaLynch2.1, duas fontes inválidas não demonstram perfil | F2C-12 | `test_bug_2c_39_lynch_dy_ausente.py` | F2C-12 | corrigido |

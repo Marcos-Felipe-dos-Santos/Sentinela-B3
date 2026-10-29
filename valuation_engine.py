@@ -265,7 +265,12 @@ class ValuationEngine:
         # ── INVARIANTE DO DY ──────────────────────────────────────────────────
         # O DY chega em razão: a conversão de percentual é da fronteira de cada
         # provedor (F2A-4, `sentinela.data.normalizacao`). Aqui só o invariante.
-        dy_raw = float(dados.get('dy', 0) or 0)
+        observado_dy = dados.get("dy")
+        dy_raw = (
+            float(observado_dy)
+            if isinstance(observado_dy, Real) and not isinstance(observado_dy, bool)
+            else math.nan
+        )
         dy, dy_confiavel = _normalizar_dy(dy_raw)
         if not dy_confiavel:
             logger.warning(
@@ -398,12 +403,23 @@ class ValuationEngine:
         janelas = janelas_fundamentais.entradas(dados, instante)
         dados["janelas_fundamentais"] = janelas
         graham_janela, lynch_janela = janelas["graham"], janelas["lynch"]
+        if not dy_perfil_confiavel and "abstencao" not in lynch_janela:
+            lynch_janela["abstencao"] = "perfil não demonstrado: DY comum ausente ou não confiável"
         inputs_graham = replace(inputs, lpa=None, vpa=None)
         inputs_lynch = replace(inputs, lpa=None, crescimento_lpa=None)
         if "abstencao" not in graham_janela:
             inputs_graham = replace(inputs, lpa=BRL(graham_janela["lpa"]), vpa=BRL(graham_janela["vpa"]))
         if "abstencao" not in lynch_janela:
-            inputs_lynch = replace(inputs, lpa=BRL(lynch_janela["lpa"]), crescimento_lpa=RateNominal(lynch_janela["crescimento_lpa"]))
+            preco_payout = (
+                p if isinstance(entradas_bazin, proventos_b3.Abstencao)
+                else entradas_bazin["preco_referencia"]
+            )
+            inputs_lynch = replace(
+                inputs, lpa=BRL(lynch_janela["lpa"]),
+                crescimento_lpa=RateNominal(lynch_janela["crescimento_lpa"]),
+                dy=Ratio(dy_perfil) if dy_perfil_confiavel else None,
+                dy_confiavel=dy_perfil_confiavel, preco=BRL(preco_payout),
+            )
         resultados = self._avaliar_metodos(
             inputs, inputs_gordon, inputs_bazin, inputs_bancos, inputs_graham, inputs_lynch,
         )
@@ -447,6 +463,17 @@ class ValuationEngine:
         # Fórmula e condições em sentinela/methods/lynch.py.
         lynch = resultados["Lynch"]
         if isinstance(lynch, MethodResult):
+            from sentinela.data.payout_lynch import contexto
+
+            lynch_janela["payout_contextual"] = contexto(
+                dy_perfil, inputs_lynch.preco.valor, lynch_janela["lpa"],
+                confiavel=dy_perfil_confiavel, fonte=dados["perfil_fonte"],
+            )
+            if not isinstance(entradas_bazin, proventos_b3.Abstencao):
+                lynch_janela["payout_contextual"]["intervalo_dy"] = {
+                    "inicio_exclusivo": entradas_bazin["serie"]["inicio_exclusivo"],
+                    "fim": entradas_bazin["serie"]["referencia"],
+                }
             metodos['Lynch'] = lynch.valor.valor
 
         # ── 4. GORDON ─────────────────────────────────────────────────────────

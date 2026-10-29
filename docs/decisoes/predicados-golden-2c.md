@@ -1926,3 +1926,11 @@ Base149bb78; goldenoriginal SHA2563d66c53a5703ff49ef1a45b64c2eaf0d2e602a0504e033
  "bazin_taxa_selic0.25_dy0.2501"
 ]
 ```
+
+## F2C-12 — registro prévio
+
+Base58391ea. Somente ações/units elegíveis da lenteLynch com fontecomumDY/perfil/contexto corrigidos. O goldenlegado não contém esse contexto e o perfiljáusa fontecomum: expectativa zeroalterações das2291saídas; conjuntoautorizado deIDs para regravaçãoé vazio. Conferirhash/igualdade; caso surja mudança numérica, registrar novo predicadoantesdealterar e explicar porquê. Não usar ticket[golden]como autorização global.
+
+### Complemento prévioBUG39
+
+Ausência/tipo inválido deDYnão pode ter flagglobalconfiável: correção na fronteira antes de escolher fontecomum. Mesmo conjuntoLynch/perfil/contextoDY, sem alterar fórmulas; eventuais consequênciaslegadasdeconfiança/classificação são derivadas dessaqualidadededado. Enumeração prévia: ["vazio", "preco-zero", "campos-nulos", "scraper-sem-fundamentos", "sem-dy", "distressed-preco-longo"]. Não regravarfora; expectativasdezero continuam se vazio.
