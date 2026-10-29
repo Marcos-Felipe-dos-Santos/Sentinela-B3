@@ -150,6 +150,22 @@ Não é consultoria financeira.</p>
 </div>
 {% endfor %}
 
+{% if qualidade_apresentacao %}
+<h2>Qualidade descritiva · {{ qualidade_apresentacao.versao }}</h2>
+<p>Sem nota única, pesos ou efeito nos valores das lentes.
+Cobertura documental: {{ qualidade_apresentacao.cobertura }}.</p>
+{% if qualidade_apresentacao.motivo %}<p>{{ qualidade_apresentacao.motivo }}</p>{% endif %}
+<table><tr><th>Indicador</th><th>Faixa observada e cobertura</th></tr>
+{% for nome, texto in qualidade_apresentacao.indicadores %}
+<tr><th>{{ nome }}</th><td>{{ texto }}</td></tr>{% endfor %}</table>
+{% for e in qualidade_apresentacao.exercicios %}
+<h3>Exercício {{ e.exercicio }} · {{ e.janela }}</h3>
+<table>{% for nome, texto in e.valores %}<tr><th>{{ nome }}</th><td>{{ texto }}</td></tr>{% endfor %}</table>
+<p>{{ e.fonte }}. {{ e.pl_inicial }}. {{ e.proventos }}.</p>
+{% for motivo in e.motivos %}<p>{{ motivo }}</p>{% endfor %}
+{% endfor %}
+{% endif %}
+
 <h2>Síntese</h2>
 <table>
 {% for nome, valor in sintese %}<tr><th>{{ nome }}</th><td>{{ valor }}</td></tr>{% endfor %}
@@ -474,6 +490,59 @@ def _texto_proventos_bazin(dados: dict[str, Any]) -> str:
     )
 
 
+def _apresentar_qualidade(quadro: dict | None) -> dict | None:
+    """Descritores legíveis; o contrato completo permanece no contexto técnico."""
+    if not quadro:
+        return None
+    nomes = {"roe": "ROE sobre PL inicial", "lucros": "Lucros positivos",
+             "margem_consolidada": "Margem consolidada",
+             "alavancagem": "Dívida financeira líquida / EBITDA",
+             "proventos": "Proventos B3 por data-ex"}
+
+    def valor(v, unidade=""):
+        if v is None:
+            return "indisponível"
+        return f"{_numero(v * 100 if unidade == '%' else v)}{unidade}"
+
+    indicadores = []
+    for chave, nome in nomes.items():
+        medida = quadro[chave]
+        cobertura = f"{medida['observados']}/5 observações"
+        if chave in ("lucros", "proventos"):
+            texto = f"{valor(medida['positivos'])} positivos entre {medida['observados']} observados"
+        else:
+            unidade = " vezes" if chave == "alavancagem" else "%"
+            texto = f"faixa {valor(medida['minimo'], unidade)} a {valor(medida['maximo'], unidade)}; último {valor(medida['ultimo'], unidade)}"
+            if chave == "roe":
+                texto += f"; média {valor(medida['media'], '%')}; desvio populacional {valor(medida['desvio_populacional_pp'], ' pp')}"
+        if medida.get("motivo"):
+            texto += f"; {medida['motivo']}"
+        indicadores.append((nome, f"{texto}; {cobertura}"))
+    exercicios = []
+    for e in quadro["exercicios"]:
+        documento = e.get("documento") or {}
+        prov = documento.get("proveniencia") or {}
+        pl = e.get("pl_inicial_proveniencia") or {}
+        b3 = e.get("fonte_proventos") or {}
+        exercicios.append({
+            "exercicio": e["exercicio"], "janela": f"{e['inicio']} a {e['fim']}",
+            "valores": [("Lucro dos controladores (R$)", valor(e['lucro_controladores'])),
+                        ("PL inicial dos controladores (R$)", valor(e['pl_inicial_controladores'])),
+                        (nomes['roe'], valor(e['roe'], '%')),
+                        (nomes['margem_consolidada'], valor(e['margem_consolidada'], '%')),
+                        (nomes['alavancagem'], valor(e['alavancagem'], ' vezes')),
+                        (nomes['proventos'], valor(e['proventos'], ' R$/papel'))],
+            "fonte": f"Fonte: {prov.get('fonte') or 'não demonstrada'}; referência {documento.get('referencia')}; versão {documento.get('versao')}; coleta {prov.get('data_coleta') or 'não demonstrada'}",
+            "pl_inicial": f"PL inicial: {pl.get('demonstrativo') or 'origem não detalhada'}; data do saldo {pl.get('data_saldo') or 'não demonstrada'}",
+            "proventos": f"B3 data-ex: {b3.get('fonte') or 'fonte não demonstrada'}; coleta {b3.get('coleta') or 'não demonstrada'}",
+            "motivos": [f"{nomes.get(k, k)}: {v}" for k, v in e['motivos'].items()],
+        })
+    return {"versao": quadro['versao'],
+            "cobertura": f"{quadro['cobertura']['observados']}/5 exercícios",
+            "motivo": quadro.get('motivo'), "indicadores": indicadores,
+            "exercicios": exercicios}
+
+
 def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str, Any]:
     """Roda o motor da V1 sobre `dados`, capturando o detalhe de cada método."""
     instancias = _instancias(eh_fii)
@@ -775,6 +844,8 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         "insumos": insumos,
         "metodos": metodos,
         "sintese": sintese,
+        "qualidade": analise.get("qualidade"),
+        "qualidade_apresentacao": _apresentar_qualidade(analise.get("qualidade")),
     }
 
 

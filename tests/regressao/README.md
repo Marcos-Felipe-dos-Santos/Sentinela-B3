@@ -243,3 +243,19 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2C-37 | DY da cascata chegava a Lynch com perfilB3 e payout não tinha contexto comum | FichaLynch2.1, DYzero válido/preço mesma referência | F2C-12 | `test_bug_2c_37_lynch_fonte_payout.py` | F2C-12 | corrigido |
 | BUG-2C-38 | Underflow final transforma payout positivo em zero | Positividade de DY×preço/LPA, aritméticaDecimal | F2C-12 | `test_bug_2c_38_payout_underflow.py` | F2C-12 | corrigido |
 | BUG-2C-39 | DY ausente/bool/vazio vira zero confiável no perfil quando falta B3 | FichaLynch2.1, duas fontes inválidas não demonstram perfil | F2C-12 | `test_bug_2c_39_lynch_dy_ausente.py` | F2C-12 | corrigido |
+
+### Achados F2C-2 (29/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-40 | Razão de ROE positiva não representável vira zero observado | Ficha qualidade1.0, positivo não é zero por underflow | revisão durante F2C-2 | `test_bug_2c_40_qualidade_razao_underflow.py` | F2C-2 | corrigido |
+| BUG-2C-41 | Perímetro malformado causa TypeError no quadro | Ficha qualidade1.0, falta de evidência deve ficar parcial | revisão durante F2C-2 | `test_bug_2c_41_qualidade_metadados_invalidos.py` | F2C-2 | corrigido |
+| BUG-2C-42 | Nova leitura do PL inicial deixa download fora da fronteira de falha da fonte | Série anual já lida deve ser preservada | suíte F2C-2 / BUG-2C-08 | `test_bug_2c_42_pl_inicial_falha_download.py` | F2C-2 | corrigido |
+| BUG-2C-43 | Proveniência B3 não Mapping derruba o quadro de qualidade | Ficha qualidade1.0, fonte inválida deve produzir motivo por indicador | revisão F2C-2 | `test_bug_2c_43_qualidade_fonte_b3_malformada.py` | F2C-2 | corrigido |
+| BUG-2C-44 | Relatório tenta tratar proveniência inválida como Mapping | Ficha qualidade1.0, causa explícita em quadro parcial | revisão F2C-2 | `test_bug_2c_44_qualidade_relatorio_fonte_invalida.py` | F2C-2 | corrigido |
+| BUG-2C-45 | Valor B3 recusado não finito reaparece na fonte da saída descritiva | Fonte do indicador não deve reintroduzir valor recusado | revisão F2C-2 | `test_bug_2c_45_qualidade_provento_nao_finito.py` | F2C-2 | corrigido |
+| BUG-2C-46 | Calendário anual vazio certifica zeros B3 com cobertura integral | Ausência de calendário não prova ano sem provento | pré-revisão F2C-2 | `test_bug_2c_46_calendario_vazio_nao_cobertura.py` | F2C-2 | corrigido |
+| BUG-2C-47 | Registro B3 não Mapping derruba parsing da fonte anual | Fonte inválida deve preservar quadro parcial | pré-revisão F2C-2 | `test_bug_2c_47_qualidade_registros_b3_invalidos.py` | F2C-2 | corrigido |
+| BUG-2C-48 | Fonte não textual certifica dados e NaN reaparece na proveniência auxiliar | Fonte documental deve ser identificada em texto e saída finita | pré-revisão F2C-2 | `test_bug_2c_48_qualidade_proveniencia_nao_textual.py` | F2C-2 | corrigido |
+| BUG-2C-49 | CNPJ/modelo explicitamente conflitantes não interrompem agregação | Ficha qualidade1.0: mesma entidade/modelo | pré-revisão F2C-2 | `test_bug_2c_49_qualidade_identidade_conflitante.py` | F2C-2 | corrigido |
+| BUG-2C-50 | Saneamento apaga texto legítimo da reserva D20 na fonte do PL inicial | Reserva textual de controladores.Resultado deve ser preservada | pré-revisão F2C-2 | `test_bug_2c_50_qualidade_reserva_textual.py` | F2C-2 | corrigido |

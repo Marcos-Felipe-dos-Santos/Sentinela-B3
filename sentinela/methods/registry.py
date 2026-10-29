@@ -18,6 +18,7 @@ from sentinela.methods.fii_yield import FiiYield
 from sentinela.methods.gordon import Gordon
 from sentinela.methods.graham import Graham
 from sentinela.methods.lynch import Lynch
+from sentinela.methods.qualidade import Qualidade
 
 METODOS: tuple[ValuationMethod, ...] = (
     Graham(),
@@ -28,6 +29,9 @@ METODOS: tuple[ValuationMethod, ...] = (
     FiiNav(),
     Bancos(),
 )
+
+# F2C-2: quadros sem valor escalar não integram mediana/contrato de valuation.
+QUADROS_DESCRITIVOS = (Qualidade(),)
 
 DESCRICAO_1_0_0 = "comportamento da V1, extraído na Fase 1, sem mudança de número"
 

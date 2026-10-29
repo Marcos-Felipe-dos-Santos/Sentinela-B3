@@ -1,5 +1,5 @@
 from sentinela.domain.units import RateNominal
-from sentinela.data import janelas_fundamentais
+from sentinela.data import janelas_fundamentais, qualidade_inputs
 import logging
 import math
 import statistics
@@ -18,6 +18,7 @@ from sentinela.methods.bazin import ALERTA_DY_ARMADILHA, Bazin, BazinParams
 from sentinela.methods.gordon import Gordon, GordonParams
 from sentinela.methods.graham import Graham, GrahamParams
 from sentinela.methods.lynch import Lynch, LynchParams
+from sentinela.methods.registry import QUADROS_DESCRITIVOS
 
 logger = logging.getLogger("Valuation")
 
@@ -169,6 +170,20 @@ class ValuationEngine:
         }
 
     def processar(self, dados, *, as_of: datetime | None = None):
+        """Acrescenta o quadro independente sem tocar em saídas do valuation."""
+        instante = as_of if as_of is not None else datetime.now(UTC)
+        resultado = self._processar_valuation(dados, as_of=instante)
+        if isinstance(resultado, dict):
+            classe = dados.get("classe_ativo")
+            modelo = dados.get("modelo_bpp")
+            resultado["qualidade"] = QUADROS_DESCRITIVOS[0].calcular(
+                qualidade_inputs.entradas(dados, instante), as_of=instante,
+                classe=str(getattr(classe, "value", classe) or "").strip().upper(),
+                modelo=str(getattr(modelo, "value", modelo) or "").strip().lower(),
+            )
+        return resultado
+
+    def _processar_valuation(self, dados, *, as_of: datetime | None = None):
         if not dados or not dados.get('preco_atual'):
             return None
         dados.pop("perfil_fonte", None)  # F2B-52: só o da análise corrente

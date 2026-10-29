@@ -1093,6 +1093,65 @@ class CVMProvider:
                 return fim.year
         return referencia.year - 1
 
+    def pl_inicial_do_documento(
+        self,
+        zip_path: Path,
+        cd_cvm: int,
+        dt_refer: str,
+        versao: str,
+        inicio: str,
+        modelo: str,
+    ) -> dict:
+        """PL de abertura no comparativo da mesma DFP, sem exigir a DVA."""
+        try:
+            data_saldo = (date.fromisoformat(inicio) - timedelta(days=1)).isoformat()
+
+            def comparativo(tipo: str) -> pd.DataFrame:
+                bruto = self._read_raw(zip_path, tipo)
+                doc = bruto[
+                    (pd.to_numeric(bruto["CD_CVM"], errors="coerce") == cd_cvm)
+                    & (bruto["DT_REFER"].astype(str) == str(dt_refer))
+                    & (pd.to_numeric(bruto["VERSAO"], errors="coerce") == float(versao))
+                    & (bruto["ORDEM_EXERC"] == "PENÚLTIMO")
+                    & (bruto["DT_FIM_EXERC"].astype(str) == data_saldo)
+                ].copy()
+                if not doc.empty:
+                    if not doc["ESCALA_MOEDA"].isin(["REAL", "MIL", "UNIDADE"]).all():
+                        raise ValueError(
+                            "escala monetária do comparativo indeterminada"
+                        )
+                    doc["VL_CONTA"] = pd.to_numeric(doc["VL_CONTA"], errors="coerce")
+                    doc.loc[doc["ESCALA_MOEDA"] == "MIL", "VL_CONTA"] *= 1000
+                return doc
+
+            bpp = comparativo("BPP_con")
+            if bpp.empty:
+                return {
+                    "valor": None,
+                    "motivo": "PL inicial ausente do comparativo da mesma DFP",
+                }
+            dre = comparativo("DRE_con")
+            leitura = controladores.pl_dos_controladores(
+                _ler(bpp, "pl_total", modelo),
+                _ler(bpp, "pl_nao_controladores", modelo),
+                _ler(dre, "lucro_nao_controladores", modelo),
+            )
+            return {
+                "valor": leitura.valor,
+                "motivo": leitura.motivo,
+                "proveniencia": {
+                    "arquivo": zip_path.name,
+                    "demonstrativo": "BPP_con PENÚLTIMO",
+                    "data_saldo": data_saldo,
+                    "referencia": str(dt_refer),
+                    "versao": str(versao),
+                    "modelo": modelo,
+                    "reserva": leitura.reserva,
+                },
+            }
+        except (OSError, KeyError, ValueError, TypeError, zipfile.BadZipFile) as erro:
+            return {"valor": None, "motivo": f"PL inicial não demonstrado: {erro}"}
+
     def indicadores_da_serie(
         self, cd_cvm: int, ano_final: int, modelo: str = "empresa"
     ) -> dict[int, dict]:
@@ -1110,6 +1169,21 @@ class CVMProvider:
                         ind["inicio"], ind["fim"] = next(iter(janelas))
             except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
                 ind["janela_motivo"] = f"janela anual indisponível: {exc}"
+            try:
+                abertura = self.pl_inicial_do_documento(
+                    self.baixar_dfp(ano),
+                    cd_cvm,
+                    ind.get("cvm_dt_refer"),
+                    ind.get("cvm_versao"),
+                    ind.get("inicio"),
+                    modelo,
+                )
+            except (OSError, KeyError, ValueError, zipfile.BadZipFile) as erro:
+                abertura = {"valor": None, "motivo": f"PL inicial indisponível: {erro}"}
+            ind["modelo"] = modelo
+            ind["pl_inicial_controladores"] = abertura["valor"]
+            ind["pl_inicial_proveniencia"] = abertura.get("proveniencia")
+            ind["pl_inicial_motivo"] = abertura.get("motivo")
             try:
                 proventos = self.proventos_do_documento(
                     self.baixar_dfp(ano), cd_cvm,

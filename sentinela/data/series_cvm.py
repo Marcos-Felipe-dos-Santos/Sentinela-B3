@@ -243,6 +243,10 @@ def exercicio(
         "perimetro": ind.get("perimetro"),
         "evidencia_comparabilidade": ind.get("evidencia_comparabilidade"),
         "pl_inicial_controladores": ind.get("pl_inicial_controladores"),
+        **{campo: ind[campo] for campo in (
+            "cnpj", "modelo", "pl_inicial_proveniencia", "pl_inicial_motivo",
+            "mudanca_estrutural_sem_reconciliacao",
+        ) if campo in ind},
         "divida_liquida": ind.get("divida_liquida"),
         "ebitda": ind.get("ebitda"),
         **por_acao,
