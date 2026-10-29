@@ -259,3 +259,10 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2C-48 | Fonte não textual certifica dados e NaN reaparece na proveniência auxiliar | Fonte documental deve ser identificada em texto e saída finita | pré-revisão F2C-2 | `test_bug_2c_48_qualidade_proveniencia_nao_textual.py` | F2C-2 | corrigido |
 | BUG-2C-49 | CNPJ/modelo explicitamente conflitantes não interrompem agregação | Ficha qualidade1.0: mesma entidade/modelo | pré-revisão F2C-2 | `test_bug_2c_49_qualidade_identidade_conflitante.py` | F2C-2 | corrigido |
 | BUG-2C-50 | Saneamento apaga texto legítimo da reserva D20 na fonte do PL inicial | Reserva textual de controladores.Resultado deve ser preservada | pré-revisão F2C-2 | `test_bug_2c_50_qualidade_reserva_textual.py` | F2C-2 | corrigido |
+
+### Achado F2C-3 (29/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-51 | Score/classificação agregados substituem distância por lente | Ficha apresentação1.0, decisões28/10 e29/10 | F2C-3 | `test_bug_2c_51_score_agregado.py` | F2C-3 | corrigido |
+| BUG-2C-52 | Guarda do banco abstido encobre motivos individuais das lentes já avaliadas | Causas efetivas por lente, ficha apresentação1.0 | conferência F2C-3 | `test_bug_2c_52_lentes_banco_abstido.py` | F2C-3 | corrigido |

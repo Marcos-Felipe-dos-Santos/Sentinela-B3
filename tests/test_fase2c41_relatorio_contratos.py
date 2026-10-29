@@ -220,7 +220,6 @@ def test_contexto_fii_abstido_preserva_sintese_e_fontes_sem_numero_ficticio():
     assert contexto["data"] == "2026-10-19"
     assert contexto["sintese"] == [
         ("Abstenção da lente", "sem Informe"),
-        ("Score", "0"),
         ("Confiança", "baixa"),
         ("Riscos sinalizados pelo motor", "informe ausente"),
         ("Aviso de liquidez (fora dos riscos)", "sem coleta"),

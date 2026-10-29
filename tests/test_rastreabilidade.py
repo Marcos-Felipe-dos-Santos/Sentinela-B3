@@ -124,7 +124,8 @@ def test_relatorio_mostra_cada_metodo_com_versao():
     assert "<tr><td>taxa_aplicada</td><td>6,00%</td></tr>" in html
     assert "Proventos do Bazin (relação B3, F2B-31)" in html
     assert "critério fixo de 6% (ficha Bazin 1.0)" in html
-    assert "Mediana" in html and "Score" in html
+    assert "Mediana" in html and "Score" not in html
+    assert "Distância ao preço" in html
 
 
 def test_relatorio_do_fii_mostra_rendimento_e_lente_de_pvp():
@@ -134,12 +135,13 @@ def test_relatorio_do_fii_mostra_rendimento_e_lente_de_pvp():
         "Rendimento do FII <small>versão 2.1.0" in html
         and "P/VP do FII <small>versão 1.2.0" in html
     )
-    assert "desconto sobre o patrimônio" in html
+    assert "desconto sobre o patrimônio" not in html
+    assert "P/VP descritivo" in html
     # F2B-2: o spread datado e a NTN-B real formam a taxa; a Selic é só contexto
     assert "<td><code>spread</code></td>" in html
     assert "Taxa da lente do FII (F2B-2)" in html
     assert "a Selic não forma o preço justo" in html
-    assert "selic_liquida (contexto e score)" in html
+    assert "selic_liquida (contexto)" in html
 
 
 def test_relatorio_mostra_motivo_da_abstencao():

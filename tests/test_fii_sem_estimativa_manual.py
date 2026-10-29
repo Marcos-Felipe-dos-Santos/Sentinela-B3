@@ -26,7 +26,7 @@ def test_vacancia_manual_nao_altera_dy_nem_score():
     sem_estimativa = _analisar("XPML11")  # fora da tabela, mesmos números
     assert com_estimativa["dy_efetivo"] == pytest.approx(0.08)
     assert "vacancia_fonte" not in com_estimativa
-    for campo in ("fair_value", "upside", "score_final", "recomendacao", "dy_efetivo"):
+    for campo in ("fair_value", "upside", "lentes", "dy_efetivo"):
         assert com_estimativa[campo] == sem_estimativa[campo], campo
 
 

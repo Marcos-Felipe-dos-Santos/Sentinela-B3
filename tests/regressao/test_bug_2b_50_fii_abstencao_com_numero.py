@@ -10,6 +10,7 @@ from datetime import date
 from unittest.mock import patch
 
 import pytest
+from apoio_apresentacao import verificar_lentes
 from apoio_fii import enriquecer_fii
 from apoio_gordon import AS_OF_GORDON
 
@@ -37,7 +38,7 @@ def _papel():
 def test_abstencao_do_fii_sem_valor_nem_upside(dados):
     r = _analisar(dados)
     assert not {"fair_value", "upside"} & set(r), r
-    assert r["score_final"] == 50 and r["recomendacao"] == "NEUTRO"
+    verificar_lentes(r)
     assert r["metodos_usados"].startswith("Dados insuficientes (")
 
 

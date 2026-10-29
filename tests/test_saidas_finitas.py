@@ -9,6 +9,7 @@ import math
 from unittest.mock import patch
 
 import pytest
+from apoio_apresentacao import verificar_lentes
 from apoio_fii import enriquecer_fii
 from apoio_gordon import AS_OF_GORDON
 
@@ -71,7 +72,8 @@ def test_fii_com_pvp_nao_finito_sai_sem_pvp(pvp):
     resultado = _fii(pvp=pvp)
     assert _nao_finitos(resultado) == []
     assert resultado["pvp"] is None
-    assert resultado["score_final"] == _fii(pvp=None)["score_final"]
+    verificar_lentes(resultado)
+    verificar_lentes(_fii(pvp=None))
 
 
 def test_golden_sem_nan_nem_infinito():

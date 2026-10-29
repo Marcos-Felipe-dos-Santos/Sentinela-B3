@@ -5,24 +5,17 @@ from zoneinfo import ZoneInfo
 
 from config import MACRO, _normalizar_dy, get_selic_atual
 from sentinela.data import liquidez, rendimento_fii
+from sentinela.domain.apresentacao import bloco
 from sentinela.domain.enums import AssetType
 from sentinela.domain.units import BRL, RateReal, Ratio
-from sentinela.methods.base import MethodInputs, MethodResult
-from sentinela.methods.fii_nav import (
-    FAIXA_DESCONTO,
-    FAIXA_PREMIO_ALTO,
-    FAIXA_PREMIO_MODERADO,
-    FiiNav,
-    FiiNavParams,
-)
+from sentinela.methods.base import Abstention, MethodInputs, MethodResult
+from sentinela.methods.fii_nav import FiiNav, FiiNavParams
 from sentinela.methods.fii_yield import FiiYield, FiiYieldParams
 
 logger = logging.getLogger("FII")
 
 _FII_YIELD = FiiYield()
 _FII_NAV = FiiNav()
-# pontos de score por faixa de P/VP; a faixa neutra não pontua
-_PONTOS_PVP = {FAIXA_PREMIO_ALTO: -15, FAIXA_PREMIO_MODERADO: -7, FAIXA_DESCONTO: 10}
 
 
 class FIIEngine:
@@ -54,7 +47,9 @@ class FIIEngine:
         if not math.isfinite(pvp):
             return None
         return _FII_NAV.calcular(
-            MethodInputs(as_of=date.today(), pvp=Ratio(pvp), classe_ativo=AssetType.FII),
+            MethodInputs(
+                as_of=date.today(), pvp=Ratio(pvp), classe_ativo=AssetType.FII
+            ),
             FiiNavParams(
                 premio_alto=MACRO.FII_PVP_PREMIO_ALTO,
                 premio_moderado=MACRO.FII_PVP_PREMIO_MODERADO,
@@ -73,24 +68,58 @@ class FIIEngine:
 
         ticker = dados.get("ticker", "")
 
-        gate_liquidez = liquidez.avaliar(
-            dados.get("liquidez"), janela=MACRO.LIQUIDEZ_JANELA,
-            presenca_min=MACRO.LIQUIDEZ_PRESENCA_MIN,
-            volume_min=MACRO.LIQUIDEZ_VOLUME_FII_MIN,
-        ) if "liquidez" in dados else None
+        gate_liquidez = (
+            liquidez.avaliar(
+                dados.get("liquidez"),
+                janela=MACRO.LIQUIDEZ_JANELA,
+                presenca_min=MACRO.LIQUIDEZ_PRESENCA_MIN,
+                volume_min=MACRO.LIQUIDEZ_VOLUME_FII_MIN,
+            )
+            if "liquidez" in dados
+            else None
+        )
         if gate_liquidez and "abstencao" in gate_liquidez:
             return {
-                "recomendacao": "FORA DO ESCOPO DOS MÉTODOS",
-                "metodos_usados": "", "perfil": "LIQUIDEZ INSUFICIENTE",
-                "pl_confiavel": False, "dy_confiavel": False, "confianca": 0,
+                "abstencao": gate_liquidez["abstencao"],
+                "metodos_usados": "",
+                "perfil": "LIQUIDEZ INSUFICIENTE",
+                "pl_confiavel": False,
+                "dy_confiavel": False,
+                "confianca": 0,
                 "riscos": [gate_liquidez["abstencao"]],
+                "lentes": {
+                    _FII_YIELD.nome: bloco(
+                        _FII_YIELD,
+                        Abstention(
+                            _FII_YIELD.nome,
+                            _FII_YIELD.version,
+                            gate_liquidez["abstencao"],
+                        ),
+                        p,
+                        {},
+                    )
+                },
             }
+
+        rendimento = None
 
         def _com_aviso(resultado: dict) -> dict:
             # F2B-45 (auditoria D30 do Claude): o aviso fica num campo próprio, fora de
             # `riscos`, como o `perfil_fonte`; liquidez não medida não muda a classificação.
             if gate_liquidez and "aviso" in gate_liquidez:
                 resultado["aviso_liquidez"] = gate_liquidez["aviso"]
+            motivo = resultado.get("metodos_usados", "lente não calculada")
+            resultado["lentes"] = {
+                _FII_YIELD.nome: bloco(
+                    _FII_YIELD,
+                    rendimento
+                    or Abstention(_FII_YIELD.nome, _FII_YIELD.version, motivo),
+                    p,
+                    (dados.get("rendimento_fii_cvm") or {})
+                    if rendimento is not None
+                    else {},
+                )
+            }
             return resultado
 
         # ── INVARIANTE DO DY ──────────────────────────────────────────────────
@@ -104,15 +133,14 @@ class FIIEngine:
             )
 
         # ── FALLBACK: sem DY confiável não podemos calcular valuation ─────────
-        # F2B-62 (BUG-2B-50): abstenção sem valor nem upside numéricos; o score contextual
-        # fica 50, neutro (decisão do Marcos de 25/10/2026, marcador, item 3).
+        # F2C-3: abstenção sem valor, distância ou score; motivo explícito na lente.
         if dy == 0 or not dy_confiavel:
-            return _com_aviso({
-                "score_final":    50,
-                "recomendacao":   "NEUTRO",
-                "perfil":         "FII",
-                "metodos_usados": "Dados insuficientes (DY ausente ou inválido)",
-            })
+            return _com_aviso(
+                {
+                    "perfil": "FII",
+                    "metodos_usados": "Dados insuficientes (DY ausente ou inválido)",
+                }
+            )
 
         # P/VP: o oficial da CVM chega pela cascata (F2A-11). Sem P/VP positivo e finito
         # (ausente, zero, negativo, NaN ou infinito; F2A-42), a lente não é calculada, não
@@ -123,9 +151,8 @@ class FIIEngine:
 
         # ── Rendimento do FII (F2B-2; ficha FII 1.1) ─────────────────────────
         # Preço justo = rendimento de 12 meses do Informe ÷ (NTN-B real + spread), em
-        # sentinela/methods/fii_yield.py. A Selic líquida fica como contexto e no score, que
-        # não muda na 2B (decisão de 19/10/2026). Vacância: sem fonte oficial (F2A-23); o DY
-        # efetivo do score é o próprio DY.
+        # sentinela/methods/fii_yield.py. Selic líquida permanece contexto nominal,
+        # sem pontuar. Vacância sem fonte oficial não altera o rendimento.
         instante = as_of if as_of is not None else datetime.now(UTC)
         rendimento = self._calcular_rendimento(dados, p, instante)
         if isinstance(rendimento, MethodResult):
@@ -134,12 +161,12 @@ class FIIEngine:
             # Lente não calculada (fora do escopo, sem Informe elegível, sem NTN-B ou spread,
             # resultado não finito): o resultado do DY inválido, com o motivo.
             motivo = rendimento.motivo
-            return _com_aviso({
-                "score_final":    50,
-                "recomendacao":   "NEUTRO",
-                "perfil":         "FII",
-                "metodos_usados": f"Dados insuficientes ({_FII_YIELD.nome}: {motivo})",
-            })
+            return _com_aviso(
+                {
+                    "perfil": "FII",
+                    "metodos_usados": f"Dados insuficientes ({_FII_YIELD.nome}: {motivo})",
+                }
+            )
         upside = (preco_justo / p) - 1
 
         # ── Score ─────────────────────────────────────────────────────────────
@@ -151,40 +178,24 @@ class FIIEngine:
             if isinstance(selic, (int, float)) and math.isfinite(selic)
             else None
         )
-        score = 50
-        if selic_liquida is None:
-            pass
-        elif dy_efetivo > selic_liquida:
-            score += 20
-        elif dy_efetivo < (selic_liquida * MACRO.FII_DY_SELIC_RATIO_MIN):
-            score -= 20
-
-        # Faixa de P/VP em sentinela/methods/fii_nav.py; os pontos ficam aqui.
-        lente_pvp = self._faixa_pvp(pvp) if pvp is not None else None
-        if isinstance(lente_pvp, MethodResult):
-            score += sum(_PONTOS_PVP.get(faixa, 0) for faixa in lente_pvp.alertas)
-
-        score = max(0, min(100, score))
-
+        # O patrimônio e a taxa nominal permanecem contexto, sem pontos ou sinais.
+        if pvp is not None:
+            self._faixa_pvp(pvp)
         tipo = str(dados.get("tipo") or "TIPO INDISPONÍVEL")
 
-        rec = "NEUTRO"
-        if upside > MACRO.FII_UPSIDE_COMPRA:
-            rec = "COMPRA"
-        if upside < MACRO.FII_UPSIDE_VENDA:
-            rec = "VENDA"
-
-        return _com_aviso({
-            "fair_value":     round(preco_justo, 2),
-            "upside":         round(upside * 100, 1),
-            "score_final":    int(score),
-            "recomendacao":   rec,
-            "tipo":           tipo,
-            "perfil":         "FII",
-            "metodos_usados": f"{_FII_YIELD.nome}: R${preco_justo:.2f}",
-            "dy":             dy,
-            "dy_efetivo":     dy_efetivo,
-            "pvp":            pvp,
-            "selic_liquida":  selic_liquida,
-            "avisos_rendimento": list(dados["rendimento_fii_cvm"].get("avisos", ())),
-        })
+        return _com_aviso(
+            {
+                "fair_value": round(preco_justo, 2),
+                "upside": round(upside * 100, 1),
+                "tipo": tipo,
+                "perfil": "FII",
+                "metodos_usados": f"{_FII_YIELD.nome}: R${preco_justo:.2f}",
+                "dy": dy,
+                "dy_efetivo": dy_efetivo,
+                "pvp": pvp,
+                "selic_liquida": selic_liquida,
+                "avisos_rendimento": list(
+                    dados["rendimento_fii_cvm"].get("avisos", ())
+                ),
+            }
+        )

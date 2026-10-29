@@ -2,6 +2,7 @@ import math
 from unittest.mock import patch
 
 import pytest
+from apoio_apresentacao import verificar_lentes
 from apoio_fii import enriquecer_fii
 from apoio_gordon import AS_OF_GORDON
 
@@ -15,12 +16,11 @@ from sentinela.methods.fii_nav import (
 )
 
 
-def test_pontos_por_faixa_sao_os_da_v1():
-    assert fii_engine._PONTOS_PVP == {
-        FAIXA_PREMIO_ALTO: -15,
-        FAIXA_PREMIO_MODERADO: -7,
-        FAIXA_DESCONTO: 10,
-    }
+def test_pontos_aposentados_nao_geram_score():
+    assert not hasattr(fii_engine, "_PONTOS_PVP")
+    r = _analisar(pvp=0.8)
+    verificar_lentes(r)
+    assert r["pvp"] == 0.8
 
 
 @pytest.mark.parametrize(
@@ -66,13 +66,19 @@ def test_pvp_ausente_vira_abstencao(pvp):
     resultado = _analisar(pvp=pvp)
     assert resultado["pvp"] is None
     # A faixa neutra de antes também não pontuava: o score é o mesmo do P/VP neutro.
-    assert resultado["score_final"] == _analisar(pvp=1.0)["score_final"]
+    verificar_lentes(resultado)
+    verificar_lentes(_analisar(pvp=1.0))
 
 
 def test_pvp_negativo_nao_recebe_bonus():
     negativo = _analisar(pvp=-0.5)
     assert negativo["pvp"] is None
-    assert negativo["score_final"] == _analisar(pvp=1.0)["score_final"]
+    verificar_lentes(negativo)
     assert (
-        negativo["score_final"] < _analisar(pvp=0.8)["score_final"]
-    )  # o bônus de desconto
+        negativo["lentes"]
+        == _analisar(pvp=1.0)["lentes"]
+        == _analisar(pvp=0.8)["lentes"]
+    )
+    verificar_lentes(_analisar(pvp=1.0))
+    verificar_lentes(negativo)
+    verificar_lentes(_analisar(pvp=0.8))

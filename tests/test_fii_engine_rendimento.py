@@ -3,6 +3,7 @@
 from unittest.mock import patch
 
 import pytest
+from apoio_apresentacao import verificar_lentes
 from apoio_fii import enriquecer_fii
 from apoio_gordon import AS_OF_GORDON
 
@@ -42,7 +43,9 @@ def test_selic_fica_no_score_e_nao_no_preco_justo():
     alta = _fii(dict(dados), selic=0.20)
     assert baixa["fair_value"] == alta["fair_value"] == pytest.approx(112.5)
     # score inalterado na 2B (decisão de 19/10/2026): DY contra a Selic líquida
-    assert baixa["score_final"] - alta["score_final"] == 40
+    verificar_lentes(baixa)
+    verificar_lentes(alta)
+    assert baixa["lentes"] == alta["lentes"]
     assert alta["selic_liquida"] == pytest.approx(0.20 * MACRO.FII_FATOR_IR)
 
 
@@ -69,8 +72,8 @@ def test_abstencoes_da_lente(ajuste, motivo):
     r = _fii(dados)
     # F2B-62 (BUG-2B-50): sem valor nem upside numéricos; score contextual 50, neutro.
     assert not {"fair_value", "upside"} & set(r)
-    assert r["score_final"] == 50
-    assert r["recomendacao"] == "NEUTRO"
+    verificar_lentes(r)
+    verificar_lentes(r)
     assert r["metodos_usados"] == f"Dados insuficientes (Rendimento do FII: {motivo})"
 
 

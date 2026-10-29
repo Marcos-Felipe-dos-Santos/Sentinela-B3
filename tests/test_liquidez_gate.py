@@ -86,7 +86,7 @@ def test_recem_listado_com_presenca_baixa_se_abstem():
 def _seguiu(r):
     # F2B-62: o FII sem Informe se abstém da lente sem número; "seguiu" é não ter a abstenção
     # de liquidez (rótulo e perfil dela), não ter o valor.
-    return r["recomendacao"] != "FORA DO ESCOPO DOS MÉTODOS"
+    return not r.get("abstencao")
 
 
 def test_limiar_por_classe():

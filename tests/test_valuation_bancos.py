@@ -1,6 +1,7 @@
 """Bancos no motor de ações pela lente de P/VP justificado (F2B-32; ficha bancos 1.1)."""
 
 import pytest
+from apoio_apresentacao import verificar_lentes
 from apoio_bancos import AS_OF_GORDON, VPA, enriquecer_bancos
 
 from valuation_engine import ValuationEngine
@@ -52,7 +53,9 @@ def test_banco_sem_vpa_se_abstem(vpa):
     dados = enriquecer_bancos(BANCO, vpa=vpa)
     r = _processar(dados)
     assert "Bancos" not in r["metodos_usados"]
-    assert r["recomendacao"] == "FORA DO ESCOPO DOS MÉTODOS"
+    verificar_lentes(r)
+    assert r["abstencao"].startswith("lente de bancos abstida:")
+    assert all(l["valor"] is None for l in r["lentes"].values())
     assert not {"fair_value", "upside", "score_final"} & set(r)
     assert dados["bancos_diagnostico"]
 

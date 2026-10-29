@@ -61,7 +61,7 @@ PROVENIENCIA_DERIVADA = {
 }
 LIMITES = (
     (
-        "E-6: os métodos de ação não usam Selic. No FII, ela é contexto e score, sem "
+        "E-6: os métodos de ação não usam Selic. No FII, ela é contexto, sem "
         "proveniência de fonte/data de coleta; vem do BCB (SGS 432) "
         "com cache de 24 horas ou de um valor de contingência fixo."
     ),
@@ -136,6 +136,7 @@ Não é consultoria financeira.</p>
 <div class="metodo{% if m.abstencao or m.nao_calculado %} abstencao{% endif %}">
 <h3>{{ m.nome }} <small>versão {{ m.versao }} · regime {{ m.regime }}</small></h3>
 <p>Aplica-se a: {{ m.applies_to }}</p>
+{% if m.distancia_ao_preco is defined %}<p>Distância ao preço: {{ m.distancia_ao_preco }}</p>{% endif %}
 {% if m.janela is defined %}<p>Janela, fonte e cobertura: {{ m.janela }}</p>{% endif %}
 <p>Premissas:</p>
 <ul>{% for a in m.premissas %}<li>{{ a }}</li>{% endfor %}</ul>
@@ -383,7 +384,11 @@ def _bloco_metodo(registro) -> dict[str, Any]:
         bloco["intermediarios"] = [
             (i.nome, _formatar(i.valor)) for i in resultado.intermediarios
         ]
-        bloco["alertas"] = list(resultado.alertas)
+        bloco["alertas"] = list(resultado.alertas) if inst.nome != "P/VP do FII" else []
+        if inst.nome == "P/VP do FII":
+            bloco["premissas"] = [
+                "P/VP descritivo; não forma preço monetário, score ou sinal"
+            ]
     return bloco
 
 
@@ -467,12 +472,20 @@ def _taxa_real(dados: dict[str, Any]) -> list[tuple[str, str]]:
     inflacao = registro.get("inflacao") or {}
     return [
         ("NTN-B real", _formatar(units.RateReal(registro["ntnb"]))),
-        ("Custo de capital real", _formatar(units.RateReal(registro["custo_capital_real"]))),
+        (
+            "Custo de capital real",
+            _formatar(units.RateReal(registro["custo_capital_real"])),
+        ),
         ("Prêmio das ações", _formatar(units.RateReal(registro["premio"]))),
         ("Vértice", str(registro.get("vertice"))),
         ("Data-base", str(registro.get("data_base"))),
         ("Fonte", str(registro.get("fonte"))),
-        ("Inflação da janela", str(inflacao["abstencao"]) if "abstencao" in inflacao else _formatar(units.RateNominal(inflacao["valor"]))),
+        (
+            "Inflação da janela",
+            str(inflacao["abstencao"])
+            if "abstencao" in inflacao
+            else _formatar(units.RateNominal(inflacao["valor"])),
+        ),
         ("Janela", f"{inflacao.get('inicio')} a {inflacao.get('fim')}"),
         ("Fonte do IPCA", str((inflacao.get("proveniencia") or {}).get("fonte"))),
         ("Proveniência", str(registro.get("proveniencia"))),
@@ -494,10 +507,13 @@ def _apresentar_qualidade(quadro: dict | None) -> dict | None:
     """Descritores legíveis; o contrato completo permanece no contexto técnico."""
     if not quadro:
         return None
-    nomes = {"roe": "ROE sobre PL inicial", "lucros": "Lucros positivos",
-             "margem_consolidada": "Margem consolidada",
-             "alavancagem": "Dívida financeira líquida / EBITDA",
-             "proventos": "Proventos B3 por data-ex"}
+    nomes = {
+        "roe": "ROE sobre PL inicial",
+        "lucros": "Lucros positivos",
+        "margem_consolidada": "Margem consolidada",
+        "alavancagem": "Dívida financeira líquida / EBITDA",
+        "proventos": "Proventos B3 por data-ex",
+    }
 
     def valor(v, unidade=""):
         if v is None:
@@ -524,23 +540,34 @@ def _apresentar_qualidade(quadro: dict | None) -> dict | None:
         prov = documento.get("proveniencia") or {}
         pl = e.get("pl_inicial_proveniencia") or {}
         b3 = e.get("fonte_proventos") or {}
-        exercicios.append({
-            "exercicio": e["exercicio"], "janela": f"{e['inicio']} a {e['fim']}",
-            "valores": [("Lucro dos controladores (R$)", valor(e['lucro_controladores'])),
-                        ("PL inicial dos controladores (R$)", valor(e['pl_inicial_controladores'])),
-                        (nomes['roe'], valor(e['roe'], '%')),
-                        (nomes['margem_consolidada'], valor(e['margem_consolidada'], '%')),
-                        (nomes['alavancagem'], valor(e['alavancagem'], ' vezes')),
-                        (nomes['proventos'], valor(e['proventos'], ' R$/papel'))],
-            "fonte": f"Fonte: {prov.get('fonte') or 'não demonstrada'}; referência {documento.get('referencia')}; versão {documento.get('versao')}; coleta {prov.get('data_coleta') or 'não demonstrada'}",
-            "pl_inicial": f"PL inicial: {pl.get('demonstrativo') or 'origem não detalhada'}; data do saldo {pl.get('data_saldo') or 'não demonstrada'}",
-            "proventos": f"B3 data-ex: {b3.get('fonte') or 'fonte não demonstrada'}; coleta {b3.get('coleta') or 'não demonstrada'}",
-            "motivos": [f"{nomes.get(k, k)}: {v}" for k, v in e['motivos'].items()],
-        })
-    return {"versao": quadro['versao'],
-            "cobertura": f"{quadro['cobertura']['observados']}/5 exercícios",
-            "motivo": quadro.get('motivo'), "indicadores": indicadores,
-            "exercicios": exercicios}
+        exercicios.append(
+            {
+                "exercicio": e["exercicio"],
+                "janela": f"{e['inicio']} a {e['fim']}",
+                "valores": [
+                    ("Lucro dos controladores (R$)", valor(e["lucro_controladores"])),
+                    (
+                        "PL inicial dos controladores (R$)",
+                        valor(e["pl_inicial_controladores"]),
+                    ),
+                    (nomes["roe"], valor(e["roe"], "%")),
+                    (nomes["margem_consolidada"], valor(e["margem_consolidada"], "%")),
+                    (nomes["alavancagem"], valor(e["alavancagem"], " vezes")),
+                    (nomes["proventos"], valor(e["proventos"], " R$/papel")),
+                ],
+                "fonte": f"Fonte: {prov.get('fonte') or 'não demonstrada'}; referência {documento.get('referencia')}; versão {documento.get('versao')}; coleta {prov.get('data_coleta') or 'não demonstrada'}",
+                "pl_inicial": f"PL inicial: {pl.get('demonstrativo') or 'origem não detalhada'}; data do saldo {pl.get('data_saldo') or 'não demonstrada'}",
+                "proventos": f"B3 data-ex: {b3.get('fonte') or 'fonte não demonstrada'}; coleta {b3.get('coleta') or 'não demonstrada'}",
+                "motivos": [f"{nomes.get(k, k)}: {v}" for k, v in e["motivos"].items()],
+            }
+        )
+    return {
+        "versao": quadro["versao"],
+        "cobertura": f"{quadro['cobertura']['observados']}/5 exercícios",
+        "motivo": quadro.get("motivo"),
+        "indicadores": indicadores,
+        "exercicios": exercicios,
+    }
 
 
 def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str, Any]:
@@ -553,12 +580,10 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         raise ValueError("dados insuficientes para a análise")
 
     por_instancia = {id(r[0]): r for r in registros}
-    fora_do_escopo = (
-        analise.get("recomendacao") == modulo_valuation.ROTULO_FORA_DO_ESCOPO
-    )
+    fora_do_escopo = bool(analise.get("abstencao"))
     if fora_do_escopo:
         # F2A-29: classe fora do escopo dos métodos de ação; nenhum número no lugar.
-        motivo_ausente = analise["riscos"][0]
+        motivo_ausente = analise["abstencao"]
     elif analise.get("perfil") == "DISTRESSED":
         motivo_ausente = (
             "guarda de situação especial (distressed): nenhum método foi chamado"
@@ -640,24 +665,35 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         )
 
     if eh_fii and "selic_liquida" in analise:
-        # F2B-2: a Selic líquida é só contexto e score do FII; não forma o preço justo.
+        # F2B-2: a Selic líquida é só contexto do FII; não forma o preço justo.
         insumos.append(
             {
-                "campo": "selic_liquida (contexto e score)",
+                "campo": "selic_liquida (contexto)",
                 "valor": _formatar(analise["selic_liquida"]),
                 "unidade": "taxa nominal a.a., líquida de IR",
                 "proveniencia": PROVENIENCIA_DERIVADA["selic"],
             }
         )
 
+    for metodo in metodos:
+        lente = (analise.get("lentes") or {}).get(metodo["nome"])
+        if lente:
+            d = lente["distancia_ao_preco_pct"]
+            metodo["distancia_ao_preco"] = "indisponível" if d is None else f"{d:.6f}%"
+
     janelas = dados.get("janelas_fundamentais") or {}
     for metodo in metodos:
         chave = {"Graham": "graham", "Lynch": "lynch"}.get(metodo["nome"])
         if chave and chave in janelas:
             janela = janelas[chave]
-            metodo["janela"] = {**janela, "cobertura": janelas.get("cobertura"),
-                                "fontes_exigidas": "CVM por documento; fatores oficiais; IPCA IBGE no Graham"}
-            if "abstencao" in janela and str(metodo.get("abstencao") or "").startswith("insumo ausente:"):
+            metodo["janela"] = {
+                **janela,
+                "cobertura": janelas.get("cobertura"),
+                "fontes_exigidas": "CVM por documento; fatores oficiais; IPCA IBGE no Graham",
+            }
+            if "abstencao" in janela and str(metodo.get("abstencao") or "").startswith(
+                "insumo ausente:"
+            ):
                 metodo["abstencao"] = janela["abstencao"]
 
     if dados.get("bazin_diagnostico"):
@@ -703,7 +739,9 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
                 f"{fonte_gordon.get('proveniencia') or 'sem proveniência'}"
             )
         else:
-            motivo = dados.get("bancos_diagnostico") or "documento da DFP não demonstrado"
+            motivo = (
+                dados.get("bancos_diagnostico") or "documento da DFP não demonstrado"
+            )
             texto_documento = f"não utilizada: {motivo}"
         fontes.append(("DFP da lente de bancos", texto_documento))
     elif fonte_gordon:
@@ -735,7 +773,10 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
     liquidez = dados.get("liquidez")
     if liquidez:
         fontes.append(
-            ("Liquidez (63 pregões: presença ≥ 80%; mediana ≥ R$ 500 mil em ações/units e R$ 100 mil em FIIs)", _texto_liquidez(liquidez))
+            (
+                "Liquidez (63 pregões: presença ≥ 80%; mediana ≥ R$ 500 mil em ações/units e R$ 100 mil em FIIs)",
+                _texto_liquidez(liquidez),
+            )
         )
     rendimento = dados.get("rendimento_fii_cvm")
     if rendimento:
@@ -796,7 +837,6 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
             "Variação sobre o preço",
             f"{_numero(analise.get('upside') or 0)}%",
         ),
-        ("Score", str(analise.get("score_final"))),
     ]
     if analise.get("confianca") is not None:
         sintese.append(("Confiança", str(analise["confianca"])))

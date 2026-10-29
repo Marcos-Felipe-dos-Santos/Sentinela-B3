@@ -113,3 +113,12 @@ Decisões expressas do Marcos posteriores ao §11, que prevalecem sobre as exig�
 3. **IPCA do Graham:** estender o produtor existente do SIDRA **1737, variável 63**, com produto dos fatores mensais e corte pelo calendário de publicação do IBGE, à janela de cinco exercícios e aos respectivos encerramentos. Cobertura incompleta, IPCA indisponível ou não publicado até as_of produz abstenção com motivo. Não substituir pela variável de número-índice. **Lynch continua nominal, sem IPCA.**
 
 Fichas Graham e Lynch passam a **2.1**, aprovadas, com exemplos e matriz da compatibilidade. O F2C-1 deve completar produtores, testes e gates antes de fechar; retirar o bloqueio não equivale a declarar entrega parcial aceita. Registrar no diário novas contagens antes → depois e abstenções por motivo no universo inicial. A ordem restante e a parada no "Checkpoint da 2C" permanecem; sem push.
+
+## 12. Substituições protegidas — decisão do Marcos em29/10/2026
+
+Autorizada a substituição, sem apagar, de quatro testes incompatíveis com a apresentação de28/10:
+
+- F2C-3: `test_c_score_da_acao_fica_entre_0_e_100` e `test_c_score_do_fii_fica_entre_0_e_100` conservam a mesma grade. Cada lente deve ter valor finito e positivo ou abstenção com motivo; distância finita quando há valor; nenhum score agregado na saída. Scores históricos seguem pelo adaptador F2C-4.
+- F2C-5: `test_a_fair_value_com_tres_metodos_e_a_mediana_nao_a_media` e `test_a_fair_value_com_dois_metodos_e_a_media_inclusive_com_divergencia` conservam insumos e taxas parametrizadas. Valores individuais permanecem distintos, sem chave de valor único agregado e sem média de dois rotulada como valor justo. Nomes antigos em comentário com “resolvida no F2C-5 (decisão de 28/10/2026)”.
+
+Registrar antes/depois no diário e quebra aprovada no cabeçalho do arquivo. Nenhuma outra asserção de A/C muda por esta autorização. Retirar o bloqueio correspondente do F2C-3 e seguir a fila até Checkpoint da2C, sem push.

@@ -6,11 +6,17 @@ Valores sintéticos, sem rede. Três seções, filtráveis por mark:
 * B (``-m quebra_esperada``) — comportamento atual que DEVE mudar (cada teste cita o achado);
 * C (``-m invariante``)      — propriedades que valem antes e depois.
 
-Na Fase 1 (refactor puro) as três seções ficam inalteradas. Na Fase 2 só a B muda,
-e a mudança de um teste da B é a prova da correção do achado.
+Quebra aprovada pelo Marcos em29/10/2026: somente os dois testes C de score
+são substituídos no F2C-3 por invariantes de lentes individuais/distância, na
+mesma grade, sem score agregado. Os dois testes A de síntese têm substituição
+autorizada no F2C-5; nenhuma outra asserção de A/C pode mudar.
+
+Regra original da Fase 1: as três seções ficam inalteradas; na Fase 2 só B muda.
+As exceções acima têm autorização expressa e não dispensam os demais controles.
 """
 
 import itertools
+import math
 import re
 from unittest.mock import patch
 
@@ -199,7 +205,9 @@ def test_b_fii_nao_considera_o_patrimonio_no_fair_value():
     caro = _fii(pvp=2.0)
     esperado = 9.35 / (0.07 + MACRO.FII_SPREAD_TIJOLO)
     assert barato["fair_value"] == caro["fair_value"] == pytest.approx(esperado, abs=0.01)
-    assert barato["score_final"] > caro["score_final"]
+    assert barato["pvp"] == 0.5 and caro["pvp"] == 2.0
+    assert barato["lentes"] == caro["lentes"]
+    assert "score_final" not in barato and "score_final" not in caro
 
 
 @pytest.mark.quebra_esperada
@@ -217,8 +225,9 @@ def test_b_alavancagem_acima_de_3x_penaliza_score_e_confianca_sem_distinguir_set
     # QUEBRA ESPERADA: F-12/F-13 — o mesmo limite 3,0 vale para qualquer setor.
     normal = _processar(_acao(divida_liq_ebitda=2.9))
     alavancada = _processar(_acao(divida_liq_ebitda=3.1))
-    assert normal["score_final"] - alavancada["score_final"] == 15
-    assert normal["confianca"] - alavancada["confianca"] == 15
+    assert "score_final" not in normal and "score_final" not in alavancada
+    assert normal["lentes"] == alavancada["lentes"]
+    assert normal["confianca"] == alavancada["confianca"]
     assert "Dívida elevada" in alavancada["riscos"]
 
 
@@ -259,14 +268,32 @@ def test_c_score_da_acao_fica_entre_0_e_100():
         r = _processar(
             _acao(pl=pl, pvp=pvp, roe=roe, dy=dy, divida_liq_ebitda=4), selic=selic
         )
-        assert 0 <= r["score_final"] <= 100, (pl, pvp, roe, dy, selic)
+        assert "score_final" not in r, (pl, pvp, roe, dy, selic)
+        assert r["lentes"], (pl, pvp, roe, dy, selic)
+        for lente in r["lentes"].values():
+            if lente["valor"] is None:
+                assert lente["abstencao"], (pl, pvp, roe, dy, selic)
+                assert lente["distancia_ao_preco_pct"] is None
+            else:
+                assert math.isfinite(lente["valor"]) and lente["valor"] > 0
+                assert not lente["abstencao"]
+                assert math.isfinite(lente["distancia_ao_preco_pct"])
 
 
 @pytest.mark.invariante
 def test_c_score_do_fii_fica_entre_0_e_100():
     for dy, pvp, selic in _GRADE_FII:
         r = _fii(selic=selic, dy=dy, pvp=pvp, ticker="CVBI11")
-        assert 0 <= r["score_final"] <= 100, (dy, pvp, selic)
+        assert "score_final" not in r, (dy, pvp, selic)
+        assert r["lentes"], (dy, pvp, selic)
+        for lente in r["lentes"].values():
+            if lente["valor"] is None:
+                assert lente["abstencao"], (dy, pvp, selic)
+                assert lente["distancia_ao_preco_pct"] is None
+            else:
+                assert math.isfinite(lente["valor"]) and lente["valor"] > 0
+                assert not lente["abstencao"]
+                assert math.isfinite(lente["distancia_ao_preco_pct"])
 
 
 @pytest.mark.invariante
