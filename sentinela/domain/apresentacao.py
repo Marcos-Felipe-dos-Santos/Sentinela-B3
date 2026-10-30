@@ -78,3 +78,47 @@ def mesclar_analise(dados: dict, analise: dict) -> dict:
         ):
             saida.pop(chave, None)
     return saida
+
+
+def contexto_leitura(payload: dict) -> tuple[str, dict]:
+    """Localiza a versão explícita, inclusive no transporte AnalysisResult.
+
+    A ausência de versão indica registro histórico. Uma versão não reconhecida
+    permanece opaca: não autoriza consumir os dados como apresentação atual.
+    """
+    candidatos = [payload]
+    for chave in ("valuation", "raw"):
+        candidato = payload.get(chave)
+        if isinstance(candidato, dict):
+            candidatos.append(candidato)
+    for candidato in candidatos:
+        if "apresentacao_versao" in candidato:
+            tipo = (
+                "atual"
+                if candidato["apresentacao_versao"] == "1.0"
+                else "versao_desconhecida"
+            )
+            return tipo, candidato
+    for candidato in candidatos:
+        if any(
+            chave in candidato
+            for chave in ("recomendacao", "score_final", "fair_value", "upside")
+        ):
+            return "historico", candidato
+    return "historico", payload
+
+
+def adaptar_leitura(payload: Any) -> Any:
+    """Acrescenta identificação histórica sem editar dados ou recalcular valores.
+
+    O namespace auxiliar nunca substitui uma chave já existente do usuário.
+    Consumidores usam contexto_leitura, sem confiar nesse campo opcional.
+    """
+    if not isinstance(payload, dict):
+        return payload
+    tipo, _ = contexto_leitura(payload)
+    if tipo == "atual":
+        return payload
+    saida = dict(payload)
+    saida.setdefault("_compat_apresentacao", {"tipo": tipo, "recalculado": False})
+    return saida

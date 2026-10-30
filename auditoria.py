@@ -246,6 +246,25 @@ def resumo_serie(serie: object) -> object:
 
 def invariantes_resultado(analise: dict) -> list[str]:
     """Domínios externos: finitude, score [0,100] e ausência sem número fabricado."""
+    from sentinela.domain.apresentacao import contexto_leitura
+
+    tipo, contexto = contexto_leitura(analise)
+    if tipo == "versao_desconhecida":
+        return ["versão de apresentação desconhecida; dados não interpretados"]
+    if tipo == "atual":
+        problemas = []
+        for nome, lente in contexto.get("lentes", {}).items():
+            for campo in ("valor", "distancia_ao_preco_pct"):
+                valor = lente.get(campo)
+                if valor is not None and (
+                    isinstance(valor, bool) or not isinstance(valor, (int, float))
+                    or not math.isfinite(valor)
+                ):
+                    problemas.append(f"{nome}.{campo}: número não finito ou inválido")
+            if lente.get("valor") is None and lente.get("distancia_ao_preco_pct") is not None:
+                problemas.append(f"{nome}: distância presente sem valor da lente")
+        return problemas
+    analise = contexto
     problemas = []
     for campo in ("fair_value", "upside", "score_final"):
         valor = analise.get(campo)
@@ -367,27 +386,22 @@ def auditar_tecnica(ticker: str, dados: dict):
 def auditar_prompt(ticker: str, dados: dict, fv: float = 0, upside: float = 0, analise_dict: dict = None):
     print(hdr(f"5. PROMPT ENVIADO À IA — {ticker}"))
 
-    # Em produção: app.py faz dados.update(analise) ANTES de chamar ai_engine.analisar()
-    # Simulamos aqui mesclando o dict de valuation no dados
-    dados_simulados = dict(dados)
-    if analise_dict:
-        dados_simulados.update(analise_dict)
+    from ai_core import SentinelaAI
+    from sentinela.domain.apresentacao import contexto_leitura, mesclar_analise
 
-    excluir  = {'historico', 'analise_ia', 'tech', 'serie_cvm'}
-    linhas   = [f"- {k}: {v}" for k, v in dados_simulados.items()
-                if v is not None and k not in excluir]
-    dados_txt = "\n".join(linhas)
-    perfil    = dados_simulados.get('perfil', 'GERAL')
-
-    prompt = f"""Analise a ação {ticker} (Perfil: {perfil}).
-
-Dados Fundamentais:
-{dados_txt}
-
-Responda em Português com exatamente 3 tópicos:
-1. Qualidade da empresa (Forte / Moderada / Fraca) — justifique com os dados acima.
-2. Riscos principais — liste os 2-3 maiores riscos identificados.
-3. Veredito final (Compra / Neutro / Venda) — justifique com base no valuation e qualidade."""
+    dados_simulados = mesclar_analise(dados, analise_dict or {})
+    tipo, contexto = contexto_leitura(dados_simulados)
+    if tipo == "atual":
+        dados_simulados = mesclar_analise(dados_simulados, contexto)
+    excluir = {'historico', 'analise_ia', 'tech', 'serie_cvm'}
+    linhas = [f"- {k}: {v}" for k, v in dados_simulados.items()
+              if v is not None and k not in excluir]
+    perfil = dados_simulados.get('perfil', 'GERAL')
+    # Método puro de produção: sem inicializar clientes nem chamar provedores.
+    if tipo == "versao_desconhecida":
+        prompt = "Versão de apresentação desconhecida; dados preservados sem interpretação."
+    else:
+        prompt = SentinelaAI.__new__(SentinelaAI)._montar_prompt(ticker, dados_simulados)
 
     print(f"\n  Tamanho: {len(prompt)} chars, {len(linhas)} campos enviados")
     print("\n  Campos enviados:")
@@ -403,9 +417,8 @@ Responda em Português com exatamente 3 tópicos:
         ('historico' not in '\n'.join(linhas), "Histórico excluído do prompt"),
         ('analise_ia' not in '\n'.join(linhas), "analise_ia anterior excluída"),
         (perfil != 'GERAL',                     f"Perfil definido: {perfil}"),
-        (any('fair_value'   in l for l in linhas), "fair_value incluído"),
-        (any('upside'       in l for l in linhas), "upside incluído"),
-        (any('recomendacao' in l for l in linhas), "recomendacao incluída"),
+        ("lentes" in dados_simulados if tipo == "atual" else tipo == "historico",
+         "Lentes separadas incluídas" if tipo == "atual" else "Registro histórico identificado"),
     ]
     check_results = []
     for passou, desc in checks:

@@ -154,6 +154,33 @@ def calcular_metricas_operacionais(registros: list[dict[str, Any]]) -> dict[str,
 # AUDITORIA PRINCIPAL
 # ══════════════════════════════════════════════════════════════════════════════
 
+
+def linhas_apresentacao(analise: dict) -> list[str]:
+    """Mostra lentes atuais ou valores históricos literais, sem sintetizar."""
+    from sentinela.domain.apresentacao import contexto_leitura
+
+    tipo, contexto = contexto_leitura(analise)
+    if tipo == "atual":
+        linhas = ["  Apresentação: lentes separadas (1.0)"]
+        for nome, lente in contexto.get("lentes", {}).items():
+            if lente.get("valor") is None:
+                linhas.append(f"  {nome}: abstenção — {lente.get('abstencao')}")
+            else:
+                linhas.append(
+                    f"  {nome}: R$ {_fmt(lente['valor'], '.2f')}; "
+                    f"distância ao preço {_fmt(lente.get('distancia_ao_preco_pct'), '.1f')}%"
+                )
+        return linhas
+    if tipo == "versao_desconhecida":
+        return [f"  Apresentação: versão desconhecida ({contexto.get('apresentacao_versao')}); dados preservados"]
+    return [
+        "  Registro histórico — valores originais, sem recálculo",
+        f"  Rótulo histórico: {contexto.get('recomendacao', 'N/A')}",
+        f"  Fair Value histórico: R$ {_fmt(contexto.get('fair_value'), '.2f')}",
+        f"  Upside histórico: {_fmt(contexto.get('upside'), '.1f')}%",
+        f"  Score histórico: {contexto.get('score_final', 'N/A')}/100",
+    ]
+
 def auditar() -> str:
     """Executa a auditoria completa e retorna o log como string."""
 
@@ -172,7 +199,7 @@ def auditar() -> str:
     asset_classifier = AssetClassifier()
 
     log("=" * 80)
-    log("  AUDITORIA DE RECOMENDAÇÕES — Sentinela B3")
+    log("  AUDITORIA DE LENTES — Sentinela B3")
     log(f"  Executado em: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     log("=" * 80)
 
@@ -240,10 +267,10 @@ def auditar() -> str:
             tech = tech_engine.calcular_indicadores(hist)
 
             # ── 4. Extrair campos ────────────────────────────────────────────
-            rec = analise.get('recomendacao', 'N/A')
-            fair_value = analise.get('fair_value', 0)
-            upside = analise.get('upside', 0)
-            score = analise.get('score_final', 0)
+            from sentinela.domain.apresentacao import contexto_leitura
+
+            tipo_apresentacao, contexto = contexto_leitura(analise)
+            rec = contexto.get('recomendacao') if tipo_apresentacao == 'historico' else None
             confianca = analise.get('confianca', 100)
             riscos = analise.get('riscos', [])
             perfil = analise.get('perfil', 'N/A')
@@ -264,10 +291,8 @@ def auditar() -> str:
             # ── 5. Imprimir debug completo ───────────────────────────────────
             log(f"  Tipo:            {'FII' if is_fii else 'AÇÃO'}")
             log(f"  Preço:           R$ {_fmt(preco, '.2f')}")
-            log(f"  Recomendação:    {rec}")
-            log(f"  Fair Value:      R$ {_fmt(fair_value, '.2f')}")
-            log(f"  Upside:          {_fmt(upside, '.1f')}%")
-            log(f"  Score:           {score}/100")
+            for linha in linhas_apresentacao(analise):
+                log(linha)
             log(f"  Confiança:       {confianca}")
             log(f"  Riscos:          {riscos if riscos else '(nenhum)'}")
             log(f"  Perfil:          {perfil}")

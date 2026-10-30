@@ -219,3 +219,22 @@ def test_audit_mutualfund_quote_type_does_not_override_known_unit(monkeypatch):
     fii_engine.analisar.assert_not_called()
     val_engine.processar.assert_called_once_with(dados)
     assert "Tipo:            AÇÃO" in output
+
+
+def test_exibicao_historica_preserva_rotulo_score_e_valores():
+    dados = {"recomendacao": "COMPRA", "score_final": 87, "fair_value": 23.45, "upside": -12.5}
+    texto = "\n".join(audit.linhas_apresentacao({"valuation": dados}))
+    assert "Registro histórico" in texto and "Rótulo histórico: COMPRA" in texto
+    assert "Score histórico: 87/100" in texto and "R$ 23.45" in texto and "-12.5%" in texto
+    assert "sinal" not in texto
+
+
+def test_exibicao_versao_desconhecida_nao_fabrica_sintese():
+    texto = "\n".join(audit.linhas_apresentacao({"apresentacao_versao": "9.0", "recomendacao": "COMPRA"}))
+    assert "versão desconhecida (9.0)" in texto and "COMPRA" not in texto
+
+
+def test_exibicao_raw_atual_preserva_distancia_negativa():
+    dados = {"raw": {"apresentacao_versao": "1.0", "lentes": {
+        "Lynch": {"valor": 8, "distancia_ao_preco_pct": -20}}}}
+    assert "Lynch: R$ 8.00; distância ao preço -20.0%" in "\n".join(audit.linhas_apresentacao(dados))

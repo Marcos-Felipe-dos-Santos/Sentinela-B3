@@ -9,6 +9,7 @@ from contextlib import closing
 from datetime import datetime
 from typing import Any
 
+from sentinela.domain.apresentacao import adaptar_leitura
 from sentinela.domain.models import AnalysisResult
 
 
@@ -279,7 +280,7 @@ class AnalysisRepository:
     def _row_to_dict(self, row: sqlite3.Row) -> dict[str, Any]:
         data = dict(row)
         try:
-            data["payload"] = json.loads(data.pop("payload_json"))
+            data["payload"] = adaptar_leitura(json.loads(data.pop("payload_json")))
         except (json.JSONDecodeError, TypeError):
             data["payload"] = {}
         return data

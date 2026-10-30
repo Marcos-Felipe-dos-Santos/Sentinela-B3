@@ -4,6 +4,8 @@ import sqlite3
 from contextlib import closing
 from datetime import datetime, timedelta
 
+from sentinela.domain.apresentacao import adaptar_leitura
+
 logger = logging.getLogger("Database")
 
 class DatabaseManager:
@@ -140,7 +142,7 @@ class DatabaseManager:
             row = cursor.fetchone()
             if row and row[0]:
                 try:
-                    return json.loads(row[0])
+                    return adaptar_leitura(json.loads(row[0]))
                 except (json.JSONDecodeError, TypeError) as e:
                     logger.error(f"JSON corrompido para {ticker}: {e}")
             return None
