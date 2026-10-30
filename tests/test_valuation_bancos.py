@@ -32,9 +32,11 @@ def _processar(dados):
 
 def test_banco_recebe_a_lente_de_bancos():
     r = _processar(enriquecer_bancos({**BANCO, **INADIMPLENCIA}))
-    assert r["fair_value"] == pytest.approx(26.35, abs=0.01)
+    assert r["lentes"]["Bancos"]["valor"] == pytest.approx(26.35, abs=0.01)
     assert r["metodos_usados"] == "Bancos: R$26.35"
-    assert r["upside"] == pytest.approx((26.346908251509 / 44.28 - 1) * 100, abs=0.1)
+    assert r["lentes"]["Bancos"]["distancia_ao_preco_pct"] == pytest.approx(
+        (26.346908251509 / 44.28 - 1) * 100, abs=0.1
+    )
     assert not any(
         m in r["metodos_usados"] for m in ("Graham", "Bazin", "Lynch", "Gordon")
     )
@@ -45,7 +47,7 @@ def test_sem_ifdata_a_limitacao_aparece():
     assert r["inadimplencia_ifdata"] == (
         "inadimplência IF.data não informada: IF.data não consultado"
     )
-    assert r["fair_value"] == pytest.approx(26.35, abs=0.01)
+    assert r["lentes"]["Bancos"]["valor"] == pytest.approx(26.35, abs=0.01)
 
 
 @pytest.mark.parametrize("vpa", [None, 0.0, -1.0])
@@ -67,7 +69,7 @@ def test_inadimplencia_invalida_aparece_com_motivo(valor):
     assert r["inadimplencia_ifdata"].startswith(
         "inadimplência IF.data não informada: fora do domínio"
     )
-    assert r["fair_value"] == pytest.approx(26.35, abs=0.01)
+    assert r["lentes"]["Bancos"]["valor"] == pytest.approx(26.35, abs=0.01)
 
 
 def test_inadimplencia_valida_aparece_sem_mudar_o_valor():
@@ -84,7 +86,7 @@ def test_inadimplencia_valida_aparece_sem_mudar_o_valor():
 
 def test_basileia_nao_entra_na_saida_da_lente():
     r = _processar(enriquecer_bancos({**BANCO, **INADIMPLENCIA, "basileia": 0.0}))
-    assert r["fair_value"] == pytest.approx(26.35, abs=0.01)
+    assert r["lentes"]["Bancos"]["valor"] == pytest.approx(26.35, abs=0.01)
     assert not any("basileia" in str(x).lower() for x in r.values())
 
 
@@ -102,7 +104,9 @@ def test_unit_de_banco_usa_o_vpa_da_unit():
         fator_unit=2,
     )
     r = _processar(dados)
-    assert r["fair_value"] == pytest.approx(2 * 26.346908251509, abs=0.01)
+    assert r["lentes"]["Bancos"]["valor"] == pytest.approx(
+        2 * 26.346908251509, abs=0.01
+    )
 
 
 def test_relatorio_mostra_a_lente_e_a_inadimplencia():

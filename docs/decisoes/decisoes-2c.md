@@ -122,3 +122,7 @@ Autorizada a substituição, sem apagar, de quatro testes incompatíveis com a a
 - F2C-5: `test_a_fair_value_com_tres_metodos_e_a_mediana_nao_a_media` e `test_a_fair_value_com_dois_metodos_e_a_media_inclusive_com_divergencia` conservam insumos e taxas parametrizadas. Valores individuais permanecem distintos, sem chave de valor único agregado e sem média de dois rotulada como valor justo. Nomes antigos em comentário com “resolvida no F2C-5 (decisão de 28/10/2026)”.
 
 Registrar antes/depois no diário e quebra aprovada no cabeçalho do arquivo. Nenhuma outra asserção de A/C muda por esta autorização. Retirar o bloqueio correspondente do F2C-3 e seguir a fila até Checkpoint da2C, sem push.
+
+## 13. Quinta substituição aprovada — Marcos,29/10/2026
+
+Autorizada também a adaptação de `test_c_fair_value_e_preco_estao_na_mesma_escala` conforme a proposta local: mesmas grades, preço e limites atuais0,1–20, aplicados a cada lente com valor. Lente abstida não entra na razão e deve conservar motivo. A grade precisa ter ao menos uma lente com valor, evitando aprovação vazia. Registrar cabeçalho e diário. Nenhuma outra asserçãoA/C muda; aparecendo uma sexta, parar. A autorização resolve o bloqueio restante doF2C-5, sem autorizar agregado oculto, mudança de fórmula ou push.

@@ -31,7 +31,9 @@ def _base(**kw):
 def test_fii_tijolo_pela_ntnb_mais_spread():
     dados = enriquecer_fii(_base(), ntnb=0.07)
     r = _fii(dados)
-    assert r["fair_value"] == pytest.approx(round(9.0 / 0.09, 2))
+    assert r["lentes"]["Rendimento do FII"]["valor"] == pytest.approx(
+        round(9.0 / 0.09, 2)
+    )
     assert r["metodos_usados"] == "Rendimento do FII: R$100.00"
     assert dados["rendimento_fii_cvm"]["dy"] == pytest.approx(0.09)
     assert dados["rendimento_fii_cvm"]["tipo"] == "tijolo"
@@ -41,7 +43,11 @@ def test_selic_fica_no_score_e_nao_no_preco_justo():
     dados = enriquecer_fii(_base(dy=0.09), ntnb=0.06)
     baixa = _fii(dict(dados), selic=0.05)
     alta = _fii(dict(dados), selic=0.20)
-    assert baixa["fair_value"] == alta["fair_value"] == pytest.approx(112.5)
+    assert (
+        baixa["lentes"]["Rendimento do FII"]["valor"]
+        == alta["lentes"]["Rendimento do FII"]["valor"]
+        == pytest.approx(112.5)
+    )
     # score inalterado na 2B (decisão de 19/10/2026): DY contra a Selic líquida
     verificar_lentes(baixa)
     verificar_lentes(alta)

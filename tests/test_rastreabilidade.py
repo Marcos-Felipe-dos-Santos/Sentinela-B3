@@ -124,7 +124,7 @@ def test_relatorio_mostra_cada_metodo_com_versao():
     assert "<tr><td>taxa_aplicada</td><td>6,00%</td></tr>" in html
     assert "Proventos do Bazin (relação B3, F2B-31)" in html
     assert "critério fixo de 6% (ficha Bazin 1.0)" in html
-    assert "Mediana" in html and "Score" not in html
+    assert "Mediana" not in html and "Score" not in html
     assert "Distância ao preço" in html
 
 
@@ -218,14 +218,19 @@ def test_variacao_sobre_o_preco_esta_em_pontos_percentuais():
     # Mediana 122,47 (Graham; Bazin 133,33 a 6% desde o F2B-31; Gordon 30,60) sobre preço
     # 100: o motor já devolve o upside em pontos percentuais
     html = _html(_acao())
-    assert "<th>Variação sobre o preço</th><td>22,50%</td>" in html
+    assert "Distância ao preço: 22.474487%" in html
+    assert "Distância ao preço: 33.333333%" in html
+    assert "Distância ao preço: -69.400000%" in html
     assert "2.250" not in html
 
 
 def test_variacao_do_fii_esta_em_pontos_percentuais():
     # F2B-2: 10 ÷ (7% + spread calibrado de 3,51%) = 95,19 contra o preço de 100.
     html = _html(_fii(), eh_fii=True)
-    assert "<th>Variação sobre o preço</th><td>-4,80%</td>" in html
+    from config import MACRO
+
+    esperado = 100 * (0.10 / (0.07 + MACRO.FII_SPREAD_TIJOLO) - 1)
+    assert f"Distância ao preço: {esperado:.6f}%" in html
 
 
 def test_dy_normalizado_aparece_ao_lado_do_bruto():
@@ -251,7 +256,7 @@ def test_ticker_em_situacao_especial_nao_acusa_valor_nao_finito():
 
 def test_sintese_sem_metodo_nao_chama_o_preco_de_mediana():
     html = _html(_acao(pl=0.0, pvp=0.0, dy=0.0, roe=0.0))
-    assert "Nenhum método calculou" in html
+    assert "Lentes abstidas" in html
     assert "Mediana dos métodos calculados" not in html
 
 

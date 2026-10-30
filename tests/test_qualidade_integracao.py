@@ -38,7 +38,14 @@ def test_nenhuma_chave_legada_muda():
     antes = m._processar_valuation(deepcopy(d), as_of=AS_OF)
     depois = m.processar(deepcopy(d), as_of=AS_OF)
     quadro = depois.pop("qualidade")
-    assert depois == antes
+    for chave, valor in antes.items():
+        if chave != "lentes":
+            assert depois[chave] == valor
+    for nome, lente in antes["lentes"].items():
+        for chave, valor in lente.items():
+            assert depois["lentes"][nome][chave] == valor
+    assert depois["apresentacao_versao"] == "1.0"
+    assert all(l["as_of"] == AS_OF.isoformat() for l in depois["lentes"].values())
     assert quadro["roe"]["media"] == pytest.approx(0.1)
     assert (
         quadro["proventos"]["observados"] == 0
@@ -70,26 +77,62 @@ def test_apresentacao_unidades_cobertura_e_proveniencia_legiveis():
     from sentinela.methods.qualidade import Qualidade
     from sentinela.reports.rastreabilidade import _apresentar_qualidade
 
-    q = Qualidade().calcular(documentos(), as_of=AS_OF, classe="STOCK", modelo="empresa")
-    q["roe"].update(minimo=-0.125, maximo=0.25, ultimo=0.15, media=0.1, desvio_populacional_pp=6.29, observados=4, motivo="comparabilidade pendente")
+    q = Qualidade().calcular(
+        documentos(), as_of=AS_OF, classe="STOCK", modelo="empresa"
+    )
+    q["roe"].update(
+        minimo=-0.125,
+        maximo=0.25,
+        ultimo=0.15,
+        media=0.1,
+        desvio_populacional_pp=6.29,
+        observados=4,
+        motivo="comparabilidade pendente",
+    )
     q["alavancagem"].update(minimo=-1.25, maximo=3.5, ultimo=2.0, observados=3)
     q["lucros"].update(positivos=3, observados=4)
     q["proventos"].update(positivos=None, observados=0)
     e = q["exercicios"][0]
-    e.update(pl_inicial_proveniencia={"demonstrativo": "BPP_con PENÚLTIMO", "data_saldo": "2020-12-31"}, fonte_proventos={"fonte": "B3 oficial", "coleta": "2026-01-01"})
-    e["documento"] = {"referencia": "2021-12-31", "versao": 3, "proveniencia": {"fonte": "CVM oficial", "data_coleta": "2026-01-02"}}
+    e.update(
+        pl_inicial_proveniencia={
+            "demonstrativo": "BPP_con PENÚLTIMO",
+            "data_saldo": "2020-12-31",
+        },
+        fonte_proventos={"fonte": "B3 oficial", "coleta": "2026-01-01"},
+    )
+    e["documento"] = {
+        "referencia": "2021-12-31",
+        "versao": 3,
+        "proveniencia": {"fonte": "CVM oficial", "data_coleta": "2026-01-02"},
+    }
     e["motivos"] = {"roe": "denominador ausente"}
     p = _apresentar_qualidade(q)
     indicadores = dict(p["indicadores"])
-    assert indicadores["ROE sobre PL inicial"] == "faixa -12,50% a 25,00%; último 15,00%; média 10,00%; desvio populacional 6,29 pp; comparabilidade pendente; 4/5 observações"
-    assert indicadores["Dívida financeira líquida / EBITDA"] == "faixa -1,25 vezes a 3,50 vezes; último 2,00 vezes; 3/5 observações"
-    assert indicadores["Lucros positivos"] == "3,00 positivos entre 4 observados; 4/5 observações"
-    assert indicadores["Proventos B3 por data-ex"].startswith("indisponível positivos entre 0 observados;")
+    assert (
+        indicadores["ROE sobre PL inicial"]
+        == "faixa -12,50% a 25,00%; último 15,00%; média 10,00%; desvio populacional 6,29 pp; comparabilidade pendente; 4/5 observações"
+    )
+    assert (
+        indicadores["Dívida financeira líquida / EBITDA"]
+        == "faixa -1,25 vezes a 3,50 vezes; último 2,00 vezes; 3/5 observações"
+    )
+    assert (
+        indicadores["Lucros positivos"]
+        == "3,00 positivos entre 4 observados; 4/5 observações"
+    )
+    assert indicadores["Proventos B3 por data-ex"].startswith(
+        "indisponível positivos entre 0 observados;"
+    )
     assert p["cobertura"] == "5/5 exercícios"
     linha = p["exercicios"][0]
     assert linha["janela"] == "2021-01-01 a 2021-12-31"
-    assert linha["fonte"] == "Fonte: CVM oficial; referência 2021-12-31; versão 3; coleta 2026-01-02"
-    assert linha["pl_inicial"] == "PL inicial: BPP_con PENÚLTIMO; data do saldo 2020-12-31"
+    assert (
+        linha["fonte"]
+        == "Fonte: CVM oficial; referência 2021-12-31; versão 3; coleta 2026-01-02"
+    )
+    assert (
+        linha["pl_inicial"] == "PL inicial: BPP_con PENÚLTIMO; data do saldo 2020-12-31"
+    )
     assert linha["proventos"] == "B3 data-ex: B3 oficial; coleta 2026-01-01"
     assert linha["motivos"] == ["ROE sobre PL inicial: denominador ausente"]
     assert dict(linha["valores"])["ROE sobre PL inicial"] == "10,00%"

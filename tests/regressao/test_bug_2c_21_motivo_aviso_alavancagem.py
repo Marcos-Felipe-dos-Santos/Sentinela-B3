@@ -2,6 +2,7 @@
 
 import pytest
 from apoio_bancos import enriquecer_bancos
+from apoio_gordon import AS_OF_GORDON
 
 from sentinela.data.divida_liquida import MOTIVO_EBITDA, MOTIVO_MODELO
 from tests.test_valuation_bancos import BANCO, _processar
@@ -21,7 +22,8 @@ def test_aviso_mostra_motivo_cvm(modelo: str, motivo: str) -> None:
         r = _processar(enriquecer_bancos({**BANCO, **campos}))
     else:
         r = ValuationEngine().processar(
-            {**DADOS, **campos, "classe_ativo": "STOCK", "modelo_bpp": "empresa"}
+            {**DADOS, **campos, "classe_ativo": "STOCK", "modelo_bpp": "empresa"},
+            as_of=AS_OF_GORDON,
         )
     assert motivo in r["aviso_alavancagem"]
 
@@ -46,7 +48,8 @@ def test_motivo_ausente_ou_invalido_conserva_aviso_generico(motivos) -> None:
             "modelo_bpp": "empresa",
             "divida_liq_ebitda": None,
             "alavancagem_motivos": motivos,
-        }
+        },
+        as_of=AS_OF_GORDON,
     )
     assert (
         r["aviso_alavancagem"]
@@ -61,9 +64,10 @@ def test_mudar_apenas_motivo_nao_muda_numeros_ou_classificacao() -> None:
         "modelo_bpp": "empresa",
         "divida_liq_ebitda": None,
     }
-    anterior = ValuationEngine().processar(dict(dados))
+    anterior = ValuationEngine().processar(dict(dados), as_of=AS_OF_GORDON)
     informado = ValuationEngine().processar(
-        {**dados, "alavancagem_motivos": {"divida_liq_ebitda": "  EBITDA ≤ 0  "}}
+        {**dados, "alavancagem_motivos": {"divida_liq_ebitda": "  EBITDA ≤ 0  "}},
+        as_of=AS_OF_GORDON,
     )
     assert informado.pop("aviso_alavancagem").endswith("EBITDA ≤ 0")
     anterior.pop("aviso_alavancagem")

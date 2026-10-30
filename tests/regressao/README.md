@@ -266,3 +266,13 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 |---|---|---|---|---|---|---|
 | BUG-2C-51 | Score/classificação agregados substituem distância por lente | Ficha apresentação1.0, decisões28/10 e29/10 | F2C-3 | `test_bug_2c_51_score_agregado.py` | F2C-3 | corrigido |
 | BUG-2C-52 | Guarda do banco abstido encobre motivos individuais das lentes já avaliadas | Causas efetivas por lente, ficha apresentação1.0 | conferência F2C-3 | `test_bug_2c_52_lentes_banco_abstido.py` | F2C-3 | corrigido |
+
+### Achado F2C-5 (29/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-53 | Síntese única de lentes heterogêneas ou preço no lugar de método ausente | Ficha apresentação1.0/decisões28–29/10 | F2C-5 | `test_bug_2c_53_sintese_agregada.py` | F2C-5 | corrigido |
+| BUG-2C-54 | Persistência da nova apresentação inventa score/rótulo padrão ou herda resíduo do cache | Apresentação1.0 sem síntese, D29 sem migração | integração F2C-5 | `test_bug_2c_54_persistencia_sintese.py` | F2C-5 | corrigido |
+| BUG-2C-55 | Transporte tipado fabrica campos agregados e serviço herda síntese do cache no novo contrato | Apresentação1.0/compatibilidade de leitores | integração F2C-5 | `test_bug_2c_55_transporte_sintese.py` | F2C-5 | corrigido |
+| BUG-2C-56 | Critério Bazin aparece sem DY bruto e preço/data que o fundamentam, confundindo referências distintas | Ficha apresentação1.0: hipótese, fonte e referência por lente | pré-revisão F2C-5 | `test_bug_2c_56_bazin_base_dy_visivel.py` | F2C-5 | corrigido |
+| BUG-2C-57 | UI omite a causa global de quadro de qualidade parcial apesar de cinco documentos | Qualidade1.0: cobertura não é comparabilidade | pré-revisão F2C-5 | `test_bug_2c_57_ui_qualidade_parcial.py` | F2C-5 | corrigido |

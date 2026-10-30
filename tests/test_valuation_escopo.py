@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import pytest
 from apoio_apresentacao import verificar_lentes
+from apoio_gordon import AS_OF_GORDON
 from apoio_janelas import enriquecer_janelas
 
 from sentinela.domain.enums import AssetType
@@ -27,7 +28,7 @@ DADOS = enriquecer_janelas(
 
 
 def _processar(**extra):
-    return ValuationEngine().processar({**DADOS, **extra})
+    return ValuationEngine().processar({**DADOS, **extra}, as_of=AS_OF_GORDON)
 
 
 @pytest.mark.parametrize("classe", ["ETF", "BDR", "UNKNOWN"])
@@ -127,7 +128,8 @@ def test_bpp_de_empresa_segue_os_metodos(classe):
     # Fora do índice (classe do classificador) ou holding: vale o BPP de empresa.
     resultado = _processar(classe_ativo=classe, modelo_bpp="empresa", setor="Holdings")
     assert resultado["metodos_usados"].startswith("Graham")
-    assert {"fair_value", "upside", "lentes"} <= set(resultado)
+    assert "lentes" in resultado
+    assert not {"fair_value", "upside"} & resultado.keys()
     verificar_lentes(resultado)
 
 

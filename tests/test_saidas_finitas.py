@@ -61,7 +61,10 @@ def test_fii_com_selic_zero_nao_devolve_nan(selic):
     resultado = _fii(selic=selic)
     assert _nao_finitos(resultado) == []
     assert resultado["metodos_usados"].startswith("Rendimento do FII: R$")
-    assert resultado["fair_value"] == _fii()["fair_value"]
+    assert (
+        resultado["lentes"]["Rendimento do FII"]["valor"]
+        == _fii()["lentes"]["Rendimento do FII"]["valor"]
+    )
     if not math.isfinite(selic):
         assert resultado["selic_liquida"] is None
 

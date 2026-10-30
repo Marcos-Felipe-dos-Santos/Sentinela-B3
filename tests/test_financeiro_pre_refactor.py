@@ -9,7 +9,10 @@ Valores sintéticos, sem rede. Três seções, filtráveis por mark:
 Quebra aprovada pelo Marcos em29/10/2026: somente os dois testes C de score
 são substituídos no F2C-3 por invariantes de lentes individuais/distância, na
 mesma grade, sem score agregado. Os dois testes A de síntese têm substituição
-autorizada no F2C-5; nenhuma outra asserção de A/C pode mudar.
+autorizada no F2C-5. Quinta substituição aprovada pelo Marcos em29/10/2026:
+o invariante de escala usa cada lente com valor, mesmas grades/preço/limites,
+com presença de valores na grade; abstenções conservam motivo. Nenhuma outra
+asserção de A/C pode mudar; uma sexta contradição exige parada.
 
 Regra original da Fase 1: as três seções ficam inalteradas; na Fase 2 só B muda.
 As exceções acima têm autorização expressa e não dispensam os demais controles.
@@ -87,25 +90,27 @@ TAXAS = (0.06, 0.10, 0.1475, 0.20)
 
 @pytest.mark.preservar
 @pytest.mark.parametrize("selic", TAXAS)
-def test_a_fair_value_com_tres_metodos_e_a_mediana_nao_a_media(selic):
+# test_a_fair_value_com_tres_metodos_e_a_mediana_nao_a_media:
+# resolvida no F2C-5 (decisão de 28/10/2026)
+def test_a_tres_lentes_conservam_seus_valores_sem_sintese(selic):
     r = _processar(_acao(), selic=selic)
-    metodos = _metodos(r)
+    metodos = {n: l["valor"] for n, l in r["lentes"].items() if l["valor"] is not None}
     assert set(metodos) == {"Graham", "Bazin", "Gordon"}
-    valores = sorted(metodos.values())
-    assert len(set(valores)) == 3
-    assert r["fair_value"] == pytest.approx(valores[1], abs=0.01)
-    assert r["fair_value"] != pytest.approx(sum(valores) / 3, abs=1)
+    assert len(set(metodos.values())) == 3
+    assert metodos == pytest.approx({"Graham": 150, "Bazin": 100, "Gordon": 30.6})
+    assert not {"fair_value", "upside", "score_final"} & r.keys()
 
 
 @pytest.mark.preservar
 @pytest.mark.parametrize("selic", TAXAS)
-def test_a_fair_value_com_dois_metodos_e_a_media_inclusive_com_divergencia(selic):
-    # Com dois métodos, `statistics.median` devolve a média. É comportamento atual que
-    # ninguém decidiu; a decisão é do F2C-5.
+# test_a_fair_value_com_dois_metodos_e_a_media_inclusive_com_divergencia:
+# resolvida no F2C-5 (decisão de 28/10/2026)
+def test_a_duas_lentes_nao_produzem_media_rotulada_como_valor_justo(selic):
     r = _processar(_acao(roe=0.08, com_dva=False), selic=selic)
-    metodos = _metodos(r)
+    metodos = {n: l["valor"] for n, l in r["lentes"].items() if l["valor"] is not None}
     assert set(metodos) == {"Graham", "Bazin"}
-    assert r["fair_value"] == pytest.approx(sum(metodos.values()) / 2, abs=0.01)
+    assert metodos == pytest.approx({"Graham": 150, "Bazin": 100})
+    assert not {"fair_value", "upside", "score_final"} & r.keys()
 
 
 @pytest.mark.preservar
@@ -137,7 +142,10 @@ def test_b_mediana_de_tres_metodos_pela_selic(selic):
     # 100,00 e mediana 100,00, a mesma em qualquer Selic.
     r = _processar(_acao(), selic=selic)
     assert set(_metodos(r)) == {"Graham", "Bazin", "Gordon"}
-    assert r["fair_value"] == pytest.approx(100.0, abs=0.01)
+    assert r["lentes"]["Bazin"]["valor"] == pytest.approx(100.0, abs=0.01)
+    assert r["lentes"]["Graham"]["valor"] == pytest.approx(150.0, abs=0.01)
+    assert r["lentes"]["Gordon"]["valor"] == pytest.approx(30.6, abs=0.01)
+    assert "fair_value" not in r
 
 
 @pytest.mark.quebra_esperada
@@ -149,7 +157,9 @@ def test_b_media_de_dois_metodos_pela_selic(selic):
     # qualquer Selic, e a razão 1,5 não dispara a flag.
     r = _processar(_acao(roe=0.08, com_dva=False), selic=selic)
     assert set(_metodos(r)) == {"Graham", "Bazin"}
-    assert r["fair_value"] == pytest.approx(125.0, abs=0.01)
+    assert r["lentes"]["Graham"]["valor"] == pytest.approx(150.0, abs=0.01)
+    assert r["lentes"]["Bazin"]["valor"] == pytest.approx(100.0, abs=0.01)
+    assert "fair_value" not in r
     assert "Métodos divergentes" not in r["riscos"]
 
 
@@ -172,8 +182,12 @@ def test_b_fii_compara_dy_com_a_selic_liquida_de_ir():
     esperado = 9.35 / (0.07 + MACRO.FII_SPREAD_TIJOLO)
     for selic in (0.05, 0.10, 0.15):
         r = _fii(selic=selic)
-        assert r["fair_value"] == pytest.approx(esperado, abs=0.01)
-    assert r["upside"] == pytest.approx((esperado / 100 - 1) * 100, abs=0.1)
+        assert r["lentes"]["Rendimento do FII"]["valor"] == pytest.approx(
+            esperado, abs=0.01
+        )
+    assert r["lentes"]["Rendimento do FII"]["distancia_ao_preco_pct"] == pytest.approx(
+        (esperado / 100 - 1) * 100, abs=0.1
+    )
 
 
 @pytest.mark.quebra_esperada
@@ -204,7 +218,11 @@ def test_b_fii_nao_considera_o_patrimonio_no_fair_value():
     barato = _fii(pvp=0.5)
     caro = _fii(pvp=2.0)
     esperado = 9.35 / (0.07 + MACRO.FII_SPREAD_TIJOLO)
-    assert barato["fair_value"] == caro["fair_value"] == pytest.approx(esperado, abs=0.01)
+    assert (
+        barato["lentes"]["Rendimento do FII"]["valor"]
+        == caro["lentes"]["Rendimento do FII"]["valor"]
+        == pytest.approx(esperado, abs=0.01)
+    )
     assert barato["pvp"] == 0.5 and caro["pvp"] == 2.0
     assert barato["lentes"] == caro["lentes"]
     assert "score_final" not in barato and "score_final" not in caro
@@ -298,19 +316,32 @@ def test_c_score_do_fii_fica_entre_0_e_100():
 
 @pytest.mark.invariante
 def test_c_fair_value_e_preco_estao_na_mesma_escala():
-    # Pega erro de fator 100 (percentual × decimal) ou de mil/unidade.
+    # Quinta substituição aprovada29/10: mesma escala em cada lente; sem grade vazia.
     preco = 50.0
+
+    def conferir(r: dict, origem: tuple) -> int:
+        observados = 0
+        assert r["lentes"], origem
+        for nome, lente in r["lentes"].items():
+            valor = lente["valor"]
+            if valor is None:
+                assert lente["abstencao"], (origem, nome)
+                assert lente["distancia_ao_preco_pct"] is None
+            else:
+                assert math.isfinite(valor), (origem, nome)
+                assert 0.1 <= valor / preco <= 20, (origem, nome)
+                observados += 1
+        return observados
+
+    observados_acoes = 0
     for pl, pvp, roe, dy, selic in _GRADE_ACOES:
         r = _processar(
             _acao(preco_atual=preco, pl=pl, pvp=pvp, roe=roe, dy=dy), selic=selic
         )
-        assert 0.1 <= r["fair_value"] / preco <= 20, (pl, pvp, roe, dy, selic)
+        observados_acoes += conferir(r, (pl, pvp, roe, dy, selic))
+    assert observados_acoes > 0
+    observados_fii = 0
     for dy, pvp, selic in _GRADE_FII:
         r = _fii(selic=selic, preco_atual=preco, dy=dy, pvp=pvp)
-        # F2B-62 (BUG-2B-50): a abstenção do FII não traz número; quem tem valor, na escala.
-        if "fair_value" not in r:
-            assert "upside" not in r and r["metodos_usados"].startswith(
-                "Dados insuficientes ("
-            ), (dy, pvp, selic)
-            continue
-        assert 0.1 <= r["fair_value"] / preco <= 20, (dy, pvp, selic)
+        observados_fii += conferir(r, (dy, pvp, selic))
+    assert observados_fii > 0

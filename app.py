@@ -60,62 +60,97 @@ def _safe_confidence(value: Any) -> str:
         return str(value)
 
 
-def _texto_valor_justo(analise: dict) -> tuple[str, str | None]:
-    """Card "Valor Justo": o número só quando a análise o traz.
-
-    Abstenção (sem `fair_value` numérico e finito) mostra "—" e o motivo, nunca R$ 0,00
-    (decisão do Marcos de 25/10/2026, F2B-69).
-    """
-    valor = analise.get('fair_value')
-    if isinstance(valor, numbers.Real) and not isinstance(valor, bool) and math.isfinite(valor):
+def _texto_lente(lente: dict) -> tuple[str, str | None]:
+    """Somente o valor desta lente; ausência conserva motivo, nunca vira zero."""
+    valor = lente.get("valor")
+    if (
+        isinstance(valor, numbers.Real)
+        and not isinstance(valor, bool)
+        and math.isfinite(valor)
+        and valor > 0
+    ):
         return f"R$ {valor:.2f}", None
-    motivo = analise.get('metodos_usados') or "; ".join(
-        str(risco) for risco in analise.get('riscos') or []
-    )
-    return "—", motivo or "Análise sem valor justo; motivo não informado."
+    return "—", lente.get("abstencao") or "Valor indisponível; motivo não informado."
 
 
-def _cor_recomendacao(rec: str) -> str:
-    cores = {
-        "COMPRA FORTE":                   "🟢",
-        "COMPRA":                         "🟢",
-        "NEUTRO":                         "🟡",
-        "QUALIDADE — AGUARDAR":           "🟡",
-        "VENDA":                          "🔴",
-        "ALTO RISCO — EVITAR":            "🔴",
-        "DADOS INSUFICIENTES — AGUARDAR": "🟠",
-    }
-    emoji = cores.get(rec, "⚪")
-    cor_css = {
-        "🟢": "#00c853", "🟡": "#ffd600",
-        "🔴": "#d50000", "🟠": "#ff6d00", "⚪": "#9e9e9e",
-    }[emoji]
-    return f'<span style="color:{cor_css};font-size:2rem;font-weight:700">{emoji} {rec}</span>'
+def _linhas_lentes(analise: dict) -> list[dict]:
+    """Referenciais separados; metadados ausentes são identificados, não inferidos."""
+    linhas = []
+    for nome, lente in analise.get("lentes", {}).items():
+        valor, motivo = _texto_lente(lente)
+        janela = lente.get("janela") or {}
+        inicio = janela.get("inicio") or janela.get("inicio_exclusivo")
+        fim = janela.get("fim") or janela.get("referencia")
+        distancia = lente.get("distancia_ao_preco_pct")
+        linhas.append(
+            {
+                "Lente": nome,
+                "Versão": lente.get("versao", "não informada"),
+                "Corte": lente.get("as_of", "não informado"),
+                "Referencial": lente.get("tipo_valor", "referencial da lente"),
+                "Valor": valor,
+                "Motivo": motivo or "",
+                "Distância ao preço (%)": "—"
+                if distancia is None
+                else f"{distancia:.2f}%",
+                "Regime": lente.get("regime", "não informado"),
+                "Janela": f"{inicio or 'início não informado'} a {fim}"
+                if fim
+                else "não informada",
+                "Hipótese": "; ".join(lente.get("premissas") or []),
+                "Fonte do preço": lente.get("fonte_preco") or "não informada",
+                "Data do preço": lente.get("data_preco") or "não informada",
+                "DY bruto B3 (%)": "—"
+                if lente.get("dy_bruto_12m") is None
+                else f"{100 * lente['dy_bruto_12m']:.2f}%",
+                "Preço-base do DY": "—"
+                if lente.get("preco_do_dy") is None
+                else f"R$ {lente['preco_do_dy']:.2f}",
+                "Data-base do DY": (janela.get("referencia") or "não informada")
+                if "dy_bruto_12m" in lente
+                else "—",
+                "Critério Bazin": lente.get("criterio_6pct")
+                or lente.get("criterio_motivo")
+                or "",
+            }
+        )
+    return linhas
 
 
-def _plotar_metodos(metodos_str: str, preco_atual: float):
-    import re
-    pares = re.findall(r'(\w+):\s*R\$([0-9]+[.,][0-9]+)', metodos_str)
+def _plotar_metodos(lentes: dict, preco_atual: float):
+    pares = [
+        (nome, lente["valor"])
+        for nome, lente in lentes.items()
+        if lente.get("valor") is not None
+    ]
     if not pares:
         return None
     nomes = [p[0] for p in pares]
-    valores = [float(p[1].replace(',', '.')) for p in pares]
-    cores_bar = ['#00c853' if v > preco_atual else '#d50000' for v in valores]
-    fig = go.Figure(go.Bar(
-        x=valores, y=nomes, orientation='h',
-        marker_color=cores_bar,
-        text=[f"R${v:.2f}" for v in valores],
-        textposition='outside',
-    ))
-    fig.add_vline(x=preco_atual, line_dash="dash", line_color="white",
-                  annotation_text=f"Preço atual R${preco_atual:.2f}",
-                  annotation_position="top right")
+    valores = [p[1] for p in pares]
+    cores_bar = ["#7895ad" for _ in valores]
+    fig = go.Figure(
+        go.Bar(
+            x=valores,
+            y=nomes,
+            orientation="h",
+            marker_color=cores_bar,
+            text=[f"R${v:.2f}" for v in valores],
+            textposition="outside",
+        )
+    )
+    fig.add_vline(
+        x=preco_atual,
+        line_dash="dash",
+        line_color="white",
+        annotation_text=f"Preço atual R${preco_atual:.2f}",
+        annotation_position="top right",
+    )
     fig.update_layout(
         height=120 + 40 * len(nomes),
         margin=dict(l=0, r=80, t=20, b=20),
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font_color='white',
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font_color="white",
         xaxis=dict(showgrid=False),
         yaxis=dict(showgrid=False),
     )
@@ -248,9 +283,11 @@ if modo == "Terminal":
             tech_data = tech_engine.calcular_indicadores(hist)
             
             # E. IA e Persistência
-            dados.update(analise)
-            dados['tech'] = tech_data
-            
+            from sentinela.domain.apresentacao import mesclar_analise
+
+            dados = mesclar_analise(dados, analise)
+            dados["tech"] = tech_data
+
             ia_resp = ai_engine.analisar(ticker, dados)
             dados['analise_ia'] = ia_resp['content']
             
@@ -274,22 +311,13 @@ if modo == "Terminal":
                 ", ".join(str(risco) for risco in riscos_dados)
                 if riscos_dados else "Nenhum"
             )
-            recomendacao = analise.get('recomendacao', '-')
 
             dqr = DataQualityReport(dados)
             comp = dqr.completude()
             alertas_dq = dqr.validacao_cruzada()
             badge = dqr.badge()
 
-            k1, k2, k3, k4 = st.columns(4)
-            k1.metric("Preço", f"R$ {dados.get('preco_atual', 0):.2f}")
-            valor_justo, motivo_sem_valor = _texto_valor_justo(analise)
-            k2.metric("Valor Justo", valor_justo)
-            if motivo_sem_valor:
-                # O motivo pode trazer dois "R$" (liquidez), que o Markdown leria como fórmula.
-                k2.caption(motivo_sem_valor.replace("$", r"\$"))
-            k3.markdown(_cor_recomendacao(recomendacao), unsafe_allow_html=True)
-            k4.metric("Score", f"{analise.get('score_final', 0)}/100")
+            st.metric("Preço observado", f"R$ {dados.get('preco_atual', 0):.2f}")
 
             col_b1, col_b2, col_b3, col_b4 = st.columns([1, 1, 1, 3])
             col_b1.markdown(f"**{badge}**")
@@ -297,22 +325,6 @@ if modo == "Terminal":
             col_b3.markdown(f"🎯 Confiança: **{comp['score_confianca']}/100**")
             if alertas_dq:
                 col_b4.warning(" | ".join(alertas_dq))
-
-            if recomendacao == "DADOS INSUFICIENTES — AGUARDAR":
-                st.info(
-                    "A análise preserva os cálculos, mas bloqueia compra porque "
-                    "os dados fundamentais estão incompletos."
-                )
-            elif recomendacao == "ALTO RISCO — EVITAR":
-                st.error(
-                    "Ativo classificado como situação especial/distressed. "
-                    "Evitar análise por múltiplos tradicionais."
-                )
-            elif recomendacao == "QUALIDADE — AGUARDAR":
-                st.info(
-                    "Empresa de qualidade, mas sem margem de segurança suficiente "
-                    "no preço atual."
-                )
 
             with st.expander("Qualidade dos Dados", expanded=False):
                 st.markdown(f"#### {badge}")
@@ -338,8 +350,8 @@ if modo == "Terminal":
                 st.caption(f"Riscos dos dados: {riscos_dados_txt}")
                 if dados_parciais or campos_faltantes:
                     st.warning(
-                        "Dados fundamentais incompletos. A recomendação pode "
-                        "estar limitada pela qualidade dos dados."
+                        "Dados fundamentais incompletos. A interpretação deve "
+                        "considerar as limitações da fonte."
                     )
                 elif erro_scraper:
                     st.info(
@@ -356,18 +368,47 @@ if modo == "Terminal":
             
             with t1:
                 st.info(f"Perfil: {analise.get('perfil', 'N/A')}")
+                st.subheader("Referenciais por lente")
+                st.dataframe(
+                    _safe_df_for_display(pd.DataFrame(_linhas_lentes(analise))),
+                    use_container_width=True,
+                )
                 fig_metodos = _plotar_metodos(
-                    analise.get('metodos_usados', ''), dados.get('preco_atual', 0)
+                    analise.get("lentes", {}), dados.get("preco_atual", 0)
                 )
                 if fig_metodos:
                     st.plotly_chart(fig_metodos, use_container_width=True)
-                else:
-                    st.write(analise.get('metodos_usados', '-'))
+                if analise.get("qualidade"):
+                    from sentinela.reports.rastreabilidade import _apresentar_qualidade
+
+                    quadro = _apresentar_qualidade(analise["qualidade"])
+                    with st.expander("Qualidade empresarial — descritiva"):
+                        st.caption(f"Cobertura: {quadro['cobertura']}")
+                        st.caption(
+                            "Quadro completo"
+                            if analise["qualidade"]["cobertura"]["completa"]
+                            else "Quadro parcial"
+                        )
+                        st.caption(
+                            "Comparabilidade demonstrada"
+                            if analise["qualidade"]["comparavel"]
+                            else "Comparabilidade não demonstrada"
+                        )
+                        if quadro.get("motivo"):
+                            st.info(quadro["motivo"])
+
+                        st.dataframe(
+                            pd.DataFrame(
+                                quadro["indicadores"],
+                                columns=["Indicador", "Observações"],
+                            ),
+                            use_container_width=True,
+                        )
                 st.divider()
-                st.subheader("Veredito IA")
-                st.write(dados['analise_ia'])
+                st.subheader("Hipóteses e limites — IA")
+                st.write(dados["analise_ia"])
                 st.caption(f"Modelo: {ia_resp.get('model', '-')}")
-                
+
             with t2:
                 c1, c2 = st.columns(2)
                 with c1:

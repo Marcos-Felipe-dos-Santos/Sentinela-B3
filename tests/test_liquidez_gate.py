@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 from apoio_escopo import de_empresa
+from apoio_gordon import AS_OF_GORDON
 
 from fii_engine import FIIEngine
 from valuation_engine import ValuationEngine
@@ -47,9 +48,9 @@ def _analisar(fii=False, **extra):
     ):
         dados = _dados(fii, **extra)
         return (
-            FIIEngine().analisar(dados)
+            FIIEngine().analisar(dados, as_of=AS_OF_GORDON)
             if fii
-            else ValuationEngine().processar(de_empresa(dados))
+            else ValuationEngine().processar(de_empresa(dados), as_of=AS_OF_GORDON)
         )
 
 
@@ -74,13 +75,15 @@ def test_falha_de_coleta_segue_com_aviso(fii):
 
 @pytest.mark.parametrize("fii", [False, True])
 def test_sem_negocio_na_janela_se_abstem(fii):
-    assert "fair_value" not in _analisar(fii, liquidez=_bloco(0, 0))
+    r = _analisar(fii, liquidez=_bloco(0, 0))
+    assert "fair_value" not in r
+    assert r["lentes"] and all(l["valor"] is None for l in r["lentes"].values())
 
 
 def test_recem_listado_com_presenca_baixa_se_abstem():
-    assert "fair_value" not in _analisar(
-        liquidez=_bloco(0.2, 1e6), data_estreia="2026-10-01"
-    )
+    r = _analisar(liquidez=_bloco(0.2, 1e6), data_estreia="2026-10-01")
+    assert "fair_value" not in r
+    assert r["lentes"] and all(l["valor"] is None for l in r["lentes"].values())
 
 
 def _seguiu(r):

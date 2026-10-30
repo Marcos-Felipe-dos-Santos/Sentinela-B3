@@ -136,6 +136,10 @@ Não é consultoria financeira.</p>
 <div class="metodo{% if m.abstencao or m.nao_calculado %} abstencao{% endif %}">
 <h3>{{ m.nome }} <small>versão {{ m.versao }} · regime {{ m.regime }}</small></h3>
 <p>Aplica-se a: {{ m.applies_to }}</p>
+{% if m.as_of %}<p>Corte: {{ m.as_of }}; preço observado: {{ m.preco_observado }}, fonte: {{ m.fonte_preco or "não informada" }}, data: {{ m.data_preco or "não informada" }}.</p>{% endif %}
+{% if m.tipo_valor %}<p>{{ m.tipo_valor }}</p>{% endif %}
+{% if m.criterio_6pct %}<p>Critério Bazin: {{ m.criterio_6pct }}</p>{% endif %}
+{% if m.dy_bruto_b3 %}<p>DY bruto B3: {{ m.dy_bruto_b3 }}; preço-base do DY: {{ m.preco_base_dy }}; data-base do DY: {{ m.data_base_dy or "não informada" }}.</p>{% endif %}
 {% if m.distancia_ao_preco is defined %}<p>Distância ao preço: {{ m.distancia_ao_preco }}</p>{% endif %}
 {% if m.janela is defined %}<p>Janela, fonte e cobertura: {{ m.janela }}</p>{% endif %}
 <p>Premissas:</p>
@@ -143,7 +147,7 @@ Não é consultoria financeira.</p>
 {% if m.params %}<p>Parâmetros:</p>
 <table>{% for k, v in m.params %}<tr><td><code>{{ k }}</code></td><td>{{ v }}</td></tr>{% endfor %}</table>{% endif %}
 {% if m.nao_calculado %}<p><strong>Método não calculado:</strong> {{ m.nao_calculado }}</p>
-{% elif m.abstencao %}<p><strong>Abstenção:</strong> {{ m.abstencao }}</p>
+{% elif m.abstencao %}<p><strong>Abstenção da lente:</strong> {{ m.abstencao }}</p>
 {% else %}<p><strong>Resultado:</strong> {{ m.valor }}</p>
 {% if m.intermediarios %}<table>{% for k, v in m.intermediarios %}<tr><td>{{ k }}</td><td>{{ v }}</td></tr>{% endfor %}</table>{% endif %}
 {% if m.alertas %}<p>Alertas: {{ m.alertas | join("; ") }}</p>{% endif %}
@@ -678,6 +682,22 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
     for metodo in metodos:
         lente = (analise.get("lentes") or {}).get(metodo["nome"])
         if lente:
+            metodo["as_of"] = lente.get("as_of")
+            metodo["preco_observado"] = lente.get("preco")
+            metodo["fonte_preco"] = lente.get("fonte_preco")
+            metodo["data_preco"] = lente.get("data_preco")
+            metodo["criterio_6pct"] = lente.get("criterio_6pct")
+            metodo["tipo_valor"] = lente.get("tipo_valor")
+            dy_b3 = lente.get("dy_bruto_12m")
+            metodo["dy_bruto_b3"] = (
+                None if dy_b3 is None else f"{_numero(100 * dy_b3)}%"
+            )
+            preco_dy = lente.get("preco_do_dy")
+            metodo["preco_base_dy"] = (
+                None if preco_dy is None else f"R$ {_numero(preco_dy)}"
+            )
+            metodo["data_base_dy"] = (lente.get("janela") or {}).get("referencia")
+
             d = lente["distancia_ao_preco_pct"]
             metodo["distancia_ao_preco"] = "indisponível" if d is None else f"{d:.6f}%"
 
@@ -821,38 +841,53 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
             )
         )
 
-    sintese = [
-        (
-            "Nenhum método calculou: o valor é o próprio preço"
-            if not analise.get("metodos_usados")
-            or str(analise["metodos_usados"]).startswith("Dados insuficientes")
-            else (
-                "Preço justo do rendimento"
-                if eh_fii
-                else "Mediana dos métodos calculados"
-            ),
-            f"R$ {_numero(analise.get('fair_value'))}",
-        ),
-        (
-            "Variação sobre o preço",
-            f"{_numero(analise.get('upside') or 0)}%",
-        ),
-    ]
-    if analise.get("confianca") is not None:
-        sintese.append(("Confiança", str(analise["confianca"])))
-    if analise.get("riscos"):
+    sintese = [("Apresentação", "Lentes separadas, sem valor único ou sinal agregado")]
+    if analise.get("lentes") and not any(
+        l.get("valor") is not None for l in analise["lentes"].values()
+    ):
         sintese.append(
-            ("Riscos sinalizados pelo motor", "; ".join(map(str, analise["riscos"])))
+            (
+                "Lentes abstidas",
+                "; ".join(
+                    f"{n}: {l['abstencao']}" for n, l in analise["lentes"].items()
+                ),
+            )
         )
-    sintese.append(("Métodos usados", str(analise.get("metodos_usados") or "nenhum")))
+        if len(analise["lentes"]) == 1:
+            sintese.append(
+                (
+                    "Abstenção da lente",
+                    next(iter(analise["lentes"].values()))["abstencao"],
+                )
+            )
+    if analise.get("confianca") is not None:
+        sintese.append(("Completude (indicador legado)", str(analise["confianca"])))
+    if analise.get("riscos"):
+        sintese.append(("Avisos", "; ".join(map(str, analise["riscos"]))))
     if fora_do_escopo:
         sintese = [("Abstenção do motor", motivo_ausente)]
-    elif "fair_value" not in analise:
-        # F2B-62 (BUG-2B-50): a lente do FII se absteve; sem valor, sem variação.
-        sintese = [
-            ("Abstenção da lente", str(analise.get("metodos_usados") or "")),
-            *[(nome, valor) for nome, valor in sintese[2:] if nome != "Métodos usados"],
-        ]
+    elif (
+        not analise.get("apresentacao_versao")
+        and not analise.get("lentes")
+        and "fair_value" not in analise
+    ):
+        # Compatibilidade explícita de registros históricos de abstenção, sem recálculo.
+        sintese = [("Abstenção da lente", str(analise.get("metodos_usados") or ""))]
+        if analise.get("confianca") is not None:
+            sintese.append(("Confiança", str(analise["confianca"])))
+        if analise.get("riscos"):
+            sintese.append(
+                (
+                    "Riscos sinalizados pelo motor",
+                    "; ".join(map(str, analise["riscos"])),
+                )
+            )
+    if (
+        analise.get("metodos_usados")
+        and not analise.get("lentes")
+        and analise.get("apresentacao_versao")
+    ):
+        sintese.append(("Resultado registrado", str(analise["metodos_usados"])))
     # F2B-45: avisos que saíram de `riscos` (não mudam a classificação), em linha própria.
     for chave, rotulo in (
         ("aviso_liquidez", "Aviso de liquidez (fora dos riscos)"),

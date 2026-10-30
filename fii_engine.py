@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 
 from config import MACRO, _normalizar_dy, get_selic_atual
 from sentinela.data import liquidez, rendimento_fii
-from sentinela.domain.apresentacao import bloco
+from sentinela.domain.apresentacao import bloco, finalizar
 from sentinela.domain.enums import AssetType
 from sentinela.domain.units import BRL, RateReal, Ratio
 from sentinela.methods.base import Abstention, MethodInputs, MethodResult
@@ -57,7 +57,16 @@ class FIIEngine:
             ),
         )
 
-    def analisar(self, dados: dict, as_of: datetime | None = None) -> dict:
+    def analisar(self, dados: dict, as_of: datetime | None = None) -> dict | None:
+        instante = as_of if as_of is not None else datetime.now(UTC)
+        resultado = self._analisar_lentes(dados, as_of=instante)
+        return (
+            finalizar(resultado, dados, instante)
+            if isinstance(resultado, dict)
+            else resultado
+        )
+
+    def _analisar_lentes(self, dados: dict, as_of: datetime) -> dict | None:
         if not dados:
             return None
 
@@ -167,7 +176,6 @@ class FIIEngine:
                     "metodos_usados": f"Dados insuficientes ({_FII_YIELD.nome}: {motivo})",
                 }
             )
-        upside = (preco_justo / p) - 1
 
         # ── Score ─────────────────────────────────────────────────────────────
         selic = get_selic_atual()
@@ -185,8 +193,6 @@ class FIIEngine:
 
         return _com_aviso(
             {
-                "fair_value": round(preco_justo, 2),
-                "upside": round(upside * 100, 1),
                 "tipo": tipo,
                 "perfil": "FII",
                 "metodos_usados": f"{_FII_YIELD.nome}: R${preco_justo:.2f}",

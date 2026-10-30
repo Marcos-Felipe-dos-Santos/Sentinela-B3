@@ -19,8 +19,9 @@ def test_fii_engine_valid_input(engine):
     with patch("fii_engine.get_selic_atual", return_value=0.10):
         result = engine.analisar(enriquecer_fii(dados), as_of=AS_OF_GORDON)  # F2B-2
     assert result is not None
-    assert "fair_value" in result
-    assert "upside" in result
+    assert "fair_value" not in result
+    assert result["lentes"]["Rendimento do FII"]["valor"] > 0
+    assert "upside" not in result
     verificar_lentes(result)
     assert "recomendacao" not in result
     assert "tipo" in result
@@ -53,8 +54,8 @@ def test_fii_engine_vacancy_adjustment(engine):
     assert result["dy"] == pytest.approx(0.10)
     assert result["dy_efetivo"] == pytest.approx(0.10)
     # F2B-2: rendimento de 12 meses ÷ (NTN-B real + spread), sem a vacância.
-    assert result["fair_value"] == pytest.approx(
-        round(10.0 / (0.07 + MACRO.FII_SPREAD_TIJOLO), 2)
+    assert result["lentes"]["Rendimento do FII"]["valor"] == pytest.approx(
+        10.0 / (0.07 + MACRO.FII_SPREAD_TIJOLO)
     )
     assert "vacancia_fonte" not in result
 
@@ -76,8 +77,8 @@ def test_fii_preco_justo_pela_ntnb_e_spread_sem_selic(engine):
     for selic in (0.05, 0.10, 0.20):
         with patch("fii_engine.get_selic_atual", return_value=selic):
             result = engine.analisar(enriquecer_fii(dados), as_of=AS_OF_GORDON)
-        assert result["fair_value"] == pytest.approx(
-            round(10.0 / (0.07 + MACRO.FII_SPREAD_TIJOLO), 2)
+        assert result["lentes"]["Rendimento do FII"]["valor"] == pytest.approx(
+            10.0 / (0.07 + MACRO.FII_SPREAD_TIJOLO)
         )
 
 

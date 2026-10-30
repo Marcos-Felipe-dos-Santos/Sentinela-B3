@@ -45,3 +45,36 @@ def bloco(metodo: Any, resultado: Any, preco: float, janela: dict) -> dict:
         "unidade": "BRL",
         "distancia_ao_preco_pct": distancia(valor, preco),
     }
+
+
+def finalizar(resultado: dict, dados: dict, instante: Any) -> dict:
+    """Identifica o contrato e a referência de preço sem inventar data ausente."""
+    return {
+        **resultado,
+        "apresentacao_versao": "1.0",
+        "lentes": {
+            nome: {
+                **lente,
+                "as_of": instante.isoformat(),
+                "preco": float(dados["preco_atual"]),
+                "fonte_preco": dados.get("fonte_preco"),
+                "data_preco": dados.get("data_preco"),
+            }
+            for nome, lente in resultado["lentes"].items()
+        },
+    }
+
+
+def mesclar_analise(dados: dict, analise: dict) -> dict:
+    """Uma análise nova não herda síntese de um payload antigo do cache."""
+    saida = {**dados, **analise}
+    if analise.get("apresentacao_versao") == "1.0":
+        for chave in (
+            "fair_value",
+            "upside",
+            "score_final",
+            "recomendacao",
+            "classificacao_heuristica",
+        ):
+            saida.pop(chave, None)
+    return saida

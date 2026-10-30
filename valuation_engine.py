@@ -1,6 +1,5 @@
 import logging
 import math
-import statistics
 from dataclasses import replace
 from datetime import UTC, date, datetime
 from numbers import Real
@@ -14,7 +13,7 @@ from sentinela.data import (
     proventos_b3,
     qualidade_inputs,
 )
-from sentinela.domain.apresentacao import bloco
+from sentinela.domain.apresentacao import bloco, finalizar
 from sentinela.domain.enums import AssetType, ModeloDemonstracao, Perfil
 from sentinela.domain.units import BRL, RateNominal, Ratio
 from sentinela.methods.bancos import Bancos, BancosParams
@@ -211,7 +210,11 @@ class ValuationEngine:
                     )
                     for m in (_GRAHAM, _BAZIN, _LYNCH, _GORDON, _BANCOS)
                 }
-        return resultado
+        return (
+            finalizar(resultado, dados, instante)
+            if isinstance(resultado, dict)
+            else resultado
+        )
 
     def _processar_valuation(self, dados, *, as_of: datetime | None = None):
         if not dados or not dados.get("preco_atual"):
@@ -300,8 +303,6 @@ class ValuationEngine:
         if ticker in DISTRESSED_TICKERS:
             logger.warning(f"[{ticker}] DISTRESSED — métodos não calculados")
             return {
-                "fair_value": round(p, 2),
-                "upside": 0.0,
                 "metodos_usados": "",
                 "perfil": "DISTRESSED",
                 "pl_confiavel": False,
@@ -523,6 +524,22 @@ class ValuationEngine:
                 metodo, resultado_metodo, p, metadados[metodo.nome]
             )
 
+        bazin_contexto = lentes["Bazin"]
+        bazin_contexto["tipo_valor"] = "preço-limite informativo"
+        bazin_contexto["criterio_6pct"] = None
+        bazin_contexto["criterio_motivo"] = bazin_contexto["abstencao"]
+        if (
+            modelo == "empresa"
+            and not isinstance(entradas_bazin, proventos_b3.Abstencao)
+            and inputs_bazin.dy_confiavel
+        ):
+            bazin_contexto["dy_bruto_12m"] = inputs_bazin.dy.valor
+            bazin_contexto["preco_do_dy"] = inputs_bazin.preco.valor
+            bazin_contexto["criterio_6pct"] = (
+                "atinge 6%" if inputs_bazin.dy.valor >= 0.06 else "não atinge 6%"
+            )
+            bazin_contexto["criterio_motivo"] = None
+
         bancos = resultados["Bancos"]
         if modelo == ModeloDemonstracao.BANCO.value and not isinstance(
             bancos, MethodResult
@@ -596,26 +613,14 @@ class ValuationEngine:
             metodos["Bancos"] = bancos.valor.valor
             riscos.extend(a for a in bancos.alertas if a not in riscos)
 
-        # ── CÁLCULO FINAL ─────────────────────────────────────────────────────
+        # Discordância permanece aviso de contexto, sem formar valor ou sinal.
         valores_validos = list(metodos.values())
-
-        if not valores_validos:
-            fair_value = p
-            upside = 0.0
-        else:
-            # Mediana em vez de média: Graham (patrimonial), Bazin (renda) e
-            # Gordon (DCF) respondem perguntas diferentes. Quando divergem >2x,
-            # a média aritmética produz um valor sem significado econômico.
-            # statistics.median: 1 valor → o valor; 2 → média; 3+ → mediana.
-            fair_value = statistics.median(valores_validos)
-            upside = (fair_value / p) - 1
-
-            if len(valores_validos) >= 2:
-                if (
-                    max(valores_validos) / max(min(valores_validos), 0.01)
-                    > MACRO.METODOS_DIVERGENCIA_RATIO
-                ):
-                    riscos.append("Métodos divergentes")
+        if (
+            len(valores_validos) >= 2
+            and max(valores_validos) / max(min(valores_validos), 0.01)
+            > MACRO.METODOS_DIVERGENCIA_RATIO
+        ):
+            riscos.append("Métodos divergentes")
 
         # Avisos de dados e contexto não são penalidades no valuation.
         aviso_alavancagem = None
@@ -650,8 +655,6 @@ class ValuationEngine:
             extra["aviso_alavancagem"] = aviso_alavancagem
         extra.update(aviso_liquidez)
         return {
-            "fair_value": round(fair_value, 2),
-            "upside": round(upside * 100, 1),
             "lentes": lentes,
             "metodos_usados": detalhes,
             "perfil": "CRESCIMENTO" if is_growth else "RENDA/VALOR",

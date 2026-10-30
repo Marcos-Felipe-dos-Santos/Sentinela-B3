@@ -32,7 +32,7 @@ def test_dy_normalization_percentual() -> None:
 
     resultado = ValuationEngine().processar(de_empresa(dados))
 
-    assert resultado["fair_value"] == pytest.approx(207.83, abs=0.01)
+    assert resultado["lentes"]["Bazin"]["valor"] == pytest.approx(207.83, abs=0.01)
     assert resultado["metodos_usados"] == "Bazin: R$207.83"
 
 
@@ -52,7 +52,8 @@ def test_dy_invalido_acima_25pct() -> None:
 
     resultado = ValuationEngine().processar(de_empresa(dados))
 
-    assert resultado["fair_value"] == 100.0
+    assert "fair_value" not in resultado
+    assert all(l["valor"] is None for l in resultado["lentes"].values())
     assert resultado["metodos_usados"] == ""
     assert resultado["perfil"] == "RENDA/VALOR"
     verificar_lentes(resultado)
@@ -76,7 +77,9 @@ def test_recomendacao_compra_forte_exige_upside() -> None:
     resultado = ValuationEngine().processar(de_empresa(dados))
 
     verificar_lentes(resultado)
-    assert resultado["upside"] == pytest.approx(-15.0, abs=0.1)
+    assert resultado["lentes"]["Bazin"]["distancia_ao_preco_pct"] == pytest.approx(
+        -15.0, abs=0.1
+    )
     verificar_lentes(resultado)
 
 
@@ -98,7 +101,9 @@ def test_recomendacao_qualidade_aguardar() -> None:
     resultado = ValuationEngine().processar(de_empresa(dados))
 
     verificar_lentes(resultado)
-    assert resultado["upside"] == pytest.approx(-10.0, abs=0.1)
+    assert resultado["lentes"]["Bazin"]["distancia_ao_preco_pct"] == pytest.approx(
+        -10.0, abs=0.1
+    )
     verificar_lentes(resultado)
 
 
@@ -117,7 +122,10 @@ def test_compra_forte_com_risco_vira_compra() -> None:
     resultado = ValuationEngine().processar(de_empresa(dados))
 
     verificar_lentes(resultado)
-    assert resultado["upside"] > 15
+    assert resultado["lentes"]["Lynch"]["distancia_ao_preco_pct"] == pytest.approx(300)
+    assert resultado["lentes"]["Graham"]["distancia_ao_preco_pct"] == pytest.approx(
+        -10.140928238837356
+    )
     assert resultado["riscos"]
     verificar_lentes(resultado)
 
@@ -137,7 +145,7 @@ def test_compra_forte_sem_risco_continua_possivel() -> None:
     resultado = ValuationEngine().processar(de_empresa(dados))
 
     verificar_lentes(resultado)
-    assert resultado["upside"] > 15
+    assert resultado["lentes"]["Graham"]["distancia_ao_preco_pct"] > 15
     assert "Dívida elevada" not in resultado["riscos"]
     verificar_lentes(resultado)
 
@@ -173,7 +181,7 @@ def test_lynch_usa_cagr_sem_reaplicar_retencao() -> None:
     dados["ipca_serie"] = None  # Lynch não precisa de IPCA, isola a lente.
     resultado = ValuationEngine().processar(de_empresa(dados))
 
-    assert resultado["fair_value"] == pytest.approx(160.0, abs=0.01)
+    assert resultado["lentes"]["Lynch"]["valor"] == pytest.approx(160.0, abs=0.01)
     assert "Lynch: R$160.00" in resultado["metodos_usados"]
 
 
@@ -260,8 +268,9 @@ def test_valuation_engine_expected_keys() -> None:
         "divida_liq_ebitda": 1.5,
     }
     result = ValuationEngine().processar(de_empresa(dados))
-    assert "fair_value" in result
-    assert "upside" in result
+    assert "fair_value" not in result
+    assert any(l["valor"] is not None for l in result["lentes"].values())
+    assert "upside" not in result
     verificar_lentes(result)
     assert "recomendacao" not in result
     assert "confianca" in result
@@ -370,7 +379,9 @@ def test_scraper_falhou_compra_vira_dados_insuficientes() -> None:
     assert resultado["confianca"] == 70
     assert "Dados fundamentais obrigatórios ausentes" in resultado["riscos"]
     # Valores calculados são preservados para transparência
-    assert resultado["fair_value"] > 0
+    assert any(
+        l["valor"] is not None and l["valor"] > 0 for l in resultado["lentes"].values()
+    )
     verificar_lentes(resultado)
 
 
@@ -473,7 +484,10 @@ def test_fair_value_usa_mediana_com_tres_metodos() -> None:
     with patch("valuation_engine.date", DiaGordon):
         resultado = ValuationEngine().processar(de_empresa(dados), as_of=AS_OF_GORDON)
 
-    assert resultado["fair_value"] == pytest.approx(106.07, abs=0.5)
+    assert resultado["lentes"]["Graham"]["valor"] == pytest.approx(106.06601717798213)
+    assert resultado["lentes"]["Bazin"]["valor"] == pytest.approx(166.66666666666669)
+    assert resultado["lentes"]["Gordon"]["valor"] == pytest.approx(30.6)
+    assert not {"fair_value", "upside"} & resultado.keys()
 
 
 def test_sinal_tecnico_nao_altera_resultado() -> None:
@@ -486,8 +500,10 @@ def test_sinal_tecnico_nao_altera_resultado() -> None:
         "pvp": 5.0,
         "dy": 0.06,
     }
-    sem = ValuationEngine().processar(dict(base))
-    com = ValuationEngine().processar({**base, "tecnico_negativo": True})
+    sem = ValuationEngine().processar(dict(base), as_of=AS_OF_GORDON)
+    com = ValuationEngine().processar(
+        {**base, "tecnico_negativo": True}, as_of=AS_OF_GORDON
+    )
 
     assert com == sem
 
@@ -508,7 +524,7 @@ def _com_divida(divida):
     dados = dict(_ACAO_F2B45)
     if divida != "sem-chave":
         dados["divida_liq_ebitda"] = divida
-    return ValuationEngine().processar(de_empresa(dados))
+    return ValuationEngine().processar(de_empresa(dados), as_of=AS_OF_GORDON)
 
 
 def test_divida_em_texto_nao_e_avaliada():
