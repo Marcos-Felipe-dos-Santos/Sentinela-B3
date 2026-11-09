@@ -837,3 +837,13 @@
 - **Inventário/gates:** Vulture3→3, Deptry83→83, Ruff161→161; RuffCI/data/methods e diffcheck verdes. Formatação preservada nos arquivos antigos fora dos trechos; assinatura alterada da regressão27 formatada.
 - **Resíduos:** marcadores históricos mantidos com leitores documentados; DY_PERCENTUAL_THRESHOLD usado pela grade. Arquivos não rastreados/caches/mutants não apagados nem versionados.
 - **Decisões pendentes:** nenhuma para o10; não consolidada seçãoA além das autorizações29/10 já executadas. Auditoria externa noCheckpoint.
+
+### F2C-11 — docs: summarize phase 2C and archive the loop
+- **Executor:** codex.
+- **Status:** sucesso.
+- **O que foi feito:** resumo pr-fase-2c.md com commits reais atébe44f39, entregas/decisões, predicados golden/A/C, fontes e coberturaD32, três dimensõesD24, contrato de transiçõesD26, compatibilidade sem migração, gates/mutação, resíduos e ordem de revisão. Fila/diário/resumo movidos comgitmv para docs/loop/historico/fase-2c/. Nova fila contém apenas oCheckpoint solicitado.
+- **Limites preservados:** BUG-2B-51 aberto/xfail paraF2C-48, propostas/estudos não ativados sem implementação automática, quadro qualidade parcial e ausência de comparabilidade não são nota zero. D27 cronologias reais deF2C-1/BUG54/59 explicitadas; sem presumir dispensa. D30auditoriaexterna/decisãoMarcos pendentes noCheckpoint.
+- **Testes:** última suíte de código3503PASS/1skip/8xfail/1warning antigo,11,64s; gate documental reexecutado antes do commit e registrado abaixo. Conteúdo validado contra fila/diário/git, nenhum módulo/teste/golden alterado neste item; mutação não se aplica a documentos.
+- **Resíduos:** nenhum novo; caches/outputs/mutants fora do stage, nenhum não rastreado apagado.
+- **Decisões que ficaram para o Marcos:** auditoria externa2C-b e aceite/ressalvas noCheckpoint, destino doBUG51 ainda aberto. Nenhum push/PR/tag/merge remoto ou próxima fase ativados.
+- **Gate documental final:**3503passed/1skipped/8xfailed/1warning antigo,12,67s (/tmp/2c11-suite.txt), RuffCI e data/methods verdes. Renomes detectados no stage; gitlog--follow será conferido após o commit. Nenhum item[ ]/[!] permanece na fila arquivada.
