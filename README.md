@@ -11,19 +11,20 @@ O projeto está em migração gradual da V1 para a V2. A interface atual usa **S
 
 ## O que está acontecendo no GitHub
 
-**Retrato da `main` consultada em 22/10/2026, até o commit [`e007643`](https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3/commit/e007643).** Este resumo descreve o que está publicado; trabalho ainda local não é contado como entregue.
+**Retrato da `main` consultada em 25/10/2026, até o commit [`5da63b2`](https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3/commit/5da63b2).** Este resumo descreve o que está publicado; trabalho ainda local não é contado como entregue.
 
 | Frente | Situação publicada | Evidência |
 |---|---|---|
 | Fase 0 — Preparação | Integrada: auditoria, CI, testes de caracterização e decisões iniciais | [Resumo da fase](docs/loop/historico/fase-0/pr-fase-0.md) |
 | Fase 1 — Fundação | Integrada: tipos de unidade, contrato dos métodos, extração das fórmulas e registro de métodos | [PR #10](https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3/pull/10) · [Resumo](docs/loop/historico/fase-1/pr-fase-1.md) |
 | Fase 2A — Dados corretos | Integrada, incluindo o fechamento das auditorias; permanecem bugs conhecidos com destino registrado | [PR #22](https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3/pull/22) · [Resumo e fechamento](docs/loop/historico/fase-2a/pr-fase-2a.md) |
-| Preparação da Fase 2B | Proposta revisada e auditorias encerradas; ficha por ação 1.1 aprovada. A fila ainda está marcada **“proposta, não ativa”** | [Proposta e condições de ativação](docs/loop/fila-fase2b-proposta.md) · [Auditorias](docs/loop/historico/fase-2b/auditorias-revisao.md) |
+| Fase 2B — Taxa real, bancos e escopo | Concluída (tag `v2-fase-2b`), com a fila de fechamento da auditoria externa: taxa real, Gordon real, Bazin pela B3, FII sobre NTN-B + spread, lente de bancos, escopo pelo modelo das demonstrações e liquidez mínima. Cinco fichas aprovadas (taxa real, Gordon, Bazin, FII e bancos) | [PR #24](https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3/pull/24) · [PR #25](https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3/pull/25) · [Resumo](docs/loop/historico/fase-2b/pr-fase-2b.md) · [Fila da fase](docs/loop/historico/fase-2b/fila.md) |
+| Fase 2C — Qualidade e apresentação | Em proposta, **não ativa**: aguarda auditoria DOCUMENTO e as decisões marcadas no texto | [Proposta da 2C](docs/loop/fila-fase2c-proposta.md) |
 | Processo de desenvolvimento | Workflow entre ferramentas, ciclo de fase e prompts de auditoria versionados | [Workflow](docs/loop/workflow-multiagente.md) · [Ciclo de fase](docs/loop/ciclo-de-fase.md) |
 
-**Próximo passo registrado:** conferir as condições restantes e ativar a fila da Fase 2B. A aprovação da proposta e da ficha não significa que as correções ou os novos métodos já foram implementados.
+**Próximo passo registrado:** auditar a proposta da 2C, resolver seus marcadores `[DECISÃO]` e ativar a fila. A proposta não aprova método, parâmetro nem janela. A [fila atual](docs/loop/fila.md) ainda traz o marcador de encerramento da 2B até a ativação da 2C.
 
-A [fila atual](docs/loop/fila.md) ainda contém o marcador de encerramento da 2A, e a seção de fase do `AGENTS.md` ainda cita a 2A. Para entender esta transição, consulte também a proposta da 2B e os commits posteriores ao PR #22.
+**Escopo das ações.** Dos 455 ativos STOCK/UNIT do índice oficial, 346 seguem o modelo de empresa (Graham, Bazin, Lynch e Gordon) e 22 o de banco (lente de P/VP justificado); 9 de seguradoras e **78 de companhias que publicam só demonstrações individuais**, sem balanço consolidado, se abstêm de todos os métodos, sem número.
 
 Acompanhe o estado atualizado pelos [commits da main](https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3/commits/main/), [pull requests](https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3/pulls) e [execuções do CI](https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3/actions/workflows/ci.yml). O badge acima consulta o CI; as tabelas deste README são um retrato datado.
 
@@ -34,7 +35,7 @@ Acompanhe o estado atualizado pelos [commits da main](https://github.com/Marcos-
 - **Referência oficial de ativos:** associação entre ticker, emissor, CNPJ, código CVM e classe, substituindo decisões baseadas apenas no sufixo do ticker.
 - **Dados contábeis:** DFP/ITR da CVM, leitura de contas por código e descrição, composição do capital, informações por ação e dívida financeira líquida.
 - **Séries contábeis:** infraestrutura para cinco exercícios e TTM. A escolha da janela de cada método e correções pendentes não estão concluídas.
-- **FIIs e bancos:** Informe Mensal da CVM na cascata de FIIs e integração com IF.data para informações bancárias; isso não equivale a uma lente de valuation bancário pronta.
+- **FIIs e bancos:** Informe Mensal da CVM e eventos da B3 na lente de rendimento dos FIIs de tijolo; lente de bancos por P/VP justificado, com o IF.data (Basileia e inadimplência) só como contexto.
 - **Rastreabilidade:** proveniência temporal, verificações de consistência e relatório de qualidade dos dados.
 - **Mercado:** preços e histórico, indicadores técnicos e métricas de liquidez com COTAHIST.
 - **Assistente de texto opcional:** integração com provedores de IA, separada da definição das fórmulas financeiras.
@@ -78,8 +79,8 @@ O [plano completo](docs/PLANO.md) define a direção. A [fila](docs/loop/fila.md
 | 0 | Auditoria, CI, caracterização e preparação | Integrada |
 | 1 | Tipos, contratos e métodos separados dos motores | Integrada |
 | 2A | Identificação oficial, dados contábeis, unidades e proveniência | Integrada, com pendências rastreadas |
-| 2B | Corrigir pendências de dados; revisar taxas, métodos, bancos, escopo e liquidez | Proposta revisada, aguardando ativação |
-| 2C | Janelas por método, qualidade empresarial, apresentação por lentes e retirada do otimizador | Planejada |
+| 2B | Corrigir pendências de dados; revisar taxas, métodos, bancos, escopo e liquidez | Integrada (tag `v2-fase-2b`), com pendências rastreadas |
+| 2C | Janelas por método, qualidade empresarial, apresentação por lentes e retirada do otimizador | Em proposta, não ativa |
 | 3 | Tempo como entrada, histórico ponto-no-tempo, migrações e backtest reproduzível | Planejada |
 | 4 | CLI, fechamento diário, backup restaurável, rastreabilidade e descrição de risco | Planejada |
 | 5 | Fatos relevantes e estudo de evento antes de expandir notícias | Planejada; expansão depende dos resultados |
@@ -87,16 +88,16 @@ O [plano completo](docs/PLANO.md) define a direção. A [fila](docs/loop/fila.md
 | 7 | Interface FastAPI + HTMX e conclusão da migração da V1 | Planejada |
 | 8 | IA para explicar premissas e limitações; expansão condicional das notícias | Condicional |
 
-A próxima fase exige fichas e decisões explícitas sobre taxas, Bazin, FIIs e bancos. **Trocar uma taxa ou escolher um modelo não é uma correção automática:** fórmula, insumos, regime, hipóteses, exemplo independente e sensibilidade precisam estar documentados e aprovados.
+A 2C exige fichas e decisões explícitas sobre janelas, qualidade, classificação e apresentação. **Trocar uma taxa ou escolher um modelo não é uma correção automática:** fórmula, insumos, regime, hipóteses, exemplo independente e sensibilidade precisam estar documentados e aprovados.
 
-Referências: [fichas metodológicas](docs/metodologia/README.md), [ficha por ação](docs/metodologia/por-acao.md), [ADR-0003 — validade de dados e método](docs/adr/0003-validade-dados-metodo-auditoria.md) e [proposta detalhada da 2B](docs/loop/fila-fase2b-proposta.md).
+Referências: [fichas metodológicas](docs/metodologia/README.md), [ficha por ação](docs/metodologia/por-acao.md), [ADR-0003 — validade de dados e método](docs/adr/0003-validade-dados-metodo-auditoria.md) e [proposta detalhada da 2C](docs/loop/fila-fase2c-proposta.md).
 
 ## Limitações e trabalho pendente
 
 - **Dados e cálculos ainda têm bugs conhecidos.** Há regressões abertas sobre valores não positivos da CVM, TTM, dados por ação e outros casos; consulte o registro para o estado de cada uma.
 - **Histórico ponto-no-tempo ainda não está concluído.** Guardar proveniência agora não torna o backtest legado uma validação histórica confiável.
-- **Metodologia em revisão.** Os métodos existentes não representam a implementação final da V2; taxas, escopo e apresentação ainda serão revistos nas fases 2B e 2C.
-- **Cobertura de ativos delimitada.** Não há promessa de atender todos os listados. O [universo inicial](docs/decisoes/universo-inicial.md) documenta casos e exclusões; o enquadramento do BTG permanece na proposta da 2B.
+- **Metodologia em revisão.** Os métodos existentes não representam a implementação final da V2; janelas, qualidade e apresentação ainda serão revistas na 2C.
+- **Cobertura de ativos delimitada.** Não há promessa de atender todos os listados. O [universo inicial](docs/decisoes/universo-inicial.md) documenta casos e exclusões; as companhias só com demonstrações individuais e as seguradoras se abstêm até uma decisão de escopo da 2C.
 - **Fontes externas podem falhar ou mudar de formato.** Qualidade, atualidade e disponibilidade precisam acompanhar os resultados.
 - **Operação e interface ainda estão em migração.** Há orquestração na V1; histórico unificado, rotina diária e nova interface são entregas futuras.
 - **Deploy público está adiado.** O foco continua local-first. O plano não prevê retomar sugestão automática de alocação de carteira.
@@ -126,7 +127,7 @@ A interface abre em `http://localhost:8501`. As integrações de IA são opciona
 
 ## Testes e evidências
 
-O fechamento documentado da 2A registrou **1.362 testes passando, 1 ignorado e 18 falhas esperadas (`xfail`)**, em 94 módulos. Esses números são históricos, não uma medição automática deste README. Consulte o [diário de fechamento](docs/loop/historico/fase-2a/diario-fechamento.md) e o CI para os resultados de cada revisão.
+O fechamento documentado da 2B registrou **2.575 testes passando, 1 ignorado e 14 falhas esperadas (`xfail`)** e mutation score de **93,2%** em `sentinela/methods` (1.183/1.269). Esses números são históricos, não uma medição automática deste README. Consulte o [resumo da 2B](docs/loop/historico/fase-2b/pr-fase-2b.md) e o CI para os resultados de cada revisão.
 
 ```bash
 pip install -r requirements-dev.txt
@@ -141,7 +142,7 @@ Os `xfail` tornam limitações conhecidas visíveis, não demonstram que elas fo
 ## Mapa da documentação
 
 - [Plano da V2](docs/PLANO.md) — direção, fases e dependências.
-- [Fila atual](docs/loop/fila.md) e [proposta da 2B](docs/loop/fila-fase2b-proposta.md) — situação do trabalho e próxima etapa.
+- [Fila atual](docs/loop/fila.md) e [proposta da 2C](docs/loop/fila-fase2c-proposta.md) — situação do trabalho e próxima etapa.
 - [Histórico por fase](docs/loop/historico/) — entregas, diários e auditorias.
 - [Decisões arquiteturais](docs/adr/) e [metodologia](docs/metodologia/) — critérios e justificativas.
 - [Regressões conhecidas](tests/regressao/README.md) — bugs e destino das correções.

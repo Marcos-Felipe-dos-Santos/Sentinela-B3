@@ -25,7 +25,7 @@ Python + Streamlit (V1; interface FastAPI + HTMX prevista para a Fase 7), local-
 
 ```bash
 streamlit run app.py                               # app (V1)
-python -m pytest tests/ -x --tb=short              # suíte (2.575 passed, 1 skipped, 14 xfailed; ~10 s)
+python -m pytest tests/ -x --tb=short              # suíte (2.575 passed, 1 skipped, 15 xfailed; ~10 s)
 python -m pytest tests/test_x.py::test_y -v        # teste único
 python -m pytest tests/ --cov=. --cov-report=term-missing
 python -m mutmut run "technical_engine*"           # mutação de um módulo (config em [tool.mutmut])
@@ -271,7 +271,7 @@ Sem insumo, abstém-se — não devolve número conservador.
 
 0. **Preparação** — concluída (tag `v2-fase-0`)
 1. **Fundação** — concluída (tag `v2-fase-1`): `units.py`, contrato de método e extração de `methods/`, comportamento idêntico, golden dos motores
-2. **2A Dados corretos** — concluída (tag `v2-fase-2a`; dados de referência, E-1, DY único, E-2, cinco anos, dívida líquida, bancos, medida de liquidez); **2B Taxa real, bancos e escopo** — fila da fase concluída (resumo em `docs/loop/historico/fase-2b/pr-fase-2b.md`); fila de fechamento da auditoria concluída (`docs/loop/historico/fase-2b/fila-fechamento.md`), aguardando o [DECISÃO] "Fim da Fase 2B" (branch `v2/fase-2b`); **2C Qualidade e apresentação** (normalização, lente de qualidade, histerese, vocabulário, lentes, fim do Markowitz)
+2. **2A Dados corretos** — concluída (tag `v2-fase-2a`; dados de referência, E-1, DY único, E-2, cinco anos, dívida líquida, bancos, medida de liquidez); **2B Taxa real, bancos e escopo** — fila da fase concluída (resumo em `docs/loop/historico/fase-2b/pr-fase-2b.md`); fila de fechamento da auditoria concluída (`docs/loop/historico/fase-2b/fila-fechamento.md`); fase fechada em 25/10/2026 (PRs #24 e #25, tag `v2-fase-2b` no `c025c23`); **2C Qualidade e apresentação** (normalização, lente de qualidade, histerese, vocabulário, lentes, fim do Markowitz)
 3. **Tempo como entrada** — E-6, E-14, ponto-no-tempo, `analisar(ticker, as_of)`, backtest real
 4. **Operação diária, rastreabilidade e risco da carteira**
 5. **Notícias medidas** — coletor do IPE e estudo de evento
