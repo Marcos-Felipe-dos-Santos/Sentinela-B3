@@ -76,3 +76,9 @@ Comparabilidade é evidência de entrada, por campo: `proveniencia[campo].perime
 Sem essa evidência, a subtração ou soma afetada abstém com motivo, mantendo os acumulados e sua identidade documental. O provedor atual registra documento/modelo/janela, mas **não emite prova de comparabilidade estrutural**: o TTM que depender dela permanece indisponível até que uma fonte/reconciliação aprovada seja fornecida no contrato futuro. Não se troca isso por um sinalizador positivo presumido. Data, capital e método anual vigentes não mudam.
 
 Nos casos de aritmética sintética da suíte, a homogeneidade é uma hipótese explícita da construção dos dados. As fixtures declaram essa hipótese como sintética, sem apresentá-la como confirmação oficial. Os controles separados sem evidência, com evidência inválida e com bases diferentes exigem abstenção. Não se altera nenhum número esperado nem se dispensa um teste antigo de cálculo.
+
+## Revisão autorizada em 09/11/2026 — critério operacional de comparabilidade
+
+Esta decisão do Marcos substitui a exigência anterior de reconciliação estrutural externa para a continuidade ordinária: exercícios/trimestres contíguos do mesmo CNPJ e do mesmo modelo demonstrado no BPP, com a reserva D20 validada, são comparáveis. O produtor registra `perimetro` (controladores ou consolidado, com identidade/modelo) e `evidencia_comparabilidade` (critério, arquivo, referência, versão e validação D20). Os consumidores continuam conferindo contiguidade e igualdade do perímetro; BPP ausente/conflitante, identidade divergente ou reserva recusada não geram prova.
+
+Aviso obrigatório: **reorganização societária no período não é detectada**. Sua detecção fica na Fase 3. A prova não certifica ausência de reorganização nem reprodução histórica PIT. Mudança explicitamente conhecida sem reconciliação continua interrompendo a janela.

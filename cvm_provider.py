@@ -1200,6 +1200,51 @@ class CVMProvider:
             ind.update(proventos)
         return indicadores
 
+    @staticmethod
+    def _prova_comparabilidade(
+        dre: pd.DataFrame, bpp: pd.DataFrame, modelo: str,
+        arquivo: str, referencia: str, versao: str,
+    ) -> dict[str, str]:
+        """Critério aprovado em09/11: identidade, modelo BPP e reservas D20 válidas.
+
+        A contiguidade é conferida pelo consumidor. Não detecta reorganizações.
+        """
+        if dre.empty or bpp.empty or any("CNPJ_CIA" not in d for d in (dre, bpp)):
+            return {}
+        identidades = [
+            {re.sub(r"\D", "", str(c)) for c in d["CNPJ_CIA"]}
+            for d in (dre, bpp)
+        ]
+        if identidades[0] != identidades[1] or len(identidades[0]) != 1:
+            return {}
+        cnpj = next(iter(identidades[0]))
+        if len(cnpj) != 14:
+            return {}
+        modelos = {
+            m for m in ("empresa", "banco")
+            if isinstance(_ler(bpp, "pl_total", m), contas_cvm.Leitura)
+        }
+        if modelos != {modelo} or (
+            modelo == "empresa"
+            and bpp["DS_CONTA"].map(contas_cvm.normalizar_descricao)
+            .str.contains(_CONTAS_DE_SEGURADORA).any()
+        ):
+            return {}
+        lucro = lucro_controladores_com_reserva(dre, bpp)
+        pl = pl_controladores_com_reserva(bpp, dre, modelo)
+        if lucro.valor is None or pl.valor is None:
+            return {}
+        return {
+            "perimetro": f"{cnpj}/{modelo}/controladores",
+            "evidencia_comparabilidade": (
+                f"mesmo CNPJ {cnpj}, modelo {modelo} demonstrado no BPP; "
+                f"reserva D20 validada (lucro={lucro.reserva}, PL={pl.reserva}); "
+                f"documento {arquivo}, referência {referencia}, versão {versao}; "
+                "contiguidade exigida na janela"
+            ),
+            "aviso": "reorganização societária no período não é detectada",
+        }
+
     def _acumulados_do_arquivo(
         self, zip_path: Path, documento: str, cd_cvm: int, modelo: str
     ) -> list[series_cvm.Acumulado]:
@@ -1287,6 +1332,15 @@ class CVMProvider:
                 }
                 for campo in valores
             }
+            prova = self._prova_comparabilidade(
+                doc, bpp_doc, modelo, zip_path.name, str(dt_refer), str(versao)
+            )
+            for campo, fonte in fontes_campos.items():
+                fonte.update(prova)
+                if prova and campo != "lucro_controladores":
+                    fonte["perimetro"] = prova["perimetro"].replace(
+                        "/controladores", "/consolidado"
+                    )
             fontes_campos["lucro_controladores"].update(
                 reserva=controladores_doc.reserva,
                 bpp_correspondente_lido=not bpp_doc.empty,

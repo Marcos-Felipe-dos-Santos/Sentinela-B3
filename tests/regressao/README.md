@@ -292,3 +292,9 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
 |---|---|---|---|---|---|---|
 | BUG-2C-60 | Análise pós-F2C-3 sem score agregado sai como FORA_DO_ESCOPO no backtest | Decisão Marcos 09/11/2026, opção (a): INDISPONIVEL até reconstrução na Fase 3 | auditoria Claude de fechamento 2C | `test_bug_2c_60_backtest_sem_score.py` | correção de fechamento 2C | corrigido |
+
+### Correções da auditoria FASE (09/11/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-61 | Produtor TTM não declara comparabilidade demonstrada pelos documentos | decisão Marcos09/11 opção a | auditorias Gemini/Claude | `test_bug_2c_61_ttm_produtor.py` | FC2C-61 | corrigido |
