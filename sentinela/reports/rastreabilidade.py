@@ -159,6 +159,10 @@ Não é consultoria financeira.</p>
 <h2>Qualidade descritiva · {{ qualidade_apresentacao.versao }}</h2>
 <p>Sem nota única, pesos ou efeito nos valores das lentes.
 Cobertura documental: {{ qualidade_apresentacao.cobertura }}.</p>
+<p>reorganização societária no período não é detectada</p>
+<p>O descritor de regularidade de proventos B3 ainda não tem produtor na cascata atual:
+calendário anual sem cobertura demonstrada. Integração prevista na Fase 3;
+a indisponibilidade não representa anos sem distribuição.</p>
 {% if qualidade_apresentacao.motivo %}<p>{{ qualidade_apresentacao.motivo }}</p>{% endif %}
 <table><tr><th>Indicador</th><th>Faixa observada e cobertura</th></tr>
 {% for nome, texto in qualidade_apresentacao.indicadores %}

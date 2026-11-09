@@ -95,3 +95,11 @@ D24 mantém qualidade empresarial, valuation e qualidade dos dados separados. A 
 Decisão do Marcos, opção (a): exercícios completos contíguos do mesmo CNPJ e mesmo modelo demonstrado no BPP, com reserva D20 validada, são comparáveis. O produtor CVM grava `perimetro` (controladores/identidade/modelo) e `evidencia_comparabilidade` com critério, arquivo, referência, versão e D20; o transporte conserva a prova. O consumidor verifica contiguidade/identidade/perímetro e preserva a recusa de mudança estrutural explicitamente conhecida sem reconciliação.
 
 Aviso fixo: **reorganização societária no período não é detectada**. Detecção na Fase 3. Este critério operacional substitui a pendência de prova estrutural geral na continuidade ordinária; não promete detectar reorganizações nem certificar disponibilidade histórica PIT. PL inicial ausente/não positivo continua sem ROE; comparabilidade não inventa observações nem cobertura de proventos.
+
+## 9. Limite operacional dos proventos — fechamento de 09/11/2026
+
+O descritor de regularidade de proventos B3 **ainda não tem produtor completo na cascata atual**. `qualidade_inputs` consome a chave `calendario_proventos_b3`, mas nenhum produtor de produção a grava. A relação de eventos, sozinha, não prova cobertura integral dos pregões nem de cinco exercícios com as bordas data-com/data-ex. Calendário montado à mão nos testes é hipótese sintética, não evidência de coleta em produção.
+
+A ligação não cabe numa alteração curta: a coleta de liquidez cobre a janela recente, não um calendário anual completo de cinco exercícios e suas bordas; é preciso fonte oficial, cobertura/identidade e coleta elegível no as_of. Não inferir calendário por dias da semana, nem transformar falta de evento/resposta em ano zero. O relatório explicita essa ausência. Os indicadores contábeis continuam independentes e o descritor mostra indisponibilidade/cobertura, sem penalidade numérica.
+
+Destino: proposta da Fase 3, F3-P14 (vinculada a F3-3/F3-4/F3-6 do PLANO), com produtor e contrato temporal/cobertura demonstrados, regressões de ano sem distribuição versus fonte ausente e integração produtor→motor. Não ativado neste fechamento. No universo público inicial novamente medido, anos B3 com cobertura continuam0→0; médias de ROE disponíveis não mudam esse limite.

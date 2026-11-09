@@ -145,3 +145,11 @@ O histórico anterior permanece em `historico/fase-2c/diario.md`. Esta fila comp
 - **Exceções demonstradas:** ROE_PENALIDADE_MAX ainda lida pela grade protegida; REC_UPSIDE_COMPRA pela asserção de compatibilidade existente. Não eliminadas leituras/testes para tornar a constante artificialmente “sem leitor”. Quatro LYNCH só de scripts históricos; GRAHAM e DY_PERCENTUAL_THRESHOLD também pela grade. Todas documentadas, sem efeito de score/valor atual. TTLs com leitor interno preservados.
 - **Testes/inventário:**3525PASS/1skip/8xfail, warning antigo; Vulture global60%30→18achados (12removidos), Ruff completo161→161; CI/data/methods/diff verdes. Nenhuma fórmula, _normalizar_dy, teste ou golden alterado. Limpeza autorizada, não tarefa de teste.
 - **Resíduos/decisões:** apenas exceções com leitores, explícitas no inventário; nenhuma dependência/arquivo novo. Revisão somente leitura antes do commit.
+
+### FC2C-70 — docs: disclose the missing annual dividend calendar producer
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso documental pela alternativa autorizada, sem ligar fonte incompleta à cascata.
+- **Levantamento:** busca global confirma calendario_proventos_b3 apenas consumido em qualidade_inputs e construído em testes, sem produtor de produção. A coleta de liquidez recente não demonstra calendário integral de cinco exercícios/bordas, nem disponibilidade no as_of. Ligação exige contrato/fonte/cobertura temporal, destinada a F3-P14 na proposta da Fase3.
+- **O que foi feito:** ficha qualidade1.0§9 e texto do relatório explicitam descritor sem produtor, calendário anual sem cobertura e integração Fase3; indisponibilidade não representa anos sem distribuição. Relatório também mostra o aviso fixo de reorganização não detectada, já emitido no quadro. Somente documentação/template, sem regra de cálculo, fonte ou rede nova.
+- **Validação:** renderização real com contexto existente conferiu os dois limites e proventos observados0 sem inventar ano zero; suíte3525PASS/1skip/8xfail, warning antigo, gates CI/data/methods/diff verdes. Nenhuma asserção ou golden alterados; não se trata de nova tarefa de teste.
+- **Resíduos/decisões:** produtor completo fica explicitamente Fase3, não entregue implicitamente. Revisão somente leitura antes do commit.
