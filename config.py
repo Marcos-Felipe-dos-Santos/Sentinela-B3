@@ -236,7 +236,10 @@ class MacroContext:
     FII_UPSIDE_VENDA        = -0.10
     # F2B-2 (ficha FII 1.1, §6; plano final da 2B, seção 3): spread dos FIIs de tijolo sobre
     # a NTN-B real, calibrado por `scripts/calibrar_spread_fii.py` em 21/10/2026. Constante
-    # datada, sem recalibração em execução: nova calibração é item novo da fila.
+    # datada, sem recalibração em execução: nova calibração é item novo da fila. Mantida por
+    # decisão de 25/10/2026; a recalibração posterior com cotas fracionárias (ficha 1.2,
+    # F2B-55: 3,5124% contra 3,5058%, diferença de 0,0066 pp) confirma que a diferença é
+    # imaterial (ficha FII, §3b e §6a).
     FII_SPREAD_TIJOLO       = 0.03505842448151178
     FII_SPREAD_CALIBRACAO   = MappingProxyType({
         "data": "2026-10-21",

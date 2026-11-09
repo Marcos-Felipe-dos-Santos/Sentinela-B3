@@ -791,3 +791,31 @@
 - **D27 BUG-2C-59 e ressalva cronológica:** regressão cobre invariantes numéricos inválidos em `valuation`/`raw`. A implementação `analise = contexto` foi feita antes da primeira contraprova vermelha válida, então o protocolo vermelho→correção não foi seguido cronologicamente. O executor restaurou temporariamente o defeito removendo apenas essa atribuição: 2 falhas; reaplicou a linha: 2 XPASS estritos, removeu as marcas e confirmou novamente na suíte. Registro a sequência sem apresentá-la como teste vermelho pré-correção original.
 - **Verificação final:** suíte completa `3503 passed, 1 skipped, 8 xfailed, 1 warning` (aviso Pydantic preexistente), 21,09s. `ruff check --select E9,F63,F7,F82 .` e `ruff check sentinela/data/ sentinela/methods/` verdes; comparação Ruff completa por código/mensagem contra12df823 encontrou zero erros novos nos Python rastreados alterados; os três Python novos também passam Ruff completo. `git diff --check` limpo. O módulo puro `sentinela/domain/apresentacao.py` teve163/166 mutantes mortos (98,19%), três sobreviventes, nenhum sem cobertura/pendente/timeout; nenhuma lógica de cálculo foi alterada. Golden e testes A/C sem diff.
 - **Estado:** pronto para revisão interna do stage; ainda sem commit/push.
+
+## MERGE-MAIN-2C — bloqueio de acesso ao remoto (30/10/2026)
+
+- **Executor:** Codex. F2C-4 foi revisado e commitado em `e01ffef`; árvore limpa antes deste registro.
+- **Referências locais:** `main` e `origin/main` ambos em `5da63b2b57770305b9eacd20187a5875a6c8e56b`; `main...HEAD` e `origin/main...HEAD` = `0 49` após F2C-4.
+- **Tentativa:** `git fetch origin main` falhou com `Could not resolve host: github.com`. A busca web não encontrou a página do PR e a abertura direta retornou cache miss. Portanto, a inclusão do PR `docs/pos-2b` e a ponta atual do remoto permanecem não verificadas. Não fiz merge de refs possivelmente obsoletas, não alterei `main`, não fiz push.
+- **Parada:** F2C-10 e F2C-11 permanecem pendentes porque a fila exige confirmar/mesclar `main` antes da limpeza e do arquivamento. Retomar este item quando o remoto estiver acessível; depois continuar F2C-10 e F2C-11 até o Checkpoint previsto, sem ativar outra fase.
+
+
+## MERGE-MAIN-2C — retomada e bloqueio do gate (09/11/2026)
+
+- **Executor:** codex.
+- **Status:** bloqueado; bloqueio de rede anterior resolvido pelo mantenedor. Ref local `origin/main` confirmado em `3227f5b` (PR #26), seis commits exclusivos contra49 do branch antes do merge. Sem fetch/push.
+- **O que foi feito:** `git merge --no-commit origin/main` iniciado; sandbox exigiu autorização para escrever ORIG_HEAD. Conflitos textuais na proposta e registro de regressões resolvidos preservando o texto aprovado da2C e os registros pós2B. “Bazin na mediana” explicitamente resolvido pela decisão1 de26/10; decisões28/29 preservadas no documento canônico. Nenhuma fórmula alterada.
+- **Reconciliação da regressão52:** teste recém-integrado deu XPASS estrito: F2C-5 já elimina a síntese no caminho distressed. Retirada somente a marca xfail e atualizado o registro para corrigido; teste mantido integralmente. BUG51 permanece aberto/xfail.
+- **Testes:** baseline antes do merge3501PASS/2FAIL/1skip/8xfail; após merge3501PASS/3FAIL/1skip/8xfail, sendo uma XPASS52 resolvida acima e as mesmas duas falhas baseline. RuffCI e completos data/methods verdes. Logs em /tmp/2c-retomada-suite.txt e /tmp/2c-merge-suite.txt.
+- **Dificuldades:** as duas CLIs de `tests/test_referencia_fontes.py` usam a data atual e a fixture de outubro não possui `cotahist10`; KeyError antes e depois do merge. Não mudar relógio nem enfraquecer testes para passar.
+- **Falta:** decidir destino/correção das duas falhas fora do escopo, obter gate verde, revisar stage e concluir o commit de merge. F2C-10/11 não iniciados; nenhum item declarado entregue. Merge mantido aberto com resoluções preservadas, sem abortar nem commitar gate vermelho.
+- **Decisões que ficaram para o Marcos:** autorizar correção isolada dos testes dependentes da data ou indicar destino compatível com o gate obrigatório. Sem push.
+
+### MERGE-MAIN-2C — chore: merge main before phase 2C closing
+- **Executor:** codex.
+- **Status:** sucesso; bloqueios anteriores resolvidos.
+- **O que foi feito:** integração de origin/main3227f5b, conflitos proposta/registro reconciliados como acima. Decisões26/28/29 preservadas, Bazin na mediana resolvido pela decisão1. BUG52 agora PASS, sem xfail.
+- **Teste dependente do relógio real, corrigido em 09/11/2026:** autorização expressa do Marcos; monkeypatch somente de principal.datetime nos dois testes nomeados, now retorna AGORA08/10/2026. Asserções e fixtures intactas, produção intacta. Incluído no commit do merge porque o merge já estava em andamento, conforme autorização.
+- **Testes:**3504passed/1skipped/8xfailed/1warning antigo,12,92s; RuffCI e data/methods verdes. Nenhum teste novo ou cálculo alterado; mutação não aplicável à fixação do relógio de teste.
+- **Resíduos:** nenhum novo.
+- **Decisões pendentes:** nenhuma para esta integração; auditoria externa no Checkpoint.

@@ -578,8 +578,9 @@ def test_obter_indice_sem_rede_e_sem_salvo_levanta(tmp_path, monkeypatch):
 
 
 def test_linha_de_comando_grava_o_indice_e_mostra_a_cobertura(
-    tmp_path, rede_simulada, capsys
+    tmp_path, rede_simulada, capsys, monkeypatch
 ):
+    monkeypatch.setattr(principal, "datetime", type("Relogio", (), {"now": staticmethod(lambda tz: AGORA)}))
     assert principal.main(["--pasta", str(tmp_path), "--cobertura"]) == 0
     saida = capsys.readouterr().out
     assert "índice: 2 registros, 0 exceções" in saida
@@ -590,8 +591,9 @@ def test_linha_de_comando_grava_o_indice_e_mostra_a_cobertura(
 
 
 def test_linha_de_comando_sem_cobertura_nao_imprime_o_json(
-    tmp_path, rede_simulada, capsys
+    tmp_path, rede_simulada, capsys, monkeypatch
 ):
+    monkeypatch.setattr(principal, "datetime", type("Relogio", (), {"now": staticmethod(lambda tz: AGORA)}))
     principal.main(["--pasta", str(tmp_path)])
     assert "{" not in capsys.readouterr().out
 
