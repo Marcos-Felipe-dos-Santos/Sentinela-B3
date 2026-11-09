@@ -113,3 +113,11 @@ O histórico anterior permanece em `historico/fase-2c/diario.md`. Esta fila comp
 - **Integração:** ZIP CVM não civil março2025–fevereiro2026, seletor/calcular_indicadores/_buscar_cvm reais e saída atéValuationEngine; lucro77 e referência2026-02-28 preservados. Sem ano_final montado na entrada. Série com lacunas continua parcial, não se inventa continuidade na transição do exemplo.
 - **Testes:**3518→3519PASS/1skip/8xfail, warning antigo; Ruff CI/data/methods e diffcheck verdes. Nenhum golden alterado.
 - **Decisões/resíduos:** relógio real em _serie_cvm e no chamador de seleção fica com destino Fase3/FC2C-71; não alterar política temporal neste fix. Revisão somente leitura antes do commit.
+
+### FC2C-67 — fix: ignore unrelated share event species
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso.
+- **D27 antes:** BUG-2C-67 estrito→2xfail/2controlesPASS; --runxfail produziu2falhas por “evento em espécie distinta sem reconciliação” para PN→PNA/PNB alheias à ON (/tmp/2c67-red.txt), antes da produção.
+- **O que foi feito:** _fator_do_par ignora somente quando ambas espécies conhecidas estão fora dos componentes. Espécie desconhecida mantém recusa, evento envolvendo componente mantém exigência de reconciliação; não inventa fator nem dispensa evento oficial do componente.
+- **Testes:**104PASS nos fatores+regressão; suíte3519→3523PASS/1skip/8xfail, warning antigo. Fator oficial2 e quatro bases acumuladas conferidos por aritmética; controles PN→ON e ON→PN abstêm. Ruff CI/data/methods/diff verdes; nenhum golden alterado.
+- **Resíduos/decisões:** nenhum novo; revisão somente leitura antes do commit.

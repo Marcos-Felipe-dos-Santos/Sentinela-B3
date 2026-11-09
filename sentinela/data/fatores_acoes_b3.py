@@ -84,7 +84,12 @@ def _fator_do_par(
         classe = pb.ESPECIE_DO_ISIN.get(isin[6:11])
         if classe is None:
             raise ValueError("espécie do evento em ações não demonstrada")
-        if classe not in componentes and emitido == isin:
+        classe_emitida = pb.ESPECIE_DO_ISIN.get(emitido[6:11])
+        if (
+            classe not in componentes
+            and classe_emitida is not None
+            and classe_emitida not in componentes
+        ):
             continue
         if data_com in (inicio, fim):
             raise ValueError(
