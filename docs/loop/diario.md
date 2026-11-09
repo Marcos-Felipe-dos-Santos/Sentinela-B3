@@ -129,3 +129,11 @@ O histórico anterior permanece em `historico/fase-2c/diario.md`. Esta fila comp
 - **O que foi feito:** apenas os dois textos de cruzamento mudaram no produtor técnico. Fórmulas, limiares e todos os valores numéricos intactos. App já transporta tech_data para dados.tech e o exibe diretamente na tabela técnica (linhas283/289/416), sem remapear macd_rec; não precisou de mudança paralela.
 - **Testes:** impulso positivo/negativo após249preços constantes, EMAα12−α26 e histograma(1−α9) conferidos aritmeticamente, rótulos neutros;3523→3525PASS/1skip/8xfail, warning antigo; Ruff CI/data/methods/diff verdes. Nenhum golden alterado.
 - **Resíduos/decisões:** nenhum novo; revisão somente leitura antes do commit.
+
+### FC2C-66R — chore: reuse the selected CVM fiscal year
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso; resíduo do próprio FC2C-66 removido antes de concluir a fila.
+- **Achado:** Ruff completo após66 marcou162contra161anteriores: a chamada duplicada de date.today gerou DTZ011 novo. Gate CI estava verde, mas não basta conservar dívida nova.
+- **O que foi feito:** _serie_cvm devolve o ano já selecionado no mesmo corte; _buscar_cvm o reutiliza. Sem segunda leitura de relógio/seletor, sem introduzir outra política temporal. Fonte que não demonstra seleção não vira ano padrão silencioso; interface antiga sem seletor preservada. Docstring atualizada. Nenhum número, fixture ou teste alterado.
+- **Testes:**44PASS da série+regressão66;3525PASS/1skip/8xfail, warning antigo; Ruff CI/data/methods/diff verdes. Ruff completo162→161achados, mesma dívida anterior. Chore de limpeza/lint, não novo bug econômico nem teste sem spec.
+- **Resíduos/decisões:** date.today original da série permanece destinado à Fase3. Revisão somente leitura antes do commit.

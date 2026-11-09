@@ -1023,10 +1023,13 @@ class MarketEngine:
             # para manter a interface dos provedores anteriores ao F2A-33.
             modelo = contas_cvm.modelo_do_setor(dados.get('setor'))
             extra = {} if modelo == 'empresa' else {'modelo': modelo}
-            self._serie_cvm(ticker, dados, cvm, cd_cvm, modelo)
+            ano_final = self._serie_cvm(ticker, dados, cvm, cd_cvm, modelo)
             selecionar_exercicio = getattr(cvm, "exercicio_anual_mais_recente", None)
             if callable(selecionar_exercicio):
-                extra["ano_final"] = selecionar_exercicio(cd_cvm, date.today())
+                if ano_final is None:
+                    dados["cvm_disponivel"] = False
+                    return False
+                extra["ano_final"] = ano_final
             historico = cvm.calcular_indicadores(cd_cvm, anos=1, **extra)
             if not historico:
                 dados['cvm_disponivel'] = False
@@ -1230,21 +1233,22 @@ class MarketEngine:
 
     def _serie_cvm(
         self, ticker: str, dados: dict[str, Any], cvm: Any, cd_cvm: int, modelo: str
-    ) -> None:
+    ) -> int | None:
         """Série de cinco exercícios e TTM da CVM (F2A-7), em `dados['serie_cvm']` e `dados['ttm_cvm']`.
 
-        Só disponibiliza os dados: nenhum campo dos métodos sai daqui (F2C-1), e o exercício
-        corrente continua sendo o da chamada de um ano. Provedor sem a interface (anterior ao
-        item) não passa pela etapa.
+        Disponibiliza os dados e devolve o ano selecionado, para a leitura corrente
+        reutilizar a mesma referência. Provedor sem as interfaces da série/seleção
+        não passa pela etapa.
         """
         indicadores_da_serie = getattr(cvm, 'indicadores_da_serie', None)
         acumulados_ttm = getattr(cvm, 'acumulados_ttm', None)
-        if indicadores_da_serie is None and acumulados_ttm is None:
-            return
+        selecionar_exercicio = getattr(cvm, 'exercicio_anual_mais_recente', None)
+        if indicadores_da_serie is None and acumulados_ttm is None and selecionar_exercicio is None:
+            return None
         hoje = date.today()
         exercicios = []
+        ano_final = None
         try:
-            selecionar_exercicio = getattr(cvm, 'exercicio_anual_mais_recente', None)
             ano_final = (
                 selecionar_exercicio(cd_cvm, hoje)
                 if selecionar_exercicio is not None else hoje.year - 1
@@ -1281,7 +1285,7 @@ class MarketEngine:
         try:
             if acumulados_ttm is None:
                 dados['ttm_cvm'] = {'abstencao': 'interface TTM indisponível no provedor'}
-                return
+                return ano_final
             acumulados = acumulados_ttm(cd_cvm, hoje, modelo)
         except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
             dados['ttm_cvm'] = {'abstencao': f"TTM indisponível: {exc}"}
@@ -1297,6 +1301,7 @@ class MarketEngine:
             dados['ttm_cvm'] = (
                 {'abstencao': ttm.motivo} if isinstance(ttm, series_cvm.Abstencao) else ttm
             )
+        return ano_final
 
     def _por_acao_cvm(
         self, ticker: str, dados: dict[str, Any], ind: dict[str, Any]
