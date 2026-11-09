@@ -7,7 +7,7 @@ import pytest
 from cvm_provider import CVMProvider
 from sentinela.data import series_cvm as s
 from sentinela.data.contas_cvm import MOTIVO_LINHA_AUSENTE, MOTIVO_VALOR_INVALIDO
-from tests.test_cvm_series import CD_CVM, _ind, _zip
+from tests.test_cvm_series import CD_CVM, _ind, _zip, proveniencia_sintetica
 
 
 @pytest.mark.parametrize(
@@ -23,6 +23,7 @@ def test_ttm_preserva_rubrica_so_com_ausencia_comprovada(motivo, esperado):
             date.fromisoformat(fim),
             {"dividendos": 2.5 * i, "jcp": None},
             {"jcp": motivo},
+            proveniencia=proveniencia_sintetica(),
         )
         for i, fim in enumerate(
             ["2025-03-31", "2025-06-30", "2025-09-30", "2025-12-31"], 1

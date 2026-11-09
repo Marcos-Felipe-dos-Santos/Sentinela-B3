@@ -33,8 +33,6 @@ class Bancos(ValuationMethod):
     version = "1.1.0"
     regime = Regime.REAL
     requires = (
-        "classe_ativo",
-        "modelo",
         "documento_contabil",
         "base_acionaria_compativel",
         "lucro_anual_controladores",

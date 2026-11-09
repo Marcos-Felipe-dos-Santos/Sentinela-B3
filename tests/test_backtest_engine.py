@@ -64,10 +64,9 @@ def test_simular_analise_mensal_usa_historico_ate_a_data():
 
     with patch("backtesting.backtest_engine.ValuationEngine.processar") as processar:
         processar.return_value = {
-            "fair_value": 15.0,
-            "upside": 36.4,
-            "score_final": 70,
-            "recomendacao": "COMPRA",
+            "apresentacao_versao": "1.0",
+            "lentes": {"Graham": {"valor": 15.0, "distancia_ao_preco_pct": 25.0}},
+            "riscos": ["dados históricos parciais"],
         }
         resultado = engine.simular_analise_mensal(
             "PETR4",
@@ -79,8 +78,8 @@ def test_simular_analise_mensal_usa_historico_ate_a_data():
     assert dados_enviados["historico"].index.max() == pd.Timestamp("2024-04-01")
     assert dados_enviados["preco_atual"] == 12.0
     assert dados_enviados["lpa"] == pytest.approx(1.5)
-    assert resultado["status"] == "OK"
-    assert resultado["recomendacao"] == "COMPRA"
+    assert resultado["status"] == "INDISPONIVEL"
+    assert "score_final" not in resultado
 
 
 def test_validar_recomendacao_compra_acerta_quando_sobe_mais_de_5pct():
@@ -107,19 +106,21 @@ def test_rodar_backtest_retorna_dataframe_com_resultados_mensais():
         patch("backtesting.backtest_engine.ValuationEngine.processar") as processar,
     ):
         processar.return_value = {
-            "fair_value": 15.0,
-            "upside": 36.4,
-            "score_final": 70,
-            "recomendacao": "COMPRA",
+            "apresentacao_versao": "1.0",
+            "lentes": {"Graham": {"valor": 15.0, "distancia_ao_preco_pct": 25.0}},
+            "riscos": ["dados históricos parciais"],
         }
         resultados = engine.rodar_backtest(_fundamentos())
 
     assert not resultados.empty
-    assert (resultados["status"] == "OK").sum() == 1
-    assert "acertou" in resultados.columns
+    assert (resultados["status"] == "INDISPONIVEL").sum() == 1
+    assert "acertou" not in resultados.columns
+    assert engine.resumo(resultados)["avaliados"] == 0
+    assert analisar_resultados(resultados, output_csv=None)["avaliados"] == 0
 
 
-def test_rodar_backtest_completo_nao_valida_snapshot_sem_fundamentos(monkeypatch):
+@pytest.mark.parametrize("status", ["SEM_FUNDAMENTOS_HISTORICOS", "INDISPONIVEL"])
+def test_rodar_backtest_completo_nao_valida_snapshot_indisponivel(monkeypatch, status):
     class FakeEngine:
         tickers = ["PETR4.SA"]
 
@@ -130,7 +131,7 @@ def test_rodar_backtest_completo_nao_valida_snapshot_sem_fundamentos(monkeypatch
             return {
                 "ticker": ticker.replace(".SA", ""),
                 "data_analise": pd.Timestamp(data),
-                "status": "SEM_FUNDAMENTOS_HISTORICOS",
+                "status": status,
             }
 
         def validar_recomendacao(self, *args, **kwargs):
@@ -141,7 +142,7 @@ def test_rodar_backtest_completo_nao_valida_snapshot_sem_fundamentos(monkeypatch
     resultado = rodar_backtest_completo()
 
     assert len(resultado) == 29
-    assert set(resultado["status"]) == {"SEM_FUNDAMENTOS_HISTORICOS"}
+    assert set(resultado["status"]) == {status}
 
 
 def test_analisar_resultados_calcula_metricas_e_salva_csv():

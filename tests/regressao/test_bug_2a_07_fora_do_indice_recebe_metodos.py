@@ -7,17 +7,26 @@ recebe Graham, Bazin, Lynch e Gordon. Origem: auditoria externa da Fase 2A (Gemi
 passadas e Codex, 15/10/2026).
 """
 
+from apoio_apresentacao import verificar_lentes
+
 from tests.test_market_engine_referencia import (
     FakeReferencia,
     _indice,
     _motor,
     _registro,
 )
-from valuation_engine import ROTULO_FORA_DO_ESCOPO, ValuationEngine
+from valuation_engine import ValuationEngine
 
 
 def test_final_11_fora_do_indice_fica_fora_do_escopo(monkeypatch):
     engine = _motor(monkeypatch, FakeReferencia(_indice(_registro())))
     dados = engine.buscar_dados_ticker("BPAC11")
     resultado = ValuationEngine().processar(dados)
-    assert resultado["recomendacao"] == ROTULO_FORA_DO_ESCOPO
+    verificar_lentes(resultado)
+    assert resultado["abstencao"] == "Classe UNKNOWN fora do escopo dos métodos de ação"
+    assert resultado["metodos_usados"] == ""
+    assert not {"fair_value", "upside"} & resultado.keys()
+    assert all(
+        lente["valor"] is None and lente["abstencao"]
+        for lente in resultado["lentes"].values()
+    )

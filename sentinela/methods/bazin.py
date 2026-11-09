@@ -1,4 +1,4 @@
-"""Bazin 2.0.0: critério de rendimento mínimo de 6% fixos (F2B-31; ficha Bazin 1.0).
+"""Bazin 2.0.0: critério de rendimento mínimo de 6% fixos (F2B-31; ficha Bazin 1.2).
 
 Preço-limite do critério = D_bruto_12m ÷ 0,06 = DY × preço ÷ 0,06; os 6% são constante da
 versão (`TAXA_CRITERIO`), não parâmetro: mudar a taxa é versão nova. É critério de rendimento

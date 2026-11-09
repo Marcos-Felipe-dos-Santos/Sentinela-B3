@@ -1,20 +1,28 @@
 import logging
 import math
-import statistics
 from dataclasses import replace
 from datetime import UTC, date, datetime
+from numbers import Real
 from zoneinfo import ZoneInfo
 
 from config import DISTRESSED_TICKERS, MACRO, _normalizar_dy
-from sentinela.data import gordon_cvm, liquidez, proventos_b3
+from sentinela.data import (
+    gordon_cvm,
+    janelas_fundamentais,
+    liquidez,
+    proventos_b3,
+    qualidade_inputs,
+)
+from sentinela.domain.apresentacao import bloco, finalizar
 from sentinela.domain.enums import AssetType, ModeloDemonstracao, Perfil
-from sentinela.domain.units import BRL, Ratio
+from sentinela.domain.units import BRL, RateNominal, Ratio
 from sentinela.methods.bancos import Bancos, BancosParams
-from sentinela.methods.base import MethodInputs, MethodResult
+from sentinela.methods.base import Abstention, MethodInputs, MethodResult
 from sentinela.methods.bazin import ALERTA_DY_ARMADILHA, Bazin, BazinParams
 from sentinela.methods.gordon import Gordon, GordonParams
 from sentinela.methods.graham import Graham, GrahamParams
 from sentinela.methods.lynch import Lynch, LynchParams
+from sentinela.methods.registry import QUADROS_DESCRITIVOS
 
 logger = logging.getLogger("Valuation")
 
@@ -31,11 +39,12 @@ def _finito(valor):
 
 
 # F2A-29 (P7) e F2B-4: só STOCK e UNIT recebem os métodos de ação.
-ROTULO_FORA_DO_ESCOPO = "FORA DO ESCOPO DOS MÉTODOS"
 # F2B-4: classe oficial exigida; STOCK/UNIT exigem o modelo empresa pelo BPP consolidado.
 MOTIVO_SEM_CLASSE = "classe do ativo não informada"
 MOTIVO_SEM_MODELO = "modelo da demonstração não demonstrado no BPP consolidado"
-MOTIVO_BPP_INDISPONIVEL = "disponibilidade do BPP consolidado não demonstrada até o as_of"
+MOTIVO_BPP_INDISPONIVEL = (
+    "disponibilidade do BPP consolidado não demonstrada até o as_of"
+)
 # F2B-4 e F2B-32: empresa recebe os quatro métodos; banco, a lente de bancos.
 MODELOS_COM_LENTE = (ModeloDemonstracao.EMPRESA.value, ModeloDemonstracao.BANCO.value)
 INADIMPLENCIA_NAO_INFORMADA = "inadimplência IF.data não informada"
@@ -45,13 +54,13 @@ FUSO = ZoneInfo("America/Sao_Paulo")
 def _abstencao_de_escopo(motivo, perfil):
     """Saída da abstenção de escopo (F2A-29): o motivo, sem número no lugar."""
     return {
-        'recomendacao':   ROTULO_FORA_DO_ESCOPO,
-        'metodos_usados': '',
-        'perfil':         perfil,
-        'pl_confiavel':   False,
-        'dy_confiavel':   False,
-        'confianca':      0,
-        'riscos':         [motivo],
+        "abstencao": motivo,
+        "metodos_usados": "",
+        "perfil": perfil,
+        "pl_confiavel": False,
+        "dy_confiavel": False,
+        "confianca": 0,
+        "riscos": [motivo],
     }
 
 
@@ -140,18 +149,19 @@ class ValuationEngine:
         )
 
     def _avaliar_metodos(
-        self, inputs, inputs_gordon=None, inputs_bazin=None, inputs_bancos=None
+        self,
+        inputs,
+        inputs_gordon=None,
+        inputs_bazin=None,
+        inputs_bancos=None,
+        inputs_graham=None,
+        inputs_lynch=None,
     ):
         """Resultado de cada método extraído, na ordem da V1, e a lente de bancos (F2B-32)."""
         return {
             "Graham": _GRAHAM.calcular(
-                inputs,
-                GrahamParams(
-                    pl_limite=MACRO.GRAHAM_PL_LIMITE,
-                    pl_piso=MACRO.GRAHAM_PL_FLOOR,
-                    pvp_limite_renda=MACRO.GRAHAM_PVP_LIMITE_RENDA,
-                    pvp_limite_crescimento=MACRO.GRAHAM_PVP_LIMITE_CRESCIMENTO,
-                ),
+                inputs if inputs_graham is None else inputs_graham,
+                GrahamParams(),
             ),
             "Bazin": _BAZIN.calcular(
                 inputs if inputs_bazin is None else inputs_bazin,
@@ -161,13 +171,8 @@ class ValuationEngine:
                 ),
             ),
             "Lynch": _LYNCH.calcular(
-                inputs,
-                LynchParams(
-                    payout_max=MACRO.LYNCH_PAYOUT_MAX,
-                    g_max=MACRO.LYNCH_G_MAX,
-                    pl_multiplicador=MACRO.LYNCH_PL_MULTIPLICADOR,
-                    pl_max=MACRO.LYNCH_PL_MAX,
-                ),
+                inputs if inputs_lynch is None else inputs_lynch,
+                LynchParams(),
             ),
             "Gordon": _GORDON.calcular(
                 inputs if inputs_gordon is None else inputs_gordon, GordonParams()
@@ -178,28 +183,70 @@ class ValuationEngine:
         }
 
     def processar(self, dados, *, as_of: datetime | None = None):
-        if not dados or not dados.get('preco_atual'):
+        """Acrescenta o quadro independente sem tocar em saídas do valuation."""
+        instante = as_of if as_of is not None else datetime.now(UTC)
+        resultado = self._processar_valuation(dados, as_of=instante)
+        if isinstance(resultado, dict):
+            classe = dados.get("classe_ativo")
+            modelo = dados.get("modelo_bpp")
+            resultado["qualidade"] = QUADROS_DESCRITIVOS[0].calcular(
+                qualidade_inputs.entradas(dados, instante),
+                as_of=instante,
+                classe=str(getattr(classe, "value", classe) or "").strip().upper(),
+                modelo=str(getattr(modelo, "value", modelo) or "").strip().lower(),
+            )
+            if "lentes" not in resultado:
+                motivo = (
+                    resultado.get("abstencao")
+                    or "; ".join(resultado.get("riscos", []))
+                    or "lentes não calculadas"
+                )
+                resultado["lentes"] = {
+                    m.nome: bloco(
+                        m,
+                        Abstention(m.nome, m.version, motivo),
+                        dados.get("preco_atual"),
+                        {},
+                    )
+                    for m in (_GRAHAM, _BAZIN, _LYNCH, _GORDON, _BANCOS)
+                }
+        return (
+            finalizar(resultado, dados, instante)
+            if isinstance(resultado, dict)
+            else resultado
+        )
+
+    def _processar_valuation(self, dados, *, as_of: datetime | None = None):
+        if not dados or not dados.get("preco_atual"):
             return None
         dados.pop("perfil_fonte", None)  # F2B-52: só o da análise corrente
 
-        ticker = str(dados.get('ticker', '')).upper()
-        p   = float(dados['preco_atual'])
+        ticker = str(dados.get("ticker", "")).upper()
+        p = float(dados["preco_atual"])
         if not math.isfinite(p) or p <= 0:
             # F2A-24 e F2B-20: preço não finito ou negativo, como preço zero, não é analisado.
             return None
 
+        instante = as_of if as_of is not None else datetime.now(UTC)
+        if instante.utcoffset() is None:
+            return _abstencao_de_escopo("as_of exige fuso horário", "INSTANTE SEM FUSO")
+
         # ── GUARD: CLASSE FORA DO ESCOPO (F2A-29, P7) ─────────────────────────
         # Só STOCK e UNIT recebem os métodos de ação; ETF, BDR, UNKNOWN e a ausência de
         # classe (F2B-4) se abstêm antes de qualquer método, sem número no lugar.
-        classe = dados.get('classe_ativo')
+        classe = dados.get("classe_ativo")
         if classe is None:
-            return _abstencao_de_escopo(MOTIVO_SEM_CLASSE, 'SEM CLASSE')
+            return _abstencao_de_escopo(MOTIVO_SEM_CLASSE, "SEM CLASSE")
         # F2B-4 (BUG-2B-39): espaços nas pontas não contornam a guarda; a classe normalizada
         # volta para `dados`, para os métodos lerem a mesma.
-        classe = str(getattr(classe, 'value', classe)).strip().upper()
-        dados['classe_ativo'] = classe
+        classe = str(getattr(classe, "value", classe)).strip().upper()
+        dados["classe_ativo"] = classe
+        if not classe:
+            return _abstencao_de_escopo(MOTIVO_SEM_CLASSE, "SEM CLASSE")
         if classe not in (AssetType.STOCK.value, AssetType.UNIT.value):
-            logger.info(f"[{ticker}] Classe {classe} fora do escopo dos métodos de ação")
+            logger.info(
+                f"[{ticker}] Classe {classe} fora do escopo dos métodos de ação"
+            )
             return _abstencao_de_escopo(
                 f"Classe {classe} fora do escopo dos métodos de ação", classe
             )
@@ -207,87 +254,100 @@ class ValuationEngine:
         # ── GUARD: MODELO DO BPP CONSOLIDADO (F2B-4) ──────────────────────────
         # Banco e seguradora não recebem os métodos de empresa; sem modelo demonstrado,
         # abstenção (não há padrão empresa). A evidência, quando gravada, vale até o as_of.
-        instante = as_of if as_of is not None else datetime.now(UTC)
-        modelo = dados.get('modelo_bpp')
-        modelo = getattr(modelo, 'value', modelo)
+        modelo = dados.get("modelo_bpp")
+        modelo = str(getattr(modelo, "value", modelo) or "").strip().lower()
+        dados["modelo_bpp"] = modelo
         if modelo not in MODELOS_COM_LENTE:
             motivo = (
                 f"modelo {modelo} fora do escopo dos métodos de empresa"
-                if modelo else MOTIVO_SEM_MODELO
+                if modelo
+                else MOTIVO_SEM_MODELO
             )
             return _abstencao_de_escopo(motivo, classe)
-        if 'modelo_bpp_proveniencia' in dados and not _bpp_disponivel(
-            dados['modelo_bpp_proveniencia'], instante
+        if "modelo_bpp_proveniencia" in dados and not _bpp_disponivel(
+            dados["modelo_bpp_proveniencia"], instante
         ):
             return _abstencao_de_escopo(MOTIVO_BPP_INDISPONIVEL, classe)
 
         # F2A-10: classe já verificada; dado não medido produz aviso, não zero.
-        gate_liquidez = liquidez.avaliar(
-            dados.get("liquidez"), janela=MACRO.LIQUIDEZ_JANELA,
-            presenca_min=MACRO.LIQUIDEZ_PRESENCA_MIN,
-            volume_min=MACRO.LIQUIDEZ_VOLUME_ACOES_MIN,
-        ) if "liquidez" in dados else None
+        gate_liquidez = (
+            liquidez.avaliar(
+                dados.get("liquidez"),
+                janela=MACRO.LIQUIDEZ_JANELA,
+                presenca_min=MACRO.LIQUIDEZ_PRESENCA_MIN,
+                volume_min=MACRO.LIQUIDEZ_VOLUME_ACOES_MIN,
+            )
+            if "liquidez" in dados
+            else None
+        )
         # F2B-45 (auditoria D30 do Claude): o aviso de liquidez não medida fica num campo
         # próprio, fora de `riscos`, como o `perfil_fonte`; não muda a classificação.
         aviso_liquidez = {}
         if gate_liquidez:
             if "abstencao" in gate_liquidez:
                 return {
-                    'recomendacao': ROTULO_FORA_DO_ESCOPO,
-                    'metodos_usados': '', 'perfil': 'LIQUIDEZ INSUFICIENTE',
-                    'pl_confiavel': False, 'dy_confiavel': False, 'confianca': 0,
-                    'riscos': [gate_liquidez["abstencao"]],
+                    "abstencao": gate_liquidez["abstencao"],
+                    "metodos_usados": "",
+                    "perfil": "LIQUIDEZ INSUFICIENTE",
+                    "pl_confiavel": False,
+                    "dy_confiavel": False,
+                    "confianca": 0,
+                    "riscos": [gate_liquidez["abstencao"]],
                 }
-            aviso_liquidez = {'aviso_liquidez': gate_liquidez["aviso"]}
+            aviso_liquidez = {"aviso_liquidez": gate_liquidez["aviso"]}
 
         # ── GUARD: DISTRESSED TICKERS ────────────────────────────────────────
         # Empresas em recuperação judicial ou situação especial não devem
-        # receber COMPRA ou COMPRA FORTE — valuation baseado em múltiplos
+        # receber valores calculados — valuation baseado em múltiplos
         # não reflete o risco real (dívida, diluição, governança).
         if ticker in DISTRESSED_TICKERS:
-            logger.warning(
-                f"[{ticker}] DISTRESSED — bloqueando recomendação positiva"
-            )
+            logger.warning(f"[{ticker}] DISTRESSED — métodos não calculados")
             return {
-                'fair_value':    round(p, 2),
-                'upside':        0.0,
-                'score_final':   30,
-                'recomendacao':  'ALTO RISCO — EVITAR',
-                'metodos_usados': '',
-                'perfil':        'DISTRESSED',
-                'pl_confiavel':  False,
-                'dy_confiavel':  False,
-                'confianca':     0,
-                'riscos':        ['Empresa em situação especial/distressed'],
+                "metodos_usados": "",
+                "perfil": "DISTRESSED",
+                "pl_confiavel": False,
+                "dy_confiavel": False,
+                "confianca": 0,
+                "riscos": ["Empresa em situação especial/distressed"],
                 **aviso_liquidez,
             }
-        roe = float(dados.get('roe', 0) or 0)
-        pl  = float(dados.get('pl',  0) or 0)
-        pvp = float(dados.get('pvp', 0) or 0)
+        roe = float(dados.get("roe", 0) or 0)
+        pl = float(dados.get("pl", 0) or 0)
+        pvp = float(dados.get("pvp", 0) or 0)
 
         # ── INVARIANTE DO DY ──────────────────────────────────────────────────
         # O DY chega em razão: a conversão de percentual é da fronteira de cada
         # provedor (F2A-4, `sentinela.data.normalizacao`). Aqui só o invariante.
-        dy_raw = float(dados.get('dy', 0) or 0)
+        observado_dy = dados.get("dy")
+        dy_raw = (
+            float(observado_dy)
+            if isinstance(observado_dy, Real) and not isinstance(observado_dy, bool)
+            else math.nan
+        )
         dy, dy_confiavel = _normalizar_dy(dy_raw)
         if not dy_confiavel:
             logger.warning(
-                f"[{dados.get('ticker','?')}] DY={dy_raw:.4f} fora de 0 a 25% "
+                f"[{dados.get('ticker', '?')}] DY={dy_raw:.4f} fora de 0 a 25% "
                 f"— dado suspeito. Desconsiderado."
             )
 
-        lpa = (p / pl)  if pl  > 0 else 0
+        lpa = dados.get("lpa")
+        lpa = (
+            lpa
+            if isinstance(lpa, (int, float))
+            and not isinstance(lpa, bool)
+            and math.isfinite(lpa)
+            else None
+        )
 
-        confianca = 100
         riscos = []
 
         if dados.get("fundamentos_incompletos"):
-            confianca -= 30
             riscos.append("Dados fundamentais obrigatórios ausentes")
 
         # pl_confiavel: False quando Yahoo retornou PL negativo (prejuízo) ou > 80 (TTM atípico)
         # Definido em market_engine.py; padrão True para dados do Fundamentus (mais confiáveis)
-        pl_confiavel = bool(dados.get('pl_confiavel', True))
+        pl_confiavel = bool(dados.get("pl_confiavel", True))
 
         # ── DETECÇÃO DE PERFIL ────────────────────────────────────────────────
         # CRESCIMENTO: ROE alto + dividendos baixos (empresa reinveste lucros)
@@ -311,7 +371,10 @@ class ValuationEngine:
             # aviso fixo da ficha 1.2, ficam aqui e no relatório, fora de `riscos`.
             dados["perfil_fonte"] = {
                 "fonte": "relação de proventos da B3",
-                "avisos": [*entradas_bazin["avisos"], proventos_b3.AVISO_EXTRAORDINARIA],
+                "avisos": [
+                    *entradas_bazin["avisos"],
+                    proventos_b3.AVISO_EXTRAORDINARIA,
+                ],
             }
         if dy_perfil_confiavel:
             is_growth = (
@@ -320,7 +383,7 @@ class ValuationEngine:
         else:
             is_growth = False  # sem DY confiável, evitar Lynch (pode inflar valuation)
             logger.info(
-                f"[{dados.get('ticker','?')}] DY do perfil ({dados['perfil_fonte']['fonte']}) "
+                f"[{dados.get('ticker', '?')}] DY do perfil ({dados['perfil_fonte']['fonte']}) "
                 "não confiável → is_growth=False (conservador)"
             )
 
@@ -397,21 +460,99 @@ class ValuationEngine:
             else:
                 dados.pop("bancos_diagnostico", None)
                 inputs_bancos = replace(inputs, as_of=dia_gordon, **entradas_bancos)
+        janelas = janelas_fundamentais.entradas(dados, instante)
+        dados["janelas_fundamentais"] = janelas
+        graham_janela, lynch_janela = janelas["graham"], janelas["lynch"]
+        if not dy_perfil_confiavel and "abstencao" not in lynch_janela:
+            lynch_janela["abstencao"] = (
+                "perfil não demonstrado: DY comum ausente ou não confiável"
+            )
+        inputs_graham = replace(inputs, lpa=None, vpa=None)
+        inputs_lynch = replace(inputs, lpa=None, crescimento_lpa=None)
+        if "abstencao" not in graham_janela:
+            inputs_graham = replace(
+                inputs, lpa=BRL(graham_janela["lpa"]), vpa=BRL(graham_janela["vpa"])
+            )
+        if "abstencao" not in lynch_janela:
+            preco_payout = (
+                p
+                if isinstance(entradas_bazin, proventos_b3.Abstencao)
+                else entradas_bazin["preco_referencia"]
+            )
+            inputs_lynch = replace(
+                inputs,
+                lpa=BRL(lynch_janela["lpa"]),
+                crescimento_lpa=RateNominal(lynch_janela["crescimento_lpa"]),
+                dy=Ratio(dy_perfil) if dy_perfil_confiavel else None,
+                dy_confiavel=dy_perfil_confiavel,
+                preco=BRL(preco_payout),
+            )
         resultados = self._avaliar_metodos(
-            inputs, inputs_gordon, inputs_bazin, inputs_bancos
+            inputs,
+            inputs_gordon,
+            inputs_bazin,
+            inputs_bancos,
+            inputs_graham,
+            inputs_lynch,
         )
+        metadados = {
+            "Graham": graham_janela,
+            "Lynch": lynch_janela,
+            "Bazin": dados.get("bazin_proventos") or {},
+            "Gordon": dados.get("gordon_cvm") or {},
+            "Bancos": dados.get("gordon_cvm") or {},
+        }
+        lentes = {}
+        for metodo in (_GRAHAM, _BAZIN, _LYNCH, _GORDON, _BANCOS):
+            resultado_metodo = resultados[metodo.nome]
+            causa = dados.get(
+                {
+                    "Gordon": "gordon_diagnostico",
+                    "Bazin": "bazin_diagnostico",
+                    "Bancos": "bancos_diagnostico",
+                }.get(metodo.nome, "")
+            )
+            if not causa and metodo.nome in ("Graham", "Lynch"):
+                causa = metadados[metodo.nome].get("abstencao")
+            if (
+                isinstance(resultado_metodo, Abstention)
+                and resultado_metodo.motivo.startswith("insumo ausente:")
+                and causa
+            ):
+                resultado_metodo = Abstention(metodo.nome, metodo.version, causa)
+            lentes[metodo.nome] = bloco(
+                metodo, resultado_metodo, p, metadados[metodo.nome]
+            )
+
+        bazin_contexto = lentes["Bazin"]
+        bazin_contexto["tipo_valor"] = "preço-limite informativo"
+        bazin_contexto["criterio_6pct"] = None
+        bazin_contexto["criterio_motivo"] = bazin_contexto["abstencao"]
+        if (
+            modelo == "empresa"
+            and not isinstance(entradas_bazin, proventos_b3.Abstencao)
+            and inputs_bazin.dy_confiavel
+        ):
+            bazin_contexto["dy_bruto_12m"] = inputs_bazin.dy.valor
+            bazin_contexto["preco_do_dy"] = inputs_bazin.preco.valor
+            bazin_contexto["criterio_6pct"] = (
+                "atinge 6%" if inputs_bazin.dy.valor >= 0.06 else "não atinge 6%"
+            )
+            bazin_contexto["criterio_motivo"] = None
+
         bancos = resultados["Bancos"]
         if modelo == ModeloDemonstracao.BANCO.value and not isinstance(
             bancos, MethodResult
         ):
-            # Decisão provisória do F2B-32: sem a lente, o banco não tem método; abstenção
+            # Decisão do F2B-32 ratificada em 25/10/2026: sem a lente, o banco não tem método; abstenção
             # sem número, em vez do preço como valor da regra V1 de "nenhum método".
             dados.setdefault("bancos_diagnostico", bancos.motivo)
             return {
                 **_abstencao_de_escopo(
                     f"lente de bancos abstida: {dados['bancos_diagnostico']}", classe
                 ),
-                'inadimplencia_ifdata': _texto_inadimplencia(dados, instante),
+                "lentes": lentes,
+                "inadimplencia_ifdata": _texto_inadimplencia(dados, instante),
                 **aviso_liquidez,
             }
         graham = resultados["Graham"]
@@ -430,8 +571,7 @@ class ValuationEngine:
         if isinstance(bazin, MethodResult):
             if ALERTA_DY_ARMADILHA in bazin.alertas:
                 riscos.append("DY muito alto (possível armadilha)")
-                confianca -= 10
-            metodos['Bazin'] = bazin.valor.valor
+            metodos["Bazin"] = bazin.valor.valor
             for aviso in (*avisos_bazin, *bazin.alertas):
                 if aviso != ALERTA_DY_ARMADILHA and aviso not in riscos:
                     riscos.append(aviso)
@@ -440,7 +580,21 @@ class ValuationEngine:
         # Fórmula e condições em sentinela/methods/lynch.py.
         lynch = resultados["Lynch"]
         if isinstance(lynch, MethodResult):
-            metodos['Lynch'] = lynch.valor.valor
+            from sentinela.data.payout_lynch import contexto
+
+            lynch_janela["payout_contextual"] = contexto(
+                dy_perfil,
+                inputs_lynch.preco.valor,
+                lynch_janela["lpa"],
+                confiavel=dy_perfil_confiavel,
+                fonte=dados["perfil_fonte"],
+            )
+            if not isinstance(entradas_bazin, proventos_b3.Abstencao):
+                lynch_janela["payout_contextual"]["intervalo_dy"] = {
+                    "inicio_exclusivo": entradas_bazin["serie"]["inicio_exclusivo"],
+                    "fim": entradas_bazin["serie"]["referencia"],
+                }
+            metodos["Lynch"] = lynch.valor.valor
 
         # ── 4. GORDON ─────────────────────────────────────────────────────────
         # Fluxo da DVA e desconto real, na ficha Gordon1.0 (F2B-1).
@@ -449,140 +603,75 @@ class ValuationEngine:
                 riscos.append(aviso)
         gordon = resultados["Gordon"]
         if isinstance(gordon, MethodResult):
-            metodos['Gordon'] = gordon.valor.valor
+            metodos["Gordon"] = gordon.valor.valor
             riscos.extend(a for a in gordon.alertas if a not in riscos)
 
         # ── 5. BANCOS (F2B-32) ────────────────────────────────────────────────
         # P/VP justificado da ficha bancos 1.1; só o modelo banco chega aqui com insumos.
         if isinstance(bancos, MethodResult):
             dados.pop("bancos_diagnostico", None)
-            metodos['Bancos'] = bancos.valor.valor
+            metodos["Bancos"] = bancos.valor.valor
             riscos.extend(a for a in bancos.alertas if a not in riscos)
 
-        # ── CÁLCULO FINAL ─────────────────────────────────────────────────────
+        # Discordância permanece aviso de contexto, sem formar valor ou sinal.
         valores_validos = list(metodos.values())
-
-        if not valores_validos:
-            fair_value = p
-            upside     = 0.0
-        else:
-            # Mediana em vez de média: Graham (patrimonial), Bazin (renda) e
-            # Gordon (DCF) respondem perguntas diferentes. Quando divergem >2x,
-            # a média aritmética produz um valor sem significado econômico.
-            # statistics.median: 1 valor → o valor; 2 → média; 3+ → mediana.
-            fair_value = statistics.median(valores_validos)
-            upside     = (fair_value / p) - 1
-
-            if len(valores_validos) >= 2:
-                if max(valores_validos) / max(min(valores_validos), 0.01) > MACRO.METODOS_DIVERGENCIA_RATIO:
-                    riscos.append("Métodos divergentes")
-                    confianca -= 10
-
-        if pl <= 0 or pvp <= 0:
-            riscos.append("Dados incompletos")
-            confianca -= 10
-
-        # ── SCORE (Sigmoid) ───────────────────────────────────────────────────
-        score = 50 + MACRO.SCORE_SIGMOID_AMPLITUDE * (2 / (1 + math.exp(-upside * MACRO.SCORE_SIGMOID_INCLINACAO)) - 1)
-        score = max(0, min(100, score))
-
-        # Ajustes de qualidade (aplicados independente do valuation)
-        # F2B-45: só número finito é avaliado; texto (sem fonte desde o F2A-22), ausência e
-        # não finito seguem sem penalidade, com o aviso num campo próprio, fora de `riscos`.
-        divida_liq_ebitda = dados.get('divida_liq_ebitda')
-        aviso_alavancagem = None
         if (
-            isinstance(divida_liq_ebitda, (int, float))
-            and not isinstance(divida_liq_ebitda, bool)
-            and math.isfinite(divida_liq_ebitda)
+            len(valores_validos) >= 2
+            and max(valores_validos) / max(min(valores_validos), 0.01)
+            > MACRO.METODOS_DIVERGENCIA_RATIO
         ):
-            if divida_liq_ebitda > MACRO.DIVIDA_EBITDA_LIMITE:
-                score -= 15
-                riscos.append("Dívida elevada")
-                confianca -= 15
-        else:
-            motivo_divida = (
-                "ausente" if divida_liq_ebitda is None
-                else "em texto" if isinstance(divida_liq_ebitda, str)
-                else "não numérica ou não finita"
-            )
-            aviso_alavancagem = (
-                f"alavancagem não avaliada: dívida líquida/EBITDA {motivo_divida}"
-            )
+            riscos.append("Métodos divergentes")
 
-        if roe > MACRO.ROE_BONUS_MIN:    score += 10
-        if roe < MACRO.ROE_PENALIDADE_MAX: score -= 15
-
+        # Avisos de dados e contexto não são penalidades no valuation.
+        aviso_alavancagem = None
+        divida = dados.get("divida_liq_ebitda")
+        if (
+            not isinstance(divida, Real)
+            or isinstance(divida, bool)
+            or not math.isfinite(divida)
+        ):
+            motivos = dados.get("alavancagem_motivos") or {}
+            causa = (
+                motivos.get("divida_liq_ebitda") if isinstance(motivos, dict) else None
+            )
+            causa = causa.strip() if isinstance(causa, str) and causa.strip() else None
+            if causa is None:
+                coletada = dados.get("alavancagem_cvm")
+                motivos_coletados = (
+                    coletada.get("motivos") if isinstance(coletada, dict) else None
+                )
+                causa_coletada = (
+                    motivos_coletados.get("divida_liq_ebitda")
+                    if isinstance(motivos_coletados, dict) else None
+                )
+                if isinstance(causa_coletada, str) and causa_coletada.strip():
+                    causa = causa_coletada.strip()
+            aviso_alavancagem = f"alavancagem não avaliada: dívida líquida/EBITDA {causa or ('ausente' if divida is None else 'em texto' if isinstance(divida, str) else 'não numérica ou não finita')}"
+        elif divida > MACRO.DIVIDA_EBITDA_LIMITE:
+            riscos.append("Dívida elevada")
         if not dy_confiavel:
-            score -= 5
             riscos.append("DY suspeito")
-            confianca -= 20
-
         if not pl_confiavel:
-            score -= 5
             riscos.append("PL não confiável")
-            confianca -= 20
-
-        score = max(0, min(100, score))
-
-        # ── RECOMENDAÇÃO ──────────────────────────────────────────────────────
-        rec = "NEUTRO"
-
-        if upside > MACRO.REC_UPSIDE_COMPRA and score >= MACRO.REC_SCORE_COMPRA and confianca >= MACRO.REC_CONFIANCA_COMPRA:
-            rec = "COMPRA"
-            if score >= MACRO.REC_SCORE_FORTE and confianca >= MACRO.REC_CONFIANCA_FORTE:
-                rec = "COMPRA FORTE"
-        elif score >= MACRO.REC_SCORE_FORTE and upside <= 0:
-            rec = "QUALIDADE — AGUARDAR"
-        elif upside < MACRO.REC_UPSIDE_VENDA:
-            rec = "VENDA"
-        else:
-            rec = "NEUTRO"
-
-        if rec == "COMPRA FORTE" and riscos:
-            rec = "COMPRA"
-
-        # ── GUARD: campo obrigatório ausente (F2A-22) → sem classificação positiva ──
-        # Dados fundamentais incompletos não significam que o ativo é ruim,
-        # apenas que não há confiança suficiente para uma classificação positiva.
-        # Preserva valores calculados para transparência.
-        # Não sobrescreve VENDA nem ALTO RISCO — EVITAR.
-        if rec in ("COMPRA", "COMPRA FORTE") and dados.get('fundamentos_incompletos'):
-            rec = "DADOS INSUFICIENTES — AGUARDAR"
-            riscos.append("Dados fundamentais insuficientes para análise precisa")
-            confianca = min(confianca, 50)
-            logger.warning(
-                f"[{ticker}] Downgrade → DADOS INSUFICIENTES: "
-                f"fundamentos_incompletos=True, rec original seria COMPRA/FORTE"
-            )
-
+        # Um único indicador legado de completude; prejuízo/juros não o penalizam.
+        confianca = 70 if dados.get("fundamentos_incompletos") else 100
         detalhes = ", ".join([f"{k}: R${v:.2f}" for k, v in metodos.items()])
 
-        logger.info(
-            f"[{dados.get('ticker','?')}] "
-            f"dy={dy:.4f}(conf={dy_confiavel}) pl={pl:.1f}(conf={pl_confiavel}) "
-            f"is_growth={is_growth} "
-            f"FV={fair_value:.2f} upside={upside*100:.1f}% score={int(score)} rec={rec}"
-        )
-
         extra = (
-            {'inadimplencia_ifdata': _texto_inadimplencia(dados, instante)}
+            {"inadimplencia_ifdata": _texto_inadimplencia(dados, instante)}
             if modelo == ModeloDemonstracao.BANCO.value
             else {}
         )
-        if aviso_alavancagem:
-            extra['aviso_alavancagem'] = aviso_alavancagem
+        if aviso_alavancagem and modelo != ModeloDemonstracao.BANCO.value:
+            extra["aviso_alavancagem"] = aviso_alavancagem
         extra.update(aviso_liquidez)
         return {
-            'fair_value':    round(fair_value, 2),
-            'upside':        round(upside * 100, 1),
-            'score_final':   int(score),
-            'recomendacao':  rec,
-            'metodos_usados': detalhes,
-            'perfil':        'CRESCIMENTO' if is_growth else 'RENDA/VALOR',
-            'pl_confiavel':  pl_confiavel,
-            'dy_confiavel':  dy_confiavel,
-            'confianca':     max(0, confianca),
-            'riscos':        riscos,
+            "lentes": lentes,
+            "metodos_usados": detalhes,
+            "perfil": "CRESCIMENTO" if is_growth else "RENDA/VALOR",
+            "pl_confiavel": pl_confiavel,
+            "dy_confiavel": dy_confiavel,
+            "confianca": max(0, confianca),
+            "riscos": riscos,
             **extra,
         }

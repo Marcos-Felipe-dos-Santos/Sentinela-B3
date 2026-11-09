@@ -3,6 +3,8 @@
 import math
 from datetime import UTC, date, datetime
 
+from apoio_janelas import enriquecer_janelas
+
 AS_OF_GORDON = datetime(2026, 10, 20, 15, tzinfo=UTC)
 
 
@@ -26,7 +28,7 @@ def enriquecer_gordon(
     Os casos de dois métodos omitem explicitamente a DVA. Não há guarda de ROE
     antiga escondida no helper; ROE positivo abaixo de10% é testado no método.
     """
-    dados = dict(dados)
+    dados = enriquecer_janelas(dados)
     dados.setdefault("classe_ativo", "STOCK")
     prov = {
         "periodo_referencia": "2025-12-31",

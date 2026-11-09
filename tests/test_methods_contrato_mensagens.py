@@ -136,7 +136,7 @@ def test_mensagens_do_calcular():
 
 def test_mensagens_do_registro():
     g = registry.obter("Graham")
-    ok = {"Graham": (registry.Mudanca("1.2.0", "x"),)}
+    ok = {"Graham": (registry.Mudanca("2.1.0", "x"),)}
     assert (
         _msg(ValueError, lambda: registry.validar((g, g), ok))
         == "nome de método repetido no registro"

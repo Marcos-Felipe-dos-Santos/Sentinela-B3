@@ -1,5 +1,6 @@
 import logging
 import math
+import zipfile
 from datetime import UTC, date, datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -9,7 +10,7 @@ import yfinance as yf
 from yfinance.exceptions import YFException
 
 from brapi_provider import BrapiProvider
-from config import FII_MANUAL_FALLBACK, _normalizar_dy, get_taxa_real
+from config import _normalizar_dy, get_taxa_real
 from cvm_fii_provider import CVMFIIProvider
 from cvm_provider import CVMProvider
 from database import DatabaseManager
@@ -492,11 +493,12 @@ class MarketEngine:
         self._buscar_proventos_b3(ticker, dados)
         self._buscar_liquidez(ticker, dados)
         self._buscar_taxa_real(dados)
+        self._contexto_janelas(dados, datetime.now(UTC))
 
         if list_missing_required_fields(dados, classifier):
             self._aplicar_cache_fundamentos(ticker, dados)
 
-        # F2A-23: a estimativa manual de FII (`FII_MANUAL_FALLBACK`) deixou de ser aplicada.
+        # F2A-23: estimativas manuais de FII não são aplicadas.
 
         # F2A-22: o Fundamentus saiu da cascata; a falta de campo obrigatório depois de
         # todas as fontes (inclusive cache e fallback manual) vira `fundamentos_incompletos`.
@@ -729,6 +731,25 @@ class MarketEngine:
             dados['b3_fundo'] = {
                 'abstencao': f"complemento da B3 do fundo indisponível: {exc}"
             }
+
+    def _contexto_janelas(self, dados: dict[str, Any], instante: datetime) -> None:
+        """Disponibiliza fontes existentes; não presume eventos/perímetros conciliados."""
+        from sentinela.data.janelas_fundamentais import entradas
+
+        from sentinela.data.providers.macro import (
+            MacroProvider, FALHAS_DA_FONTE, ERROS_DO_CODIGO,
+            _falha_da_fonte, _erro_do_codigo,
+        )
+
+        exercicios = (dados.get("serie_cvm") or {}).get("exercicios") or []
+        if len(exercicios) == 5 and not dados.get("ipca_serie"):
+            try:
+                dados["ipca_serie"] = MacroProvider().ipca_serie(exercicios, instante)
+            except FALHAS_DA_FONTE as erro:
+                dados["ipca_serie"] = _falha_da_fonte(erro)
+            except ERROS_DO_CODIGO as erro:
+                dados["ipca_serie"] = _erro_do_codigo(erro)
+        dados["janelas_fundamentais"] = entradas(dados, instante)
 
     def _buscar_taxa_real(self, dados: dict[str, Any]) -> None:
         """Registro aditivo, fora dos métodos e do prompt (F2B-30).
@@ -1002,7 +1023,13 @@ class MarketEngine:
             # para manter a interface dos provedores anteriores ao F2A-33.
             modelo = contas_cvm.modelo_do_setor(dados.get('setor'))
             extra = {} if modelo == 'empresa' else {'modelo': modelo}
-            self._serie_cvm(ticker, dados, cvm, cd_cvm, modelo)
+            ano_final = self._serie_cvm(ticker, dados, cvm, cd_cvm, modelo)
+            selecionar_exercicio = getattr(cvm, "exercicio_anual_mais_recente", None)
+            if callable(selecionar_exercicio):
+                if ano_final is None:
+                    dados["cvm_disponivel"] = False
+                    return False
+                extra["ano_final"] = ano_final
             historico = cvm.calcular_indicadores(cd_cvm, anos=1, **extra)
             if not historico:
                 dados['cvm_disponivel'] = False
@@ -1167,7 +1194,7 @@ class MarketEngine:
                 logger.info(f"[{ticker}] CVM preencheu {len(campos_fund)} campos (cd_cvm={cd_cvm})")
                 return True
 
-        except Exception as exc:
+        except (OSError, zipfile.BadZipFile) as exc:
             logger.warning(f"[{ticker}] CVM error: {exc}")
 
         dados['cvm_disponivel'] = False
@@ -1176,9 +1203,9 @@ class MarketEngine:
     def _buscar_ifdata(self, dados: dict[str, Any], *, as_of: datetime) -> None:
         """Basileia e inadimplência do IF.data para banco (F2A-9), com a fonte e a data-base.
 
-        Só para o setor de banco (F2A-2). O que falta vira limitação declarada em `riscos_dados`.
+        Só com modelo banco demonstrado no BPP (F2C-36). Ausências ficam em `riscos_dados`.
         """
-        if contas_cvm.modelo_do_setor(dados.get('setor')) != 'banco':
+        if dados.get('modelo_bpp') != 'banco':
             return
         riscos = dados.setdefault('riscos_dados', [])
         ifdata = getattr(self, 'ifdata', None)
@@ -1206,23 +1233,37 @@ class MarketEngine:
 
     def _serie_cvm(
         self, ticker: str, dados: dict[str, Any], cvm: Any, cd_cvm: int, modelo: str
-    ) -> None:
+    ) -> int | None:
         """Série de cinco exercícios e TTM da CVM (F2A-7), em `dados['serie_cvm']` e `dados['ttm_cvm']`.
 
-        Só disponibiliza os dados: nenhum campo dos métodos sai daqui (F2C-1), e o exercício
-        corrente continua sendo o da chamada de um ano. Provedor sem a interface (anterior ao
-        item) não passa pela etapa.
+        Disponibiliza os dados e devolve o ano selecionado, para a leitura corrente
+        reutilizar a mesma referência. Provedor sem as interfaces da série/seleção
+        não passa pela etapa.
         """
         indicadores_da_serie = getattr(cvm, 'indicadores_da_serie', None)
         acumulados_ttm = getattr(cvm, 'acumulados_ttm', None)
-        if indicadores_da_serie is None or acumulados_ttm is None:
-            return
+        selecionar_exercicio = getattr(cvm, 'exercicio_anual_mais_recente', None)
+        if indicadores_da_serie is None and acumulados_ttm is None and selecionar_exercicio is None:
+            return None
         hoje = date.today()
+        exercicios = []
+        ano_final = None
         try:
+            ano_final = (
+                selecionar_exercicio(cd_cvm, hoje)
+                if selecionar_exercicio is not None else hoje.year - 1
+            )
+            indicadores = (
+                indicadores_da_serie(cd_cvm, ano_final, modelo)
+                if indicadores_da_serie is not None else {}
+            )
+        except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
+            dados['serie_cvm'] = {'exercicios': [], 'abstencao': f"série anual indisponível: {exc}"}
+        else:
             classifier = getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER)
             exercicios = series_cvm.serie_anual(
-                indicadores_da_serie(cd_cvm, hoje.year - 1, modelo),
-                hoje.year - 1,
+                indicadores,
+                ano_final,
                 especie=dados.get('especie'),
                 classe=dados.get('classe_preferencial') or dados.get('especie'),
                 classes_preferenciais=dados.get('classes_preferenciais'),
@@ -1232,8 +1273,23 @@ class MarketEngine:
             dados['serie_cvm'] = {
                 'exercicios': exercicios,
                 'proventos_base': series_cvm.COMPETENCIA,
+                'cobertura': {
+                    'esperados': series_cvm.MAX_EXERCICIOS,
+                    'disponiveis': len(exercicios),
+                    'anos_ausentes': sorted(
+                        set(range(ano_final - series_cvm.MAX_EXERCICIOS + 1, ano_final + 1))
+                        - {e['exercicio'] for e in exercicios}
+                    ),
+                },
             }
+        try:
+            if acumulados_ttm is None:
+                dados['ttm_cvm'] = {'abstencao': 'interface TTM indisponível no provedor'}
+                return ano_final
             acumulados = acumulados_ttm(cd_cvm, hoje, modelo)
+        except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
+            dados['ttm_cvm'] = {'abstencao': f"TTM indisponível: {exc}"}
+        else:
             if exercicios:
                 atual = exercicios[-1]
                 janelas = {(a.inicio, a.fim) for a in acumulados
@@ -1245,8 +1301,7 @@ class MarketEngine:
             dados['ttm_cvm'] = (
                 {'abstencao': ttm.motivo} if isinstance(ttm, series_cvm.Abstencao) else ttm
             )
-        except Exception as exc:
-            logger.warning(f"[{ticker}] CVM série/TTM error: {exc}")
+        return ano_final
 
     def _por_acao_cvm(
         self, ticker: str, dados: dict[str, Any], ind: dict[str, Any]
@@ -1356,7 +1411,14 @@ class MarketEngine:
             eh_unit=eh_unit,
             acoes_por_unit=acoes_por_unit,
             shares_outstanding=_as_float(dados.get('_shares_outstanding')),
+            classes_preferenciais=dados.get('classes_preferenciais'),
         )
+        if (
+            not eh_unit
+            and dados.get('especie') == 'PN'
+            and len(set(dados.get('classes_preferenciais') or ())) > 1
+        ):
+            dados['divergencia_acoes_motivo'] = acoes_cvm.MOTIVO_COMPARACAO_CLASSES
         campos.update({'vpa': por_acao.vpa, 'pvp': por_acao.pvp})
         return {k: v for k, v in campos.items() if v is not None}
 
@@ -1410,32 +1472,6 @@ class MarketEngine:
             'campos fundamentais preenchidos via cache'
         )
         logger.info(f"[{ticker}] Usando cache de fundamentos ({len(preenchidos)} campos)")
-        return True
-
-    def _aplicar_fallback_manual_fii(self, ticker: str, dados: dict[str, Any]) -> bool:
-        ticker_norm = ticker.upper().replace(".SA", "").strip()
-        if not self._is_fii_ticker(ticker_norm, dados):
-            return False
-
-        fallback = FII_MANUAL_FALLBACK.get(ticker_norm)
-        if not fallback:
-            return False
-
-        preenchidos = merge_if_valid(
-            dados,
-            fallback,
-            allowed_keys={'dy', 'pvp', 'vacancia'},
-        )
-        self._record_field_sources(dados, preenchidos, 'manual_fallback')
-        if not preenchidos:
-            return False
-
-        dados['dados_manual'] = True
-        _registrar_fonte_fundamentos(dados, 'manual_fii')
-        dados.setdefault('riscos_dados', []).append(
-            'fundamentos FII preenchidos manualmente'
-        )
-        logger.info(f"[{ticker_norm}] Fallback manual FII preencheu {len(preenchidos)} campos")
         return True
 
     def _salvar_cache_se_valido(self, ticker: str, dados: dict[str, Any]) -> None:

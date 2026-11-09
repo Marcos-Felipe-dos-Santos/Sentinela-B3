@@ -14,7 +14,6 @@ source_paths = [
     "fii_engine.py",
     "market_engine.py",
     "peers_engine.py",
-    "portfolio_engine.py",
     "technical_engine.py",
     "valuation_engine.py",
     "sentinela/",

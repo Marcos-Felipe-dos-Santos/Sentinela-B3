@@ -23,7 +23,7 @@ Nada disso vale se o número estiver errado. Por isso o núcleo financeiro vem a
 - [ ] Toda companhia e todo FII listados estão mapeados para a CVM por dado oficial; a classe do ativo (ação, unit, FII, ETF, BDR) nunca é deduzida do ticker.
 - [ ] Taxa de desconto real (NTN-B longa + prêmio), com k e g no mesmo regime; a Selic não é taxa de desconto.
 - [ ] Bancos têm lente própria; método que não se aplica a um setor se abstém, com motivo.
-- [ ] Os métodos usam a série de cinco anos onde a metodologia pede, e a qualidade da empresa pesa na classificação.
+- [ ] Os métodos usam a série de cinco anos onde a metodologia pede, e a qualidade é apresentada em quadro descritivo separado, sem nota agregada.
 - [ ] Alavancagem medida por dívida financeira líquida.
 - [ ] Unidade é tipo; existe um único normalizador de DY, na fronteira do provedor.
 - [ ] Os achados críticos estão fechados (seção 10).
@@ -64,7 +64,7 @@ Nada disso vale se o número estiver errado. Por isso o núcleo financeiro vem a
 6. **Oficial primeiro.** CVM, B3 e Banco Central como fonte primária; APIs de terceiros como complemento. [D7]
 7. **Uma fonte de verdade por conceito, e nada de resíduo.** O legado sai ao fim da fase que o substitui; toda fase fecha com uma limpeza; o CI impede resíduo novo. (D14)
 8. **O loop executa, o Marcos decide.** Nenhum item com definição de "correto" em aberto entra na fila sem a decisão escrita nele.
-9. **A nota mede a empresa, não o ciclo de juros.** Juros entram como custo de capital real; a qualidade da empresa pesa na classificação. (D15)
+9. **Lentes separadas e qualidade descritiva.** Juros entram como custo de capital real; a apresentação 1.0 não produz score nem rótulo agregado (decisões da 2C).
 10. **A carteira do usuário é dado privado.** Nunca vai para arquivo versionado — o repositório é público. (D15)
 
 ## 4. Arquitetura-alvo
@@ -324,23 +324,40 @@ da fase em `docs/loop/historico/fase-2b/pr-fase-2b.md`.
 
 **Gate:** seção A muda só no F2B-7 ([SEÇÃO A] em (c), decisão de 18/10/2026); seção B virou exatamente onde marcada; mutation ≥ 80%; os resultados antes e depois da taxa real estão comparados no diário.
 
-### Fase 2C — Qualidade e apresentação
+### Fase 2C — Qualidade e apresentação — concluída, aguardando PR
 
-| Item | Entrega |
+Estado final em 09/11/2026, branch `v2/fase-2c`: **3525 passed, 1 skipped,
+8 xfailed**. Resumo e fechamento em `docs/loop/historico/fase-2c/pr-fase-2c.md` e diário/fila
+correntes; aceite do checkpoint e PR pendentes do Marcos, sem ativação da Fase 3.
+Os IDs abaixo são os eixos do plano; a execução detalhada está na fila da 2C.
+
+| Eixo | Estado final |
 |---|---|
-| F2C-1 | Fundamentos normalizados: cada método declara se usa o último ano, o TTM ou a série de cinco anos (por exemplo, dividendos médios no Bazin, LPA médio no Graham, CAGR no Lynch) |
-| F2C-2 | Lente de qualidade com cinco anos: ROE e sua estabilidade, margens, dívida líquida sobre EBITDA, consistência de lucro e de dividendos |
-| F2C-3 | Banda neutra com histerese na classificação — F-28 |
-| F2C-4 | Vocabulário único: "classificação" e "sinal" em código, banco e textos [D10] |
-| F2C-5 | Métodos apresentados como lentes, sem mediana vendida como "valor justo" — incluindo o caso de dois métodos, que hoje vira média por acidente da biblioteca padrão |
-| F2C-6 | Lente de valuation reverso sobre fluxo de caixa (DFC) — opcional |
-| F2C-7 | Setores e pares a partir dos dados do F2A-2; fim do mapa fixo e da duplicidade do MGLU3 |
-| F2C-8 | Métodos duplicados do `auditoria.py` aposentados; o que sobra vira invariante sobre `methods/` |
-| F2C-9 | Otimizador de Markowitz e divisão fixa 40% FIIs / 60% ações aposentados: retorno esperado estimado com um ano de dados não tem significância, e o resultado era uma sugestão de alocação |
-| F2C-10 | Limpeza: código do otimizador, constantes de `config.py` sem leitor e marcas `QUEBRA ESPERADA` já resolvidas, consolidadas na seção A |
-| F2C-11 | Resumo e arquivamento |
+| F2C-1 | Graham 2.1.0: cinco exercícios contíguos, média do LPA corrigido por IPCA de fim de exercício, VPA final, raiz de 22,5 × LPA médio × VPA; sem piso/guardas legadas por múltiplos. Lynch 2.1.0: cinco observações/quatro intervalos, CAGR nominal com extremos positivos, LPA final, m = 1 e teto de crescimento de 25%; sem multiplicador legado, teto adicional de P/L ou truncamento de payout. Payout só contextual, mesma fonte do perfil. Bazin mantém proventos brutos B3 de 12 meses ÷ 6% nominais, com DY mínimo de 5% e perfil renda. |
+| F2C-2 | Qualidade 1.0.0: quadro descritivo de cinco exercícios, ROE/estabilidade, lucros, margem consolidada, alavancagem e proventos, com cobertura e motivos; sem nota única, pesos ou efeito nos valores. Margem e alavancagem não aplicáveis a banco. Calendário anual de proventos ainda sem produtor de produção; ausência não representa ano sem distribuição. |
+| F2C-3/4/5 | Apresentação 1.0: lentes separadas com valor ou motivo, regime, janela, premissas e distância ao preço; Bazin como critério de 6%. Sem mediana, score, valor ou rótulo agregado; banda/histerese não compõem a saída atual. Confiança/completude dos dados permanece contexto. Registros antigos identificados como históricos, sem recálculo. |
+| F2C-6 | Valuation reverso não entregue; não integra as lentes atuais. |
+| F2C-7 | Pares por referência oficial, classe, espécie e modelo documental; mapa fixo aposentado. |
+| F2C-8 | Métodos duplicados de auditoria aposentados; consumo das lentes e invariantes. |
+| F2C-9/10 | Markowitz, divisão fixa 40/60 e aba de otimização removidos; constantes sem leitor retiradas, exceções com leitores documentadas no inventário. |
+| F2C-11 | Resumo final e destinos das pendências registrados; aguardando PR/aceite. |
 
-**Gate:** seção A inalterada; seção B virou exatamente onde marcada; mutation ≥ 80%.
+**Comparabilidade e limites:** produtor CVM demonstra mesmo CNPJ/modelo BPP e
+reservas D20 válidas; consumidores conferem contiguidade anual/TTM. Graham/Lynch
+exigem também base acionária documental compatível ou fatores oficiais B3.
+O aviso permanece explícito: “reorganização societária no período não é detectada”.
+O fluxo real acrescentou o contexto de janelas (IPCA/fatores B3) após a taxa real;
+IF.data é selecionado pelo modelo BPP banco. A série ainda usa `date.today()`;
+tempo como entrada e o calendário anual completo ficam para a Fase 3.
+
+**Backtest:** o caminho elegível sem score agregado retorna `INDISPONIVEL` desde a
+2C. Abstenções de escopo e dados insuficientes preservam seus motivos. Os CSVs
+sintéticos não são evidência; reconstrução ponto-no-tempo em F3-8/F3-P16.
+
+**Pendências transferidas:** `docs/loop/fila-fase3-proposta.md` (F3-P01…P16)
+recebe os oito casos xfail e os itens não entregues, incluindo limites de escopo,
+calendário, relógio e reorganizações. Conclusão da fase não significa correção
+desses bugs nem ativação da proposta.
 
 ### Fase 3 — Tempo como entrada [D5]
 
@@ -539,10 +556,10 @@ IDs conforme a auditoria normalizada no F0-0 (`docs/auditoria/2026-09-red-team.m
 | Tabelas de vacância manuais | F2A-13 |
 | Mapas manuais de ticker (`cvm_ticker_map.py`, `cvm_fii_map.py`) | F2A-13, se o mapa automático cobrir o universo |
 | Selic como taxa de desconto (constantes e caminhos) | F2B-5 |
-| Mapa de pares fixo | F2C-7 |
-| Métodos duplicados do `auditoria.py` | F2C-8 |
-| Otimizador de Markowitz e divisão fixa 40/60 | F2C-9 e F2C-10 |
-| Constantes de `config.py` sem leitor | F2C-10 |
+| Mapa de pares fixo | aposentado na 2C |
+| Métodos duplicados do `auditoria.py` | aposentados na 2C |
+| Otimizador de Markowitz e divisão fixa 40/60 | removidos na 2C |
+| Constantes de `config.py` sem leitor | removidas na 2C; exceções com leitores no inventário |
 | CSVs fabricados do backtest | F3-8 |
 | Dois bancos antigos, cache da cascata e orquestração duplicada do `app.py` | F3-9 |
 | `limpar_banco.py` e `auditar_recomendacoes.py` (a confirmar no inventário) | F3-9 |
@@ -615,8 +632,8 @@ O núcleo financeiro custou cerca de um mês: a linha de corte passou de feverei
 | Limiares de divergência de ações e de liquidez | antes da Fase 2A | dossiê F0-6 |
 | Prêmio de risco e vértice da NTN-B | antes da Fase 2B | dossiê F0-6 |
 | Benchmark do FII (Selic líquida, NTN-B ou os dois) | antes da Fase 2B | dossiê F0-6 |
-| Janela de cada método (último ano, TTM ou cinco anos) | antes da Fase 2C | dossiê F0-6 |
-| Histerese, lentes e valuation reverso | antes da Fase 2C | dossiê F0-6 |
+| Janelas de Graham/Lynch e apresentação das lentes | decidido na 2C | fichas 2.1 e decisões da 2C |
+| Apresentação sem agregado; qualidade descritiva | decidido na 2C | apresentação 1.0 e qualidade 1.0; reverso não entregue |
 | Faixa da inferência de escala das ações [0,1; 10] | antes do F2A-36 | ficha do F2A-34 |
 | Lista fechada do universo inicial | depois do F2A-35 | ADR-0003, D32 |
 | Universo, profundidade histórica, reapresentações e intervalo de datas do histórico estrito | antes da Fase 3 | teste de volume; ADR-0003, D17 e D32 |

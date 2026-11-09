@@ -72,14 +72,6 @@ DISTRESSED_TICKERS = {
     'MGLU3',
 }
 
-# Fallback manual para FIIs com cobertura fraca nas APIs.
-# Estimativas mantidas manualmente; revisar periodicamente.
-FII_MANUAL_FALLBACK = {
-    "CVBI11": {"dy": 0.10, "pvp": 0.85, "vacancia": 0.25},
-    "HGLG11": {"dy": 0.084, "pvp": 0.99, "vacancia": 0.08},
-    "MXRF11": {"dy": 0.115, "pvp": 0.98, "vacancia": 0.05},
-}
-
 # ==========================================
 # SELIC DINÂMICA (lazy load com cache)
 # ==========================================
@@ -174,7 +166,6 @@ class MacroContext:
     LIQUIDEZ_VOLUME_FII_MIN = 100_000.0
 
     PREMIO_ACOES_REAL = _taxas.PREMIO_ACOES_REAL
-    NTNB_VENCIMENTO_MIN = _taxas.ANO_MIN_NTNB
 
     # DY normalização (Yahoo Finance)
     DY_PERCENTUAL_THRESHOLD = 1.0      # DY > 1 → Yahoo retornou como %
@@ -184,7 +175,7 @@ class MacroContext:
     ROE_CRESCIMENTO_MIN     = 0.20     # ROE > 20% → perfil CRESCIMENTO
     DY_CRESCIMENTO_MAX      = 0.04     # DY < 4% → perfil CRESCIMENTO
 
-    # Graham
+    # Cenários históricos de Graham (scripts/grade protegida, não o motor atual)
     GRAHAM_PVP_LIMITE_CRESCIMENTO = 3.0
     GRAHAM_PVP_LIMITE_RENDA       = 2.5
     GRAHAM_PL_LIMITE              = 25.0
@@ -194,46 +185,28 @@ class MacroContext:
     BAZIN_DY_MIN            = 0.05     # gate: pagadoras consistentes
     BAZIN_DY_ARMADILHA      = 0.15     # DY > 15% → possível armadilha
 
-    # Lynch
+    # Cenários históricos de Lynch (scripts, não o motor atual)
     LYNCH_PAYOUT_MAX        = 0.95
     LYNCH_G_MAX             = 0.25
     LYNCH_PL_MULTIPLICADOR  = 1.5
     LYNCH_PL_MAX            = 35.0
 
-    # Gordon
-    GORDON_DY_MIN           = 0.04
-    GORDON_ROE_MIN          = 0.10
-    GORDON_G_MAX            = 0.08
-    GORDON_PAYOUT_MAX       = 0.95
-
     # Divergência entre métodos
     METODOS_DIVERGENCIA_RATIO = 2.0
 
-    # Score sigmoid
-    SCORE_SIGMOID_AMPLITUDE  = 48
-    SCORE_SIGMOID_INCLINACAO = 3
-
     # Qualidade financeira
     DIVIDA_EBITDA_LIMITE    = 3.0
-    ROE_BONUS_MIN           = 0.20
+    # Grade histórica protegida; não pontua análises atuais.
     ROE_PENALIDADE_MAX      = 0.05
 
-    # Recomendação ações
+    # Compatibilidade de teste, sem leitor de classificação no motor atual
     REC_UPSIDE_COMPRA       = 0.15
-    REC_SCORE_COMPRA        = 60
-    REC_CONFIANCA_COMPRA    = 50
-    REC_SCORE_FORTE         = 75
-    REC_CONFIANCA_FORTE     = 70
-    REC_UPSIDE_VENDA        = -0.15
 
     # FII
     FII_FATOR_IR            = 0.85     # alíquota 15% renda fixa longo prazo
-    FII_DY_SELIC_RATIO_MIN  = 0.70     # DY < 70% da Selic líquida → penalidade
     FII_PVP_PREMIO_ALTO     = 1.15
     FII_PVP_PREMIO_MODERADO = 1.05
     FII_PVP_DESCONTO        = 0.85
-    FII_UPSIDE_COMPRA       = 0.10
-    FII_UPSIDE_VENDA        = -0.10
     # F2B-2 (ficha FII 1.1, §6; plano final da 2B, seção 3): spread dos FIIs de tijolo sobre
     # a NTN-B real, calibrado por `scripts/calibrar_spread_fii.py` em 21/10/2026. Constante
     # datada, sem recalibração em execução: nova calibração é item novo da fila. Mantida por

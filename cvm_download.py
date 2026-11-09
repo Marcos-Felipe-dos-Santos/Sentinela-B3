@@ -50,6 +50,15 @@ def baixar_arquivo(url: str, dest: Path) -> Path:
 
         except (requests.RequestException, ConnectionError) as e:
             logger.warning("Erro no download de %s: %s", url, e)
+            if (
+                isinstance(e, requests.HTTPError)
+                and e.response is not None
+                and e.response.status_code == 404
+            ):
+                # Ausência declarada pela fonte não se resolve repetindo a chamada.
+                if tmp_path.exists():
+                    tmp_path.unlink()
+                raise
             if attempt < _MAX_RETRIES:
                 sleep_time = _BACKOFF_FACTOR ** (attempt - 1)
                 logger.info("Aguardando %ds antes da próxima tentativa...", sleep_time)

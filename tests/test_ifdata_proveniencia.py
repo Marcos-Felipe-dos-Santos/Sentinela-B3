@@ -103,7 +103,7 @@ def test_cascata_encaminha_instante_e_proveniencia(monkeypatch):
 
     motor = _engine(monkeypatch, info={"currentPrice": 20.0})
     motor.ifdata = Fonte()
-    dados = {"setor": "Bancos", "cnpj": "00.000.000/0001-91"}
+    dados = {"setor": "Bancos", "modelo_bpp": "banco", "cnpj": "00.000.000/0001-91"}
     instante = datetime(2026, 10, 1, 1, tzinfo=UTC)
     motor._buscar_ifdata(dados, as_of=instante)
     assert chamadas == [(dados["cnpj"], date(2026, 9, 30), instante)]

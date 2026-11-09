@@ -1,0 +1,124 @@
+"""Apresentação1.0: comparação aritmética por lente, sem classificação."""
+
+from __future__ import annotations
+
+import math
+from typing import Any
+
+from sentinela.domain.units import BRL
+from sentinela.methods.base import MethodResult
+
+
+def distancia(valor: object, preco: object) -> float | None:
+    """Distância percentual quando valores monetários são positivos e representáveis."""
+    for numero in (valor, preco):
+        if (
+            isinstance(numero, bool)
+            or not isinstance(numero, (int, float))
+            or not math.isfinite(numero)
+            or numero <= 0
+        ):
+            return None
+    resultado = 100 * (valor / preco - 1)
+    return resultado if math.isfinite(resultado) else None
+
+
+def bloco(metodo: Any, resultado: Any, preco: float, janela: dict) -> dict:
+    """O P/VP contextual não é um preço monetário nem entra nesta coleção."""
+    valor = (
+        resultado.valor.valor
+        if isinstance(resultado, MethodResult) and isinstance(resultado.valor, BRL)
+        else None
+    )
+    motivo = getattr(resultado, "motivo", None)
+    if valor is not None and (not math.isfinite(valor) or valor <= 0):
+        valor, motivo = None, "valor da lente não positivo ou não finito"
+    if valor is None and not motivo:
+        motivo = "lente sem valor monetário"
+    return {
+        "versao": metodo.version,
+        "valor": valor,
+        "abstencao": motivo,
+        "regime": metodo.regime.value,
+        "janela": janela,
+        "premissas": list(metodo.assumptions),
+        "unidade": "BRL",
+        "distancia_ao_preco_pct": distancia(valor, preco),
+    }
+
+
+def finalizar(resultado: dict, dados: dict, instante: Any) -> dict:
+    """Identifica o contrato e a referência de preço sem inventar data ausente."""
+    return {
+        **resultado,
+        "apresentacao_versao": "1.0",
+        "lentes": {
+            nome: {
+                **lente,
+                "as_of": instante.isoformat(),
+                "preco": float(dados["preco_atual"]),
+                "fonte_preco": dados.get("fonte_preco"),
+                "data_preco": dados.get("data_preco"),
+            }
+            for nome, lente in resultado["lentes"].items()
+        },
+    }
+
+
+def mesclar_analise(dados: dict, analise: dict) -> dict:
+    """Uma análise nova não herda síntese de um payload antigo do cache."""
+    saida = {**dados, **analise}
+    if analise.get("apresentacao_versao") == "1.0":
+        for chave in (
+            "fair_value",
+            "upside",
+            "score_final",
+            "recomendacao",
+            "classificacao_heuristica",
+        ):
+            saida.pop(chave, None)
+    return saida
+
+
+def contexto_leitura(payload: dict) -> tuple[str, dict]:
+    """Localiza a versão explícita, inclusive no transporte AnalysisResult.
+
+    A ausência de versão indica registro histórico. Uma versão não reconhecida
+    permanece opaca: não autoriza consumir os dados como apresentação atual.
+    """
+    candidatos = [payload]
+    for chave in ("valuation", "raw"):
+        candidato = payload.get(chave)
+        if isinstance(candidato, dict):
+            candidatos.append(candidato)
+    for candidato in candidatos:
+        if "apresentacao_versao" in candidato:
+            tipo = (
+                "atual"
+                if candidato["apresentacao_versao"] == "1.0"
+                else "versao_desconhecida"
+            )
+            return tipo, candidato
+    for candidato in candidatos:
+        if any(
+            chave in candidato
+            for chave in ("recomendacao", "score_final", "fair_value", "upside")
+        ):
+            return "historico", candidato
+    return "historico", payload
+
+
+def adaptar_leitura(payload: Any) -> Any:
+    """Acrescenta identificação histórica sem editar dados ou recalcular valores.
+
+    O namespace auxiliar nunca substitui uma chave já existente do usuário.
+    Consumidores usam contexto_leitura, sem confiar nesse campo opcional.
+    """
+    if not isinstance(payload, dict):
+        return payload
+    tipo, _ = contexto_leitura(payload)
+    if tipo == "atual":
+        return payload
+    saida = dict(payload)
+    saida.setdefault("_compat_apresentacao", {"tipo": tipo, "recalculado": False})
+    return saida

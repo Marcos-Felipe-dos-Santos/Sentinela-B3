@@ -132,3 +132,70 @@ def test_limite_de_entradas(tmp_path, monkeypatch):
     provider.parsear_demonstrativo(zips[0], "BPA_con")  # a mais antiga saiu
     provider.parsear_demonstrativo(zips[2], "BPA_con")  # a mais nova ficou
     assert len(chamadas) == 1
+
+
+@pytest.mark.parametrize("periodo_primeiro", [False, True])
+def test_periodo_compartilha_leitura_preservando_projecoes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, periodo_primeiro: bool
+) -> None:
+    """F2C-13: memoizar não muda os campos declarados no CSV sintético."""
+    provider = CVMProvider(cache_dir=str(tmp_path))
+    caminho = tmp_path / "periodos.zip"
+    linhas = [
+        ["00.000.000/0001-00", "2025-12-31", "2", "7", "DF Consolidado",
+         "MIL", "ÚLTIMO", "2025-01-01", "2025-12-31", "3.11", "Lucro", "123"],
+        ["00.000.000/0001-00", "2025-12-31", "1", "7", "DF Consolidado",
+         "MIL", "PENÚLTIMO", "2024-01-01", "2024-12-31", "3.11", "Lucro", "99"],
+    ]  # fmt: skip
+    colunas = [
+        "CNPJ_CIA", "DT_REFER", "VERSAO", "CD_CVM", "GRUPO_DFP", "ESCALA_MOEDA",
+        "ORDEM_EXERC", "DT_INI_EXERC", "DT_FIM_EXERC", "CD_CONTA", "DS_CONTA", "VL_CONTA",
+    ]  # fmt: skip
+    with zipfile.ZipFile(caminho, "w") as arquivo:
+        arquivo.writestr(
+            "dfp_cia_aberta_DRE_con_2025.csv",
+            pd.DataFrame(linhas, columns=colunas)
+            .to_csv(sep=";", index=False)
+            .encode("latin-1"),
+        )
+    chamadas = _contar_leituras(monkeypatch, provider)
+    opcoes = {"include_cd_cvm": True, "include_versao": True}
+    primeiro = provider.parsear_demonstrativo(
+        caminho, "DRE_con", **opcoes, include_periodo=periodo_primeiro
+    )
+    segundo = provider.parsear_demonstrativo(
+        caminho, "DRE_con", **opcoes, include_periodo=not periodo_primeiro
+    )
+    sem, com = (segundo, primeiro) if periodo_primeiro else (primeiro, segundo)
+    assert chamadas == ["DRE_con"]
+    assert len(cvm_provider._cache_parse) == 1
+    assert list(sem.columns) == [
+        "CNPJ_CIA",
+        "DT_REFER",
+        "CD_CONTA",
+        "DS_CONTA",
+        "VL_CONTA",
+        "CD_CVM",
+        "VERSAO",
+    ]
+    assert list(com.columns) == [*sem.columns, "DT_INI_EXERC", "DT_FIM_EXERC"]
+    assert len(com) == 1
+    assert com.iloc[0].to_dict() == {
+        "CNPJ_CIA": "00.000.000/0001-00",
+        "DT_REFER": "2025-12-31",
+        "CD_CONTA": "3.11",
+        "DS_CONTA": "Lucro",
+        "VL_CONTA": 123000,
+        "CD_CVM": 7,
+        "VERSAO": "2",
+        "DT_INI_EXERC": "2025-01-01",
+        "DT_FIM_EXERC": "2025-12-31",
+    }
+    pd.testing.assert_frame_equal(sem, com.loc[:, sem.columns])
+    com.loc[0, "DT_INI_EXERC"] = "alterado"
+    sem.loc[0, "VL_CONTA"] = -1
+    preservado = provider.parsear_demonstrativo(
+        caminho, "DRE_con", **opcoes, include_periodo=True
+    )
+    assert preservado.loc[0, "VL_CONTA"] == 123000
+    assert preservado.loc[0, "DT_INI_EXERC"] == "2025-01-01"

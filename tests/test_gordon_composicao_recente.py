@@ -248,8 +248,8 @@ def test_escala_sem_lucro_dos_controladores_separado_fica_indeterminada(fonte):
 
 
 def test_escala_com_controladores_zerados_sem_minoritarios_usa_o_consolidado(fonte):
-    # KLBN11 e BRBI11 no ITR de 30/06/2026: 3.11.01 zerada e sem não controladores; a
-    # reserva da D20 é o consolidado, como na DFP.
+    # Hipótese sintética: linhas zeradas e BPP lido sem participação minoritária.
+    # A reserva D20 exige essa evidência; não é retrato de uma companhia real.
     p, arquivo, caminhos = fonte
     caminhos["itr", 2026] = arquivo(
         "itr",
@@ -284,6 +284,18 @@ def test_escala_com_controladores_zerados_sem_minoritarios_usa_o_consolidado(fon
             ("2026-01-01", "MIL", "3.99.01.01", "ON", "2.00"),
         ],
     )
+    with ZipFile(caminhos["itr", 2026], "a") as z:
+        z.writestr(
+            "itr_cia_aberta_BPP_con_2026.csv",
+            _csv(
+                ["CNPJ_CIA", "DT_REFER", "VERSAO", "ORDEM_EXERC", "ESCALA_MOEDA",
+                 "CD_CONTA", "DS_CONTA", "VL_CONTA"],
+                [(CNPJ, "2026-06-30", "1", "ÚLTIMO", "MIL", "2.03.09",
+                  "Participação dos Acionistas Não Controladores", "0")],
+            ),
+        )
+    instante = datetime(2026, 10, 19, tzinfo=UTC).timestamp()
+    os.utime(caminhos["itr", 2026], (instante, instante))
     assert p.composicao_mais_recente(CNPJ, ASOF, 2025)["escala"] == "MIL"
 
 

@@ -17,6 +17,7 @@ import re
 from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 logger = logging.getLogger(__name__)
 
@@ -165,20 +166,33 @@ def registrar_arquivo(
         hash_sha256=hash_sha256(caminho),
     )
     lateral = caminho_lateral(caminho)
-    temporario = lateral.with_name(lateral.name + ".tmp")
-    temporario.write_text(
-        json.dumps(
-            {
-                "mtime_ns": stat.st_mtime_ns,
-                "tamanho": stat.st_size,
-                "registro": registro.para_dict(),
-            },
-            ensure_ascii=False,
-            indent=1,
-        ),
-        encoding="utf-8",
-    )
-    temporario.replace(lateral)
+    temporario: Path | None = None
+    try:
+        # Nome exclusivo por gravação e mesmo diretório para manter a troca atômica.
+        with NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=lateral.parent,
+            prefix=lateral.name + ".",
+            suffix=".tmp",
+            delete=False,
+        ) as arquivo:
+            temporario = Path(arquivo.name)
+            arquivo.write(
+                json.dumps(
+                    {
+                        "mtime_ns": stat.st_mtime_ns,
+                        "tamanho": stat.st_size,
+                        "registro": registro.para_dict(),
+                    },
+                    ensure_ascii=False,
+                    indent=1,
+                )
+            )
+        temporario.replace(lateral)
+    finally:
+        if temporario is not None:
+            temporario.unlink(missing_ok=True)
     return registro
 
 
@@ -201,6 +215,12 @@ def registrar_sem_falhar(
         return None
 
 
+def _identidade_da_coluna(coluna: str, valor: object) -> str:
+    """Remove só espaços externos do CNPJ; não aproxima identificadores diferentes."""
+    texto = str(valor)
+    return texto.strip() if coluna in ("CNPJ_CIA", "CNPJ_Fundo_Classe") else texto
+
+
 def entrega_no_indice(
     linhas: list[dict], documento: dict[str, str | None], coluna: str = "DT_RECEB"
 ) -> str | None:
@@ -215,7 +235,10 @@ def entrega_no_indice(
     if any(valor is None for valor in documento.values()):
         return None
     for linha in linhas:
-        if all(str(linha.get(k)) == str(v) for k, v in documento.items()):
+        if all(
+            _identidade_da_coluna(k, linha.get(k)) == _identidade_da_coluna(k, v)
+            for k, v in documento.items()
+        ):
             entrega = str(linha.get(coluna) or "").strip()
             return entrega if _DATA_ISO.match(entrega) else None
     return None

@@ -14,16 +14,106 @@ Evidência da ligação (F2A-39, [BTG]): quando a ligação do ticker ao CNPJ n�
 arquivo do defeito, a linha cita a fonte dela (`ligacao_fonte`, `ligacao_campo`,
 `ligacao_data`). É obrigatória com código na fonte sem identidade (só zeros, como o
 `000000` da unit do BTG no FCA); preenchida em parte, a linha é rejeitada.
+
+F2C-21: identidades complementares de FII vêm de documentos FNET arquivados. O CSV só
+indexa a evidência: hash, natureza do fundo, nome, CNPJ, ticker e ISIN são conferidos no
+corpo oficial antes do uso. Não é uma lista de tickers conhecidos nem amplia elegibilidade.
 """
 
 from __future__ import annotations
 
+import base64
 import csv
+import hashlib
 import re
 from dataclasses import asdict, dataclass, fields
+from datetime import date
+from html.parser import HTMLParser
+from itertools import pairwise
 from pathlib import Path
+from urllib.parse import urlsplit
 
 CAMINHO_PADRAO = Path(__file__).with_name("correcoes.csv")
+IDENTIDADES_FII = Path(__file__).with_name("identidades_fii.csv")
+
+
+def ler_identidades_fii(caminho: Path = IDENTIDADES_FII) -> list[dict[str, str]]:
+    """Snapshot cadastral complementar, com documento público e hash, sem inferir classe."""
+    with caminho.open(encoding="utf-8", newline="") as arquivo:
+        identidades = list(csv.DictReader(arquivo, delimiter=";"))
+    return [i for i in identidades if _conferir_documento_fii(i, caminho.parent)]
+
+
+class _TextoFnet(HTMLParser):
+    """Lê texto da resposta arquivada; nunca executa os scripts do documento."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.textos: list[str] = []
+
+    def handle_data(self, data: str) -> None:
+        texto = " ".join(data.split())
+        if texto:
+            self.textos.append(texto)
+
+
+def _conferir_documento_fii(identidade: dict[str, str], pasta: Path) -> bool:
+    if not identidade_fii_valida(identidade):
+        return False
+    try:
+        codificado = (
+            pasta / "evidencias_fii" / (identidade["ticker"].lower() + ".html.base64")
+        ).read_bytes()
+        bruto = base64.b64decode(codificado.strip(), validate=True)
+        if hashlib.sha256(bruto).hexdigest() != identidade["sha256"]:
+            return False
+        leitor = _TextoFnet()
+        leitor.feed(bruto.decode("utf-8"))
+        textos = leitor.textos
+        cnpj = textos[textos.index("CNPJ do Fundo:") + 1]
+        nome = textos[textos.index("Nome do Fundo:") + 1]
+        if cnpj != identidade["cnpj"] or nome != " ".join(identidade["nome"].split()):
+            return False
+        if not any(
+            natureza in nome.upper()
+            for natureza in ("FUNDO DE INVESTIMENTO IMOBILIÁRIO", "FI IMOBILIÁRIO")
+        ):
+            return False
+        if "Código ISIN:" in textos:
+            return (
+                textos[textos.index("Código ISIN:") + 1] == identidade["isin"]
+                and textos[textos.index("Código de negociação:") + 1]
+                == identidade["ticker"]
+            )
+        return (identidade["isin"], identidade["ticker"]) in pairwise(textos)
+    except (OSError, ValueError, IndexError):
+        return False
+
+
+def identidade_fii_valida(identidade: dict[str, str]) -> bool:
+    """Exige a ligação completa ticker/CNPJ/ISIN e evidência FNET; não aceita lista de nomes."""
+    if not all(
+        isinstance(identidade.get(campo), str)
+        for campo in ("ticker", "cnpj", "isin", "nome", "fonte", "data", "sha256")
+    ):
+        return False
+    try:
+        fonte = urlsplit(identidade["fonte"])
+        if date.fromisoformat(identidade["data"]).isoformat() != identidade["data"]:
+            return False
+        return bool(
+            re.fullmatch(r"[A-Z][A-Z0-9]{3}\d{1,2}", identidade["ticker"])
+            and re.fullmatch(r"\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}", identidade["cnpj"])
+            and re.fullmatch(r"BR[A-Z0-9]{10}", identidade["isin"])
+            and identidade["nome"].strip()
+            and re.fullmatch(r"[0-9a-f]{64}", identidade["sha256"])
+            and fonte.scheme == "https"
+            and fonte.netloc == "fnet.bmfbovespa.com.br"
+            and fonte.path == "/fnet/publico/exibirDocumento"
+            and re.fullmatch(r"id=\d+", fonte.query)
+        )
+    except (KeyError, TypeError, ValueError):
+        return False
 
 
 class CorrecaoInvalida(Exception):

@@ -7,8 +7,11 @@ Os valores esperados saem da aritmética do TTM, nunca do código.
 """
 
 import zipfile
+from dataclasses import replace
 from datetime import date
 from unittest.mock import patch
+
+import pytest
 
 from cvm_provider import CVMProvider
 from fii_engine import FIIEngine
@@ -23,6 +26,31 @@ CD_CVM = 9999
 CNPJ = "00.000.000/0001-00"
 
 
+def proveniencia_sintetica() -> dict:
+    """A construção dos casos assume explicitamente um mesmo perímetro fictício."""
+    return {
+        campo: {
+            "perimetro": "companhia fictícia consolidada, sem mudança de perímetro",
+            "evidencia_comparabilidade": "hipótese declarada dos fluxos sintéticos deste teste",
+        }
+        for campo in series_cvm.CAMPOS_TTM
+    }
+
+
+def com_perimetro_sintetico(acumulados: list[Acumulado]) -> list[Acumulado]:
+    """Acrescenta a premissa do caso sintético sem alterar os dados lidos do ZIP."""
+    prova = proveniencia_sintetica()
+    return [
+        replace(
+            a,
+            proveniencia={
+                c: {**a.proveniencia.get(c, {}), **p} for c, p in prova.items()
+            },
+        )
+        for a in acumulados
+    ]
+
+
 def _acumulado(documento, inicio, fim, versao=1, **valores):
     return Acumulado(
         documento=documento,
@@ -31,6 +59,7 @@ def _acumulado(documento, inicio, fim, versao=1, **valores):
         inicio=date.fromisoformat(inicio),
         fim=date.fromisoformat(fim),
         valores=valores,
+        proveniencia=proveniencia_sintetica(),
     )
 
 
@@ -479,6 +508,7 @@ def test_exercicio_com_composicao_traz_o_documento_inteiro():
     exercicio = series_cvm.serie_anual({2025: ind}, 2025, especie="ON", classe="ON")[0]
     # 1.000 mil ações (700 + 400 − 100, escala MIL pelo LPA divulgado); VPA = 10 mi ÷ 1 mi.
     assert exercicio == {
+        **{c: None for c in ("inicio", "fim", "proveniencia", "perimetro", "evidencia_comparabilidade", "pl_inicial_controladores", "divida_liquida", "ebitda")},
         "exercicio": 2025,
         "dt_refer": "2025-12-31",
         "versao": "2",
@@ -619,7 +649,7 @@ def test_ttm_em_fevereiro_usa_o_itr_de_dois_anos_antes(tmp_path):
     provider.baixar_itr = baixar("itr")
     provider.baixar_dfp = baixar("dfp")
     data = date(2027, 2, 15)
-    resultado = series_cvm.ttm(provider.acumulados_ttm(CD_CVM, data), data)
+    resultado = series_cvm.ttm(com_perimetro_sintetico(provider.acumulados_ttm(CD_CVM, data)), data)
     assert ("itr", 2025) in pedidos
     assert (resultado["inicio"], resultado["fim"]) == ("2025-10-01", "2026-09-30")
     # (70 − 45) + 12 + 18 + 20, em mil.
@@ -728,6 +758,39 @@ def test_ttm_preserva_proventos_com_uma_rubrica_no_arquivo_real_sintetico(tmp_pa
         provider = CVMProvider(cache_dir=str(tmp_path / "cache"))
         acumulados = provider._acumulados_do_arquivo(itr, "ITR", CD_CVM, "empresa")
         acumulados += provider._acumulados_do_arquivo(dfp, "DFP", CD_CVM, "empresa")
-        resultado = series_cvm.ttm(acumulados, date(2026, 1, 1))
+        resultado = series_cvm.ttm(com_perimetro_sintetico(acumulados), date(2026, 1, 1))
         assert resultado["valores"][campo] == 4000
         assert resultado["valores"]["proventos"] == 4000
+
+
+@pytest.mark.parametrize(
+    "inicio,fim,meses",
+    [
+        (date(2026, 1, 1), date(2026, 3, 31), 3),
+        (date(2024, 1, 1), date(2024, 3, 31), 3),
+        (date(2023, 12, 1), date(2024, 2, 29), 3),
+        (date(2024, 12, 1), date(2025, 2, 28), 3),
+        (date(2024, 1, 1), date(2024, 12, 31), 12),
+        (date(2023, 3, 1), date(2024, 2, 29), 12),
+        (date(2024, 3, 1), date(2025, 2, 28), 12),
+        (date(2026, 1, 31), date(2026, 3, 1), 0),
+        (date(2026, 1, 2), date(2026, 3, 31), 0),
+        (date(2026, 1, 1), date(2026, 3, 30), 0),
+        (date(2023, 12, 1), date(2024, 2, 28), 0),
+        (date(2026, 3, 1), date(2026, 2, 28), 0),
+        (date(2026, 1, 1), date(2025, 12, 31), 0),
+    ],
+)
+def test_meses_declarados_exigem_limites_de_calendario(
+    inicio: date, fim: date, meses: int
+) -> None:
+    """F2C-17: mês inteiro pelo calendário, inclusive fevereiro bissexto e ano não civil."""
+    assert series_cvm._meses(inicio, fim) == meses
+
+
+def test_periodo_parcial_nao_produz_trimestre() -> None:
+    documento = series_cvm.Acumulado(
+        "ITR", "2026-03-01", 1, date(2026, 1, 31), date(2026, 3, 1),
+        {"lucro_liquido": 30.0},
+    )
+    assert series_cvm.trimestres([documento]) == []

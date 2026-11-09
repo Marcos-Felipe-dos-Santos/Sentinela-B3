@@ -61,7 +61,8 @@ PROVENIENCIA_DERIVADA = {
 }
 LIMITES = (
     (
-        "E-6: a Selic usada não carrega proveniência (fonte, data de coleta); vem do BCB (SGS 432) "
+        "E-6: os métodos de ação não usam Selic. No FII, ela é contexto, sem "
+        "proveniência de fonte/data de coleta; vem do BCB (SGS 432) "
         "com cache de 24 horas ou de um valor de contingência fixo."
     ),
     (
@@ -135,18 +136,44 @@ Não é consultoria financeira.</p>
 <div class="metodo{% if m.abstencao or m.nao_calculado %} abstencao{% endif %}">
 <h3>{{ m.nome }} <small>versão {{ m.versao }} · regime {{ m.regime }}</small></h3>
 <p>Aplica-se a: {{ m.applies_to }}</p>
+{% if m.as_of %}<p>Corte: {{ m.as_of }}; preço observado: {{ m.preco_observado }}, fonte: {{ m.fonte_preco or "não informada" }}, data: {{ m.data_preco or "não informada" }}.</p>{% endif %}
+{% if m.tipo_valor %}<p>{{ m.tipo_valor }}</p>{% endif %}
+{% if m.criterio_6pct %}<p>Critério Bazin: {{ m.criterio_6pct }}</p>{% endif %}
+{% if m.dy_bruto_b3 %}<p>DY bruto B3: {{ m.dy_bruto_b3 }}; preço-base do DY: {{ m.preco_base_dy }}; data-base do DY: {{ m.data_base_dy or "não informada" }}.</p>{% endif %}
+{% if m.distancia_ao_preco is defined %}<p>Distância ao preço: {{ m.distancia_ao_preco }}</p>{% endif %}
+{% if m.janela is defined %}<p>Janela, fonte e cobertura: {{ m.janela }}</p>{% endif %}
 <p>Premissas:</p>
 <ul>{% for a in m.premissas %}<li>{{ a }}</li>{% endfor %}</ul>
 {% if m.params %}<p>Parâmetros:</p>
 <table>{% for k, v in m.params %}<tr><td><code>{{ k }}</code></td><td>{{ v }}</td></tr>{% endfor %}</table>{% endif %}
 {% if m.nao_calculado %}<p><strong>Método não calculado:</strong> {{ m.nao_calculado }}</p>
-{% elif m.abstencao %}<p><strong>Abstenção:</strong> {{ m.abstencao }}</p>
+{% elif m.abstencao %}<p><strong>Abstenção da lente:</strong> {{ m.abstencao }}</p>
 {% else %}<p><strong>Resultado:</strong> {{ m.valor }}</p>
 {% if m.intermediarios %}<table>{% for k, v in m.intermediarios %}<tr><td>{{ k }}</td><td>{{ v }}</td></tr>{% endfor %}</table>{% endif %}
 {% if m.alertas %}<p>Alertas: {{ m.alertas | join("; ") }}</p>{% endif %}
 {% endif %}
 </div>
 {% endfor %}
+
+{% if qualidade_apresentacao %}
+<h2>Qualidade descritiva · {{ qualidade_apresentacao.versao }}</h2>
+<p>Sem nota única, pesos ou efeito nos valores das lentes.
+Cobertura documental: {{ qualidade_apresentacao.cobertura }}.</p>
+<p>reorganização societária no período não é detectada</p>
+<p>O descritor de regularidade de proventos B3 ainda não tem produtor na cascata atual:
+calendário anual sem cobertura demonstrada. Integração prevista na Fase 3;
+a indisponibilidade não representa anos sem distribuição.</p>
+{% if qualidade_apresentacao.motivo %}<p>{{ qualidade_apresentacao.motivo }}</p>{% endif %}
+<table><tr><th>Indicador</th><th>Faixa observada e cobertura</th></tr>
+{% for nome, texto in qualidade_apresentacao.indicadores %}
+<tr><th>{{ nome }}</th><td>{{ texto }}</td></tr>{% endfor %}</table>
+{% for e in qualidade_apresentacao.exercicios %}
+<h3>Exercício {{ e.exercicio }} · {{ e.janela }}</h3>
+<table>{% for nome, texto in e.valores %}<tr><th>{{ nome }}</th><td>{{ texto }}</td></tr>{% endfor %}</table>
+<p>{{ e.fonte }}. {{ e.pl_inicial }}. {{ e.proventos }}.</p>
+{% for motivo in e.motivos %}<p>{{ motivo }}</p>{% endfor %}
+{% endfor %}
+{% endif %}
 
 <h2>Síntese</h2>
 <table>
@@ -365,7 +392,11 @@ def _bloco_metodo(registro) -> dict[str, Any]:
         bloco["intermediarios"] = [
             (i.nome, _formatar(i.valor)) for i in resultado.intermediarios
         ]
-        bloco["alertas"] = list(resultado.alertas)
+        bloco["alertas"] = list(resultado.alertas) if inst.nome != "P/VP do FII" else []
+        if inst.nome == "P/VP do FII":
+            bloco["premissas"] = [
+                "P/VP descritivo; não forma preço monetário, score ou sinal"
+            ]
     return bloco
 
 
@@ -449,12 +480,20 @@ def _taxa_real(dados: dict[str, Any]) -> list[tuple[str, str]]:
     inflacao = registro.get("inflacao") or {}
     return [
         ("NTN-B real", _formatar(units.RateReal(registro["ntnb"]))),
-        ("Custo de capital real", _formatar(units.RateReal(registro["custo_capital_real"]))),
+        (
+            "Custo de capital real",
+            _formatar(units.RateReal(registro["custo_capital_real"])),
+        ),
         ("Prêmio das ações", _formatar(units.RateReal(registro["premio"]))),
         ("Vértice", str(registro.get("vertice"))),
         ("Data-base", str(registro.get("data_base"))),
         ("Fonte", str(registro.get("fonte"))),
-        ("Inflação da janela", str(inflacao["abstencao"]) if "abstencao" in inflacao else _formatar(units.RateNominal(inflacao["valor"]))),
+        (
+            "Inflação da janela",
+            str(inflacao["abstencao"])
+            if "abstencao" in inflacao
+            else _formatar(units.RateNominal(inflacao["valor"])),
+        ),
         ("Janela", f"{inflacao.get('inicio')} a {inflacao.get('fim')}"),
         ("Fonte do IPCA", str((inflacao.get("proveniencia") or {}).get("fonte"))),
         ("Proveniência", str(registro.get("proveniencia"))),
@@ -468,8 +507,75 @@ def _texto_proventos_bazin(dados: dict[str, Any]) -> str:
     return (
         f"R$ {_numero(serie['d_bruto_12m'], 6)} brutos por papel em 12 meses, datas ex "
         f"de {serie['inicio_exclusivo']} (exclusive) a {serie['referencia']}, "
-        f"{len(serie['eventos'])} eventos; critério fixo de 6% (ficha Bazin 1.0)"
+        f"{len(serie['eventos'])} eventos; critério fixo de 6% (ficha Bazin 1.2)"
     )
+
+
+def _apresentar_qualidade(quadro: dict | None) -> dict | None:
+    """Descritores legíveis; o contrato completo permanece no contexto técnico."""
+    if not quadro:
+        return None
+    nomes = {
+        "roe": "ROE sobre PL inicial",
+        "lucros": "Lucros positivos",
+        "margem_consolidada": "Margem consolidada",
+        "alavancagem": "Dívida financeira líquida / EBITDA",
+        "proventos": "Proventos B3 por data-ex",
+    }
+
+    def valor(v, unidade=""):
+        if v is None:
+            return "indisponível"
+        return f"{_numero(v * 100 if unidade == '%' else v)}{unidade}"
+
+    indicadores = []
+    for chave, nome in nomes.items():
+        medida = quadro[chave]
+        cobertura = f"{medida['observados']}/5 observações"
+        if chave in ("lucros", "proventos"):
+            texto = f"{valor(medida['positivos'])} positivos entre {medida['observados']} observados"
+        else:
+            unidade = " vezes" if chave == "alavancagem" else "%"
+            texto = f"faixa {valor(medida['minimo'], unidade)} a {valor(medida['maximo'], unidade)}; último {valor(medida['ultimo'], unidade)}"
+            if chave == "roe":
+                texto += f"; média {valor(medida['media'], '%')}; desvio populacional {valor(medida['desvio_populacional_pp'], ' pp')}"
+        if medida.get("motivo"):
+            texto += f"; {medida['motivo']}"
+        indicadores.append((nome, f"{texto}; {cobertura}"))
+    exercicios = []
+    for e in quadro["exercicios"]:
+        documento = e.get("documento") or {}
+        prov = documento.get("proveniencia") or {}
+        pl = e.get("pl_inicial_proveniencia") or {}
+        b3 = e.get("fonte_proventos") or {}
+        exercicios.append(
+            {
+                "exercicio": e["exercicio"],
+                "janela": f"{e['inicio']} a {e['fim']}",
+                "valores": [
+                    ("Lucro dos controladores (R$)", valor(e["lucro_controladores"])),
+                    (
+                        "PL inicial dos controladores (R$)",
+                        valor(e["pl_inicial_controladores"]),
+                    ),
+                    (nomes["roe"], valor(e["roe"], "%")),
+                    (nomes["margem_consolidada"], valor(e["margem_consolidada"], "%")),
+                    (nomes["alavancagem"], valor(e["alavancagem"], " vezes")),
+                    (nomes["proventos"], valor(e["proventos"], " R$/papel")),
+                ],
+                "fonte": f"Fonte: {prov.get('fonte') or 'não demonstrada'}; referência {documento.get('referencia')}; versão {documento.get('versao')}; coleta {prov.get('data_coleta') or 'não demonstrada'}",
+                "pl_inicial": f"PL inicial: {pl.get('demonstrativo') or 'origem não detalhada'}; data do saldo {pl.get('data_saldo') or 'não demonstrada'}",
+                "proventos": f"B3 data-ex: {b3.get('fonte') or 'fonte não demonstrada'}; coleta {b3.get('coleta') or 'não demonstrada'}",
+                "motivos": [f"{nomes.get(k, k)}: {v}" for k, v in e["motivos"].items()],
+            }
+        )
+    return {
+        "versao": quadro["versao"],
+        "cobertura": f"{quadro['cobertura']['observados']}/5 exercícios",
+        "motivo": quadro.get("motivo"),
+        "indicadores": indicadores,
+        "exercicios": exercicios,
+    }
 
 
 def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str, Any]:
@@ -482,12 +588,10 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         raise ValueError("dados insuficientes para a análise")
 
     por_instancia = {id(r[0]): r for r in registros}
-    fora_do_escopo = (
-        analise.get("recomendacao") == modulo_valuation.ROTULO_FORA_DO_ESCOPO
-    )
+    fora_do_escopo = bool(analise.get("abstencao"))
     if fora_do_escopo:
         # F2A-29: classe fora do escopo dos métodos de ação; nenhum número no lugar.
-        motivo_ausente = analise["riscos"][0]
+        motivo_ausente = analise["abstencao"]
     elif analise.get("perfil") == "DISTRESSED":
         motivo_ausente = (
             "guarda de situação especial (distressed): nenhum método foi chamado"
@@ -569,15 +673,52 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         )
 
     if eh_fii and "selic_liquida" in analise:
-        # F2B-2: a Selic líquida é só contexto e score do FII; não forma o preço justo.
+        # F2B-2: a Selic líquida é só contexto do FII; não forma o preço justo.
         insumos.append(
             {
-                "campo": "selic_liquida (contexto e score)",
+                "campo": "selic_liquida (contexto)",
                 "valor": _formatar(analise["selic_liquida"]),
                 "unidade": "taxa nominal a.a., líquida de IR",
                 "proveniencia": PROVENIENCIA_DERIVADA["selic"],
             }
         )
+
+    for metodo in metodos:
+        lente = (analise.get("lentes") or {}).get(metodo["nome"])
+        if lente:
+            metodo["as_of"] = lente.get("as_of")
+            metodo["preco_observado"] = lente.get("preco")
+            metodo["fonte_preco"] = lente.get("fonte_preco")
+            metodo["data_preco"] = lente.get("data_preco")
+            metodo["criterio_6pct"] = lente.get("criterio_6pct")
+            metodo["tipo_valor"] = lente.get("tipo_valor")
+            dy_b3 = lente.get("dy_bruto_12m")
+            metodo["dy_bruto_b3"] = (
+                None if dy_b3 is None else f"{_numero(100 * dy_b3)}%"
+            )
+            preco_dy = lente.get("preco_do_dy")
+            metodo["preco_base_dy"] = (
+                None if preco_dy is None else f"R$ {_numero(preco_dy)}"
+            )
+            metodo["data_base_dy"] = (lente.get("janela") or {}).get("referencia")
+
+            d = lente["distancia_ao_preco_pct"]
+            metodo["distancia_ao_preco"] = "indisponível" if d is None else f"{d:.6f}%"
+
+    janelas = dados.get("janelas_fundamentais") or {}
+    for metodo in metodos:
+        chave = {"Graham": "graham", "Lynch": "lynch"}.get(metodo["nome"])
+        if chave and chave in janelas:
+            janela = janelas[chave]
+            metodo["janela"] = {
+                **janela,
+                "cobertura": janelas.get("cobertura"),
+                "fontes_exigidas": "CVM por documento; fatores oficiais; IPCA IBGE no Graham",
+            }
+            if "abstencao" in janela and str(metodo.get("abstencao") or "").startswith(
+                "insumo ausente:"
+            ):
+                metodo["abstencao"] = janela["abstencao"]
 
     if dados.get("bazin_diagnostico"):
         for metodo in metodos:
@@ -607,18 +748,26 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
     ]
 
     fonte_gordon = dados.get("gordon_cvm")
-    if fonte_gordon and (
-        fonte_gordon.get("modelo") == "banco" or dados.get("modelo_bpp") == "banco"
+    if (fonte_gordon and fonte_gordon.get("modelo") == "banco") or (
+        dados.get("modelo_bpp") == "banco"
     ):
+        fonte_gordon = fonte_gordon or {}
         # F2B-32: o exercício e a entrega da DFP da lente de bancos (ficha bancos 1.1, §3).
-        fontes.append(
-            (
-                "DFP da lente de bancos",
-                f"exercício {fonte_gordon.get('inicio')} a {fonte_gordon.get('fim')}, "
-                f"entrega {fonte_gordon.get('data_entrega')}; "
-                f"{fonte_gordon.get('proveniencia') or 'sem proveniência'}",
+        campos_documento = ("inicio", "fim", "data_entrega")
+        if fonte_gordon.get("abstencao"):
+            texto_documento = f"não utilizada: {fonte_gordon['abstencao']}"
+        elif all(fonte_gordon.get(campo) for campo in campos_documento):
+            texto_documento = (
+                f"exercício {fonte_gordon['inicio']} a {fonte_gordon['fim']}, "
+                f"entrega {fonte_gordon['data_entrega']}; "
+                f"{fonte_gordon.get('proveniencia') or 'sem proveniência'}"
             )
-        )
+        else:
+            motivo = (
+                dados.get("bancos_diagnostico") or "documento da DFP não demonstrado"
+            )
+            texto_documento = f"não utilizada: {motivo}"
+        fontes.append(("DFP da lente de bancos", texto_documento))
     elif fonte_gordon:
         fontes.append(
             (
@@ -648,7 +797,10 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
     liquidez = dados.get("liquidez")
     if liquidez:
         fontes.append(
-            ("Liquidez (63 pregões: presença ≥ 80%; mediana ≥ R$ 500 mil em ações/units e R$ 100 mil em FIIs)", _texto_liquidez(liquidez))
+            (
+                "Liquidez (63 pregões: presença ≥ 80%; mediana ≥ R$ 500 mil em ações/units e R$ 100 mil em FIIs)",
+                _texto_liquidez(liquidez),
+            )
         )
     rendimento = dados.get("rendimento_fii_cvm")
     if rendimento:
@@ -659,7 +811,12 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
             )
         )
     if eh_fii:
-        fontes.append(("Taxa da lente do FII (F2B-2)", _texto_taxa_fii(dados)))
+        texto_taxa = (
+            f"não utilizada: {rendimento['abstencao']}"
+            if rendimento and "abstencao" in rendimento
+            else _texto_taxa_fii(dados)
+        )
+        fontes.append(("Taxa da lente do FII (F2B-2)", texto_taxa))
     if not eh_fii:
         fontes.append(
             ("Proventos do Bazin (relação B3, F2B-31)", _texto_proventos_bazin(dados))
@@ -688,39 +845,53 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
             )
         )
 
-    sintese = [
-        (
-            "Nenhum método calculou: o valor é o próprio preço"
-            if not analise.get("metodos_usados")
-            or str(analise["metodos_usados"]).startswith("Dados insuficientes")
-            else (
-                "Preço justo do rendimento"
-                if eh_fii
-                else "Mediana dos métodos calculados"
-            ),
-            f"R$ {_numero(analise.get('fair_value'))}",
-        ),
-        (
-            "Variação sobre o preço",
-            f"{_numero(analise.get('upside') or 0)}%",
-        ),
-        ("Score", str(analise.get("score_final"))),
-    ]
-    if analise.get("confianca") is not None:
-        sintese.append(("Confiança", str(analise["confianca"])))
-    if analise.get("riscos"):
+    sintese = [("Apresentação", "Lentes separadas, sem valor único ou sinal agregado")]
+    if analise.get("lentes") and not any(
+        l.get("valor") is not None for l in analise["lentes"].values()
+    ):
         sintese.append(
-            ("Riscos sinalizados pelo motor", "; ".join(map(str, analise["riscos"])))
+            (
+                "Lentes abstidas",
+                "; ".join(
+                    f"{n}: {l['abstencao']}" for n, l in analise["lentes"].items()
+                ),
+            )
         )
-    sintese.append(("Métodos usados", str(analise.get("metodos_usados") or "nenhum")))
+        if len(analise["lentes"]) == 1:
+            sintese.append(
+                (
+                    "Abstenção da lente",
+                    next(iter(analise["lentes"].values()))["abstencao"],
+                )
+            )
+    if analise.get("confianca") is not None:
+        sintese.append(("Completude (indicador legado)", str(analise["confianca"])))
+    if analise.get("riscos"):
+        sintese.append(("Avisos", "; ".join(map(str, analise["riscos"]))))
     if fora_do_escopo:
         sintese = [("Abstenção do motor", motivo_ausente)]
-    elif "fair_value" not in analise:
-        # F2B-62 (BUG-2B-50): a lente do FII se absteve; sem valor, sem variação.
-        sintese = [
-            ("Abstenção da lente", str(analise.get("metodos_usados") or "")),
-            *[(nome, valor) for nome, valor in sintese[2:] if nome != "Métodos usados"],
-        ]
+    elif (
+        not analise.get("apresentacao_versao")
+        and not analise.get("lentes")
+        and "fair_value" not in analise
+    ):
+        # Compatibilidade explícita de registros históricos de abstenção, sem recálculo.
+        sintese = [("Abstenção da lente", str(analise.get("metodos_usados") or ""))]
+        if analise.get("confianca") is not None:
+            sintese.append(("Confiança", str(analise["confianca"])))
+        if analise.get("riscos"):
+            sintese.append(
+                (
+                    "Riscos sinalizados pelo motor",
+                    "; ".join(map(str, analise["riscos"])),
+                )
+            )
+    if (
+        analise.get("metodos_usados")
+        and not analise.get("lentes")
+        and analise.get("apresentacao_versao")
+    ):
+        sintese.append(("Resultado registrado", str(analise["metodos_usados"])))
     # F2B-45: avisos que saíram de `riscos` (não mudam a classificação), em linha própria.
     for chave, rotulo in (
         ("aviso_liquidez", "Aviso de liquidez (fora dos riscos)"),
@@ -738,7 +909,11 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         )
 
     return {
-        "taxa_real": _taxa_real(dados),
+        "taxa_real": (
+            [("Taxa não utilizada pela lente do FII", rendimento["abstencao"])]
+            if eh_fii and rendimento and "abstencao" in rendimento
+            else _taxa_real(dados)
+        ),
         "ticker": dados.get("ticker", ""),
         "data": hoje.isoformat(),
         "classe": _classe_do_cabecalho(dados, eh_fii, fora_do_escopo),
@@ -748,6 +923,8 @@ def construir_contexto(dados, eh_fii, hoje, motor_acoes, motor_fii) -> dict[str,
         "insumos": insumos,
         "metodos": metodos,
         "sintese": sintese,
+        "qualidade": analise.get("qualidade"),
+        "qualidade_apresentacao": _apresentar_qualidade(analise.get("qualidade")),
     }
 
 

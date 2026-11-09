@@ -184,7 +184,9 @@ class ValuationResult:
         return _build_dataclass(cls, data)
 
     def to_dict(self) -> dict[str, Any]:
-        return _to_dict(self)
+        from sentinela.domain.apresentacao import mesclar_analise
+
+        return mesclar_analise({}, _to_dict(self))
 
 
 @dataclass

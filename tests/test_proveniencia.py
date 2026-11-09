@@ -6,6 +6,7 @@ import json
 import os
 import zipfile
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
@@ -657,3 +658,26 @@ def test_multiplos_com_preco_ficam_fora_do_registro_da_dfp(monkeypatch):
     dados = engine.buscar_dados_ticker("PETR4")
     assert sorted(dados["proveniencia"]) == ["lpa", "margem_liquida", "roe", "vpa"]
     assert dados["pl"] == 10.0
+
+
+@pytest.mark.parametrize("etapa", ["escrita", "troca"])
+def test_falha_de_registro_limpa_seu_temporario(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, etapa: str
+) -> None:
+    """F2C-18: falha antes da troca preserva o registro completo anterior e limpa resíduo."""
+    origem = _arquivo(tmp_path / "a.zip")
+    prov.registrar_arquivo(origem, "fonte anterior", "DFP", "2025")
+    lateral = prov.caminho_lateral(origem)
+    anterior = lateral.read_bytes()
+
+    def falhar(*args: object, **kwargs: object) -> None:
+        raise OSError("falha sintética")
+
+    if etapa == "escrita":
+        monkeypatch.setattr(prov.json, "dumps", falhar)
+    else:
+        monkeypatch.setattr(Path, "replace", falhar)
+    with pytest.raises(OSError, match="falha sintética"):
+        prov.registrar_arquivo(origem, "fonte nova", "DFP", "2025")
+    assert lateral.read_bytes() == anterior
+    assert not any(caminho.suffix == ".tmp" for caminho in tmp_path.iterdir())

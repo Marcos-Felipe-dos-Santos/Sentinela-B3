@@ -82,7 +82,12 @@ def test_banco_nao_recebe_margem_nem_alavancagem(tmp_path, monkeypatch):
 
 def test_sem_ifdata_a_limitacao_e_declarada(monkeypatch):
     engine = _engine(monkeypatch, info={"currentPrice": 20.0})
-    dados = {"setor": "Bancos", "cnpj": "60.872.504/0001-23", "riscos_dados": []}
+    dados = {
+        "setor": "Bancos",
+        "modelo_bpp": "banco",
+        "cnpj": "60.872.504/0001-23",
+        "riscos_dados": [],
+    }
     engine._buscar_ifdata(
         dados, as_of=datetime(2026, 10, 13, 12, tzinfo=UTC)
     )  # sem o atributo `ifdata`
@@ -96,7 +101,12 @@ def test_sem_ifdata_a_limitacao_e_declarada(monkeypatch):
             raise OSError("sem rede")
 
     engine.ifdata = _Falha()
-    dados = {"setor": "Bancos", "cnpj": "60.872.504/0001-23", "riscos_dados": []}
+    dados = {
+        "setor": "Bancos",
+        "modelo_bpp": "banco",
+        "cnpj": "60.872.504/0001-23",
+        "riscos_dados": [],
+    }
     engine._buscar_ifdata(dados, as_of=datetime(2026, 10, 13, 12, tzinfo=UTC))
     assert "IF.data indisponível: sem rede" in dados["riscos_dados"][0]
 
@@ -135,7 +145,15 @@ def test_ifdata_grava_basileia_e_inadimplencia(monkeypatch):
     buscar, pedidos = _buscar_falso(
         {"@AnoMes=202606&$filter=Cnpj": CADASTRO_BB, "@AnoMes=202606&@Tipo": CAPITAL_BB}
     )
-    capital = ifdata.ler_capital("00.000.000/0001-91", date(2026, 10, 13), buscar)
+    # Premissa de elegibilidade sintética, para continuar verificando a ausência da carteira.
+    from tests.apoio_ifdata_calendario import calendario_sintetico
+
+    capital = ifdata.ler_capital(
+        "00.000.000/0001-91",
+        date(2026, 10, 13),
+        buscar,
+        calendario=calendario_sintetico(),
+    )
     assert capital.basileia == pytest.approx(0.151297835513664)
     assert capital.data_base == "202606"
     assert capital.codinst == "C0080329"  # o conglomerado prudencial, não a instituição
@@ -151,7 +169,12 @@ def test_ifdata_grava_basileia_e_inadimplencia(monkeypatch):
 
     engine = _engine(monkeypatch, info={"currentPrice": 20.0})
     engine.ifdata = _IFData()
-    dados = {"setor": "Bancos", "cnpj": "00.000.000/0001-91", "riscos_dados": []}
+    dados = {
+        "setor": "Bancos",
+        "modelo_bpp": "banco",
+        "cnpj": "00.000.000/0001-91",
+        "riscos_dados": [],
+    }
     engine._buscar_ifdata(dados, as_of=datetime(2026, 10, 13, 12, tzinfo=UTC))
     assert dados["basileia"] == pytest.approx(0.1513, abs=1e-4)
     assert dados["inadimplencia"] is None
@@ -159,7 +182,7 @@ def test_ifdata_grava_basileia_e_inadimplencia(monkeypatch):
         "fonte": ifdata.FONTE,
         "data_base": "202606",
         "codinst": "C0080329",
-        "proveniencia": (),
+        "proveniencia": (calendario_sintetico().proveniencia.para_dict(),),
         "motivos": {"inadimplencia": ifdata.MOTIVO_CARTEIRA_AUSENTE},
     }
     assert dados["riscos_dados"] == [

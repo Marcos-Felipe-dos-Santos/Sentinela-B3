@@ -4,6 +4,7 @@ Usa o AppTest do Streamlit com banco temporário e sem rede: nenhuma tela dispar
 coleta de dados sem clique.
 """
 
+import ast
 from pathlib import Path
 
 import pytest
@@ -11,7 +12,7 @@ import streamlit as st
 from streamlit.testing.v1 import AppTest
 
 APP = Path(__file__).resolve().parents[1] / "app.py"
-MODOS = ["Terminal", "Carteira", "Gestor", "Config"]
+MODOS = ["Terminal", "Carteira", "Config"]
 PLANO_URL = (
     "https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3/blob/main/docs/PLANO.md"
 )
@@ -42,9 +43,20 @@ def test_alocacao_sugerida_nao_e_exibida():
     assert 'name="Alocação %"' not in codigo
 
 
-def test_tela_do_gestor_nao_desenha_grafico_de_alocacao():
-    codigo = APP.read_text(encoding="utf-8")
-    gestor = codigo[
-        codigo.index('elif modo == "Gestor"') : codigo.index('elif modo == "Config"')
-    ]
-    assert "bar_chart" not in gestor
+def test_gestor_aposentado_nao_tem_rota_ou_produtor():
+    arvore = ast.parse(APP.read_text(encoding="utf-8"))
+    for no in ast.walk(arvore):
+        if isinstance(no, ast.ImportFrom):
+            assert no.module != "portfolio_engine"
+        if isinstance(no, ast.Attribute):
+            assert no.attr != "otimizar"
+        if isinstance(no, ast.Compare):
+            assert not any(
+                isinstance(v, ast.Constant) and v.value == "Gestor"
+                for v in no.comparators
+            )
+
+
+def test_menu_conserva_todas_as_telas_mantidas(monkeypatch, tmp_path):
+    at = _abrir(monkeypatch, tmp_path, "Terminal")
+    assert at.sidebar.radio[0].options == MODOS

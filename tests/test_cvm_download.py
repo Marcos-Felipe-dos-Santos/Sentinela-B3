@@ -1,5 +1,6 @@
 import os
 import zipfile
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -69,3 +70,79 @@ def test_retry_com_backoff(tmp_path, mock_sleep):
 
         assert mock_get.call_count == 3
         assert mock_sleep == [1, 2]
+
+
+@pytest.mark.parametrize("status", [429, 500, 503])
+def test_erro_transitorio_com_resposta_preserva_tentativas(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, status: int
+) -> None:
+    """F2C-14: só o 404 modifica a política anterior de retentativa."""
+    erro = requests.HTTPError(str(status))
+    erro.response = requests.Response()
+    erro.response.status_code = status
+    resposta = MagicMock()
+    resposta.__enter__.return_value = resposta
+    resposta.raise_for_status.side_effect = erro
+    get = MagicMock(return_value=resposta)
+    sleep = MagicMock()
+    monkeypatch.setattr("cvm_download.requests.get", get)
+    monkeypatch.setattr("cvm_download.time.sleep", sleep)
+    with pytest.raises(requests.HTTPError) as capturado:
+        baixar_arquivo("https://fonte.invalid/dfp.zip", tmp_path / "dfp.zip")
+    assert capturado.value is erro
+    assert get.call_count == 3
+    assert [chamada.args[0] for chamada in sleep.call_args_list] == [1, 2]
+
+
+def test_404_preserva_cache_antigo_e_limpa_temporario(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """O erro permanente não substitui arquivo válido nem retém download parcial."""
+    destino = tmp_path / "dfp.zip"
+    with zipfile.ZipFile(destino, "w") as arquivo:
+        arquivo.writestr("dados.csv", "oficial")
+    original = destino.read_bytes()
+    os.utime(destino, (0, 0))
+    temporario = destino.with_suffix(".tmp")
+    temporario.write_bytes(b"parcial")
+    erro = requests.HTTPError("ausente")
+    erro.response = requests.Response()
+    erro.response.status_code = 404
+    resposta = MagicMock()
+    resposta.__enter__.return_value = resposta
+    resposta.raise_for_status.side_effect = erro
+    get = MagicMock(return_value=resposta)
+    sleep = MagicMock()
+    monkeypatch.setattr("cvm_download.requests.get", get)
+    monkeypatch.setattr("cvm_download.time.sleep", sleep)
+    with pytest.raises(requests.HTTPError) as capturado:
+        baixar_arquivo("https://fonte.invalid/dfp.zip", destino)
+    assert capturado.value is erro
+    assert get.call_count == 1
+    sleep.assert_not_called()
+    assert destino.read_bytes() == original
+    assert not temporario.exists()
+
+
+def test_download_transitorio_se_recupera_sem_nova_tentativa(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ZIP íntegro após uma falha preserva a política e a substituição atômica."""
+    import io
+
+    conteudo = io.BytesIO()
+    with zipfile.ZipFile(conteudo, "w") as arquivo:
+        arquivo.writestr("dados.csv", "oficial")
+    resposta = MagicMock()
+    resposta.__enter__.return_value = resposta
+    resposta.iter_content.return_value = [b"", conteudo.getvalue()]
+    get = MagicMock(side_effect=[requests.ConnectionError("transitório"), resposta])
+    sleep = MagicMock()
+    monkeypatch.setattr("cvm_download.requests.get", get)
+    monkeypatch.setattr("cvm_download.time.sleep", sleep)
+    destino = tmp_path / "dfp.zip"
+    assert baixar_arquivo("https://fonte.invalid/dfp.zip", destino) == destino
+    assert get.call_count == 2
+    sleep.assert_called_once_with(1)
+    assert destino.read_bytes() == conteudo.getvalue()
+    assert not destino.with_suffix(".tmp").exists()

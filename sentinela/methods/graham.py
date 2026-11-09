@@ -1,16 +1,12 @@
-"""Graham 1.1.0: abstém-se com VPA não positivo.
-
-Valor justo = raiz de 22,5 × LPA ajustado × VPA, com piso no P/L, limite de P/L e
-limite de P/VP pelo perfil. Não usa taxa de desconto.
-"""
+"""Graham2.0: LPA médio normalizado aprovado, VPA final, sem piso/guardas legadas."""
 
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
 
-from sentinela.domain.enums import AssetType, ModeloDemonstracao, Perfil, Regime
-from sentinela.domain.units import BRL, Ratio
+from sentinela.domain.enums import AssetType, ModeloDemonstracao, Regime
+from sentinela.domain.units import BRL
 from sentinela.methods.base import (
     Abstention,
     Intermediario,
@@ -20,31 +16,24 @@ from sentinela.methods.base import (
 )
 
 FATOR_GRAHAM = 22.5
-MOTIVO_PL_NAO_CONFIAVEL = "P/L não confiável"
-MOTIVO_NAO_POSITIVO = "P/L ou P/VP não positivo"
-MOTIVO_PL_ACIMA = "P/L acima do limite"
-MOTIVO_PVP_ACIMA = "P/VP acima do limite"
 MOTIVO_NAO_FINITO = "resultado não finito"
 
 
 @dataclass(frozen=True)
 class GrahamParams:
-    pl_limite: float
-    pl_piso: float
-    pvp_limite_renda: float
-    pvp_limite_crescimento: float
+    """Sem parâmetros ajustáveis;22,5 faz parte da versão aprovada."""
 
 
 class Graham(ValuationMethod):
     nome = "Graham"
-    version = "1.2.0"
+    version = "2.1.0"
     regime = Regime.SEM_TAXA
-    requires = ("preco", "pl", "pvp", "vpa", "perfil")
+    requires = ("lpa", "vpa")
     assumptions = (
-        "valor justo = raiz de 22,5 × LPA ajustado × VPA",
-        "o P/L usado no LPA ajustado tem piso (empresas cíclicas)",
-        "P/L não confiável (negativo ou atípico) tira o método",
-        "limite de P/VP maior para o perfil crescimento",
+        "reorganização societária no período não é detectada",
+        "LPA médio de cinco exercícios, corrigido por IPCA de fim de exercício",
+        "VPA do último documento; base documental compatível ou fator oficial B3",
+        "raiz de 22,5 × LPA médio × VPA, sem reconstrução por múltiplos",
     )
     applies_to = frozenset({AssetType.STOCK, AssetType.UNIT})
     modelos = frozenset({ModeloDemonstracao.EMPRESA})
@@ -53,25 +42,12 @@ class Graham(ValuationMethod):
     def _calcular(
         self, inputs: MethodInputs, params: GrahamParams
     ) -> MethodResult | Abstention:
-        if not inputs.pl_confiavel:
-            return Abstention(self.nome, self.version, MOTIVO_PL_NAO_CONFIAVEL)
-        pl, pvp = inputs.pl.valor, inputs.pvp.valor
-        if not (pl > 0 and pvp > 0):
-            return Abstention(self.nome, self.version, MOTIVO_NAO_POSITIVO)
-        if pl > params.pl_limite:
-            return Abstention(self.nome, self.version, MOTIVO_PL_ACIMA)
-        limite_pvp = (
-            params.pvp_limite_crescimento
-            if inputs.perfil is Perfil.CRESCIMENTO
-            else params.pvp_limite_renda
-        )
-        if pvp > limite_pvp:
-            return Abstention(self.nome, self.version, MOTIVO_PVP_ACIMA)
-        if inputs.vpa.valor <= 0:
+        lpa, vpa = inputs.lpa.valor, inputs.vpa.valor
+        if vpa <= 0:
             return Abstention(self.nome, self.version, "VPA ≤ 0")
-        pl_graham = max(pl, params.pl_piso)
-        lpa_ajustado = inputs.preco.valor / pl_graham
-        valor = (FATOR_GRAHAM * lpa_ajustado * inputs.vpa.valor) ** 0.5
+        if lpa <= 0:
+            return Abstention(self.nome, self.version, "LPA médio ≤ 0")
+        valor = math.sqrt(FATOR_GRAHAM * lpa) * math.sqrt(vpa)
         if not math.isfinite(valor):
             return Abstention(self.nome, self.version, MOTIVO_NAO_FINITO)
         return MethodResult(
@@ -79,7 +55,7 @@ class Graham(ValuationMethod):
             versao=self.version,
             valor=BRL(valor),
             intermediarios=(
-                Intermediario("lpa_ajustado", BRL(lpa_ajustado)),
-                Intermediario("pl_aplicado", Ratio(pl_graham)),
+                Intermediario("lpa_medio_normalizado", inputs.lpa),
+                Intermediario("vpa_final", inputs.vpa),
             ),
         )

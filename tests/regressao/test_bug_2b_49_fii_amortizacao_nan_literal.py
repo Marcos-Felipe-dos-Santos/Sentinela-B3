@@ -28,32 +28,34 @@ class _Hoje(date):
         return cls(2026, 10, 19)
 
 
-def _linhas(amortizacao):
-    return [
-        {
-            "Data_Referencia": f"2026-{m:02d}-01",
-            "Percentual_Amortizacao_Cotas_Mes": amortizacao if m == 5 else "",
-        }
-        for m in range(1, 10)
-    ]
-
-
 @pytest.mark.parametrize("declarado", ["NaN", "abc", "-0.01"])
 def test_amortizacao_declarada_invalida_nao_vira_vazio(
     tmp_path, monkeypatch, declarado
 ):
-    corpo = "".join(
-        f"{CNPJ};{l['Data_Referencia']};1;100;0.01;{l['Percentual_Amortizacao_Cotas_Mes']};1000\n"
-        for l in _linhas(declarado)
-    )
-    caminho = tmp_path / "2026.zip"
-    with zipfile.ZipFile(caminho, "w") as zf:
-        zf.writestr(
-            "inf_mensal_fii_complemento_2026.csv", (CAB + corpo).encode("latin-1")
+    from tests.test_fii_rendimento_elegivel import _avaliar, _entrega, _meses
+
+    caminhos = {}
+    for ano in (2025, 2026):
+        meses = [(a, m) for a, m in _meses() if a == ano]
+        corpo = "".join(
+            f"{CNPJ};{a}-{m:02d}-01;1;100;0.01;"
+            f"{declarado if (a, m) == (2026, 5) else ''};1000\n"
+            for a, m in meses
         )
+        geral = "CNPJ_Fundo_Classe;Data_Referencia;Versao;Data_Entrega;Codigo_ISIN\n"
+        geral += "".join(
+            f"{CNPJ};{a}-{m:02d}-01;1;{_entrega(a, m)};BRTSTICTF000\n" for a, m in meses
+        )
+        caminho = tmp_path / f"{ano}.zip"
+        with zipfile.ZipFile(caminho, "w") as zf:
+            zf.writestr(
+                f"inf_mensal_fii_complemento_{ano}.csv", (CAB + corpo).encode("latin-1")
+            )
+            zf.writestr(f"inf_mensal_fii_geral_{ano}.csv", geral.encode("latin-1"))
+        caminhos[ano] = caminho
     provedor = CVMFIIProvider(cache_dir=str(tmp_path / "cache"))
     monkeypatch.setattr(cvm_fii_provider, "date", _Hoje)
-    monkeypatch.setattr(provedor, "baixar_informe", lambda ano: caminho)
+    monkeypatch.setattr(provedor, "baixar_informe", lambda ano: caminhos[ano])
     monkeypatch.setattr(provedor, "_proveniencia", lambda *a: None)
     registros = provedor.obter_rendimentos_fii(CNPJ)["registros"]
     por_mes = {
@@ -61,7 +63,7 @@ def test_amortizacao_declarada_invalida_nao_vira_vazio(
     }
     assert por_mes["2026-05-01"] == declarado
     assert por_mes["2026-04-01"] == ""
-    assert rf._numero(por_mes["2026-05-01"]) is None or float(declarado) < 0
+    assert _avaliar(registros) == rf.Abstencao(rf.MOTIVO_AMORTIZACAO_INVALIDA)
 
 
 @pytest.mark.parametrize(

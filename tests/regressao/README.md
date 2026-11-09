@@ -56,16 +56,16 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2A-22 | preço negativo aceito nos dois motores (`acoes/preco-negativo` sai com Graham de R$ 12,25) | `valuation_engine.py:113` e `:118` (`processar`), `fii_engine.py:61` (`analisar`) | Gemini 1ª (14/10), ressalva ao F2A-25 | `test_bug_2a_22_preco_negativo_nos_motores.py` | F2B-20 | corrigido |
 | BUG-2A-23 | motor de ações converte `divida_liq_ebitda` em texto pt-BR, que nenhuma fonte entrega desde o F2A-22; os testes desse caminho só conferem `0 <= score_final <= 100` | `valuation_engine.py:278` (`processar`) | Gemini 2ª (15/10) | `test_bug_2a_23_divida_em_texto_avaliada.py` | F2B-45 | corrigido |
 | BUG-2B-01 | ITR sem `DVA_con` perde a DRE inteira no TTM (lucro e receita somem com os proventos) | `cvm_provider.py` (`_acumulados_do_arquivo`; `acumulados_ttm` descarta o arquivo) | F2B-21, pergunta 7 (Gemini 1ª) | `test_bug_2b_01_ttm_sem_dva_perde_a_dre.py` | F2B-46 | corrigido |
-| BUG-2B-02 | o mesmo demonstrativo é lido e guardado duas vezes, para a série e para o TTM (só custo) | `cvm_provider.py` (`parsear_demonstrativo`, chave com `include_periodo`) | F2B-21, pergunta 7 (Gemini 1ª) | `test_bug_2b_02_demonstrativo_lido_duas_vezes.py` | F2C-13 (proposta; ativação pendente) | aberto |
-| BUG-2B-03 | HTTP 404 tentado três vezes no download (só custo) | `cvm_download.py` (`baixar_arquivo`) | F2B-21, pergunta 7 (Gemini 1ª) | `test_bug_2b_03_404_tentado_de_novo.py` | F2C-14 (proposta; ativação pendente) | aberto |
+| BUG-2B-02 | o mesmo demonstrativo é lido e guardado duas vezes, para a série e para o TTM (só custo) | `cvm_provider.py` (`parsear_demonstrativo`, chave com `include_periodo`) | F2B-21, pergunta 7 (Gemini 1ª) | `test_bug_2b_02_demonstrativo_lido_duas_vezes.py` | F2C-13 | corrigido em 26/10/2026; leitura compartilhada entre série e TTM |
+| BUG-2B-03 | HTTP 404 tentado três vezes no download (só custo) | `cvm_download.py` (`baixar_arquivo`) | F2B-21, pergunta 7 (Gemini 1ª) | `test_bug_2b_03_404_tentado_de_novo.py` | F2C-14 | corrigido em 26/10/2026; HTTP 404 encerra sem espera |
 | BUG-2B-04 | insumo inválido vira número em vez de abstenção: Composição sem a coluna ON ou com tesouraria maior que a espécie, ROE com lucro NaN ou PL infinito, preço inválido apagando números independentes, LPA ilegível descartado na coleta, unit com quantidade fracionária | `cvm_provider.py` (`composicao_do_documento`), `sentinela/data/acoes_cvm.py` (`roe_dos_controladores`, `derivar_por_acao`) | F2B-21, pergunta 8 (auditoria externa da 2A, correção 6) | `test_bug_2b_04_insumo_invalido_sem_abstencao.py` | F2B-46 | corrigido |
-| BUG-2B-05 | divergência de ações compara a classe do yfinance com o total da espécie, com mais de uma classe preferencial | `sentinela/data/acoes_cvm.py` (`divergencia_acoes`), `market_engine.py` (`_por_acao_cvm`) | F2B-21, pergunta 8 (auditoria externa da 2A, correção 6) | `test_bug_2b_05_divergencia_com_classes_preferenciais.py` | F2C-15 (proposta; ativação pendente) | aberto |
+| BUG-2B-05 | divergência de ações compara a classe do yfinance com o total da espécie, com mais de uma classe preferencial | `sentinela/data/acoes_cvm.py` (`divergencia_acoes`), `market_engine.py` (`_por_acao_cvm`) | F2B-21, pergunta 8 (auditoria externa da 2A, correção 6) | `test_bug_2b_05_divergencia_com_classes_preferenciais.py` | F2C-15 | corrigido em 26/10/2026; total PN não comparado à classe |
 | BUG-2B-06 | completude penaliza banco e FII por campos que o modelo deles não tem: banco por `receita_liquida`, `margem_liquida` e `divida_liq_ebitda` (com o resto, 70%); FII também por P/L, ROE e LPA (com preço, DY, P/VP e VPA, 40%); o teste do banco identifica o banco pelo setor "Bancos" | `data_quality.py` (`DataQualityReport.completude`) | F2B-21, pergunta 8 (auditoria externa da 2A, correção 6) | `test_bug_2b_06_completude_penaliza_banco_e_fii.py` | F2B-46 | corrigido; reaberto em 25/10/2026 (a completude lia `modelo`, a cascata grava `modelo_bpp`; `test_bug_2b_06_reaberto_completude_le_o_modelo_da_cascata.py`) e corrigido no F2B-63 |
-| BUG-2B-07 | LPA divulgado NaN ou zero aceito como coerente (o provedor já os descarta) | `sentinela/data/acoes_cvm.py` (`divulgados_coerentes`) | F2B-21, pergunta 8 (Gemini 2ª) | `test_bug_2b_07_divulgado_nan_ou_zero.py` | F2C-16 (proposta; ativação pendente) | aberto |
-| BUG-2B-08 | `_meses` ignora o dia: 31/01 a 01/03 conta 3 meses | `sentinela/data/series_cvm.py` (`_meses`) | F2B-21, pergunta 8 (Gemini 2ª) | `test_bug_2b_08_meses_ignora_o_dia.py` | F2C-17 (proposta; ativação pendente) | aberto |
-| BUG-2B-09 | duas gravações simultâneas da proveniência do mesmo arquivo colidem no `.tmp` (`FileNotFoundError`) | `sentinela/data/proveniencia.py` (`registrar_arquivo`) | F2B-21, pergunta 8 (Gemini 2ª) | `test_bug_2b_09_corrida_na_proveniencia.py` | F2C-18 (proposta; ativação pendente) | aberto |
-| BUG-2B-10 | CNPJ com espaços nas pontas não acha a entrega no índice | `sentinela/data/proveniencia.py` (`entrega_no_indice`) | F2B-21, pergunta 8 (Gemini 2ª) | `test_bug_2b_10_cnpj_com_espacos.py` | F2C-19 (proposta; ativação pendente) | aberto |
-| BUG-2B-11 | sigla da classe preferencial da ação avulsa sem caixa alta, e `especie_da_classe("pna")` devolve `"pna"` | `sentinela/data/referencia/montagem.py` (`montar_companhias`), `sentinela/data/acoes_cvm.py` (`especie_da_classe`) | F2B-21, pergunta 8 (Gemini 2ª) | `test_bug_2b_11_classe_preferencial_minuscula.py` | F2C-20 (proposta; ativação pendente) | aberto |
+| BUG-2B-07 | LPA divulgado NaN ou zero aceito como coerente (o provedor já os descarta) | `sentinela/data/acoes_cvm.py` (`divulgados_coerentes`) | F2B-21, pergunta 8 (Gemini 2ª) | `test_bug_2b_07_divulgado_nan_ou_zero.py` | F2C-16 | corrigido em 26/10/2026; zero não informado, não finito inválido |
+| BUG-2B-08 | `_meses` ignora o dia: 31/01 a 01/03 conta 3 meses | `sentinela/data/series_cvm.py` (`_meses`) | F2B-21, pergunta 8 (Gemini 2ª) | `test_bug_2b_08_meses_ignora_o_dia.py` | F2C-17 | corrigido em 26/10/2026; meses completos pelos limites declarados |
+| BUG-2B-09 | duas gravações simultâneas da proveniência do mesmo arquivo colidem no `.tmp` (`FileNotFoundError`) | `sentinela/data/proveniencia.py` (`registrar_arquivo`) | F2B-21, pergunta 8 (Gemini 2ª) | `test_bug_2b_09_corrida_na_proveniencia.py` | F2C-18 | corrigido em 26/10/2026; temporário exclusivo e troca atômica |
+| BUG-2B-10 | CNPJ com espaços nas pontas não acha a entrega no índice | `sentinela/data/proveniencia.py` (`entrega_no_indice`) | F2B-21, pergunta 8 (Gemini 2ª) | `test_bug_2b_10_cnpj_com_espacos.py` | F2C-19 | corrigido em 26/10/2026; trim restrito ao CNPJ |
+| BUG-2B-11 | sigla da classe preferencial da ação avulsa sem caixa alta, e `especie_da_classe("pna")` devolve `"pna"` | `sentinela/data/referencia/montagem.py` (`montar_companhias`), `sentinela/data/acoes_cvm.py` (`especie_da_classe`) | F2B-21, pergunta 8 (Gemini 2ª) | `test_bug_2b_11_classe_preferencial_minuscula.py` | F2C-20 | corrigido em 26/10/2026; siglas em caixa alta sem perder a classe |
 | BUG-2B-12 | tabela de correções aceita ticker fora do formato | `sentinela/data/referencia/correcoes.py` (`validar_correcoes`) | F2B-21, pergunta 8 (Gemini 2ª) | `test_bug_2b_12_ticker_invalido_na_correcao.py` | F2B-46 | corrigido |
 
 | BUG-2B-13 | Proventos com só dividendos ou só JCP descartados | `sentinela/data/series_cvm.py` (`proventos`) | Decisão do Marcos de 19/10/2026, F2B-46 | `test_bug_2b_13_proventos_uma_rubrica.py` | F2B-46 | corrigido |
@@ -76,7 +76,7 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2B-18 | ausência comprovada e motivos de proventos divergem entre série anual e TTM | `series_cvm.proventos`, `ttm`; `cvm_provider._acumulados_do_arquivo` | Gemini FASE HEAD60e61e2; Claude; Marcos20/10/2026 | `test_bug_2b_18_proventos_ttm.py` | F2B-48 | corrigido |
 | BUG-2B-19 | coleta do download e corte de datas recusam snapshot próprio e CSV cumulativo | `providers.tesouro` | Gemini FASE HEAD60e61e2; Claude; Marcos20/10/2026 | `test_bug_2b_19_tesouro_observacao.py` | F2B-48 | corrigido |
 | BUG-2B-20 | taxa/PU de aplicação zero interpretados como taxa zero em vez de sem oferta | `providers.tesouro.ler_csv` | Gemini FASE HEAD60e61e2; Marcos20/10/2026 | `test_bug_2b_20_tesouro_sem_oferta.py` | F2B-48 | corrigido |
-| BUG-2B-21 | BTCI11/TRPL11 confirmados FII pela B3 viram UNKNOWN quando o ISIN não está no Informe | `referencia.montagem.montar_outros` (lacuna de enriquecimento do índice) | F2B-21, Gemini FASE, Marcos20/10/2026; evidência B3 no teste | `test_bug_2b_21_fiis_fora_do_informe.py` | F2C-21 (proposta; ativação pendente) | aberto |
+| BUG-2B-21 | BTCI11/TRPL11 confirmados FII pela B3 viram UNKNOWN quando o ISIN não está no Informe | `referencia.montagem.montar_outros` (lacuna de enriquecimento do índice) | F2B-21, Gemini FASE, Marcos20/10/2026; evidência B3 no teste | `test_bug_2b_21_fiis_fora_do_informe.py` | F2C-21 | corrigido em 26/10/2026; identidade oficial complementar validada |
 
 **BUG-2B-20 / F2B-48 — complemento 20/10/2026:** revisão taxa-real1.1 aprovada pelo Marcos; regressões permanentes distinguem zero econômico de sentinela, vetam aplicação inválida apenas na cesta escolhida, preservam referência sem recuo e registram exclusões. Invalidade/ausência de resgate suprime só a informação de resgate, com motivo.
 
@@ -90,7 +90,7 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2B-26 | espécie única inferida só do índice, contra Composição do Capital com ON e PN | market_engine.py (_por_acao_cvm) | ressalva Gemini, aceite F2B-1,20/10/2026 | test_bug_2b_26_especie_unica_composicao.py | F2B-1 | corrigido |
 | BUG-2B-27 | reprocessamento usa DFP/composição ou contexto macro com evidência posterior ao as_of | sentinela/data/gordon_cvm.py e valuation_engine.py | revisão1 do F2B-1,20/10/2026 | test_bug_2b_27_gordon_evidencia_futura.py | F2B-1 | corrigido |
 | BUG-2B-28 | valor extraordinário ilegível vira zero e deixa de impedir projeção | cvm_provider.py (gordon_do_documento) | conferência final do F2B-1,20/10/2026 | test_bug_2b_28_gordon_extraordinario_invalido.py | F2B-1 | corrigido |
-| BUG-2B-29 | relação de proventos da B3 pelo nome de pregão com barra ("AMBEV S/A", "KLABIN S/A") vem vazia; o Bazin se abstém pela conferência do emissor | sentinela/data/providers/b3_proventos.py (coletar) | auditoria do Claude (chat) do F2B-48/F2B-30, sobre o F2B-31, 20/10/2026 | test_bug_2b_29_b3_nome_de_pregao_com_barra.py | F2C-23 (proposta; ativação pendente) | aberto |
+| BUG-2B-29 | relação de proventos da B3 pelo nome de pregão com barra ("AMBEV S/A", "KLABIN S/A") vem vazia; o Bazin se abstém pela conferência do emissor | sentinela/data/providers/b3_proventos.py (coletar) | auditoria do Claude (chat) do F2B-48/F2B-30, sobre o F2B-31, 20/10/2026 | test_bug_2b_29_b3_nome_de_pregao_com_barra.py | F3-P01 (origem F2C-23) | aberto |
 | BUG-2B-30 | `MacroProvider.registro` devolve `None` sem o motivo quando a cesta abstém ou a fonte falha; o Gordon mostrava "inflação incompatível com a janela da DFP" | sentinela/data/providers/macro.py (registro) e sentinela/data/gordon_cvm.py (entradas) | auditoria do Claude (chat) do F2B-48/F2B-30, achado 1, 20/10/2026 | test_bug_2b_30_taxa_real_sem_motivo.py | F2B-51 | corrigido |
 | BUG-2B-31 | o `except` do provedor macro captura `KeyError` e `TypeError` e trata erro do código como falha da fonte | sentinela/data/providers/macro.py (registro) | mesma auditoria, ressalva 2 | test_bug_2b_31_macro_engole_erro_de_programacao.py | F2B-51 | corrigido |
 | BUG-2B-32 | `data_divulgacao` do calendário do IBGE lida como UTC, e não no horário de Brasília (latente: só a data é usada) | sentinela/data/providers/macro.py (inflacao) | mesma auditoria, ressalva 3 | test_bug_2b_32_ibge_divulgacao_em_utc.py | F2B-51 | corrigido |
@@ -125,6 +125,187 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 
 | BUG-2B-50 | a abstenção do FII (lente abstida ou DY não confiável) devolve `fair_value = preço` e `upside = 0` | fii_engine.py (analisar), sentinela/reports/rastreabilidade.py | auditoria de fechamento da 2B (Codex), 25/10/2026 | test_bug_2b_50_fii_abstencao_com_numero.py | F2B-62 | corrigido; reaberto em 25/10/2026 na auditoria rápida do fechamento (Codex): o card "Valor Justo" do `app.py` convertia a ausência em R$ 0.00 (`test_bug_2b_50_reaberto_app_valor_justo_da_abstencao.py`) e corrigido no F2B-69 |
 
-| BUG-2B-51 | venda parcial recalcula o preço médio pela média ponderada com o preço de venda (100 a R$ 10, venda de 50 a R$ 20: PM vira R$ 0,00), contra a regra do custo médio | database.py (adicionar_posicao) | auditoria rápida do fechamento (F2B-69), "Ficam para o Marcos" (xfail sem ID); registrado pós-fechamento, 25/10/2026 | tests/test_database_posicoes.py::test_venda_parcial_preserva_preco_medio (mantido nesse arquivo, fora de `tests/regressao/`) | F2C-48 | aberto |
+| BUG-2C-01 | complemento cadastral de FII aceita CODBDI conflitante conforme a ordem do COTAHIST | sentinela/data/referencia/montagem.py (montar_outros) | revisão interna F2C-21, 26/10/2026 | test_bug_2c_01_fii_codbdi_conflitante.py | F2C-21 | corrigido em 26/10/2026; todas as categorias do grupo devem ser 12 |
 
-| BUG-2B-52 | o caminho DISTRESSED do motor de ações devolve `fair_value = preço` e `upside = 0`, números que parecem resultado sem método calculado | valuation_engine.py (processar, guarda de `DISTRESSED_TICKERS`) | auditoria rápida do fechamento (F2B-69), "Ficam para o Marcos" (fora da decisão 2 do F2B-69, card "Valor Justo"); registrado pós-fechamento, 25/10/2026 | test_bug_2b_52_distressed_valor_justo_preco.py | F2C-49 | aberto |
+| BUG-2C-02 | leitores B3 distintos com igualdade/hash iguais compartilham dados e proveniência no cache | sentinela/data/providers/b3_proventos.py e b3_fundos.py | revisão interna F2C-26, 26/10/2026 | test_bug_2c_02_cache_identidade_leitor.py | F2C-26 | corrigido em 26/10/2026; chave por identidade com referência retida |
+
+| BUG-2C-03 | BPP não lido/correspondente autoriza reserva | cvm_provider._acumulados_do_arquivo; seis estados reproduzidos | F2C-29/30, Codex26/10 | test_bug_2c_03_ttm_bpp_nao_demonstrado.py | F2C-30 | corrigido |
+
+| BUG-2C-04 | Fluxos aceitos com marcador BPP de outro modelo | cvm_provider._acumulados_do_arquivo | Codex26/10, F2C-30 | test_bug_2c_04_ttm_modelo_incompativel.py | F2C-30 | corrigido |
+
+| BUG-2C-05 | TTM subtrai perímetros distintos ou sem demonstração | series_cvm.trimestres/ttm | revisão interna F2C-30,26/10 | test_bug_2c_05_ttm_perimetros.py | F2C-30 | corrigido |
+
+| BUG-2C-06 | Fronteira anual apaga TTM e converte erro de programação em ausência | MarketEngine._serie_cvm/_buscar_cvm; CVMProvider.calcular_indicadores/acumulados_ttm | Codex, F2C-31,26/10 | test_bug_2c_06_cvm_fronteiras_independentes.py | F2C-31 | corrigido |
+
+| BUG-2C-07 | Seleção civil omite DFP corrente de exercício encerrado em fevereiro | CVMProvider.acumulados_ttm; MarketEngine._serie_cvm | Codex26/10, F2C-31 | test_bug_2c_07_cvm_exercicio_nao_civil.py | F2C-31 | corrigido |
+
+| BUG-2C-08 | Download de proventos elimina indicadores anuais já lidos | CVMProvider.indicadores_da_serie | Codex26/10, F2C-31 | test_bug_2c_08_serie_dva_independente.py | F2C-31 | corrigido |
+| BUG-2C-09 | Leitura da escala deixa erro de formato escapar | CVMProvider._escala_da_composicao | Codex26/10, F2C-31 | test_bug_2c_09_escala_itr_formato.py | F2C-31 | corrigido |
+
+| BUG-2C-10 | Escala do ITR reserva lucro total sem BPP lido | CVMProvider._escala_da_composicao | Codex26/10, F2C-31 | test_bug_2c_10_escala_itr_bpp_ausente.py | F2C-31 | corrigido |
+
+
+### Achados do F2C-32 (27/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-11 | Conferência da unit compara média recalculada com primeira classe em vez da soma ponderada | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_11_unit_conferencia_ponderada.py` | F3-P03 (origem F2C-50) | aberto, xfail estrito |
+| BUG-2C-12 | Falha do Informe não é propagada a riscos_dados | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_12_informe_risco_ausente.py` | F3-P04 (origem F2C-51) | aberto, xfail estrito |
+| BUG-2C-13 | Literal OData CodInst interpola apóstrofo sem escape | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_13_odata_literal_codinst.py` | F3-P05 (origem F2C-52) | aberto, xfail estrito |
+| BUG-2C-14 | Prompt não distingue classe inferida de classe oficial | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_14_prompt_classe_inferida.py` | F3-P06 (origem F2C-53) | aberto, xfail estrito |
+
+### Correção F2C-36 (27/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-15 | IF.data selecionado pelo setor em vez do BPP | MarketEngine._buscar_ifdata | F2C-36,27/10/2026 | `test_bug_2c_15_ifdata_modelo_bpp.py` | F2C-36 | corrigido, quatro casos permanentes |
+
+### Achado F2C-37 (27/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-16 | Inadimplência é lida sem prova de publicação da data-base até o corte | ifdata.ler_capital | F2C-37,27/10/2026 | `test_bug_2c_16_ifdata_sem_calendario.py` | F2C-37 | corrigido, dois casos permanentes |
+
+### Correções F2C-39 (27/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-17 | Seguradora conhecida recebe motivo de modelo desconhecido | data_quality.completude | F2C-39,27/10/2026 | `test_bug_2c_17_motivo_seguradora_qualidade.py` | F2C-39 | corrigido |
+| BUG-2C-18 | Instante sem fuso recebe motivo de indisponibilidade documental | ValuationEngine.processar | F2C-39,27/10/2026 | `test_bug_2c_18_motor_asof_sem_fuso.py` | F2C-39 | corrigido |
+| BUG-2C-19 | Classe vazia recebe motivo de classe fora de escopo | ValuationEngine.processar | F2C-39,27/10/2026 | `test_bug_2c_19_classe_vazia_ausente.py` | F2C-39 | corrigido |
+| BUG-2C-20 | Modelo válido é recusado por caixa/espaços | ValuationEngine.processar | F2C-39,27/10/2026 | `test_bug_2c_20_caixa_modelo_bpp_motor.py` | F2C-39 | corrigido |
+
+### Correções F2C-40 (27/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-21 | Aviso de alavancagem omite motivo CVM já informado | ValuationEngine.processar | F2C-40,27/10/2026 | `test_bug_2c_21_motivo_aviso_alavancagem.py` | F2C-40 | corrigido |
+| BUG-2C-22 | Inteiro numérico é tratado como ausência/valor inválido, diferente do mesmo inteiro nativo | ValuationEngine.processar | F2C-40,27/10/2026 | `test_bug_2c_22_inteiro_numerico_alavancagem.py` | F2C-40 | corrigido |
+
+### Correções F2C-44 (27/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-23 | Documento bancário ausente vira datas None no relatório | rastreabilidade.construir_contexto | F2C-44,27/10/2026 | `test_bug_2c_23_documento_banco_relatorio.py` | F2C-44 | corrigido |
+| BUG-2C-24 | NTN-B recusada aparece como taxa da lente | rastreabilidade.construir_contexto | F2C-44,27/10/2026 | `test_bug_2c_24_taxa_recusada_relatorio_fii.py` | F2C-44 | corrigido |
+| BUG-2C-25 | Limites do relatório de ação dizem Selic usada | rastreabilidade.LIMITES | F2C-44,27/10/2026 | `test_bug_2c_25_selic_usada_relatorio_acao.py` | F2C-44 | corrigido |
+
+### Correção F2C-46 (27/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-26 | Volume inferior ao mínimo arredonda para o próprio mínimo no texto da abstenção | liquidez.avaliar | F2C-46,27/10/2026 | `test_bug_2c_26_volume_arredondado_no_minimo.py` | F2C-46 | corrigido |
+
+### Achado F2C-47 (27/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-27 | Complemento e composição com todas as versões ilegíveis casam por -inf e produzem rendimento | Dicionário CVM / ficha FII 1.3 §3/§3c | F2C-47,27/10/2026 | `test_bug_2c_27_versao_fii_ilegivel.py` | F3-P08 (origem F2C-55) | aberto |
+
+### Achado F2C-7 (27/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-28 | P/L negativo entra silenciosamente na média dos pares | F2C-7 exige política aprovada ou comparação indisponível | F2C-7 | `test_bug_2c_28_peers_pl_negativo.py` | F2C-7 | corrigido |
+
+### Achado F2C-8 (27/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-29 | Auditoria fabrica valor justo/preço e upside zero em FII abstido ou com exceção | D24 e aceite F2B-67 | F2C-8 | `test_bug_2c_29_auditoria_fii_abstido.py` | F2C-8 | corrigido |
+
+### Achados da implementação F2C-1 (28/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-30 | Grahamreconstrói lucro por preço/PLe ignora3,20direto | fichaGraham2.0aprovada | F2C-1 | test_bug_2c_30_graham_insumo_direto.py | F2C-1 | corrigido |
+| BUG-2C-31 | Lynchaplica1,5ao crescimento emvezdem1 | fichaLynch2.0aprovada41,472 | F2C-1 | test_bug_2c_31_lynch_multiplicador.py | F2C-1 | corrigido |
+
+### Achado da revisão F2C-1 (28/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-32 | Motivo da janela encobre inaplicabilidade por modelo no relatório | D24: motivo da abstenção efetiva por lente | revisão F2C-1 | `test_bug_2c_32_motivo_relatorio_janela.py` | F2C-1 | corrigido |
+
+### Achados da revisão 2 e integração B3 do F2C-1 (28/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-33 | Motivo documental das ações perdido na janela | Fichas2.1: causa e documento explícitos | revisão2 F2C-1 | `test_bug_2c_33_motivo_acoes_janela.py` | F2C-1 | corrigido |
+| BUG-2C-34 | Abstenção apaga janela/fontes/regime/aviso | D24 e fichas2.1, metadados mesmo sem valor | revisão2 F2C-1 | `test_bug_2c_34_metadados_abstencao_janela.py` | F2C-1 | corrigido |
+| BUG-2C-35 | Fator oficial B3 coletado não consumido pela janela | Fichas2.1: fator existente ajusta LPA | integração F2C-1 | `test_bug_2c_35_fator_b3_janela.py` | F2C-1 | corrigido |
+| BUG-2C-36 | Evento fora do par documental bloqueia fator elegível por espécie desconhecida | Datas oficiais delimitam o par antes da espécie | revisão3 F2C-1 | `test_bug_2c_36_evento_fora_janela.py` | F2C-1 | corrigido |
+
+### Achado F2C-12 (28/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-37 | DY da cascata chegava a Lynch com perfilB3 e payout não tinha contexto comum | FichaLynch2.1, DYzero válido/preço mesma referência | F2C-12 | `test_bug_2c_37_lynch_fonte_payout.py` | F2C-12 | corrigido |
+| BUG-2C-38 | Underflow final transforma payout positivo em zero | Positividade de DY×preço/LPA, aritméticaDecimal | F2C-12 | `test_bug_2c_38_payout_underflow.py` | F2C-12 | corrigido |
+| BUG-2C-39 | DY ausente/bool/vazio vira zero confiável no perfil quando falta B3 | FichaLynch2.1, duas fontes inválidas não demonstram perfil | F2C-12 | `test_bug_2c_39_lynch_dy_ausente.py` | F2C-12 | corrigido |
+
+### Achados F2C-2 (29/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-40 | Razão de ROE positiva não representável vira zero observado | Ficha qualidade1.0, positivo não é zero por underflow | revisão durante F2C-2 | `test_bug_2c_40_qualidade_razao_underflow.py` | F2C-2 | corrigido |
+| BUG-2C-41 | Perímetro malformado causa TypeError no quadro | Ficha qualidade1.0, falta de evidência deve ficar parcial | revisão durante F2C-2 | `test_bug_2c_41_qualidade_metadados_invalidos.py` | F2C-2 | corrigido |
+| BUG-2C-42 | Nova leitura do PL inicial deixa download fora da fronteira de falha da fonte | Série anual já lida deve ser preservada | suíte F2C-2 / BUG-2C-08 | `test_bug_2c_42_pl_inicial_falha_download.py` | F2C-2 | corrigido |
+| BUG-2C-43 | Proveniência B3 não Mapping derruba o quadro de qualidade | Ficha qualidade1.0, fonte inválida deve produzir motivo por indicador | revisão F2C-2 | `test_bug_2c_43_qualidade_fonte_b3_malformada.py` | F2C-2 | corrigido |
+| BUG-2C-44 | Relatório tenta tratar proveniência inválida como Mapping | Ficha qualidade1.0, causa explícita em quadro parcial | revisão F2C-2 | `test_bug_2c_44_qualidade_relatorio_fonte_invalida.py` | F2C-2 | corrigido |
+| BUG-2C-45 | Valor B3 recusado não finito reaparece na fonte da saída descritiva | Fonte do indicador não deve reintroduzir valor recusado | revisão F2C-2 | `test_bug_2c_45_qualidade_provento_nao_finito.py` | F2C-2 | corrigido |
+| BUG-2C-46 | Calendário anual vazio certifica zeros B3 com cobertura integral | Ausência de calendário não prova ano sem provento | pré-revisão F2C-2 | `test_bug_2c_46_calendario_vazio_nao_cobertura.py` | F2C-2 | corrigido |
+| BUG-2C-47 | Registro B3 não Mapping derruba parsing da fonte anual | Fonte inválida deve preservar quadro parcial | pré-revisão F2C-2 | `test_bug_2c_47_qualidade_registros_b3_invalidos.py` | F2C-2 | corrigido |
+| BUG-2C-48 | Fonte não textual certifica dados e NaN reaparece na proveniência auxiliar | Fonte documental deve ser identificada em texto e saída finita | pré-revisão F2C-2 | `test_bug_2c_48_qualidade_proveniencia_nao_textual.py` | F2C-2 | corrigido |
+| BUG-2C-49 | CNPJ/modelo explicitamente conflitantes não interrompem agregação | Ficha qualidade1.0: mesma entidade/modelo | pré-revisão F2C-2 | `test_bug_2c_49_qualidade_identidade_conflitante.py` | F2C-2 | corrigido |
+| BUG-2C-50 | Saneamento apaga texto legítimo da reserva D20 na fonte do PL inicial | Reserva textual de controladores.Resultado deve ser preservada | pré-revisão F2C-2 | `test_bug_2c_50_qualidade_reserva_textual.py` | F2C-2 | corrigido |
+
+### Achado F2C-3 (29/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-51 | Score/classificação agregados substituem distância por lente | Ficha apresentação1.0, decisões28/10 e29/10 | F2C-3 | `test_bug_2c_51_score_agregado.py` | F2C-3 | corrigido |
+| BUG-2C-52 | Guarda do banco abstido encobre motivos individuais das lentes já avaliadas | Causas efetivas por lente, ficha apresentação1.0 | conferência F2C-3 | `test_bug_2c_52_lentes_banco_abstido.py` | F2C-3 | corrigido |
+
+### Achado F2C-5 (29/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-53 | Síntese única de lentes heterogêneas ou preço no lugar de método ausente | Ficha apresentação1.0/decisões28–29/10 | F2C-5 | `test_bug_2c_53_sintese_agregada.py` | F2C-5 | corrigido |
+| BUG-2C-54 | Persistência da nova apresentação inventa score/rótulo padrão ou herda resíduo do cache | Apresentação1.0 sem síntese, D29 sem migração | integração F2C-5 | `test_bug_2c_54_persistencia_sintese.py` | F2C-5 | corrigido |
+| BUG-2C-55 | Transporte tipado fabrica campos agregados e serviço herda síntese do cache no novo contrato | Apresentação1.0/compatibilidade de leitores | integração F2C-5 | `test_bug_2c_55_transporte_sintese.py` | F2C-5 | corrigido |
+| BUG-2C-56 | Critério Bazin aparece sem DY bruto e preço/data que o fundamentam, confundindo referências distintas | Ficha apresentação1.0: hipótese, fonte e referência por lente | pré-revisão F2C-5 | `test_bug_2c_56_bazin_base_dy_visivel.py` | F2C-5 | corrigido |
+| BUG-2C-57 | UI omite a causa global de quadro de qualidade parcial apesar de cinco documentos | Qualidade1.0: cobertura não é comparabilidade | pré-revisão F2C-5 | `test_bug_2c_57_ui_qualidade_parcial.py` | F2C-5 | corrigido |
+
+### Achado F2C-4 (30/10/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-58 | Leitores CLI fabricam síntese zero ou pedem veredito para apresentação1.0 | Ficha apresentação1.0§8, lentes separadas sem sinal | inventário F2C-4 | `test_bug_2c_58_cli_lentes.py` | F2C-4 | corrigido |
+| BUG-2C-59 | Invariantes históricos ignoram números inválidos no transporte valuation/raw | Invariantes externos de finitude e score[0,100], compatibilidadeF2C-4 | revisão F2C-4 | `test_bug_2c_59_invariantes_historicas.py` | F2C-4 | corrigido |
+| BUG-2B-51 | venda parcial recalcula o preço médio pela média ponderada com o preço de venda (100 a R$ 10, venda de 50 a R$ 20: PM vira R$ 0,00), contra a regra do custo médio | database.py (adicionar_posicao) | auditoria rápida do fechamento (F2B-69), "Ficam para o Marcos" (xfail sem ID); registrado pós-fechamento, 25/10/2026 | tests/test_database_posicoes.py::test_venda_parcial_preserva_preco_medio (mantido nesse arquivo, fora de `tests/regressao/`) | F3-P02 (origem F2C-48) | aberto |
+
+| BUG-2B-52 | o caminho DISTRESSED do motor de ações devolve `fair_value = preço` e `upside = 0`, números que parecem resultado sem método calculado | valuation_engine.py (processar, guarda de `DISTRESSED_TICKERS`) | auditoria rápida do fechamento (F2B-69), "Ficam para o Marcos" (fora da decisão 2 do F2B-69, card "Valor Justo"); registrado pós-fechamento, 25/10/2026 | test_bug_2b_52_distressed_valor_justo_preco.py | F2C-5 | corrigido pela apresentação separada; regressão pós-2B integrada no MERGE-MAIN-2C, XPASS estrito confirmado antes da retirada da marca |
+
+### Achado da auditoria de fechamento 2C (09/11/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-60 | Análise pós-F2C-3 sem score agregado sai como FORA_DO_ESCOPO no backtest | Decisão Marcos 09/11/2026, opção (a): INDISPONIVEL até reconstrução na Fase 3 | auditoria Claude de fechamento 2C | `test_bug_2c_60_backtest_sem_score.py` | correção de fechamento 2C | corrigido |
+
+### Correções da auditoria FASE (09/11/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-61 | Produtor TTM não declara comparabilidade demonstrada pelos documentos | decisão Marcos09/11 opção a | auditorias Gemini/Claude | `test_bug_2c_61_ttm_produtor.py` | FC2C-61 | corrigido |
+| BUG-2C-62 | Produtor anual não emite comparabilidade e impede média ROE da qualidade | decisão Marcos09/11 opção a | auditorias Gemini/Claude | `test_bug_2c_62_qualidade_produtor.py` | FC2C-62 | corrigido |
+| BUG-2C-63 | Aviso perde motivo CVM transportado em alavancagem_cvm.motivos | contrato F2C-40 e decisão09/11 | auditorias Gemini/Claude | `test_bug_2c_63_alavancagem_cascata.py` | FC2C-63 | corrigido |
+| BUG-2C-64 | Banco com lente aplicada recebe aviso de medida inaplicável | decisão Marcos09/11 F2C-45(iii) | auditorias Gemini/Claude | `test_bug_2c_64_banco_aviso.py` | FC2C-64 | corrigido; predicado golden autorizado em09/11/2026 |
+| BUG-2C-65 | CLI do índice perde identidades FII já ligadas à cascata | identidade oficial B3 arquivada e decisão09/11 | auditorias Gemini/Claude | `test_bug_2c_65_cli_identidades_fii.py` | FC2C-65 | corrigido |
+| BUG-2C-66 | Coleta corrente perde seleção do exercício anual não civil | datas publicadas CVM e decisão09/11 | auditorias Gemini/Claude | `test_bug_2c_66_exercicio_nao_civil_cascata.py` | FC2C-66 | corrigido |
+| BUG-2C-67 | Evento entre espécies alheias ao ticker bloqueia fator oficial elegível | critério de componentes e decisão09/11 | auditorias Gemini/Claude | `test_bug_2c_67_eventos_outras_especies.py` | FC2C-67 | corrigido |
+| BUG-2C-68 | MACD atual usa ordens de negociação no rótulo de cruzamento | vocabulário neutro obrigatório e decisão09/11 | auditorias Gemini/Claude | `test_bug_2c_68_macd_neutro.py` | FC2C-68 | corrigido |
+
+### Destinos pós-fechamento 2C (09/11/2026)
+
+Os sete bugs abertos em oito casos xfail estritos foram migrados à proposta não ativada `docs/loop/fila-fase3-proposta.md` (F3-P01/02/03/04/05/06/08). O oitavo caso é a segunda parametrização de BUG-2C-13. Marcas, condições e asserções preservadas; apenas destinos atualizados. F2C-54, sem xfail próprio, é F3-P07. A ratificação F2C-47 não fecha BUG-2C-27.

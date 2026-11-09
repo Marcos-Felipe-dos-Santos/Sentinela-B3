@@ -6,15 +6,9 @@ só traz o total das preferenciais; `acoes_cvm.divergencia_acoes` compara esse t
 Origem: F2B-21, pergunta 8 (auditoria externa da 2A, correção 6).
 """
 
-import pytest
-
 from tests.test_market_engine_acoes_cvm import _banrisul, _por_classe
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG-2B-05 · divergência de ações da classe contra o total da espécie · corrige: F2C-15",
-)
 def test_classe_preferencial_com_varias_classes_nao_e_comparada(monkeypatch):
     dados = _por_classe(
         monkeypatch,

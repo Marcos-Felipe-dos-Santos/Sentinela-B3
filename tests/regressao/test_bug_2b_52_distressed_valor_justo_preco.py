@@ -10,17 +10,11 @@ Registrado pós-fechamento da 2B, 25/10/2026; a forma da saída é decidida no F
 
 from unittest.mock import patch
 
-import pytest
 from apoio_escopo import de_empresa
 
 from valuation_engine import ValuationEngine
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="BUG-2B-52 · distressed devolve fair_value = preço e upside 0 · corrige: F2C-49",
-)
 def test_distressed_nao_apresenta_o_preco_como_valor_justo():
     dados = de_empresa(
         {

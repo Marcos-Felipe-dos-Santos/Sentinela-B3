@@ -10,6 +10,7 @@ from datetime import date
 from unittest.mock import patch
 
 import pytest
+from apoio_apresentacao import verificar_lentes
 from apoio_fii import enriquecer_fii
 from apoio_gordon import AS_OF_GORDON
 
@@ -37,7 +38,9 @@ def _papel():
 def test_abstencao_do_fii_sem_valor_nem_upside(dados):
     r = _analisar(dados)
     assert not {"fair_value", "upside"} & set(r), r
-    assert r["score_final"] == 50 and r["recomendacao"] == "NEUTRO"
+    assert r["lentes"]["Rendimento do FII"]["valor"] is None
+    assert r["lentes"]["Rendimento do FII"]["abstencao"]
+    verificar_lentes(r)
     assert r["metodos_usados"].startswith("Dados insuficientes (")
 
 
@@ -55,6 +58,4 @@ def test_relatorio_nao_diz_que_o_valor_e_o_preco():
         )
     sintese = dict(contexto["sintese"])
     assert "Nenhum método calculou: o valor é o próprio preço" not in sintese
-    assert sintese["Abstenção da lente"] == (
-        "Dados insuficientes (Rendimento do FII: tipo de FII fora do escopo na 2B: papel)"
-    )
+    assert sintese["Abstenção da lente"] == ("tipo de FII fora do escopo na 2B: papel")

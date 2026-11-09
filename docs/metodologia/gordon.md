@@ -87,6 +87,13 @@ como na ficha por-acao §7.3: diferença absoluta relativa à CVM **até 5%** é
 aceita; acima disso emitir aviso, sem abstenção por essa divergência.
 O yfinance não altera a quantidade CVM nem a razão entre documentos.
 Ausência dessa conferência externa não substitui nem invalida a prova CVM.
+Clarificação documental F2C-34 (27/10/2026): esta prova quantitativa entre
+documentos não é a confirmação externa da ficha por-ação §7.7. A §7.7
+continua restrita ao ramo de escala pelo consolidado com controladores
+abstidos, para VPA/capitalização; a escala da composição recente usa
+controladores ou reserva D20 demonstrada, sem liberar aquele ramo.
+A razão entre documentos não demonstra, sozinha, a correção absoluta das
+duas escalas; cada escala deve ser determinada no próprio documento.
 Sem composição/documento elegível ou com quantidade inválida, abster com motivo.
 Data de entrega sem hora só entra após o fim do respectivo dia de Brasília;
 referência, versão, entrega, coleta e hash ficam na proveniência.

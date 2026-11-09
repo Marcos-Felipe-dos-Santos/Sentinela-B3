@@ -4,6 +4,8 @@ import sqlite3
 from contextlib import closing
 from datetime import datetime, timedelta
 
+from sentinela.domain.apresentacao import adaptar_leitura
+
 logger = logging.getLogger("Database")
 
 class DatabaseManager:
@@ -103,9 +105,13 @@ class DatabaseManager:
 
     def salvar_analise(self, dados: dict) -> None:
         """Persiste ou atualiza a análise de um ticker no banco."""
-        ticker = dados.get('ticker')
+        ticker = dados.get("ticker")
         if not ticker:
             return
+        from sentinela.domain.apresentacao import mesclar_analise
+
+        dados = mesclar_analise({}, dados)
+        apresentacao_nova = dados.get("apresentacao_versao") == "1.0"
         try:
             with closing(self._get_conn()) as conn:
                 with conn:
@@ -114,10 +120,14 @@ class DatabaseManager:
                         (
                             ticker,
                             datetime.now().strftime("%Y-%m-%d %H:%M"),
-                            int(dados.get('score_final', 0)),
-                            dados.get('recomendacao', 'NEUTRO'),
+                            None
+                            if apresentacao_nova
+                            else int(dados.get("score_final", 0)),
+                            None
+                            if apresentacao_nova
+                            else dados.get("recomendacao", "NEUTRO"),
                             json.dumps(dados, default=str),
-                        )
+                        ),
                     )
         except Exception as e:
             logger.error(f"Erro ao salvar {ticker}: {e}")
@@ -132,7 +142,7 @@ class DatabaseManager:
             row = cursor.fetchone()
             if row and row[0]:
                 try:
-                    return json.loads(row[0])
+                    return adaptar_leitura(json.loads(row[0]))
                 except (json.JSONDecodeError, TypeError) as e:
                     logger.error(f"JSON corrompido para {ticker}: {e}")
             return None

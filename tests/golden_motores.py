@@ -122,7 +122,8 @@ _CRESC = {
 
 
 def _acao(id_, entrada, selic=SELIC_PADRAO):
-    return {"id": id_, "motor": "acoes", "selic": selic, "entrada": entrada}
+    # selic só preserva os nomes históricos dos cenários; não é insumo de ações.
+    return {"id": id_, "motor": "acoes", "entrada": entrada}
 
 
 def _em_torno(t, passo=0.001):
@@ -138,11 +139,11 @@ def _acoes_fronteiras():
         + _em_torno(m.DY_CRESCIMENTO_MAX)
         + _em_torno(m.BAZIN_DY_MIN)
         + _em_torno(m.BAZIN_DY_ARMADILHA)
-        + _em_torno(m.GORDON_DY_MIN)
+        + _em_torno(0.04)
         + [0.3, 5.0, 12.47, 30.0, -0.05],
         "roe": [0.0, -0.1]
         + _em_torno(m.ROE_CRESCIMENTO_MIN)
-        + _em_torno(m.GORDON_ROE_MIN)
+        + _em_torno(0.10)
         + _em_torno(m.ROE_PENALIDADE_MAX)
         + [0.5],
         "pl": [0.0, -3.0, 3.0]
@@ -183,8 +184,8 @@ def _acoes_fronteiras():
             casos.append(
                 _acao(f"perfil-roe{roe!r}-dy{dy!r}", {**_CRESC, "roe": roe, "dy": dy})
             )
-    for roe in _em_torno(m.GORDON_ROE_MIN):
-        for dy in _em_torno(m.GORDON_DY_MIN):
+    for roe in _em_torno(0.10):
+        for dy in _em_torno(0.04):
             casos.append(
                 _acao(f"gordon-roe{roe!r}-dy{dy!r}", {**_RENDA, "roe": roe, "dy": dy})
             )

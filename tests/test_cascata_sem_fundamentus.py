@@ -5,6 +5,7 @@ obrigatório faltando depois de todas as fontes. O rebaixamento da V1 continua, 
 falta dado, não quando o scraper falhava e outras fontes completavam os campos.
 """
 
+from apoio_apresentacao import verificar_lentes
 from apoio_bazin import enriquecer_bazin
 from apoio_escopo import de_empresa
 
@@ -55,7 +56,7 @@ def test_cascata_nao_chama_o_fundamentus(monkeypatch):
 def test_campos_completos_nao_rebaixam_a_classificacao(monkeypatch):
     _, dados = _cascata(monkeypatch, INFO_COMPLETO)
     analise = _processar(dados)
-    assert "DADOS INSUFICIENTES" not in analise["recomendacao"]
+    verificar_lentes(analise)
     assert "Dados fundamentais obrigatórios ausentes" not in analise["riscos"]
 
 
@@ -66,7 +67,7 @@ def test_campo_obrigatorio_faltando_rebaixa_como_antes(monkeypatch):
     _, dados = _cascata(monkeypatch, info)
     assert dados["fundamentos_incompletos"] is True
     analise = _processar(dados)
-    assert analise["recomendacao"] == "DADOS INSUFICIENTES — AGUARDAR"
+    verificar_lentes(analise)
     assert "Dados fundamentais obrigatórios ausentes" in analise["riscos"]
     completo = _processar({**dados, "fundamentos_incompletos": False})
     assert completo["confianca"] - analise["confianca"] >= 30
@@ -86,5 +87,7 @@ def test_cache_que_completa_os_campos_nao_marca_incompletos(monkeypatch):
     dados = engine.buscar_dados_ticker("TSTE3")
     assert dados["dados_cache"] is True
     assert dados["fundamentos_incompletos"] is False
-    sem_cache = _engine(monkeypatch, info=info, historico=_historico(10.0), cache=FakeCache())
+    sem_cache = _engine(
+        monkeypatch, info=info, historico=_historico(10.0), cache=FakeCache()
+    )
     assert sem_cache.buscar_dados_ticker("TSTE3")["fundamentos_incompletos"] is True

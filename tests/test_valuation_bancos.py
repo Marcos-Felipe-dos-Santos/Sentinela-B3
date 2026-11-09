@@ -1,6 +1,7 @@
 """Bancos no motor de ações pela lente de P/VP justificado (F2B-32; ficha bancos 1.1)."""
 
 import pytest
+from apoio_apresentacao import verificar_lentes
 from apoio_bancos import AS_OF_GORDON, VPA, enriquecer_bancos
 
 from valuation_engine import ValuationEngine
@@ -31,9 +32,11 @@ def _processar(dados):
 
 def test_banco_recebe_a_lente_de_bancos():
     r = _processar(enriquecer_bancos({**BANCO, **INADIMPLENCIA}))
-    assert r["fair_value"] == pytest.approx(26.35, abs=0.01)
+    assert r["lentes"]["Bancos"]["valor"] == pytest.approx(26.35, abs=0.01)
     assert r["metodos_usados"] == "Bancos: R$26.35"
-    assert r["upside"] == pytest.approx((26.346908251509 / 44.28 - 1) * 100, abs=0.1)
+    assert r["lentes"]["Bancos"]["distancia_ao_preco_pct"] == pytest.approx(
+        (26.346908251509 / 44.28 - 1) * 100, abs=0.1
+    )
     assert not any(
         m in r["metodos_usados"] for m in ("Graham", "Bazin", "Lynch", "Gordon")
     )
@@ -44,7 +47,7 @@ def test_sem_ifdata_a_limitacao_aparece():
     assert r["inadimplencia_ifdata"] == (
         "inadimplência IF.data não informada: IF.data não consultado"
     )
-    assert r["fair_value"] == pytest.approx(26.35, abs=0.01)
+    assert r["lentes"]["Bancos"]["valor"] == pytest.approx(26.35, abs=0.01)
 
 
 @pytest.mark.parametrize("vpa", [None, 0.0, -1.0])
@@ -52,7 +55,9 @@ def test_banco_sem_vpa_se_abstem(vpa):
     dados = enriquecer_bancos(BANCO, vpa=vpa)
     r = _processar(dados)
     assert "Bancos" not in r["metodos_usados"]
-    assert r["recomendacao"] == "FORA DO ESCOPO DOS MÉTODOS"
+    verificar_lentes(r)
+    assert r["abstencao"].startswith("lente de bancos abstida:")
+    assert all(l["valor"] is None for l in r["lentes"].values())
     assert not {"fair_value", "upside", "score_final"} & set(r)
     assert dados["bancos_diagnostico"]
 
@@ -64,7 +69,7 @@ def test_inadimplencia_invalida_aparece_com_motivo(valor):
     assert r["inadimplencia_ifdata"].startswith(
         "inadimplência IF.data não informada: fora do domínio"
     )
-    assert r["fair_value"] == pytest.approx(26.35, abs=0.01)
+    assert r["lentes"]["Bancos"]["valor"] == pytest.approx(26.35, abs=0.01)
 
 
 def test_inadimplencia_valida_aparece_sem_mudar_o_valor():
@@ -81,7 +86,7 @@ def test_inadimplencia_valida_aparece_sem_mudar_o_valor():
 
 def test_basileia_nao_entra_na_saida_da_lente():
     r = _processar(enriquecer_bancos({**BANCO, **INADIMPLENCIA, "basileia": 0.0}))
-    assert r["fair_value"] == pytest.approx(26.35, abs=0.01)
+    assert r["lentes"]["Bancos"]["valor"] == pytest.approx(26.35, abs=0.01)
     assert not any("basileia" in str(x).lower() for x in r.values())
 
 
@@ -99,7 +104,9 @@ def test_unit_de_banco_usa_o_vpa_da_unit():
         fator_unit=2,
     )
     r = _processar(dados)
-    assert r["fair_value"] == pytest.approx(2 * 26.346908251509, abs=0.01)
+    assert r["lentes"]["Bancos"]["valor"] == pytest.approx(
+        2 * 26.346908251509, abs=0.01
+    )
 
 
 def test_relatorio_mostra_a_lente_e_a_inadimplencia():
@@ -179,7 +186,12 @@ def test_falha_do_ifdata_chega_com_o_motivo(monkeypatch):
 
     engine = _engine(monkeypatch, info={"currentPrice": 20.0})
     engine.ifdata = _Falha()
-    dados = {"setor": "Bancos", "cnpj": "00.000.000/0001-91", "riscos_dados": []}
+    dados = {
+        "setor": "Bancos",
+        "modelo_bpp": "banco",
+        "cnpj": "00.000.000/0001-91",
+        "riscos_dados": [],
+    }
     engine._buscar_ifdata(dados, as_of=datetime(2026, 10, 13, 12, tzinfo=UTC))
     r = _processar(enriquecer_bancos({**BANCO, **dados}))
     assert r["inadimplencia_ifdata"] == (

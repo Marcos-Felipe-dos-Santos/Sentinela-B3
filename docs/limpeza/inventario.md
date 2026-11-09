@@ -345,3 +345,45 @@ Antes → depois:
 | `deptry .` | 1 achado (`pytest` no `requirements.txt`) | o mesmo |
 
 Ocorrências que ficam dos nomes removidos: `docs/`; `README.md` (ticket C-A do Jules); `scripts/dossie_fase2.py` (tag da Fase 0) e `scripts/levantamento_fase2b.py` (commit `4881b83`), históricos; a lista de arquivos travados da seção "Fase atual" do `AGENTS.md` (cita `tests/test_invalidar_cache_cvm.py`), que é do Marcos. Resíduos para outras fases: `cdi`, `ipca_12m` e contingências (F3-1); `GORDON_DY_MIN`, `GORDON_ROE_MIN`, `GORDON_G_MAX` e `GORDON_PAYOUT_MAX`, sem leitor em produção desde o F2B-1 e fora da lista do item (o harness do golden lê os dois primeiros para as ids), para a limpeza da 2C; `get_selic_atual` e `SELIC_FALLBACK` (FII, Markowitz, E-6).
+
+## F2C-10 — limpeza em 09/11/2026
+
+Inventário antes → depois com os comandos da seção inicial: vulture≥80% **3→3** (argumentos de dublês em testes); deptry **83→83** (inclui falsos imports locais apoio_*; não representa 83 dependências novas); Ruff completo **161→161**. Logs /tmp/2c10-{vulture,deptry,ruff}-{before,after}.txt. Gates RuffCI e completos data/methods verdes. Nenhuma dependência instalada/removida.
+
+Removidos somente tabela/helper/import do fallback FII sem chamada, o teste direto desse helper, quatro constantes GORDON sem leitor de produção, dois parâmetros monkeypatch sem uso e redundância maior/da_maior da composição já filtrada por versão. Bancos.requires não repete classe/modelo validados pelo contrato. F2B-5 já removeu os resíduos de desconto Selic; F2C-9 já retirou o otimizador.
+
+**Mantidos:** dados_manual/manual_fii/manual_fallback em leitores e testes de compatibilidade histórica/proveniência (market/data_quality/models/app/CLI/relatório/repositório); não são novo produtor manual. DY_PERCENTUAL_THRESHOLD é usado pela grade, logo não elegível para remoção. Sem consolidação extra de QUEBRA ESPERADA nas seçõesA/C. Patches VACANCIA já ausentes.
+
+Harness: GORDON_DY_MIN0,04/ROE_MIN0,10 substituídos por literais históricos, IDs/grade intactos; chave selic retirada só de2003casos de ação,288FII intactos. Comparação exata contra a7d4fc6 confirmou nenhuma mudança de entrada/saída/ID/ordem além dessa chave sem leitor. Não regenerado golden.
+
+Bazin: citações vigentes em método/provider/relatório passam de ficha1.0 para1.2; testes textuais atualizados só nessa referência. Changelog1.0 e documentos históricos preservados. Aviso fixo de extraordinária já aplicado mesmo comD=0 em valuation_engine, fora de risco/classificação; nenhum comportamento novo. Comentário bancário cita ratificação25/10.
+
+FNET: arquivos rastreados deBTCI11/TRPL11 agora conservam só linhasHTML literais de nome/CNPJ e ticker/ISIN, sem scripts/contatos de outras linhas. sha256 verifica recorte; sha256_original em cada documento/CSV conserva o hash da página íntegra, com URL/coleta. Metadata dos membros recalculada; leitores existentes verificam o recorte e vínculo cadastral pelo mesmo contrato. Nenhum arquivo apagado.
+
+## Fechamento 2C — FC2C-69 (09/11/2026)
+
+Decisão do Marcos: retirar constantes sem leitor, mantendo exceções históricas demonstradas. Busca por nome em todos os `.py` rastreados, inclusive testes/scripts, mais conferência de leitura interna no próprio config; Vulture global com whitelist a60% confirmou os12nomes abaixo. Nenhuma constante com leitor foi removida, nenhuma fórmula ativa ou `_normalizar_dy` mudou.
+
+| Constantes retiradas | Evidência |
+|---|---|
+| `NTNB_VENCIMENTO_MIN` | alias sem leitor; seleção ativa usa a constante do módulo taxas |
+| `SCORE_SIGMOID_AMPLITUDE`, `SCORE_SIGMOID_INCLINACAO` | sem leitor após retirada do score agregado |
+| `ROE_BONUS_MIN` | sem leitor |
+| `REC_SCORE_COMPRA`, `REC_CONFIANCA_COMPRA`, `REC_SCORE_FORTE`, `REC_CONFIANCA_FORTE`, `REC_UPSIDE_VENDA` | sem leitor após retirada da síntese |
+| `FII_DY_SELIC_RATIO_MIN`, `FII_UPSIDE_COMPRA`, `FII_UPSIDE_VENDA` | sem leitor |
+
+Exceções comprovadas, que não reativam método/score histórico:
+
+| Constantes mantidas | Leitores e motivo |
+|---|---|
+| `LYNCH_PAYOUT_MAX`, `LYNCH_G_MAX`, `LYNCH_PL_MULTIPLICADOR`, `LYNCH_PL_MAX` | somente scripts históricos `scripts/dossie_fase2.py` e `scripts/levantamento_fase2b.py` |
+| `GRAHAM_PVP_LIMITE_CRESCIMENTO`, `GRAHAM_PVP_LIMITE_RENDA`, `GRAHAM_PL_LIMITE`, `GRAHAM_PL_FLOOR` | script histórico `levantamento_fase2b.py` e grade protegida `tests/golden_motores.py`; PL_LIMITE também tem asserção de compatibilidade em `tests/test_macro_context.py` |
+| `ROE_PENALIDADE_MAX` | ainda lida pela grade histórica protegida `tests/golden_motores.py:147`; não está sem leitor e não é usada pelo motor atual. A autorização de09/11 para o golden limita-se à remoção de um campo em40saídas; não autoriza mudar o harness/grade |
+| `REC_UPSIDE_COMPRA` | leitura explícita em `tests/test_macro_context.py:33`, contrato de compatibilidade legado; sem leitor de decisão no motor atual. Mantida para não remover/enfraquecer essa asserção no item de constantes sem leitor |
+| `DY_PERCENTUAL_THRESHOLD` | grade histórica protegida, exceção já registrada no F2C-10 |
+
+TTL de Selic/taxa-real, prêmio de ações, normalizaçãoDY, liquidez, constantes com leitores ativos FII/perfil/divergência e spread/calibração permanecem. Um nome sem leitor externo pode ter uso interno: `SELIC_CACHE_TTL` e `_TAXA_REAL_TTL` continuam lidos pelo próprio config e não são resíduo.
+
+Comandos: `python -m vulture . vulture_whitelist.py --min-confidence 60 --exclude 'venv,mutants,outputs,/home/marcos/projetos/Sentinela_B3/data/*'`; busca por palavra inteira nos `.py` de `git ls-files`, com verificação do próprio config. Logs antes/depois e lista em `/tmp/2c69-*`; fora do versionamento.
+
+Resultado global Vulture60%:30→18achados, exatamente as12declarações retiradas; sem achados novos. Ruff completo161→161; gates CI e data/methods verdes. Suíte3525PASS/1skip/8xfail, warning antigo. Nenhuma asserção removida ou enfraquecida para retirar constante.

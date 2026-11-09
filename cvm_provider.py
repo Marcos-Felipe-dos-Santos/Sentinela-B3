@@ -28,6 +28,7 @@ from sentinela.data.acoes_cvm import (
     Composicao,
     roe_dos_controladores,
 )
+from sentinela.data.cache_leitura import ler_csv_zip
 
 logger = logging.getLogger(__name__)
 
@@ -354,13 +355,7 @@ class CVMProvider:
 
     def _read_raw(self, zip_path: Path, tipo: str) -> pd.DataFrame:
         csv_name = self._find_csv_name(zip_path, tipo)
-        with zipfile.ZipFile(zip_path) as zf, zf.open(csv_name) as f:
-            return pd.read_csv(
-                io.TextIOWrapper(f, encoding="latin-1"),
-                sep=";",
-                dtype=str,
-                low_memory=False,
-            )
+        return ler_csv_zip(zip_path, csv_name)
 
     def parsear_demonstrativo(
         self,
@@ -392,7 +387,6 @@ class CVMProvider:
             tipo,
             include_cd_cvm,
             include_versao,
-            include_periodo,
         )
         with _cache_trava:
             trava = _travas_chave.setdefault(chave[:1] + chave[3:], threading.Lock())
@@ -400,14 +394,22 @@ class CVMProvider:
             with _cache_trava:
                 if chave in _cache_parse:
                     _cache_parse.move_to_end(chave)
-                    return _cache_parse[chave].copy()
-            df = self._parsear_sem_cache(
-                zip_path, tipo, include_cd_cvm, include_versao, include_periodo
-            )
-            with _cache_trava:
-                _cache_parse[chave] = df
-                while len(_cache_parse) > _CACHE_MAX_ENTRADAS:
-                    _cache_parse.popitem(last=False)
+                    df = _cache_parse[chave]
+                else:
+                    df = None
+            if df is None:
+                # Guarda o período uma vez; cada consumidor recebe sua projeção.
+                df = self._parsear_sem_cache(
+                    zip_path, tipo, include_cd_cvm, include_versao, True
+                )
+                with _cache_trava:
+                    _cache_parse[chave] = df
+                    while len(_cache_parse) > _CACHE_MAX_ENTRADAS:
+                        _cache_parse.popitem(last=False)
+        if not include_periodo:
+            return df.drop(
+                columns=["DT_INI_EXERC", "DT_FIM_EXERC"], errors="ignore"
+            ).copy()
         return df.copy()
 
     def _parsear_sem_cache(
@@ -698,7 +700,7 @@ class CVMProvider:
 
                 resultado[ano] = ind
 
-            except Exception as exc:
+            except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
                 logger.warning("Erro ao calcular indicadores cd_cvm=%d ano=%d: %s", cd_cvm, ano, exc)
 
         return resultado
@@ -817,6 +819,8 @@ class CVMProvider:
 
         def do_documento(tipo: str) -> pd.DataFrame:
             df = self._read_raw(caminho, tipo)
+            if not {"CD_CONTA", "DS_CONTA", "VL_CONTA"}.issubset(df.columns):
+                raise ValueError("demonstração sem colunas do contrato da escala")
             df = df[
                 (df["CNPJ_CIA"] == cnpj)
                 & (df["DT_REFER"].astype(str) == dt_refer)
@@ -838,15 +842,17 @@ class CVMProvider:
                 dre = dre[dre["DT_INI_EXERC"] == dre["DT_INI_EXERC"].min()]
             try:
                 bpp = em_reais(do_documento("BPP_con"))
-            except FileNotFoundError:
+            except (OSError, KeyError, ValueError, zipfile.BadZipFile):
                 bpp = pd.DataFrame(columns=["CD_CONTA", "DS_CONTA", "VL_CONTA"])
         except (OSError, KeyError, ValueError, zipfile.BadZipFile):
             return None
         e_lpa = dre["CD_CONTA"].astype(str).str.startswith("3.99")
         divulgado = lpa_divulgado(dre[e_lpa])
-        lucro = lucro_controladores_com_reserva(em_reais(dre[~e_lpa]), bpp).valor
+        leitura_lucro = lucro_controladores_com_reserva(em_reais(dre[~e_lpa]), bpp)
+        if leitura_lucro.reserva and bpp.empty:
+            return None
         inferida = acoes_cvm.inferir_escala(
-            lucro, composicao.total, divulgado["valor"] if divulgado else None
+            leitura_lucro.valor, composicao.total, divulgado["valor"] if divulgado else None
         )
         return None if inferida is None else inferida[0].name
 
@@ -1064,6 +1070,88 @@ class CVMProvider:
                 saida["proventos_motivos"][campo] = f"{leitura.motivo} {leitura.detalhe}".strip()
         return saida
 
+    def exercicio_anual_mais_recente(self, cd_cvm: int, referencia: date) -> int:
+        """Inclui exercício não civil encerrado neste ano, se demonstrado pela DFP.
+
+        Só disponibilidade anual da série informativa; não altera o exercício dos
+        métodos vigentes. Falha de consulta não prova ausência do documento.
+        """
+        try:
+            arquivo = self.baixar_dfp(referencia.year)
+        except OSError as exc:
+            if getattr(getattr(exc, "response", None), "status_code", None) == 404:
+                return referencia.year - 1
+            raise
+        dre = self.parsear_demonstrativo(
+            arquivo, "DRE_con", include_cd_cvm=True, include_versao=True, include_periodo=True
+        )
+        da_companhia = dre[dre["CD_CVM"] == cd_cvm]
+        for _, linha in da_companhia.iterrows():
+            inicio = date.fromisoformat(str(linha["DT_INI_EXERC"]))
+            fim = date.fromisoformat(str(linha["DT_FIM_EXERC"]))
+            if fim.year == referencia.year and fim <= referencia and series_cvm._meses(inicio, fim) == 12:
+                return fim.year
+        return referencia.year - 1
+
+    def pl_inicial_do_documento(
+        self,
+        zip_path: Path,
+        cd_cvm: int,
+        dt_refer: str,
+        versao: str,
+        inicio: str,
+        modelo: str,
+    ) -> dict:
+        """PL de abertura no comparativo da mesma DFP, sem exigir a DVA."""
+        try:
+            data_saldo = (date.fromisoformat(inicio) - timedelta(days=1)).isoformat()
+
+            def comparativo(tipo: str) -> pd.DataFrame:
+                bruto = self._read_raw(zip_path, tipo)
+                doc = bruto[
+                    (pd.to_numeric(bruto["CD_CVM"], errors="coerce") == cd_cvm)
+                    & (bruto["DT_REFER"].astype(str) == str(dt_refer))
+                    & (pd.to_numeric(bruto["VERSAO"], errors="coerce") == float(versao))
+                    & (bruto["ORDEM_EXERC"] == "PENÚLTIMO")
+                    & (bruto["DT_FIM_EXERC"].astype(str) == data_saldo)
+                ].copy()
+                if not doc.empty:
+                    if not doc["ESCALA_MOEDA"].isin(["REAL", "MIL", "UNIDADE"]).all():
+                        raise ValueError(
+                            "escala monetária do comparativo indeterminada"
+                        )
+                    doc["VL_CONTA"] = pd.to_numeric(doc["VL_CONTA"], errors="coerce")
+                    doc.loc[doc["ESCALA_MOEDA"] == "MIL", "VL_CONTA"] *= 1000
+                return doc
+
+            bpp = comparativo("BPP_con")
+            if bpp.empty:
+                return {
+                    "valor": None,
+                    "motivo": "PL inicial ausente do comparativo da mesma DFP",
+                }
+            dre = comparativo("DRE_con")
+            leitura = controladores.pl_dos_controladores(
+                _ler(bpp, "pl_total", modelo),
+                _ler(bpp, "pl_nao_controladores", modelo),
+                _ler(dre, "lucro_nao_controladores", modelo),
+            )
+            return {
+                "valor": leitura.valor,
+                "motivo": leitura.motivo,
+                "proveniencia": {
+                    "arquivo": zip_path.name,
+                    "demonstrativo": "BPP_con PENÚLTIMO",
+                    "data_saldo": data_saldo,
+                    "referencia": str(dt_refer),
+                    "versao": str(versao),
+                    "modelo": modelo,
+                    "reserva": leitura.reserva,
+                },
+            }
+        except (OSError, KeyError, ValueError, TypeError, zipfile.BadZipFile) as erro:
+            return {"valor": None, "motivo": f"PL inicial não demonstrado: {erro}"}
+
     def indicadores_da_serie(
         self, cd_cvm: int, ano_final: int, modelo: str = "empresa"
     ) -> dict[int, dict]:
@@ -1072,13 +1160,109 @@ class CVMProvider:
             cd_cvm, anos=series_cvm.MAX_EXERCICIOS, modelo=modelo, ano_final=ano_final
         )
         for ano, ind in indicadores.items():
-            ind.update(
-                self.proventos_do_documento(
+            try:
+                dre_periodo = self.parsear_demonstrativo(self.baixar_dfp(ano), "DRE_con", include_cd_cvm=True, include_versao=True, include_periodo=True)
+                if {"CD_CVM", "DT_REFER", "VERSAO", "DT_INI_EXERC", "DT_FIM_EXERC"}.issubset(dre_periodo.columns):
+                    doc = dre_periodo[(dre_periodo["CD_CVM"] == cd_cvm) & (dre_periodo["DT_REFER"].astype(str) == str(ind.get("cvm_dt_refer"))) & (dre_periodo["VERSAO"].astype(str) == str(ind.get("cvm_versao")))]
+                    janelas = set(zip(doc["DT_INI_EXERC"].astype(str), doc["DT_FIM_EXERC"].astype(str), strict=True))
+                    if len(janelas) == 1:
+                        ind["inicio"], ind["fim"] = next(iter(janelas))
+                        bpp = self.parsear_demonstrativo(
+                            self.baixar_dfp(ano), "BPP_con",
+                            include_cd_cvm=True, include_versao=True,
+                        )
+                        bpp = bpp[
+                            (bpp["CD_CVM"] == cd_cvm)
+                            & (bpp["DT_REFER"].astype(str) == str(ind.get("cvm_dt_refer")))
+                            & (bpp["VERSAO"].astype(str) == str(ind.get("cvm_versao")))
+                        ]
+                        prova = self._prova_comparabilidade(
+                            doc, bpp, modelo, self.baixar_dfp(ano).name,
+                            str(ind.get("cvm_dt_refer")), str(ind.get("cvm_versao")),
+                        )
+                        if prova:
+                            ind.update(
+                                perimetro=prova["perimetro"],
+                                evidencia_comparabilidade=prova["evidencia_comparabilidade"],
+                                aviso_comparabilidade=prova["aviso"],
+                            )
+            except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
+                ind["janela_motivo"] = f"janela anual indisponível: {exc}"
+            try:
+                abertura = self.pl_inicial_do_documento(
+                    self.baixar_dfp(ano),
+                    cd_cvm,
+                    ind.get("cvm_dt_refer"),
+                    ind.get("cvm_versao"),
+                    ind.get("inicio"),
+                    modelo,
+                )
+            except (OSError, KeyError, ValueError, zipfile.BadZipFile) as erro:
+                abertura = {"valor": None, "motivo": f"PL inicial indisponível: {erro}"}
+            ind["modelo"] = modelo
+            ind["pl_inicial_controladores"] = abertura["valor"]
+            ind["pl_inicial_proveniencia"] = abertura.get("proveniencia")
+            ind["pl_inicial_motivo"] = abertura.get("motivo")
+            try:
+                proventos = self.proventos_do_documento(
                     self.baixar_dfp(ano), cd_cvm,
                     ind.get("cvm_dt_refer"), ind.get("cvm_versao"), modelo,
                 )
-            )
+            except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
+                proventos = {
+                    "dividendos": None,
+                    "jcp": None,
+                    "proventos_motivos": {
+                        campo: f"DVA indisponível: {exc}" for campo in ("dividendos", "jcp")
+                    },
+                }
+            ind.update(proventos)
         return indicadores
+
+    @staticmethod
+    def _prova_comparabilidade(
+        dre: pd.DataFrame, bpp: pd.DataFrame, modelo: str,
+        arquivo: str, referencia: str, versao: str,
+    ) -> dict[str, str]:
+        """Critério aprovado em09/11: identidade, modelo BPP e reservas D20 válidas.
+
+        A contiguidade é conferida pelo consumidor. Não detecta reorganizações.
+        """
+        if dre.empty or bpp.empty or any("CNPJ_CIA" not in d for d in (dre, bpp)):
+            return {}
+        identidades = [
+            {re.sub(r"\D", "", str(c)) for c in d["CNPJ_CIA"]}
+            for d in (dre, bpp)
+        ]
+        if identidades[0] != identidades[1] or len(identidades[0]) != 1:
+            return {}
+        cnpj = next(iter(identidades[0]))
+        if len(cnpj) != 14:
+            return {}
+        modelos = {
+            m for m in ("empresa", "banco")
+            if isinstance(_ler(bpp, "pl_total", m), contas_cvm.Leitura)
+        }
+        if modelos != {modelo} or (
+            modelo == "empresa"
+            and bpp["DS_CONTA"].map(contas_cvm.normalizar_descricao)
+            .str.contains(_CONTAS_DE_SEGURADORA).any()
+        ):
+            return {}
+        lucro = lucro_controladores_com_reserva(dre, bpp)
+        pl = pl_controladores_com_reserva(bpp, dre, modelo)
+        if lucro.valor is None or pl.valor is None:
+            return {}
+        return {
+            "perimetro": f"{cnpj}/{modelo}/controladores",
+            "evidencia_comparabilidade": (
+                f"mesmo CNPJ {cnpj}, modelo {modelo} demonstrado no BPP; "
+                f"reserva D20 validada (lucro={lucro.reserva}, PL={pl.reserva}); "
+                f"documento {arquivo}, referência {referencia}, versão {versao}; "
+                "contiguidade exigida na janela"
+            ),
+            "aviso": "reorganização societária no período não é detectada",
+        }
 
     def _acumulados_do_arquivo(
         self, zip_path: Path, documento: str, cd_cvm: int, modelo: str
@@ -1109,8 +1293,11 @@ class CVMProvider:
             bpp = self.parsear_demonstrativo(
                 zip_path, "BPP_con", include_cd_cvm=True, include_versao=True
             )
+            exigidas = {"CD_CVM", "DT_REFER", "VERSAO", "CD_CONTA", "DS_CONTA", "VL_CONTA"}
+            if not exigidas.issubset(bpp.columns):
+                raise ValueError("BPP sem colunas do contrato")
             bpp = bpp[bpp["CD_CVM"] == cd_cvm]
-        except (OSError, KeyError, ValueError):
+        except (OSError, KeyError, ValueError, zipfile.BadZipFile):
             bpp = pd.DataFrame(columns=["DT_REFER", "VERSAO", "CD_CONTA", "DS_CONTA", "VL_CONTA"])
         acumulados = []
         for (dt_refer, versao), doc in linhas.groupby(["DT_REFER", "VERSAO"]):
@@ -1133,9 +1320,50 @@ class CVMProvider:
                 & (bpp["VERSAO"].astype(str) == str(versao))
             ]
             controladores_doc = lucro_controladores_com_reserva(doc, bpp_doc)
+            # F2C-30: rubrica ausente só autoriza reserva dentro de BPP efetivamente lido.
+            # Uma leitura direta válida da DRE independe deste balanço de conferência.
+            if bpp_doc.empty and controladores_doc.reserva:
+                controladores_doc = controladores.Resultado(
+                    None, motivo="BPP do mesmo documento indisponível para a reserva"
+                )
             valores["lucro_controladores"] = controladores_doc.valor
             if controladores_doc.valor is None and controladores_doc.motivo:
                 motivos["lucro_controladores"] = controladores_doc.motivo
+            # Um marcador positivo de outro modelo não autoriza combinar trimestres.
+            modelos_bpp = {
+                candidato for candidato in ("empresa", "banco")
+                if isinstance(_ler(bpp_doc, "pl_total", candidato), contas_cvm.Leitura)
+            }
+            if modelos_bpp and modelos_bpp != {modelo}:
+                valores = dict.fromkeys(valores)
+                motivos = dict.fromkeys(valores, "modelo do BPP incompatível com os fluxos do TTM")
+                controladores_doc = controladores.Resultado(
+                    None, motivo=motivos["lucro_controladores"]
+                )
+            fontes_campos = {
+                campo: {
+                    "arquivo": zip_path.name,
+                    "demonstrativo": "DVA_con" if campo in ("dividendos", "jcp") else "DRE_con",
+                    "modelo": modelo,
+                    "inicio": str(inicio),
+                    "fim": str(fim),
+                    "motivo": motivos.get(campo),
+                }
+                for campo in valores
+            }
+            prova = self._prova_comparabilidade(
+                doc, bpp_doc, modelo, zip_path.name, str(dt_refer), str(versao)
+            )
+            for campo, fonte in fontes_campos.items():
+                fonte.update(prova)
+                if prova and campo != "lucro_controladores":
+                    fonte["perimetro"] = prova["perimetro"].replace(
+                        "/controladores", "/consolidado"
+                    )
+            fontes_campos["lucro_controladores"].update(
+                reserva=controladores_doc.reserva,
+                bpp_correspondente_lido=not bpp_doc.empty,
+            )
             acumulados.append(
                 series_cvm.Acumulado(
                     documento=documento,
@@ -1145,6 +1373,7 @@ class CVMProvider:
                     fim=date.fromisoformat(str(fim)),
                     valores=valores,
                     motivos=motivos,
+                    proveniencia=fontes_campos,
                 )
             )
         return acumulados
@@ -1162,6 +1391,7 @@ class CVMProvider:
             ("ITR", self.baixar_itr, data_referencia.year),
             ("ITR", self.baixar_itr, data_referencia.year - 1),
             ("ITR", self.baixar_itr, data_referencia.year - 2),
+            ("DFP", self.baixar_dfp, data_referencia.year),
             ("DFP", self.baixar_dfp, data_referencia.year - 1),
             ("DFP", self.baixar_dfp, data_referencia.year - 2),
         ]
@@ -1169,7 +1399,7 @@ class CVMProvider:
         for documento, baixar, ano in fontes:
             try:
                 acumulados += self._acumulados_do_arquivo(baixar(ano), documento, cd_cvm, modelo)
-            except Exception as exc:
+            except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
                 logger.warning(
                     "Sem %s %d para o TTM de cd_cvm=%d: %s", documento, ano, cd_cvm, exc
                 )

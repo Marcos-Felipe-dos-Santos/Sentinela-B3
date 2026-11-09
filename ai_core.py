@@ -126,13 +126,31 @@ class SentinelaAI:
 
     def _montar_prompt(self, ticker, dados):
         dados_txt = self._formatar_dados(dados)
-        perfil = dados.get('perfil', 'GERAL') if isinstance(dados, dict) else 'GERAL'
+        perfil = dados.get("perfil", "GERAL") if isinstance(dados, dict) else "GERAL"
         proveniencia_txt = self._formatar_proveniencia_campos(
             dados.get("field_provenance") if isinstance(dados, dict) else None
         )
 
+        if isinstance(dados, dict) and dados.get("apresentacao_versao") == "1.0":
+            return f"""Você é um analista educacional. Analise o ativo {ticker} (Perfil: {perfil}).
+Baseie-se ESTRITAMENTE nos dados fornecidos. Não invente dados ausentes.
+DADOS FORNECIDOS:
+{dados_txt}
+Proveniência dos dados:
+{proveniencia_txt}
+Não altere nem substitua os valores, motivos, regimes, janelas e distâncias das lentes separadas.
+Não combine lentes em valor único, nota, banda ou sinal. Bazin é critério nominal de6% e preço-limite informativo.
+Forneça exatamente:
+1. Lentes separadas: explique as hipóteses e a distância ao preço, sem estimar retorno.
+2. Análise Técnica: descreva os indicadores como contexto, sem decisão de investimento.
+3. Qualidade empresarial e dos dados: mantenha descritores, cobertura e causas separados do valuation.
+4. Hipóteses e limites: explique abstenções e fontes recusadas; não transforme ausência em desempenho ruim.
+Não forneça orientação de investimento nem classificação por lente.
+"""
+
         return f"""
 Você é um analista educacional. Analise o ativo {ticker} (Perfil: {perfil}).
+Registro histórico de versão anterior; não é recálculo da apresentação atual.
 Baseie-se ESTRITAMENTE nos dados fornecidos abaixo. Não invente ou presuma dados ausentes.
 
 DADOS FORNECIDOS:

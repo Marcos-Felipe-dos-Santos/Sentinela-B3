@@ -18,6 +18,7 @@ from sentinela.methods.fii_yield import FiiYield
 from sentinela.methods.gordon import Gordon
 from sentinela.methods.graham import Graham
 from sentinela.methods.lynch import Lynch
+from sentinela.methods.qualidade import Qualidade
 
 METODOS: tuple[ValuationMethod, ...] = (
     Graham(),
@@ -28,6 +29,9 @@ METODOS: tuple[ValuationMethod, ...] = (
     FiiNav(),
     Bancos(),
 )
+
+# F2C-2: quadros sem valor escalar não integram mediana/contrato de valuation.
+QUADROS_DESCRITIVOS = (Qualidade(),)
 
 DESCRICAO_1_0_0 = "comportamento da V1, extraído na Fase 1, sem mudança de número"
 
@@ -113,6 +117,28 @@ CHANGELOG["Bancos"] += (
         "F2B-4: classe e modelo conferidos pelo contrato antes dos insumos; sem classe ou modelo, motivo de escopo em vez de insumo ausente",
     ),
 )
+
+
+CHANGELOG["Graham"] += (
+    Mudanca(
+        "2.0.0",
+        "ficha2.0aprovada28/10: média de cinco exercícios normalizada por IPCA, VPA final; retirados piso e guardas de múltiplos",
+    ),
+)
+CHANGELOG["Lynch"] += (
+    Mudanca(
+        "2.0.0",
+        "ficha2.0aprovada28/10: CAGR de cinco observações/quatro intervalos, m1, teto g25%, sem teto PL, payout contextual",
+    ),
+)
+
+for _nome in ("Graham", "Lynch"):
+    CHANGELOG[_nome] += (
+        Mudanca(
+            "2.1.0",
+            "ficha2.1: base documental por razão(0,9;1,1) ou fator B3; reorganização apenas aviso, detecção na Fase3",
+        ),
+    )
 
 
 def validar(

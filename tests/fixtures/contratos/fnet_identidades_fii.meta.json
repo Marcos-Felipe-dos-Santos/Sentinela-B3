@@ -1,0 +1,39 @@
+{
+  "coleta": "2026-10-26T15:55:22.805721+00:00",
+  "documentos": [
+    {
+      "ticker": "BTCI11",
+      "cnpj": "09.552.812/0001-14",
+      "isin": "BRBTCICTF005",
+      "nome": "BTG PACTUAL CRÉDITO IMOBILIÁRIO - FUNDO DE CRI - FI IMOBILIÁRIO RESPONSABILIDADE LIMITADA",
+      "fonte": "https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id=1280320",
+      "data": "2026-10-26",
+      "sha256": "6a7fd2afa3209df9b2369388432e591a6734962d4fd6285d97a9ba78d7d2b696",
+      "sha256_original": "f44614a7dafa0099063cf84a039575525be9cef6cfcba6201993e25eaa69b63a"
+    },
+    {
+      "ticker": "TRPL11",
+      "cnpj": "63.320.393/0001-30",
+      "isin": "BRTRPLCTF015",
+      "nome": "TERRAS PAULISTAS FUNDO DE INVESTIMENTO IMOBILIÁRIO DE PERMUTAS RESPONSABILIDADE LIMITADA",
+      "fonte": "https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id=1076648",
+      "data": "2026-10-26",
+      "sha256": "f0dfebeea53fd9e25ad49177101a30f96e75e4cd4a578af29c98b259f62b5b75",
+      "sha256_original": "dc720dc3322db8afeaeb0a1f2479092e93c2d1a6c6d0d631e4d4dd7c9c178113"
+    }
+  ],
+  "observacao": "Recortes literais de linhas HTML com identidade cadastral; scripts e contatos removidos. Hash original por documento preservado; sha256 confere o recorte.",
+  "fonte": "https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id=1076648",
+  "arquivo_original": "exibirDocumento?id=1076648",
+  "data_coleta": "2026-10-26T15:55:22.805721+00:00",
+  "sha256_original": "dc720dc3322db8afeaeb0a1f2479092e93c2d1a6c6d0d631e4d4dd7c9c178113",
+  "recorte": "Linhas tr literais de nome/CNPJ e ticker/ISIN, na ordem original; fonte/coleta/hash original preservados.",
+  "membros": {
+    "fnet_identidade_btci11.html.base64": "PHRyPgogICAgICAgICAgICAgICAgPHRkIHdpZHRoPSIyMCUiPjxzcGFuIGNsYXNzPSJ0aXR1bG8tZGFkbyI+Tm9tZSBkbyBGdW5kbzogPC9zcGFuPjwvdGQ+PHRkIHdpZHRoPSI0MCUiPjxzcGFuIGNsYXNzPSJkYWRvLWNhYmVjYWxobyI+QlRHIFBBQ1RVQUwgQ1ImRWFjdXRlO0RJVE8gSU1PQklMSSZBYWN1dGU7UklPIC0gRlVORE8gREUgQ1JJIC0gRkkgSU1PQklMSSZBYWN1dGU7UklPIFJFU1BPTlNBQklMSURBREUgTElNSVRBREE8L3NwYW4+PC90ZD48dGQgd2lkdGg9IjIwJSI+PHNwYW4gY2xhc3M9InRpdHVsby1kYWRvIj5DTlBKIGRvIEZ1bmRvOiA8L3NwYW4+PC90ZD48dGQgd2lkdGg9IjIwJSI+PHNwYW4gY2xhc3M9ImRhZG8tY2FiZWNhbGhvIj4wOS41NTIuODEyLzAwMDEtMTQ8L3NwYW4+PC90ZD4KICAgICAgICAgICAgPC90cj4KPHRyPgogICAgICAgICAgICAgICAgPHRkIHdpZHRoPSIxNSUiPjxzcGFuIGNsYXNzPSJ0aXR1bG8tZGFkbyI+QyZvYWN1dGU7ZGlnbyBJU0lOOiA8L3NwYW4+PC90ZD48dGQgd2lkdGg9IjE1JSI+PHNwYW4gY2xhc3M9ImRhZG8tY2FiZWNhbGhvIj5CUkJUQ0lDVEYwMDU8L3NwYW4+PC90ZD48dGQgd2lkdGg9IjE1JSI+PHNwYW4gY2xhc3M9InRpdHVsby1kYWRvIj5DJm9hY3V0ZTtkaWdvIGRlIG5lZ29jaWEmY2NlZGlsOyZhdGlsZGU7bzogPC9zcGFuPjwvdGQ+PHRkIHdpZHRoPSIxNSUiPjxzcGFuIGNsYXNzPSJkYWRvLWNhYmVjYWxobyI+QlRDSTExPC9zcGFuPjwvdGQ+PHRkIGFsaWduPSJjZW50ZXIiIHZhbGlnbj0idG9wIiB3aWR0aD0iMjAlIj48Yj5SZW5kaW1lbnRvPC9iPjwvdGQ+PHRkIGFsaWduPSJjZW50ZXIiIHdpZHRoPSIyMCUiPjxiPkFtb3J0aXphJmNjZWRpbDsmYXRpbGRlO288L2I+PC90ZD4KICAgICAgICAgICAgPC90cj4=",
+    "fnet_identidade_trpl11.html.base64": "PHRyPgogICAgICAgICAgICAgICAgPHRkIHdpZHRoPSIyMCUiPjxzcGFuIGNsYXNzPSJ0aXR1bG8tZGFkbyI+Tm9tZSBkbyBGdW5kbzogPC9zcGFuPjwvdGQ+PHRkIHdpZHRoPSIzMCUiPjxzcGFuIGNsYXNzPSJkYWRvLWNhYmVjYWxobyI+VEVSUkFTIFBBVUxJU1RBUyBGVU5ETyBERSAgSU5WRVNUSU1FTlRPIElNT0JJTEkmQWFjdXRlO1JJTyBERSBQRVJNVVRBUyBSRVNQT05TQUJJTElEQURFIExJTUlUQURBPC9zcGFuPjwvdGQ+PHRkIHdpZHRoPSIyNSUiPjxzcGFuIGNsYXNzPSJ0aXR1bG8tZGFkbyI+Q05QSiBkbyBGdW5kbzogPC9zcGFuPjwvdGQ+PHRkIHdpZHRoPSIyNSUiPjxzcGFuIGNsYXNzPSJkYWRvLWNhYmVjYWxobyI+NjMuMzIwLjM5My8wMDAxLTMwPC9zcGFuPjwvdGQ+CiAgICAgICAgICAgIDwvdHI+Cjx0cj4KICAgICAgICAgICAgICAgIDx0ZCBjbGFzcz0idGV4dG8tdGFiZWxhLWNlbnRyYWxpemFkbyI+QlJUUlBMQ1RGMDE1PC90ZD48dGQgY2xhc3M9InRleHRvLXRhYmVsYS1jZW50cmFsaXphZG8iPlRSUEwxMTwvdGQ+PHRkIGNsYXNzPSJ0ZXh0by10YWJlbGEtY2VudHJhbGl6YWRvIj4xPC90ZD48dGQgY2xhc3M9InRleHRvLXRhYmVsYS1jZW50cmFsaXphZG8iPjE8L3RkPjx0ZCBjbGFzcz0idGV4dG8tdGFiZWxhLWNlbnRyYWxpemFkbyI+Uml0byBhdXRvbSZhYWN1dGU7dGljbzwvdGQ+PHRkIGNsYXNzPSJ0ZXh0by10YWJlbGEtY2VudHJhbGl6YWRvIj48c3BhbiBjbGFzcz0iZGFkby1jYWJlY2FsaG8iPjI5LzEyLzIwMjU8L3NwYW4+PC90ZD48dGQgY2xhc3M9InRleHRvLXRhYmVsYS1jZW50cmFsaXphZG8iPjxzcGFuIGNsYXNzPSJkYWRvLWNhYmVjYWxobyI+MDgvMDEvMjAyNjwvc3Bhbj48L3RkPjx0ZCBjbGFzcz0idGV4dG8tdGFiZWxhLWNlbnRyYWxpemFkbyI+PHNwYW4gY2xhc3M9ImRhZG8tY2FiZWNhbGhvIj4wOC8wMS8yMDI2PC9zcGFuPjwvdGQ+PHRkIGNsYXNzPSJ0ZXh0by10YWJlbGEtY2VudHJhbGl6YWRvIj48L3RkPgogICAgICAgICAgICA8L3RyPg=="
+  },
+  "sha256_membros": {
+    "fnet_identidade_btci11.html.base64": "8a75a00df196136ee3be34820b130f2a3b53144f4111da19f71687759b32eb00",
+    "fnet_identidade_trpl11.html.base64": "5ed8fac28cc6beda6618b92f20138931fdaecdcb0f9a12c198ff4d6bfb0a0db4"
+  }
+}

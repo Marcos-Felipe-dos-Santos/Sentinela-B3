@@ -36,7 +36,7 @@ def test_janela_vem_da_dre_da_dfp_e_nao_do_ano_inferido(monkeypatch):
     monkeypatch.setattr(
         series_cvm,
         "serie_anual",
-        lambda *a, **kw: [{"dt_refer": "2025-09-30", "versao": "1"}],
+        lambda *a, **kw: [{"exercicio": 2025, "dt_refer": "2025-09-30", "versao": "1"}],
     )
     monkeypatch.setattr(series_cvm, "ttm", lambda *a: series_cvm.Abstencao("sem TTM"))
     mercado = MarketEngine.__new__(MarketEngine)
@@ -63,7 +63,7 @@ def test_janela_da_versao_errada_nao_e_usada(monkeypatch):
     monkeypatch.setattr(
         series_cvm,
         "serie_anual",
-        lambda *a, **kw: [{"dt_refer": "2025-12-31", "versao": "1"}],
+        lambda *a, **kw: [{"exercicio": 2025, "dt_refer": "2025-12-31", "versao": "1"}],
     )
     monkeypatch.setattr(series_cvm, "ttm", lambda *a: series_cvm.Abstencao("sem TTM"))
     dados = {}

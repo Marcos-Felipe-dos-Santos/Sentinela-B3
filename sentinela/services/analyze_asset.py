@@ -6,6 +6,7 @@ from typing import Any
 
 import pandas as pd
 
+from sentinela.domain.apresentacao import mesclar_analise
 from sentinela.domain.models import AnalysisResult
 from sentinela.services.asset_classifier import AssetClassifier
 
@@ -77,7 +78,7 @@ class AnalysisService:
         hist = dados.get("historico", pd.DataFrame())
         tech_data = self.technical_engine.calcular_indicadores(hist)
 
-        dados.update(analise)
+        dados = mesclar_analise(dados, analise)
         dados["tech"] = tech_data
 
         ai_content = None

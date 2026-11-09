@@ -156,7 +156,9 @@ class DataQualityReport:
             )]
         else:
             esperados = _CAMPOS_ESPERADOS
-            if modelo != "empresa":
+            if modelo == "seguradora":
+                limitacoes.append("modelo seguradora fora do escopo")
+            elif modelo != "empresa":
                 limitacoes.append(
                     "modelo não demonstrado: percentual dos campos gerais, "
                     "sem certificação de completude do modelo"

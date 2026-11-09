@@ -116,7 +116,7 @@ def test_relatorio_mostra_a_fonte_ou_o_motivo():
     _processar(dados)
     assert _texto_proventos_bazin(dados) == (
         "R$ 8,000000 brutos por papel em 12 meses, datas ex de 2025-10-19 (exclusive) "
-        "a 2026-10-19, 1 eventos; critério fixo de 6% (ficha Bazin 1.0)"
+        "a 2026-10-19, 1 eventos; critério fixo de 6% (ficha Bazin 1.2)"
     )
     assert _texto_proventos_bazin({"bazin_diagnostico": "x"}) == "não calculado: x"
     assert _texto_proventos_bazin({}) == "não calculado: sem relação B3"

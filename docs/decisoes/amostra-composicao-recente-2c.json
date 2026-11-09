@@ -1,0 +1,1417 @@
+{
+  "limite": "fotografia de conteúdo disponível, sem certificar as_of ou coleta histórica; não executa método",
+  "fontes": [
+    {
+      "arquivo": "outputs/levantamento_cache/dfp_2025.zip",
+      "sha256": "d7aec54e7c67998e4cd3ef94c463ab247f09a6baaa2254878d1e431f28130e2a"
+    },
+    {
+      "arquivo": "outputs/levantamento_cache/itr_2026.zip",
+      "sha256": "0e1ef74291d2143e7bb55247b01c8bbd94995d995536f70f0d19de1d79d7e38c"
+    }
+  ],
+  "tickers_documentais": 90,
+  "acoes_units_no_indice": 55,
+  "ambas_escalas": 44,
+  "intervalo_aberto": 38,
+  "casos": [
+    {
+      "ticker": "ABEV3",
+      "cnpj": "07.526.557/0001-00",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 15616526.0,
+          "escala": "MIL",
+          "total_unidades": 15616526000.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 15452795.0,
+          "escala": "MIL",
+          "total_unidades": 15452795000.0
+        }
+      ],
+      "razao": 0.9895155298944208,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "ASAI3",
+      "cnpj": "06.057.223/0001-71",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1341708.0,
+          "escala": null,
+          "total_unidades": null
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1338440.0,
+          "escala": null,
+          "total_unidades": null
+        }
+      ]
+    },
+    {
+      "ticker": "AXIA3",
+      "cnpj": "00.001.180/0001-26",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 2839448.0,
+          "escala": "MIL",
+          "total_unidades": 2839448000.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 2867341.0,
+          "escala": "MIL",
+          "total_unidades": 2867341000.0
+        }
+      ],
+      "razao": 1.009823388207849,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "AZUL3",
+      "cnpj": "09.305.994/0001-29",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "3",
+          "motivo": null,
+          "total_literal": 3024916195.0,
+          "escala": "UNIDADE",
+          "total_unidades": 3024916195.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "2",
+          "motivo": null,
+          "total_literal": 368557924.0,
+          "escala": "UNIDADE",
+          "total_unidades": 368557924.0
+        }
+      ],
+      "razao": 0.12184070573895685,
+      "intervalo_aberto": false
+    },
+    {
+      "ticker": "B3SA3",
+      "cnpj": "09.346.601/0001-25",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 5034561292.0,
+          "escala": "UNIDADE",
+          "total_unidades": 5034561292.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 4998298548.0,
+          "escala": "UNIDADE",
+          "total_unidades": 4998298548.0
+        }
+      ],
+      "razao": 0.9927972385483473,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "BBAS3",
+      "cnpj": "00.000.000/0001-91",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 5708463641.0,
+          "escala": "UNIDADE",
+          "total_unidades": 5708463641.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 5708971478.0,
+          "escala": "UNIDADE",
+          "total_unidades": 5708971478.0
+        }
+      ],
+      "razao": 1.000088962115192,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "BBDC4",
+      "cnpj": "60.746.948/0001-12",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "2",
+          "motivo": null,
+          "total_literal": 10577012028.0,
+          "escala": "UNIDADE",
+          "total_unidades": 10577012028.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 10570712028.0,
+          "escala": "UNIDADE",
+          "total_unidades": 10570712028.0
+        }
+      ],
+      "razao": 0.9994043686455757,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "BEEF3",
+      "cnpj": "67.620.377/0001-14",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 985408823.0,
+          "escala": "UNIDADE",
+          "total_unidades": 985408823.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "2",
+          "motivo": null,
+          "total_literal": 991142507.0,
+          "escala": "UNIDADE",
+          "total_unidades": 991142507.0
+        }
+      ],
+      "razao": 1.005818583988871,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "BEES3",
+      "cnpj": "28.127.603/0001-78",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "2",
+          "motivo": null,
+          "total_literal": 347504.0,
+          "escala": "MIL",
+          "total_unidades": 347504000.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 347504146.0,
+          "escala": "UNIDADE",
+          "total_unidades": 347504146.0
+        }
+      ],
+      "razao": 1.0000004201390487,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "BMEB4",
+      "cnpj": "17.184.037/0001-10",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 104483.0,
+          "escala": "MIL",
+          "total_unidades": 104483000.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 123031.0,
+          "escala": "MIL",
+          "total_unidades": 123031000.0
+        }
+      ],
+      "razao": 1.1775217020950777,
+      "intervalo_aberto": false
+    },
+    {
+      "ticker": "BMGB4",
+      "cnpj": "61.186.680/0001-74",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 596486946.0,
+          "escala": "UNIDADE",
+          "total_unidades": 596486946.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 644801825.0,
+          "escala": "UNIDADE",
+          "total_unidades": 644801825.0
+        }
+      ],
+      "razao": 1.0809990550908049,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "BRBI11",
+      "cnpj": "10.739.356/0001-03",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 314987112.0,
+          "escala": "UNIDADE",
+          "total_unidades": 314987112.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 314987112.0,
+          "escala": "UNIDADE",
+          "total_unidades": 314987112.0
+        }
+      ],
+      "razao": 1.0,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "BRML3",
+      "cnpj": "06.977.745/0001-91",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 819720494.0,
+          "escala": "UNIDADE",
+          "total_unidades": 819720494.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 819720494.0,
+          "escala": null,
+          "total_unidades": null
+        }
+      ]
+    },
+    {
+      "ticker": "BRSR3",
+      "cnpj": "92.702.067/0001-96",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 408974.0,
+          "escala": "MIL",
+          "total_unidades": 408974000.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 408974.0,
+          "escala": "MIL",
+          "total_unidades": 408974000.0
+        }
+      ],
+      "razao": 1.0,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "BRSR5",
+      "cnpj": "92.702.067/0001-96",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 408974.0,
+          "escala": "MIL",
+          "total_unidades": 408974000.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 408974.0,
+          "escala": "MIL",
+          "total_unidades": 408974000.0
+        }
+      ],
+      "razao": 1.0,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "BRSR6",
+      "cnpj": "92.702.067/0001-96",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 408974.0,
+          "escala": "MIL",
+          "total_unidades": 408974000.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 408974.0,
+          "escala": "MIL",
+          "total_unidades": 408974000.0
+        }
+      ],
+      "razao": 1.0,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "CMIG4",
+      "cnpj": "17.155.730/0001-64",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 2860682.0,
+          "escala": "MIL",
+          "total_unidades": 2860682000.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 2860682.0,
+          "escala": "MIL",
+          "total_unidades": 2860682000.0
+        }
+      ],
+      "razao": 1.0,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "COGN3",
+      "cnpj": "02.800.026/0001-40",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "2",
+          "motivo": null,
+          "total_literal": 1995588175.0,
+          "escala": null,
+          "total_unidades": null
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 2001229192.0,
+          "escala": null,
+          "total_unidades": null
+        }
+      ]
+    },
+    {
+      "ticker": "CSAN3",
+      "cnpj": "50.746.577/0001-15",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 3959428597.0,
+          "escala": "UNIDADE",
+          "total_unidades": 3959428597.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 3944366465.0,
+          "escala": "UNIDADE",
+          "total_unidades": 3944366465.0
+        }
+      ],
+      "razao": 0.996195882402978,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "CYRE3",
+      "cnpj": "73.178.600/0001-18",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 366311.0,
+          "escala": "MIL",
+          "total_unidades": 366311000.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 435757.0,
+          "escala": "MIL",
+          "total_unidades": 435757000.0
+        }
+      ],
+      "razao": 1.1895820764323213,
+      "intervalo_aberto": false
+    },
+    {
+      "ticker": "DESK3",
+      "cnpj": "08.170.849/0001-15",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 115953297.0,
+          "escala": "UNIDADE",
+          "total_unidades": 115953297.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 116210653.0,
+          "escala": "UNIDADE",
+          "total_unidades": 116210653.0
+        }
+      ],
+      "razao": 1.0022194797962494,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "ENEV3",
+      "cnpj": "04.423.567/0001-21",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1915805.0,
+          "escala": "MIL",
+          "total_unidades": 1915805000.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1913005.0,
+          "escala": "MIL",
+          "total_unidades": 1913005000.0
+        }
+      ],
+      "razao": 0.9985384733832514,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "ENGI11",
+      "cnpj": "00.864.214/0001-06",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "3",
+          "motivo": null,
+          "total_literal": 2514217520.0,
+          "escala": "UNIDADE",
+          "total_unidades": 2514217520.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 2515331385.0,
+          "escala": "UNIDADE",
+          "total_unidades": 2515331385.0
+        }
+      ],
+      "razao": 1.0004430265047235,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "EQTL3",
+      "cnpj": "03.220.438/0001-73",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "2",
+          "motivo": null,
+          "total_literal": 1258124081.0,
+          "escala": "UNIDADE",
+          "total_unidades": 1258124081.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1255031275.0,
+          "escala": "UNIDADE",
+          "total_unidades": 1255031275.0
+        }
+      ],
+      "razao": 0.9975417321338117,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "GGBR4",
+      "cnpj": "33.611.500/0001-19",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1975143891.0,
+          "escala": "UNIDADE",
+          "total_unidades": 1975143891.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1963180639.0,
+          "escala": "UNIDADE",
+          "total_unidades": 1963180639.0
+        }
+      ],
+      "razao": 0.9939430984980324,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "GOAU4",
+      "cnpj": "92.690.783/0001-09",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1324905265.0,
+          "escala": "UNIDADE",
+          "total_unidades": 1324905265.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1322874548.0,
+          "escala": "UNIDADE",
+          "total_unidades": 1322874548.0
+        }
+      ],
+      "razao": 0.9984672738091958,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "HAPV3",
+      "cnpj": "05.197.443/0001-38",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 474725857.0,
+          "escala": "UNIDADE",
+          "total_unidades": 474725857.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 475087930.0,
+          "escala": "UNIDADE",
+          "total_unidades": 475087930.0
+        }
+      ],
+      "razao": 1.000762699133955,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "HYPE3",
+      "cnpj": "02.932.074/0001-91",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 632953512.0,
+          "escala": "UNIDADE",
+          "total_unidades": 632953512.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 703992255.0,
+          "escala": "UNIDADE",
+          "total_unidades": 703992255.0
+        }
+      ],
+      "razao": 1.112233744901,
+      "intervalo_aberto": false
+    },
+    {
+      "ticker": "IGTI11",
+      "cnpj": "60.543.816/0001-93",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1206277026.0,
+          "escala": "UNIDADE",
+          "total_unidades": 1206277026.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1204567623.0,
+          "escala": "UNIDADE",
+          "total_unidades": 1204567623.0
+        }
+      ],
+      "razao": 0.9985829100918316,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "ITUB4",
+      "cnpj": "60.872.504/0001-23",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "2",
+          "motivo": null,
+          "total_literal": 11026524.0,
+          "escala": "MIL",
+          "total_unidades": 11026524000.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 11021872.0,
+          "escala": "MIL",
+          "total_unidades": 11021872000.0
+        }
+      ],
+      "razao": 0.9995781082052694,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "KLBN11",
+      "cnpj": "89.637.490/0001-45",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 6135427665.0,
+          "escala": null,
+          "total_unidades": null
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 6152895333.0,
+          "escala": null,
+          "total_unidades": null
+        }
+      ]
+    },
+    {
+      "ticker": "LREN3",
+      "cnpj": "92.754.738/0001-62",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "2",
+          "motivo": null,
+          "total_literal": 982199.0,
+          "escala": "MIL",
+          "total_unidades": 982199000.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 961283.0,
+          "escala": "MIL",
+          "total_unidades": 961283000.0
+        }
+      ],
+      "razao": 0.978704926394753,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "LWSA3",
+      "cnpj": "02.351.877/0001-52",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 550431817.0,
+          "escala": "UNIDADE",
+          "total_unidades": 550431817.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 549241773.0,
+          "escala": "UNIDADE",
+          "total_unidades": 549241773.0
+        }
+      ],
+      "razao": 0.9978379810845854,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "MGLU3",
+      "cnpj": "47.960.950/0001-21",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 774601561.0,
+          "escala": "UNIDADE",
+          "total_unidades": 774601561.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 775658438.0,
+          "escala": "UNIDADE",
+          "total_unidades": 775658438.0
+        }
+      ],
+      "razao": 1.001364413723406,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "MRVE3",
+      "cnpj": "08.343.492/0001-20",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 562826.0,
+          "escala": "MIL",
+          "total_unidades": 562826000.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 562835.0,
+          "escala": "MIL",
+          "total_unidades": 562835000.0
+        }
+      ],
+      "razao": 1.0000159907324822,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "NATU3",
+      "cnpj": "71.673.990/0001-77",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1772986.0,
+          "escala": "MIL",
+          "total_unidades": 1772986000.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1374235.0,
+          "escala": "MIL",
+          "total_unidades": 1374235000.0
+        }
+      ],
+      "razao": 0.7750963628590412,
+      "intervalo_aberto": false
+    },
+    {
+      "ticker": "NTCO3",
+      "cnpj": "32.785.497/0001-97",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "motivo": "sem composição"
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "motivo": "sem composição"
+        }
+      ]
+    },
+    {
+      "ticker": "PETR4",
+      "cnpj": "33.000.167/0001-01",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 12888732761.0,
+          "escala": "UNIDADE",
+          "total_unidades": 12888732761.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 12888732761.0,
+          "escala": "UNIDADE",
+          "total_unidades": 12888732761.0
+        }
+      ],
+      "razao": 1.0,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "PINE4",
+      "cnpj": "62.144.175/0001-20",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "3",
+          "motivo": null,
+          "total_literal": 231628099.0,
+          "escala": null,
+          "total_unidades": null
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "2",
+          "motivo": null,
+          "total_literal": 254317782.0,
+          "escala": null,
+          "total_unidades": null
+        }
+      ]
+    },
+    {
+      "ticker": "QUAL3",
+      "cnpj": "11.992.680/0001-93",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 283122458.0,
+          "escala": null,
+          "total_unidades": null
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 282000197.0,
+          "escala": "UNIDADE",
+          "total_unidades": 282000197.0
+        }
+      ]
+    },
+    {
+      "ticker": "RADL3",
+      "cnpj": "61.585.865/0001-51",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1747263894.0,
+          "escala": "UNIDADE",
+          "total_unidades": 1747263894.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "2",
+          "motivo": null,
+          "total_literal": 1748536237.0,
+          "escala": "UNIDADE",
+          "total_unidades": 1748536237.0
+        }
+      ],
+      "razao": 1.0007281916626156,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "RAIL3",
+      "cnpj": "02.387.241/0001-60",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1855786108.0,
+          "escala": "UNIDADE",
+          "total_unidades": 1855786108.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1855840714.0,
+          "escala": "UNIDADE",
+          "total_unidades": 1855840714.0
+        }
+      ],
+      "razao": 1.0000294247272166,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "RECV3",
+      "cnpj": "03.342.704/0001-30",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 292977928.0,
+          "escala": null,
+          "total_unidades": null
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 293482126.0,
+          "escala": null,
+          "total_unidades": null
+        }
+      ]
+    },
+    {
+      "ticker": "RENT3",
+      "cnpj": "16.670.085/0001-55",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1095040871.0,
+          "escala": "UNIDADE",
+          "total_unidades": 1095040871.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1104614922.0,
+          "escala": "UNIDADE",
+          "total_unidades": 1104614922.0
+        }
+      ],
+      "razao": 1.0087430992335993,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "SANB11",
+      "cnpj": "90.400.888/0001-42",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "2",
+          "motivo": null,
+          "total_literal": 7471200.0,
+          "escala": null,
+          "total_unidades": null
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 7487527.0,
+          "escala": null,
+          "total_unidades": null
+        }
+      ]
+    },
+    {
+      "ticker": "SBSP3",
+      "cnpj": "43.776.517/0001-80",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "2",
+          "motivo": null,
+          "total_literal": 700219438.0,
+          "escala": "UNIDADE",
+          "total_unidades": 700219438.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 3506830477.0,
+          "escala": "UNIDADE",
+          "total_unidades": 3506830477.0
+        }
+      ],
+      "razao": 5.008187843251504,
+      "intervalo_aberto": false
+    },
+    {
+      "ticker": "SLCE3",
+      "cnpj": "89.096.457/0001-55",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 496820758.0,
+          "escala": "UNIDADE",
+          "total_unidades": 496820758.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 496311324.0,
+          "escala": "UNIDADE",
+          "total_unidades": 496311324.0
+        }
+      ],
+      "razao": 0.9989746120873637,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "SUZB3",
+      "cnpj": "16.404.287/0001-55",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1235908788.0,
+          "escala": "UNIDADE",
+          "total_unidades": 1235908788.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1233136722.0,
+          "escala": "UNIDADE",
+          "total_unidades": 1233136722.0
+        }
+      ],
+      "razao": 0.9977570626352728,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "TAEE11",
+      "cnpj": "07.859.971/0001-30",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1033497.0,
+          "escala": "MIL",
+          "total_unidades": 1033497000.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1033497.0,
+          "escala": "MIL",
+          "total_unidades": 1033497000.0
+        }
+      ],
+      "razao": 1.0,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "TIMS3",
+      "cnpj": "02.421.421/0001-11",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 2388668322.0,
+          "escala": null,
+          "total_unidades": null
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 2388668322.0,
+          "escala": null,
+          "total_unidades": null
+        }
+      ]
+    },
+    {
+      "ticker": "TOTS3",
+      "cnpj": "53.113.791/0001-22",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 587643081.0,
+          "escala": "UNIDADE",
+          "total_unidades": 587643081.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 573195003.0,
+          "escala": "UNIDADE",
+          "total_unidades": 573195003.0
+        }
+      ],
+      "razao": 0.9754135146534636,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "USIM5",
+      "cnpj": "60.894.730/0001-05",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1230942660.0,
+          "escala": "UNIDADE",
+          "total_unidades": 1230942660.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 1230942660.0,
+          "escala": "UNIDADE",
+          "total_unidades": 1230942660.0
+        }
+      ],
+      "razao": 1.0,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "VALE3",
+      "cnpj": "33.592.510/0001-54",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "2",
+          "motivo": null,
+          "total_literal": 4268779.0,
+          "escala": "MIL",
+          "total_unidades": 4268779000.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "3",
+          "motivo": null,
+          "total_literal": 4072366.0,
+          "escala": "MIL",
+          "total_unidades": 4072366000.0
+        }
+      ],
+      "razao": 0.9539884824208514,
+      "intervalo_aberto": true
+    },
+    {
+      "ticker": "VIVT3",
+      "cnpj": "02.558.157/0001-62",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 3195606352.0,
+          "escala": null,
+          "total_unidades": null
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 3195606352.0,
+          "escala": null,
+          "total_unidades": null
+        }
+      ]
+    },
+    {
+      "ticker": "WEGE3",
+      "cnpj": "84.429.695/0001-11",
+      "documentos": [
+        {
+          "arquivo": "dfp_2025.zip",
+          "referencia": "2025-12-31",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 4195695973.0,
+          "escala": "UNIDADE",
+          "total_unidades": 4195695973.0
+        },
+        {
+          "arquivo": "itr_2026.zip",
+          "referencia": "2026-06-30",
+          "versao": "1",
+          "motivo": null,
+          "total_literal": 4195829691.0,
+          "escala": "UNIDADE",
+          "total_unidades": 4195829691.0
+        }
+      ],
+      "razao": 1.0000318702787,
+      "intervalo_aberto": true
+    }
+  ]
+}

@@ -99,9 +99,7 @@ def _contexto(dados, eh_fii=False, selic=0.145):
         patch("valuation_engine.date", DiaGordon),
         patch("fii_engine.get_selic_atual", return_value=selic),
     ):
-        return rastreabilidade.construir_contexto(
-            dados, eh_fii, HOJE, motor, motor_fii
-        )
+        return rastreabilidade.construir_contexto(dados, eh_fii, HOJE, motor, motor_fii)
 
 
 def _html(dados, eh_fii=False):
@@ -117,14 +115,17 @@ def test_relatorio_mostra_cada_metodo_com_versao():
     assert "SEM_TAXA" in html and "NOMINAL" in html
     # premissas, parâmetros e resultado de um método que calculou
     assert "raiz de 22,5" in html
-    assert "<td><code>pl_limite</code></td><td>25.0</td>" in html
+    assert "<td><code>pl_limite</code></td><td>25.0</td>" not in html
+    assert "lpa_medio_normalizado" in html
+    assert "Janela, fonte e cobertura" in html
     assert "R$ 122,47" in html
     # F2B-31: nenhum método de ação usa a Selic; a taxa do Bazin e a fonte dos proventos
     assert "<h2>Selic usada</h2>" not in html
     assert "<tr><td>taxa_aplicada</td><td>6,00%</td></tr>" in html
     assert "Proventos do Bazin (relação B3, F2B-31)" in html
-    assert "critério fixo de 6% (ficha Bazin 1.0)" in html
-    assert "Mediana" in html and "Score" in html
+    assert "critério fixo de 6% (ficha Bazin 1.2)" in html
+    assert "Mediana" not in html and "Score" not in html
+    assert "Distância ao preço" in html
 
 
 def test_relatorio_do_fii_mostra_rendimento_e_lente_de_pvp():
@@ -134,12 +135,13 @@ def test_relatorio_do_fii_mostra_rendimento_e_lente_de_pvp():
         "Rendimento do FII <small>versão 2.1.0" in html
         and "P/VP do FII <small>versão 1.2.0" in html
     )
-    assert "desconto sobre o patrimônio" in html
+    assert "desconto sobre o patrimônio" not in html
+    assert "P/VP descritivo" in html
     # F2B-2: o spread datado e a NTN-B real formam a taxa; a Selic é só contexto
     assert "<td><code>spread</code></td>" in html
     assert "Taxa da lente do FII (F2B-2)" in html
     assert "a Selic não forma o preço justo" in html
-    assert "selic_liquida (contexto e score)" in html
+    assert "selic_liquida (contexto)" in html
 
 
 def test_relatorio_mostra_motivo_da_abstencao():
@@ -216,14 +218,19 @@ def test_variacao_sobre_o_preco_esta_em_pontos_percentuais():
     # Mediana 122,47 (Graham; Bazin 133,33 a 6% desde o F2B-31; Gordon 30,60) sobre preço
     # 100: o motor já devolve o upside em pontos percentuais
     html = _html(_acao())
-    assert "<th>Variação sobre o preço</th><td>22,50%</td>" in html
+    assert "Distância ao preço: 22.474487%" in html
+    assert "Distância ao preço: 33.333333%" in html
+    assert "Distância ao preço: -69.400000%" in html
     assert "2.250" not in html
 
 
 def test_variacao_do_fii_esta_em_pontos_percentuais():
     # F2B-2: 10 ÷ (7% + spread calibrado de 3,51%) = 95,19 contra o preço de 100.
     html = _html(_fii(), eh_fii=True)
-    assert "<th>Variação sobre o preço</th><td>-4,80%</td>" in html
+    from config import MACRO
+
+    esperado = 100 * (0.10 / (0.07 + MACRO.FII_SPREAD_TIJOLO) - 1)
+    assert f"Distância ao preço: {esperado:.6f}%" in html
 
 
 def test_dy_normalizado_aparece_ao_lado_do_bruto():
@@ -249,7 +256,7 @@ def test_ticker_em_situacao_especial_nao_acusa_valor_nao_finito():
 
 def test_sintese_sem_metodo_nao_chama_o_preco_de_mediana():
     html = _html(_acao(pl=0.0, pvp=0.0, dy=0.0, roe=0.0))
-    assert "Nenhum método calculou" in html
+    assert "Lentes abstidas" in html
     assert "Mediana dos métodos calculados" not in html
 
 
@@ -359,9 +366,12 @@ def test_relatorio_mostra_a_taxa_real_e_a_fonte():
         "4,26%",
         "2025-01-01",
         "IBGE SIDRA 1737",
-        "Selic usada",
     ):
         assert texto in html
+
+    assert "<h2>Taxa real</h2>" in html
+    assert "Selic usada" not in html
+    assert "os métodos de ação não usam Selic" in html
 
 
 def test_gordon_real_exibe_versao_intermediarios_e_dva():
