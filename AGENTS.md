@@ -14,16 +14,16 @@ Suíte em 09/11/2026: 3525 passed, 1 skipped, 8 xfailed.
 
 ## Fase atual
 
-**Entre fases: a 2B (Taxa real, bancos e escopo) foi concluída** (tag `v2-fase-2b`;
-histórico em `docs/loop/historico/fase-2b/`). A **Fase 2C (Qualidade e apresentação)**
-está em proposta, em `docs/loop/fila-fase2c-proposta.md`, aguardando auditoria e
-aprovação. O mantenedor trabalha num branch local por fase e só publica no fim de cada
-fase. Baseie seu branch sempre na `main` mais recente.
+**Entre fases: a 2C (Qualidade e apresentação) foi concluída** (tag `v2-fase-2c`;
+histórico em `docs/loop/historico/fase-2c/`). A **Fase 3 (Tempo como entrada)** ainda
+não tem fila ativa: os itens migrados da 2C estão registrados para a proposta da Fase 3.
+O mantenedor trabalha num branch local por fase e só publica no fim de cada fase.
+Baseie seu branch sempre na `main` mais recente.
 
-Até a 2C ser ativada, nenhum arquivo está travado por fase. Ainda assim, PR que toque
+Até a Fase 3 ser ativada, nenhum arquivo está travado por fase. Ainda assim, PR que toque
 `sentinela/methods/`, `sentinela/data/`, os motores (`valuation_engine.py`,
 `fii_engine.py`, `market_engine.py`), `config.py` ou `tests/fixtures/` precisa de
-aprovação do mantenedor antes de abrir. A lista de arquivos travados da 2C entra aqui
+aprovação do mantenedor antes de abrir. A lista de arquivos travados da Fase 3 entra aqui
 na ativação.
 
 ## Regra fundamental: especificação externa
