@@ -25,7 +25,12 @@ def test_aviso_mostra_motivo_cvm(modelo: str, motivo: str) -> None:
             {**DADOS, **campos, "classe_ativo": "STOCK", "modelo_bpp": "empresa"},
             as_of=AS_OF_GORDON,
         )
-    assert motivo in r["aviso_alavancagem"]
+    # Decisão Marcos09/11, F2C-45(iii): medida inaplicável não gera aviso no banco.
+    if modelo == "banco":
+        assert "aviso_alavancagem" not in r
+        assert r["lentes"]["Bancos"]["valor"] == pytest.approx(26.35, abs=0.01)
+    else:
+        assert motivo in r["aviso_alavancagem"]
 
 
 @pytest.mark.parametrize(

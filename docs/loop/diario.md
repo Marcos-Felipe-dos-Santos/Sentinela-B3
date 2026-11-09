@@ -37,3 +37,61 @@ O histórico anterior permanece em `historico/fase-2c/diario.md`. Esta fila comp
 - **Integração:** ZIPs → CVMProvider real → _buscar_cvm real → ValuationEngine real, sem montar alavancagem_cvm no teste; motivo produzido reaparece no aviso. Regressões legadas de motivo/inteiro numérico continuam PASS.
 - **Testes:** 3513→3514 passed, 1 skipped/8 xfailed, warning antigo; Ruff CI/data/methods e diffcheck verdes. Sem regeneração golden ou resíduo.
 - **Decisões pendentes:** nenhuma neste item; omissão em banco é FC2C-64 separado. Revisão somente leitura antes do commit.
+
+### FC2C-64 — fix: omit inapplicable leverage notices for banks
+- **Executor:** codex (GPT-6).
+- **Status:** bloqueado no gate; correção local, não commitada e não entregue.
+- **D27 antes:** BUG-2C-64 estrito → xfail; --runxfail falhou na presença indevida de aviso_alavancagem, após confirmar valor Bancos26,346908251509 (/tmp/2c64-red.txt), antes de editar produção.
+- **O que foi feito localmente:** resultado de banco omite aviso de medida não aplicável; nenhum cálculo/valor de lente alterado. Empresa conserva o aviso e causa coletada conforme integração FC2C-63. Marca retirada após PASS da regressão corrigida.
+- **Teste anterior atualizado por decisão:** ramo banco da regressão BUG-2C-21 agora exige ausência do aviso e mantém controle numérico Bancos26,35; ramo empresa e controles legados intactos. Substituição exigida pela decisão explícita F2C-45(iii) de09/11.
+- **Gate real:** 3514 passed / 1 failed / 1 skipped / 8 xfailed, warning antigo. Única falha: tests/test_equivalencia_motores.py::test_acoes_iguais_ao_golden,40casos bancários. Ruff CI/data/methods e diffcheck verdes. Não declarar suíte verde nem entrega; nenhum golden/harness/comparador alterado.
+- **Predicado mínimo preparado ANTES de qualquer atualização da fixture:** nos2291casos, apenas40 saídas de ações com chave banco, lente Bancos.valor não nulo e aviso_alavancagem presente perderiam SOMENTE essa chave. Entradas/IDs/ordem/valores individuais e demais chaves intactos;2251casos ficam iguais. Conferência independente executou todos os casos com o motor atual e comprovou igualdade exata após essa única remoção, com o comparador existente. Proposta local /tmp/2c64-golden-proposto.patch e predicado/40IDs em /tmp/2c64-predicado.json; fixture protegida inalterada. Script /tmp/2c64-predicado.py.
+- **Motivo da parada:** AGENTS.md lista tests/fixtures/golden_motores.jsonl entre os proibidos e manda parar/reportar quando a tarefa exigir mudança; executar-fila proíbe regeneração fora de item [golden]. A autorização atual especifica a mudança do aviso, mas não libera essa fixture. Fila marcada[!], itens65–72 não iniciados.
+- **Falta:** autorização específica para adicionar [golden] ao FC2C-64 e aplicar exclusivamente o predicado documentado, sem regenerar harness/grade nem alterar comparação; depois suíte/gates, revisão somente leitura e único commit fix, continuar65–72 atéCheckpoint. Sem push.
+
+### FC2C-64 — desbloqueio autorizado e verificação do predicado (09/11/2026)
+- **Executor:** codex (GPT-6).
+- **Autorização expressa:** Marcos09/11 libera exclusivamente retirar aviso_alavancagem dos40casos enumerados de modelo banco com lente Bancos; demais2251casos idênticos byte a byte. Predicado preparado anteriormente, aplicado agora sem gerador/harness/comparador.
+- **Conferência antes do commit:** fixture antes igual aos bytes de HEAD; depois40linhas alteradas apenas por retirar o campo autorizado, igualdade JSON exata para todo o restante de cada caso;2251linhas conservadas byte a byte, IDs/entradas/ordem intactos. SHA256 antes: `f2efc3245ebf65820e4bdfd937d5262379abb308c6a3bf3e04553dc627f52ec6`; depois: `500645a3263ad25e492bff56e00c9b3552b84a243136d3397f520d4a79c24bcc`.
+- **IDs autorizados e alterados (40):**
+  - `banco-roe0.05-payout0.25-vpa18.5463`
+  - `banco-roe0.05-payout0.25-vpa37.0926`
+  - `banco-roe0.05-payout0.5-vpa18.5463`
+  - `banco-roe0.05-payout0.5-vpa37.0926`
+  - `banco-roe0.05-payout0.75-vpa18.5463`
+  - `banco-roe0.05-payout0.75-vpa37.0926`
+  - `banco-roe0.05-payout1.0-vpa18.5463`
+  - `banco-roe0.05-payout1.0-vpa37.0926`
+  - `banco-roe0.1-payout0.25-vpa18.5463`
+  - `banco-roe0.1-payout0.25-vpa37.0926`
+  - `banco-roe0.1-payout0.5-vpa18.5463`
+  - `banco-roe0.1-payout0.5-vpa37.0926`
+  - `banco-roe0.1-payout0.75-vpa18.5463`
+  - `banco-roe0.1-payout0.75-vpa37.0926`
+  - `banco-roe0.1-payout1.0-vpa18.5463`
+  - `banco-roe0.1-payout1.0-vpa37.0926`
+  - `banco-roe0.15-payout0.25-vpa18.5463`
+  - `banco-roe0.15-payout0.25-vpa37.0926`
+  - `banco-roe0.15-payout0.5-vpa18.5463`
+  - `banco-roe0.15-payout0.5-vpa37.0926`
+  - `banco-roe0.15-payout0.75-vpa18.5463`
+  - `banco-roe0.15-payout0.75-vpa37.0926`
+  - `banco-roe0.15-payout1.0-vpa18.5463`
+  - `banco-roe0.15-payout1.0-vpa37.0926`
+  - `banco-roe0.2125-payout0.25-vpa18.5463`
+  - `banco-roe0.2125-payout0.25-vpa37.0926`
+  - `banco-roe0.2125-payout0.5-vpa18.5463`
+  - `banco-roe0.2125-payout0.5-vpa37.0926`
+  - `banco-roe0.2125-payout0.75-vpa18.5463`
+  - `banco-roe0.2125-payout0.75-vpa37.0926`
+  - `banco-roe0.2125-payout1.0-vpa18.5463`
+  - `banco-roe0.2125-payout1.0-vpa37.0926`
+  - `banco-roe0.3-payout0.25-vpa18.5463`
+  - `banco-roe0.3-payout0.25-vpa37.0926`
+  - `banco-roe0.3-payout0.5-vpa18.5463`
+  - `banco-roe0.3-payout0.5-vpa37.0926`
+  - `banco-roe0.3-payout0.75-vpa18.5463`
+  - `banco-roe0.3-payout0.75-vpa37.0926`
+  - `banco-roe0.3-payout1.0-vpa18.5463`
+  - `banco-roe0.3-payout1.0-vpa37.0926`
+- **Gate após liberação:**3515 passed / 1 skipped / 8 xfailed, warning antigo; Ruff CI/data/methods e diffcheck verdes. Diff da fixture inspecionado:40linhas removidas/40adicionadas, somente a chave autorizada; demais2251linhas byte a byte. Bloqueio resolvido, item concluído após revisão; sem push.

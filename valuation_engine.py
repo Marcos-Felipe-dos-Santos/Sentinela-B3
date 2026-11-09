@@ -662,7 +662,7 @@ class ValuationEngine:
             if modelo == ModeloDemonstracao.BANCO.value
             else {}
         )
-        if aviso_alavancagem:
+        if aviso_alavancagem and modelo != ModeloDemonstracao.BANCO.value:
             extra["aviso_alavancagem"] = aviso_alavancagem
         extra.update(aviso_liquidez)
         return {

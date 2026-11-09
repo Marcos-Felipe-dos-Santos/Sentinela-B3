@@ -111,3 +111,13 @@ Auditoria externa Claude sobre `bece683`: “pode seguir com uma ressalva”, ac
 Agora essa análise retorna status `INDISPONIVEL` e motivo “backtest indisponível desde a 2C: sem score agregado; reconstrução na Fase 3”. FORA_DO_ESCOPO fica para abstenção explícita do motor, com riscos/motivo preservados. Dublês do caminho atual usam lentes sem score; métricas históricas mantêm o contrato legado. Não se reconstrói backtest nesta fase.
 
 Gate após correção: 3507 passed / 1 skipped / 8 xfailed, um warning antigo; Ruff CI e data/methods verdes, Ruff completo com as mesmas 161 dívidas. Regressão permanente sem xfail, controles de escopo preservados. Checkpoint mantido, sem push ou ativação da próxima fase.
+
+## Auditoria FASE — fechamento complementar em andamento (09/11/2026)
+
+Decisões do Marcos e fila complementar em `docs/loop/fila.md`, diário em `docs/loop/diario.md`. Ativação78b0d4e; fixes commitados:4e4f649 (TTM com prova documental),0901dce (qualidade anual com prova),d7f0c6e (motivo de alavancagem realmente coletado). Cada fix teve xfail estrito e falha explícita com --runxfail ANTES da produção; integrações percorrem produtor real, transporte e consumidor.
+
+No mesmo universo público inicial de51ações/units, mesmos ZIPs2021–2025/hash/corte28/10, comparáveis0→45 e médiasROE0→44; anos de proventosB3 com cobertura continuam0. Não é replay PIT, nem cobertura de todaB3, nem qualidade econômica. Último commit verde:d7f0c6e,3514PASS/1skip/8xfail.
+
+**Fechamento bloqueado em FC2C-64:** omissão aprovada do aviso bancário está implementada localmente com regressão anterior, mas diverge do golden protegido em40casos; suíte local3514PASS/1FAIL/1skip/8xfail. Conferência independente prova que basta retirar exclusivamente aviso_alavancagem dessas40saídas; outros2251casos, entradas/IDs/ordem e valores individuais preservados. Fixture/harness/comparador não alterados. Aguarda liberação específica do predicado [golden]; nenhum fix parcial commitado. FC2C-65–72 pendentes, sem declarar Checkpoint concluído, sem push.
+
+**Desbloqueio FC2C-64 em09/11:** Marcos autorizou explicitamente retirar somente aviso_alavancagem dos40IDs enumerados. Aplicação preserva byte a byte os outros2251casos. Hashes antes/depois e lista integral constam no diário complementar; harness/comparador intactos. Gate3515PASS/1skip/8xfail; fila continua65–72 atéCheckpoint.
