@@ -112,12 +112,55 @@ Agora essa análise retorna status `INDISPONIVEL` e motivo “backtest indispon�
 
 Gate após correção: 3507 passed / 1 skipped / 8 xfailed, um warning antigo; Ruff CI e data/methods verdes, Ruff completo com as mesmas 161 dívidas. Regressão permanente sem xfail, controles de escopo preservados. Checkpoint mantido, sem push ou ativação da próxima fase.
 
-## Auditoria FASE — fechamento complementar em andamento (09/11/2026)
+## Correções após auditoria FASE — 09/11/2026
 
-Decisões do Marcos e fila complementar em `docs/loop/fila.md`, diário em `docs/loop/diario.md`. Ativação78b0d4e; fixes commitados:4e4f649 (TTM com prova documental),0901dce (qualidade anual com prova),d7f0c6e (motivo de alavancagem realmente coletado). Cada fix teve xfail estrito e falha explícita com --runxfail ANTES da produção; integrações percorrem produtor real, transporte e consumidor.
+A auditoria FASE Gemini e a conferência Claude apontaram bloqueios, conforme mensagem do Marcos. As decisões expressas de 09/11 ativaram a fila complementar; estes commits corrigem o transporte de comparabilidade e os demais defeitos enumerados, sem ativar a Fase 3. A aceitação externa das correções permanece no Checkpoint; não se declara um novo parecer favorável em nome dos auditores.
 
-No mesmo universo público inicial de51ações/units, mesmos ZIPs2021–2025/hash/corte28/10, comparáveis0→45 e médiasROE0→44; anos de proventosB3 com cobertura continuam0. Não é replay PIT, nem cobertura de todaB3, nem qualidade econômica. Último commit verde:d7f0c6e,3514PASS/1skip/8xfail.
+| Item | Commit | Resultado |
+|---|---|---|
+| Ativação | 78b0d4e | fila complementar com regressão antes da produção e parada no Checkpoint |
+| FC2C-61 / BUG-2C-61 | 4e4f649 | acumulados TTM emitem perímetro/prova após conferir CNPJ/modelo BPP/D20; integração arquivos→produtor→TTM com valores |
+| FC2C-62 / BUG-2C-62 | 0901dce | cinco DFP contíguas chegam à qualidade comparável; prova e aviso de reorganização não detectada transportados |
+| FC2C-63 / BUG-2C-63 | d7f0c6e | motor lê motivo real de alavancagem_cvm.motivos produzido pela cascata |
+| FC2C-64 / BUG-2C-64 | e44f906 | banco com lente Bancos omite aviso_alavancagem, mantendo valores; golden por predicado autorizado |
+| FC2C-65 / BUG-2C-65 | ac3b74b | CLI do índice compartilha enriquecimento oficial com a cascata; BTCI11/TRPL11 FII |
+| FC2C-66 / BUG-2C-66 | 7985c4d | snapshot corrente usa o exercício anual mais recente demonstrado, inclusive março–fevereiro |
+| FC2C-67 / BUG-2C-67 | 552fc22 | ignora eventos de duas espécies conhecidas alheias aos componentes; relevantes/desconhecidos ainda exigem prova |
+| FC2C-68 / BUG-2C-68 | 0da1e1e | rótulos MACD “Cruzamento de alta/baixa”, sem ordem de negociação nem alteração numérica |
+| FC2C-66R | 2f5f2c3 | reutiliza o ano selecionado pela série; elimina segunda consulta de relógio/seletor e dívida Ruff nova |
+| FC2C-69 | ac0c986 | retira 12 constantes sem leitor; exceções históricas/grade/compatibilidade identificadas no inventário |
+| FC2C-70 | 88f7d9b | ficha e relatório explicitam descritor B3 sem produtor/calendário anual; ausência não é ano zero |
+| FC2C-71 | f7f360e | destinos órfãos e oito casos xfail migrados à proposta não ativada da Fase 3 |
 
-**Fechamento bloqueado em FC2C-64:** omissão aprovada do aviso bancário está implementada localmente com regressão anterior, mas diverge do golden protegido em40casos; suíte local3514PASS/1FAIL/1skip/8xfail. Conferência independente prova que basta retirar exclusivamente aviso_alavancagem dessas40saídas; outros2251casos, entradas/IDs/ordem e valores individuais preservados. Fixture/harness/comparador não alterados. Aguarda liberação específica do predicado [golden]; nenhum fix parcial commitado. FC2C-65–72 pendentes, sem declarar Checkpoint concluído, sem push.
+O próprio FC2C-72 fecha este complemento no commit `docs: summarize the phase 2C closing corrections`; hash consultável no git, sem autoalteração do commit. Fila e diário complementares permanecem em `docs/loop/fila.md` e `docs/loop/diario.md`, sem sobrescrever o histórico já arquivado em F2C-11.
 
-**Desbloqueio FC2C-64 em09/11:** Marcos autorizou explicitamente retirar somente aviso_alavancagem dos40IDs enumerados. Aplicação preserva byte a byte os outros2251casos. Hashes antes/depois e lista integral constam no diário complementar; harness/comparador intactos. Gate3515PASS/1skip/8xfail; fila continua65–72 atéCheckpoint.
+### Comparabilidade e medição do universo inicial
+
+Critério aprovado: exercícios/trimestres contíguos do mesmo CNPJ e modelo demonstrado no BPP, com reserva D20 validada. Produtor grava perímetro e evidência com critério/documentos; consumidores conservam contiguidade, fontes, lacunas e mudanças estruturais explicitamente conhecidas. Aviso fixo: **reorganização societária no período não é detectada**; detecção na Fase 3. O critério não é certificado de ausência de reorganização nem replay PIT.
+
+Integrações: ZIPs CVM→acumulados_ttm→ttm sem prova montada no teste (lucro 70/receita 140); cinco DFP com comparativos BPP/entregas→indicadores_da_serie→MarketEngine._serie_cvm→ValuationEngine (comparavel=True, média ROE de 10% sobre exemplo independente); _buscar_cvm real→motor preserva causa de alavancagem; exercício não civil real chega ao snapshot/motor. BPP ausente, modelo/CNPJ incompatível, lacuna anual e eventos envolvendo componente sem reconciliação mantêm abstenção.
+
+Nova medição sobre as mesmas 51 ações/units públicas do universo inicial: snapshot SHA256 `2f9c5cc99d103af5b54ffc9b6003eb8f7939bed8807d7e20dee98ffec506c050`, as_of `2026-10-28T23:34:41.882351+00:00`, mesmos ZIPs 2021–2025 e hashes registrados no diário. Produtor/Market/motor relidos antes/depois, sem rede/nova coleta/preço. Comparáveis **0→45**, médias de ROE **0→44**, anos B3 com cobertura **0→0**. AZUL3 fica comparável mas sem observações válidas de ROE; cinco outros quadros não demonstram comparabilidade e um é inaplicável à classe/modelo. Não extrapolar a toda a B3, nem chamar ausência de média de qualidade econômica zero.
+
+### Predicado do golden autorizado e conferido
+
+Autorização específica Marcos09/11: nos 40 IDs de modelo banco com lente Bancos, retirar exclusivamente `/saida/aviso_alavancagem`. Lista completa dos 40 IDs no diário complementar FC2C-64; entradas/IDs/ordem/todos os demais campos e números preservados. **Outros 2251 casos idênticos byte a byte**, conferidos antes do commit e novamente no fechamento contra e678390. Harness, comparador e testes financeiros protegidos intactos; nenhum gerador foi executado.
+
+SHA256 da fixture antes: `f2efc3245ebf65820e4bdfd937d5262379abb308c6a3bf3e04553dc627f52ec6`.
+SHA256 depois: `500645a3263ad25e492bff56e00c9b3552b84a243136d3397f520d4a79c24bcc`.
+
+### Validação e sequência D27
+
+Baseline complementar **3507 passed/1 skipped/8 xfailed** → final de código/documentação **3525 passed/1 skipped/8 xfailed**, um warning antigo de Pydantic. Cada BUG-2C-61…68 teve xfail estrito e falha explícita com --runxfail ANTES da edição de produção, depois marca retirada e PASS; controles preservados. BUG-2C-68 ajustou a representação arredondada do oráculo novo antes de alterar produção e repetiu o vermelho pelo rótulo correto; não houve contraprova posterior apresentada como anterior. Cronologia e logs de cada item no diário.
+
+Ruff CI e completos data/methods verdes; Ruff completo **161→161** dívidas anteriores. O apontamento novo de relógio no FC2C-66 foi eliminado no FC2C-66R. Vulture global60% **30→18**, exatamente 12 declarações removidas. Constantes com leitor não foram eliminadas fabricando ausência: ROE_PENALIDADE_MAX é usada pela grade protegida e REC_UPSIDE_COMPRA tem asserção de compatibilidade; scripts históricos de Graham/Lynch e outras exceções estão em `docs/limpeza/inventario.md`. Nenhum teste removido, pulado ou enfraquecido para o gate. Sem tarefa autônoma de teste neste complemento; scores de mutação históricos acima não são anunciados como nova medição destas correções.
+
+### Destinos explícitos e parada
+
+`docs/loop/fila-fase3-proposta.md` contém F3-P01…P16, ligados ao PLANO e **não ativados**: F2C-23/48/50–55; F2C-38 e F2C-45(i)/(ii) mantidos; limites temporais do Informe/taxa; date.today original da série; produtor de calendário anual; detecção de reorganizações; backtest real F3-8. F2C-45(iii) está resolvido no FC2C-64. Oito regras F2C-47 ratificadas e registradas sem alteração silenciosa da política; BUG-2C-27 continua aberto, não legitima versão ilegível.
+
+São sete bugs em **oito casos xfail estritos** (OData capital/carteira são dois). Razões/registro apontam destinos F3, mantendo strict/raises/parametrização/asserções; AST dos 7 arquivos conferida contra o commit anterior e rodada dedicada confirmou 8 xfail. Destino escrito não é bug entregue.
+
+A ligação do calendário não coube em mudança curta com prova de cobertura/instante: `qualidade_inputs` tem consumidor, mas a cascata não produz o calendário anual. A ficha e o relatório declaram explicitamente o descritor indisponível, sem substituir por DVA ou ano zero. Backtest permanece INDISPONIVEL desde a 2C até reconstrução, com FORA_DO_ESCOPO reservado a abstenção real.
+
+Fila complementar encerrada no **[DECISÃO] Checkpoint da 2C**. Revisar primeiro as integrações do produtor/prova, a medição do universo, o predicado do golden e os destinos preservados. Sem push, PR, tag, merge remoto ou ativação da próxima fase.
