@@ -12,6 +12,16 @@ Python + Streamlit (V1; interface FastAPI + HTMX prevista para a Fase 7), local-
 
 ---
 
+## Estado da fase — 09/11/2026
+
+A Fase 2C está concluída no branch `v2/fase-2c`, aguardando o PR e o aceite do
+Marcos no checkpoint. Resumo em `docs/loop/historico/fase-2c/pr-fase-2c.md`; pendências e oito xfails
+migrados para `docs/loop/fila-fase3-proposta.md`, ainda sem ativar a Fase 3.
+Suíte: **3525 passed, 1 skipped, 8 xfailed**.
+A seção “Fase atual” do `AGENTS.md` é mantida exclusivamente pelo Marcos.
+
+---
+
 ## Ambiente
 
 - WSL2 (Ubuntu). Repositório em `~/projetos/Sentinela_B3`, nunca em `/mnt/*`.
@@ -25,7 +35,7 @@ Python + Streamlit (V1; interface FastAPI + HTMX prevista para a Fase 7), local-
 
 ```bash
 streamlit run app.py                               # app (V1)
-python -m pytest tests/ -x --tb=short              # suíte (2.575 passed, 1 skipped, 15 xfailed; ~10 s)
+python -m pytest tests/ -x --tb=short              # suíte (3525 passed, 1 skipped, 8 xfailed)
 python -m pytest tests/test_x.py::test_y -v        # teste único
 python -m pytest tests/ --cov=. --cov-report=term-missing
 python -m mutmut run "technical_engine*"           # mutação de um módulo (config em [tool.mutmut])
@@ -43,22 +53,21 @@ A lista de exceções do vulture (`vulture_whitelist.py`) traz o motivo de cada 
 
 ## Arquitetura real (V1 — o que roda hoje)
 
-| Módulo | Linhas | Papel |
-|---|---|---|
-| `app.py` | 554 | Streamlit, 4 abas, orquestração real. **Cobertura 0%** |
-| `market_engine.py` | 1.474 | Cascata de coleta e merge de fontes; a lógica de dado nova fica em `sentinela/data/` |
-| `valuation_engine.py` | 588 | Orquestra os métodos de `sentinela/methods/` (Graham, Bazin, Lynch, Gordon; para banco, a lente `Bancos`), score, classificação (na V1, "recomendação"); só STOCK e UNIT seguem, com a classe exigida, e só modelo empresa ou banco pelo BPP consolidado (`dados['modelo_bpp']`, F2B-4); o resto se abstém sem número |
-| `fii_engine.py` | 190 | Valuation de FII: orquestra `fii_yield` e `fii_nav`, score; a lente abstida não traz valor nem upside (F2B-62) |
-| `config.py` | 342 | Constantes, `MacroContext`, `_normalizar_dy` (invariante do DY) |
-| `data_quality.py` | 347 | Completude (pelo `modelo_bpp`, F2B-63), badge, `validacao_cruzada` (linha 203) |
-| `database.py` | 217 | SQLite WAL, queries parametrizadas |
-| `portfolio_engine.py` | 145 | Markowitz / máximo Sharpe |
-| `technical_engine.py` | 104 | RSI, MACD, Bollinger, ATR, MAs |
-| `peers_engine.py` | 96 | Comparação setorial (mapa hardcoded, ~40 tickers) |
-| `ai_core.py` | 206 | LLM: Groq → Gemini → Ollama |
-| `auditoria.py` | 924 | Sanidade runtime. **Não é suíte de testes. Cobertura 0%** |
-| `auditar_recomendacoes.py` | 398 | Validação contra tickers conhecidos |
-| `limpar_banco.py` | 196 | Manutenção do SQLite. Cobertura 0% |
+| Módulo | Papel |
+|---|---|
+| `app.py` | Streamlit, lentes separadas e quadro de qualidade; orquestração real |
+| `market_engine.py` | Cascata de coleta e merge de fontes; a lógica de dado nova fica em `sentinela/data/` |
+| `valuation_engine.py` | Orquestra os métodos de `sentinela/methods/` (Graham, Bazin, Lynch, Gordon; para banco, a lente `Bancos`), janelas fundamentais e quadro de qualidade; apresentação 1.0 sem score nem rótulo agregado; só STOCK e UNIT seguem, com a classe exigida, e só modelo empresa ou banco pelo BPP consolidado (`dados['modelo_bpp']`, F2B-4); o resto se abstém sem número |
+| `fii_engine.py` | FII: lente monetária `fii_yield`, P/VP descritivo e Selic líquida contextual, sem score; abstenção sem valor ou distância |
+| `config.py` | Constantes, `MacroContext`, `_normalizar_dy` (invariante do DY) |
+| `data_quality.py` | Completude (pelo `modelo_bpp`, F2B-63), badge, `validacao_cruzada` (linha 203) |
+| `database.py` | SQLite WAL, queries parametrizadas |
+| `technical_engine.py` | RSI, MACD, Bollinger, ATR, MAs |
+| `peers_engine.py` | Comparação descritiva por referência oficial, classe, espécie e modelo documental; sem mapa fixo |
+| `ai_core.py` | LLM: Groq → Gemini → Ollama |
+| `auditoria.py` | Invariantes e leitura das lentes vigentes; métodos duplicados aposentados |
+| `auditar_recomendacoes.py` | Validação contra tickers conhecidos |
+| `limpar_banco.py` | Manutenção do SQLite. Cobertura 0% |
 
 **Provedores:** `cvm_provider.py`, `cvm_fii_provider.py`, `brapi_provider.py`. O Fundamentus
 saiu no F2A-22. `cvm_ticker_map.py` e `cvm_fii_map.py` não são mais lidos pela cascata
@@ -80,22 +89,25 @@ F2B-58). `gordon_cvm.entradas(..., modelo="banco")` alimenta a lente de bancos (
 IF.data lê também a inadimplência do relatório 16, só para leitura.
 `domain/ticker.py` valida o ticker (lista permitida).
 
-**Camada nova (`sentinela/`).** Já usados pela V1: `sentinela/methods/` (`base.py` e seis
+**Camada nova (`sentinela/`).** A V1 também usa `methods/qualidade.py`,
+`methods/registry.py` (quadros descritivos) e `domain/apresentacao.py`. Já usados pela V1: `sentinela/methods/` (`base.py` e seis
 métodos nos motores, mais `bancos.py`, a lente de bancos do motor de ações desde o F2B-32) e `domain/units.py`, chamados por `valuation_engine.py` e `fii_engine.py`
-(extraídos na Fase 1 e atualizados nas Fases 2A/2B); `services/asset_classifier.py` (`app.py`,
-`market_engine.py`, `portfolio_engine.py`, `auditar_recomendacoes.py`) e `domain/provenance.py`
+(extraídos na Fase 1 e atualizados nas Fases 2A/2B/2C); `services/asset_classifier.py` (`app.py`,
+`market_engine.py`, `auditar_recomendacoes.py`) e `domain/provenance.py`
 e `enums.py` (`market_engine.py`, `valuation_engine.py`). `sentinela/reports/rastreabilidade.py`
-roda por linha de comando (`python -m`), fora do app. **NÃO conectados** (só os testes
-importam): `methods/registry.py`, `domain/models.py` (usado por `services/analyze_asset.py` e
+roda por linha de comando (`python -m`); o app reutiliza a apresentação do quadro de qualidade. **NÃO conectados** (só os testes
+importam): `domain/models.py` (usado por `services/analyze_asset.py` e
 `repositories/`), `services/analyze_asset.py` (`AnalysisService.analyze` é outra orquestração) e `repositories/`. Não adicione a mesma feature nas duas camadas.
 
-**`backtesting/`** — gate temporal de preço correto, fundamentos de entrada sintéticos.
+**`backtesting/`** — fundamentos sintéticos não são evidência. Sem score agregado,
+`simular_analise_mensal` retorna `INDISPONIVEL` no caminho de análise elegível; abstenções
+de escopo e dados insuficientes mantêm seus motivos. Reconstrução ponto-no-tempo na Fase 3.
 
 ---
 
 ## Fluxo de dados real
 
-`market_engine.buscar_dados_ticker:441-513` — **não** é a ordem do README. Ticker fora do
+`market_engine.buscar_dados_ticker` — **não** é a ordem do README. Ticker fora do
 formato da B3 devolve `None` antes de qualquer fonte (F2A-12).
 
 ```
@@ -110,7 +122,8 @@ formato da B3 devolve `None` antes de qualquer fonte (F2A-12).
 6. proventos B3   → dividendos/JCP brutos por data ex e eventos em ações; perfil e Bazin
 7. liquidez       → COTAHIST, fora do prompt
 8. taxa real      → cesta Tesouro + prêmio; IPCA da janela contábil e teto PIB Focus
-9. cache SQLite (7d) → fundamentos_incompletos (campo obrigatório faltando depois de todas as fontes)
+9. contexto das janelas → IPCA de fim de exercício e fatores oficiais B3 para Graham/Lynch
+10. cache SQLite (7d) → fundamentos_incompletos (campo obrigatório faltando depois de todas as fontes)
 ```
 
 Fundamentos: CVM > brapi > yfinance. A alavancagem (`divida_liq_ebitda`) vem só da CVM.
@@ -122,22 +135,27 @@ Preço: yfinance > brapi, sempre fechamento **D-1**.
 
 - Selic via BCB SGS 432, cache 24h, fallback hardcoded
 - Bazin 2.0.0 exige DY bruto de 12 meses da B3 ≥ 5% e perfil renda; preço-limite = proventos brutos ÷ 6% fixos, critério nominal independente da Selic. Série completa sem provento conta como DY zero, exigindo registro da espécie; sem evidência, abstém
-- Perfil único usa DY da B3 quando válido; sem ele, DY da cascata com aviso. Crescimento exige ROE > 20% e DY confiável < 4%; Lynch ainda usa payout pelo DY da cascata (pendência 2C)
+- Perfil único usa DY da B3 quando válido; sem ele, DY da cascata com aviso. Crescimento exige ROE > 20% e DY confiável < 4%; Lynch usa a mesma fonte de DY do perfil, com payout apenas contextual, sem truncamento
 - Gordon 2.0.0 usa D0/payout DVA dos controladores, ROE nominal sobre PL inicial, Fisher e teto PIB real; exige evidência de compatibilidade da base acionária com o preço. Sem essa prova, abstém
-- FII 2.0.0, só tijolo elegível: rendimento de 12 meses por cota do Informe ÷ (NTN-B real + spread de 0,03505842448151178), crescimento real zero. Elegibilidade e eventos de cota são conferidos na fronteira; Selic líquida permanece no score/contexto, P/VP como lente de contexto
-- Ações agregam valores dos métodos pela **mediana**. Escopo (F2B-4): classe oficial exigida; STOCK/UNIT exigem o modelo do BPP consolidado, com evidência até o as_of: empresa recebe Graham, Bazin, Lynch e Gordon; banco (PL só em 2.07/2.08; lido nos dois modelos, abstém; banco tem precedência sobre o teste de seguradora) recebe só a lente de bancos (F2B-32); seguradora (descrição com "Provisões Técnicas", "contrato(s) de seguro/resseguro" ou "Atividade Seguradora", critério de 25/10/2026) e sem BPP consolidado se abstêm sem número
-- Bancos (F2B-32): P/VP justificado = (ROE real − g real)/(k real − g real) × VPA CVM do mesmo documento, DVA e PL inicial dos controladores; lente abstida sai sem número; companhia com mais de uma classe preferencial abstém a lente em todas as classes, inclusive a ON (BRSR3), pela fronteira `gordon_cvm.entradas` (decisão 2 de 25/10/2026; separação na 2C); inadimplência do IF.data (148834 ÷ 24454) só para leitura, em `inadimplencia_ifdata`; Basileia fora
-- FII (ficha 1.3): conflito de mesma versão em qualquer campo, composição da versão selecionada, os 13 VPs, amortização vazia vale zero e `NaN` declarado abstém, taxa e coletas até o as_of; a lente abstida não traz valor nem upside (score 50, neutro)
-- Avisos fora de `riscos` (F2B-45): dívida líquida/EBITDA que não é número finito não é avaliada e gera `aviso_alavancagem`; liquidez não medida gera `aviso_liquidez`; nenhum dos dois muda a classificação
+- FII 2.0.0, só tijolo elegível: rendimento de 12 meses por cota do Informe ÷ (NTN-B real + spread de 0,03505842448151178), crescimento real zero. Elegibilidade e eventos de cota são conferidos na fronteira; Selic líquida permanece apenas no contexto, P/VP como lente de contexto
+- Apresentação 1.0: lentes separadas com valor ou motivo de abstenção, regime, janela, premissas e distância ao preço (`100 × (valor/preço − 1)`). Sem mediana, score, valor ou rótulo agregado; Bazin explicita o critério de 6%. Confiança/completude dos dados é contexto, não nota econômica.
+- Graham 2.1.0: cinco exercícios completos contíguos, LPA médio corrigido pelo IPCA de fim de exercício para a moeda final e VPA final; raiz de `22,5 × LPA médio × VPA`. Sem piso nem guardas legadas por múltiplos.
+- Lynch 2.1.0: cinco observações anuais, CAGR nominal em quatro intervalos, extremos positivos; LPA final × crescimento em pontos percentuais, `m = 1`, crescimento limitado a 25%. Sem multiplicador legado, teto adicional de P/L ou truncamento de payout.
+- As janelas exigem base acionária documental compatível ou fator oficial B3. Comparabilidade anual e TTM usa mesmo CNPJ/modelo BPP, reserva D20 validada e contiguidade no consumidor. Aviso obrigatório: “reorganização societária no período não é detectada”.
+- Qualidade 1.0.0: quadro descritivo de cinco exercícios, ROE e desvio populacional, lucro, margem consolidada, alavancagem e proventos; cobertura e motivos por campo, sem nota única, pesos ou efeito nos valores. Margem/alavancagem não se aplicam a bancos. O calendário anual de proventos ainda não tem produtor de produção: indisponibilidade não significa ano sem distribuição (Fase 3).
+- Escopo (F2B-4): classe oficial exigida; STOCK/UNIT exigem o modelo do BPP consolidado, com evidência até o as_of: empresa recebe Graham, Bazin, Lynch e Gordon; banco (PL só em 2.07/2.08; lido nos dois modelos, abstém; banco tem precedência sobre o teste de seguradora) recebe só a lente de bancos (F2B-32); seguradora (descrição com "Provisões Técnicas", "contrato(s) de seguro/resseguro" ou "Atividade Seguradora", critério de 25/10/2026) e sem BPP consolidado se abstêm sem número
+- Bancos (F2B-32): P/VP justificado = (ROE real − g real)/(k real − g real) × VPA CVM do mesmo documento, DVA e PL inicial dos controladores; lente abstida sai sem número; companhia com mais de uma classe preferencial abstém a lente em todas as classes, inclusive a ON (BRSR3), pela fronteira `gordon_cvm.entradas` (limitação mantida e transferida à proposta da Fase 3); inadimplência do IF.data (148834 ÷ 24454) só para leitura, em `inadimplencia_ifdata`; Basileia fora
+- FII (ficha 1.3): conflito de mesma versão em qualquer campo, composição da versão selecionada, os 13 VPs, amortização vazia vale zero e `NaN` declarado abstém, taxa e coletas até o as_of; a lente abstida não traz valor nem distância ao preço (sem score nem rótulo agregado)
+- Avisos fora de `riscos` (F2B-45): dívida líquida/EBITDA que não é número finito não é avaliada e gera `aviso_alavancagem`; liquidez não medida gera `aviso_liquidez`; são avisos de contexto; banco não recebe aviso de alavancagem inaplicável
 - Liquidez: nos 63 pregões, presença ≥ 80% e volume mediano diário ≥ R$ 500 mil para ações/units ou R$ 100 mil para FII. Abaixo, abstém; dado ausente, cobertura incompleta ou falha de coleta geram aviso, sem converter ausência em volume zero
-- Métodos divergindo > 2x → flag de risco, confiança reduzida
+- Métodos divergindo > 2x → aviso de contexto, sem formar valor ou sinal e sem reduzir confiança
 - DY e ROE são convertidos uma vez, na fronteira do provedor (`sentinela/data/normalizacao.py`): yfinance com DY em percentual e ROE em razão (F2A-16); brapi pela regra da V1 (acima de 1 é percentual), declarada como inferência na proveniência. ROE não finito ou fora de [−2; 2] é descartado, com o motivo
 - `_normalizar_dy` (`config.py:332`) é só o invariante dos motores: fora de 0 ≤ DY ≤ 0,25, ou não finito, devolve `(0.0, False)`
 - LPA, VPA e ROE pelos controladores: lucro e PL atribuídos aos controladores, com as reservas da D20 (F2A-37); o LPA dos métodos é o divulgado da classe do ticker (D19, F2A-36), e o recalculado (ações da Composição do Capital do mesmo documento) é conferência e reserva
 - Alavancagem: dívida financeira líquida (2.01.04 + 2.02.01 − 1.01.01 − 1.01.02, regime pós-IFRS 16, arrendamento incluído) ÷ EBITDA (EBIT + D&A da DVA) e ÷ PL; banco e seguradora não recebem a medida (F2A-8)
-- Vocabulário: "classificação", "sinal positivo", "classificação heurística". Nunca "recomendação", "compra" ou "venda" em código novo, tabela, coluna ou tela. A V1 ainda exibe COMPRA/NEUTRO/VENDA; a troca é o F2C-4
+- Vocabulário: "classificação", "sinal positivo", "classificação heurística". Nunca "recomendação", "compra" ou "venda" em código novo, tabela, coluna ou tela. A apresentação atual mostra lentes e motivos, sem rótulo agregado; registros antigos são identificados como históricos, sem recálculo
 - Nunca "alocação sugerida" nem qualquer sugestão de carteira: a V2 descreve risco, não recomenda alocação
-- **Taxa real vigente (D15):** média de pesos iguais das taxas de aplicação de NTN-B e NTN-B Principal com vencimento ≥ 2035, mais 5 pontos percentuais das ações, sem prêmio soberano adicional. `get_taxa_real` fornece registro/proveniência e `cost_of_equity_real` o custo ou None; ausência não usa contingência numérica. Gordon trabalha com k e g reais; FII usa a NTN-B sem o prêmio das ações. A Selic permanece em contexto/score e Markowitz
+- **Taxa real vigente (D15):** média de pesos iguais das taxas de aplicação de NTN-B e NTN-B Principal com vencimento ≥ 2035, mais 5 pontos percentuais das ações, sem prêmio soberano adicional. `get_taxa_real` fornece registro/proveniência e `cost_of_equity_real` o custo ou None; ausência não usa contingência numérica. Gordon trabalha com k e g reais; FII usa a NTN-B sem o prêmio das ações. A Selic permanece apenas como contexto no FII; Markowitz foi aposentado
 
 ---
 
@@ -173,6 +191,8 @@ os diagnósticos e a evidência de cada insumo, sem inferir fluxo pelo DY agrega
 **6. Backtest com dados fabricados**
 `fundamentos_point_in_time.csv` são 15 linhas inventadas, retro-estimadas de dados
 atuais. `backtest_results_v1.csv` veio de versão anterior do engine. Não é evidência.
+O caminho elegível sem score agregado retorna `INDISPONIVEL` desde a 2C; o backtest
+ponto-no-tempo será reconstruído na Fase 3 (F3-8/F3-P16).
 
 **7. Suíte verde não é sinal**
 `app.py`, `auditoria.py`, `limpar_banco.py` em 0%. `adicionar_posicao` tem teste (`tests/test_database_posicoes.py`).
@@ -189,7 +209,11 @@ A suíte contorna isso com a semente do `tests/conftest.py`; a correção (E-6) 
 `get_taxa_real` é chamado pela cascata; Gordon e FII consomem o registro. A antiga
 propriedade `ntnb_longa` saiu no F2B-5; CDI/IPCA legados não são a fonte da nova taxa
 real (F3-1). A lente `Bancos` é chamada pelo motor de ações para o modelo banco (F2B-32).
-O motor de ações não lê mais a Selic (F2B-5); ela fica no score/contexto do FII e no Markowitz.
+O motor de ações não lê mais a Selic (F2B-5); ela fica apenas no contexto do FII. Markowitz e a divisão fixa 40/60 foram aposentados.
+Graham/Lynch usam as janelas de cinco exercícios e o quadro de qualidade está ligado ao
+motor. A comparabilidade produzida pela CVM prova CNPJ/modelo/D20, com contiguidade
+verificada no consumidor; não detecta reorganizações. O calendário anual de proventos
+da qualidade continua sem produtor e a coleta da série ainda lê `date.today()` (Fase 3).
 CVM de FII e ITR/TTM já estão ligados à cascata desde a 2A.
 
 **10. Escala da quantidade de ações na CVM**
@@ -225,17 +249,15 @@ COTAHIST; a cascata lê só ele, e sem índice local a CVM não é consultada. S
 FII e controle acionário vêm do índice. O mapa com cache SQLite saiu no F2A-13; dos mapas manuais
 ficaram só os dicionários, sem leitor na cascata.
 
-**16. Markowitz com um ano de dados**
-Retorno esperado estimado com um ano de pregões (erro-padrão enorme), divisão fixa
-de 40% FIIs e 60% ações, e saída chamada "Alocação Sugerida". Não é evidência e não
-pode aparecer como sugestão (quarentena no F0-9; aposentado no F2C-9).
+**16. Markowitz — aposentado na 2C**
+O otimizador (`portfolio_engine.py`), a divisão fixa 40/60 e a aba de otimização foram removidos. A camada futura de carteira descreve risco, sem sugestão de alocação.
 
 **17. Bancos — lente ligada ao motor (F2B-3/F2B-4/F2B-32)**
 `methods/bancos.py` calcula P/VP = (ROE real − g real)/(k real − g real), vezes VPA,
 com DFP, DVA dos controladores e base acionária compatível; não faz rede nem coleta. O motor
 a chama para o modelo banco pelo BPP consolidado, pela fronteira `gordon_cvm.entradas(...,
 modelo="banco")`; seguradora fica em abstenção até lente própria. A seleção do IF.data
-continua pelo setor (decisão de 25/10/2026; pelo BPP, na 2C). Não apresentar Basileia nem a
+é pelo `modelo_bpp == "banco"`. Não apresentar Basileia nem a
 inadimplência como parte do valor da lente: as duas são contexto, só para leitura.
 
 ---
@@ -271,7 +293,7 @@ Sem insumo, abstém-se — não devolve número conservador.
 
 0. **Preparação** — concluída (tag `v2-fase-0`)
 1. **Fundação** — concluída (tag `v2-fase-1`): `units.py`, contrato de método e extração de `methods/`, comportamento idêntico, golden dos motores
-2. **2A Dados corretos** — concluída (tag `v2-fase-2a`; dados de referência, E-1, DY único, E-2, cinco anos, dívida líquida, bancos, medida de liquidez); **2B Taxa real, bancos e escopo** — fila da fase concluída (resumo em `docs/loop/historico/fase-2b/pr-fase-2b.md`); fila de fechamento da auditoria concluída (`docs/loop/historico/fase-2b/fila-fechamento.md`); fase fechada em 25/10/2026 (PRs #24 e #25, tag `v2-fase-2b` no `c025c23`); **2C Qualidade e apresentação** (normalização, lente de qualidade, histerese, vocabulário, lentes, fim do Markowitz)
+2. **2A Dados corretos** — concluída (tag `v2-fase-2a`; dados de referência, E-1, DY único, E-2, cinco anos, dívida líquida, bancos, medida de liquidez); **2B Taxa real, bancos e escopo** — fila da fase concluída (resumo em `docs/loop/historico/fase-2b/pr-fase-2b.md`); fila de fechamento da auditoria concluída (`docs/loop/historico/fase-2b/fila-fechamento.md`); fase fechada em 25/10/2026 (PRs #24 e #25, tag `v2-fase-2b` no `c025c23`); **2C Qualidade e apresentação** — concluída, aguardando PR/aceite (Graham/Lynch 2.1, qualidade 1.0, lentes separadas sem agregado, vocabulário e Markowitz aposentado; pendências na proposta da Fase 3)
 3. **Tempo como entrada** — E-6, E-14, ponto-no-tempo, `analisar(ticker, as_of)`, backtest real
 4. **Operação diária, rastreabilidade e risco da carteira**
 5. **Notícias medidas** — coletor do IPE e estudo de evento

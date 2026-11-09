@@ -8,7 +8,7 @@
 Plataforma educacional de análise de ações e FIIs da B3.
 Python 3.13 + Streamlit (interface FastAPI + HTMX prevista para a Fase 7), local-first, SQLite.
 **Não é consultoria financeira.**
-Suíte em 25/10/2026: 2.575 passed, 1 skipped, 15 xfailed (~10 s).
+Suíte em 09/11/2026: 3525 passed, 1 skipped, 8 xfailed.
 
 ---
 
@@ -146,15 +146,27 @@ verificá-lo. Reporte a divergência; não a "conserte".
 
 - Os IDs de achado (E-*, F-*) citados nos tickets vêm de `docs/auditoria/2026-09-red-team.md`
 - Cascata de dados: `índice oficial → yfinance → brapi → CVM`, depois IF.data (bancos), Informe
-  Mensal/rendimento do FII, proventos B3, liquidez (COTAHIST), taxa real e cache. O Fundamentus saiu. Preço do yfinance (brapi só se
+  Mensal/rendimento do FII, proventos B3, liquidez (COTAHIST), taxa real, contexto das
+  janelas (IPCA e fatores B3) e cache. O Fundamentus saiu. Preço do yfinance (brapi só se
   o yfinance falhar), fechamento D-1. O README descreve outra ordem e está errado
+- Apresentação 1.0: lentes separadas com valor ou motivo de abstenção, regime, janela, premissas e distância ao preço (`100 × (valor/preço − 1)`). Sem mediana, score, valor ou rótulo agregado; Bazin explicita o critério de 6%. Confiança/completude dos dados é contexto, não nota econômica.
+- Graham 2.1.0: cinco exercícios completos contíguos, LPA médio corrigido pelo IPCA de fim de exercício para a moeda final e VPA final; raiz de `22,5 × LPA médio × VPA`. Sem piso nem guardas legadas por múltiplos.
+- Lynch 2.1.0: cinco observações anuais, CAGR nominal em quatro intervalos, extremos positivos; LPA final × crescimento em pontos percentuais, `m = 1`, crescimento limitado a 25%. Sem multiplicador legado, teto adicional de P/L ou truncamento de payout.
+- As janelas exigem base acionária documental compatível ou fator oficial B3. Comparabilidade anual e TTM usa mesmo CNPJ/modelo BPP, reserva D20 validada e contiguidade no consumidor. Aviso obrigatório: “reorganização societária no período não é detectada”.
+- Qualidade 1.0.0: quadro descritivo de cinco exercícios, ROE e desvio populacional, lucro, margem consolidada, alavancagem e proventos; cobertura e motivos por campo, sem nota única, pesos ou efeito nos valores. Margem/alavancagem não se aplicam a bancos. O calendário anual de proventos ainda não tem produtor de produção: indisponibilidade não significa ano sem distribuição (Fase 3).
+- Markowitz e a divisão fixa 40/60 foram aposentados; o backtest elegível sem score
+  agregado retorna `INDISPONIVEL`, com reconstrução ponto-no-tempo na Fase 3.
+- Fechamento em 09/11/2026: 2C concluída, aguardando PR/aceite no checkpoint; resumo
+  em `docs/loop/historico/fase-2c/pr-fase-2c.md`. Pendências e oito xfails têm destino na proposta da
+  Fase 3, ainda não ativada. A seção “Fase atual” acima é exclusiva do Marcos.
 - Gordon usa DVA dos controladores e taxa/crescimento reais (Fisher, teto PIB); a taxa real
   vem de NTN-B/Principal ≥ 2035, pesos iguais, mais 5 pp das ações, sem contingência numérica.
   Bazin usa proventos brutos B3 de 12 meses e critério nominal fixo de 6%, DY mínimo de 5%.
-  FII de tijolo elegível usa rendimento do Informe ÷ (NTN-B real + spread versionado); Selic fica no score/contexto.
+  FII de tijolo elegível usa rendimento do Informe ÷ (NTN-B real + spread versionado); Selic fica apenas no contexto, sem pontuação.
 - Escopo pelo modelo do BPP consolidado (F2B-4): empresa recebe os métodos de ação; banco, só a
   lente de bancos (F2B-32; Basileia e inadimplência do IF.data só como contexto); seguradora e
-  sem BPP se abstêm sem número. FII (ficha 1.3) e bancos abstidos não trazem valor nem upside.
+  sem BPP se abstêm sem número. FII (ficha 1.3) e bancos abstidos não trazem valor nem distância ao preço.
+  IF.data é selecionado pelo modelo BPP banco; alavancagem inaplicável não gera aviso para banco.
 - Liquidez: 63 pregões, presença ≥ 80%, volume mediano diário ≥ R$ 500 mil (ações/units)
   ou R$ 100 mil (FII). Incompletude/falha de coleta produz aviso, sem tratar ausência como zero.
 - Duas camadas de orquestração: `app.py` (roda) e `sentinela/services/`
