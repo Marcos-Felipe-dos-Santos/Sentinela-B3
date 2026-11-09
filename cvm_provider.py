@@ -1167,6 +1167,25 @@ class CVMProvider:
                     janelas = set(zip(doc["DT_INI_EXERC"].astype(str), doc["DT_FIM_EXERC"].astype(str), strict=True))
                     if len(janelas) == 1:
                         ind["inicio"], ind["fim"] = next(iter(janelas))
+                        bpp = self.parsear_demonstrativo(
+                            self.baixar_dfp(ano), "BPP_con",
+                            include_cd_cvm=True, include_versao=True,
+                        )
+                        bpp = bpp[
+                            (bpp["CD_CVM"] == cd_cvm)
+                            & (bpp["DT_REFER"].astype(str) == str(ind.get("cvm_dt_refer")))
+                            & (bpp["VERSAO"].astype(str) == str(ind.get("cvm_versao")))
+                        ]
+                        prova = self._prova_comparabilidade(
+                            doc, bpp, modelo, self.baixar_dfp(ano).name,
+                            str(ind.get("cvm_dt_refer")), str(ind.get("cvm_versao")),
+                        )
+                        if prova:
+                            ind.update(
+                                perimetro=prova["perimetro"],
+                                evidencia_comparabilidade=prova["evidencia_comparabilidade"],
+                                aviso_comparabilidade=prova["aviso"],
+                            )
             except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
                 ind["janela_motivo"] = f"janela anual indisponível: {exc}"
             try:

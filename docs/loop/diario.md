@@ -18,3 +18,13 @@ O histórico anterior permanece em `historico/fase-2c/diario.md`. Esta fila comp
 - **Integração:** arquivos ZIP CVM sintéticos → acumulados_ttm real → ttm real, sem injetar prova: lucro70/receita140. BPP ausente, modelo incompatível e troca de CNPJ entre documentos abstêm. Marca retirada após correção.
 - **Testes:** 3507→3511 passed, 1 skipped/8 xfailed, warning antigo; Ruff CI e data/methods verdes, diffcheck verde. Golden não regenerado; sem alteração de método anual ou taxas.
 - **Resíduos/decisões:** nenhum novo; reorganização fica Fase3. Revisão somente leitura do stage antes do commit.
+
+### FC2C-62 — fix: produce comparable annual quality inputs
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso.
+- **D27 antes:** BUG-2C-62 registrado estrito, 1 xfailed; `--runxfail` falhou em comparavel=False em vez de True (/tmp/2c62-red.txt) ANTES da alteração do produtor.
+- **O que foi feito:** indicadores_da_serie aplica a prova documental DRE/BPP/D20 do produtor após identificar a janela, grava perímetro/evidência/aviso; transporte conserva aviso e qualidade o inclui em avisos, sem certificar ausência de reorganização. Ficha qualidade1.0 atualizada pela decisão09/11; contiguidade, fonte e PL inicial permanecem obrigatórios.
+- **Integração:** cinco ZIPs DFP com comparativos BPP e índice de entregas → CVMProvider real → MarketEngine._serie_cvm real → ValuationEngine real: comparavel=True, 5 observações de ROE, média0,1 (10,12,-2,15,15 sobre PL inicial100). Nenhuma chave de prova montada no teste. Lacuna2023 mantém quatro observações e média indisponível.
+- **Universo inicial novamente medido:** 51 ações/units públicas do snapshot inicial `f2c1-universo21.pkl`, SHA256 `2f9c5cc99d103af5b54ffc9b6003eb8f7939bed8807d7e20dee98ffec506c050`, as_of2026-10-28T23:34:41.882351+00:00. Produtor/Market/motor relidos ANTES e DEPOIS, mesmos ZIPs2021–2025 com hashes idênticos aos registrados em f2c2-universo-pl.json; sem rede, sem nova coleta/preço. Comparáveis0→45; médiasROE0→44; anos B3 com cobertura0→0. Comparabilidade não é completude de todos os indicadores nem qualidade econômica. Logs/JSON comparativos em /tmp/2c62-{antes,depois}.txt e /tmp/2c62-universo-{antes,depois}.json, script /tmp/2c62-universo.py. Não extrapolar para toda B3 nem alegar replay PIT.
+- **Testes:** 3511→3513 passed, 1 skipped/8 xfailed, warning antigo; Ruff CI e data/methods verdes; diffcheck verde. Golden não regenerado; só quadro/prova informativa, nenhum valor individual de método recalibrado.
+- **Resíduos/decisões:** nenhuma prova manual, nenhum resíduo versionado; reorganizações e calendário anual continuam Fase3. Revisão somente leitura do stage antes do commit.

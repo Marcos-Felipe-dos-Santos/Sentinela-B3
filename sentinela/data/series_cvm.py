@@ -245,7 +245,7 @@ def exercicio(
         "pl_inicial_controladores": ind.get("pl_inicial_controladores"),
         **{campo: ind[campo] for campo in (
             "cnpj", "modelo", "pl_inicial_proveniencia", "pl_inicial_motivo",
-            "mudanca_estrutural_sem_reconciliacao",
+            "mudanca_estrutural_sem_reconciliacao", "aviso_comparabilidade",
         ) if campo in ind},
         "divida_liquida": ind.get("divida_liquida"),
         "ebitda": ind.get("ebitda"),

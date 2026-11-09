@@ -89,3 +89,9 @@ Aumentar apenas o último lucrocontroladores15→25, mantendo PL100: médiaROE10
 Marcos28/10: **PL inicial**, **desvio populacional**, **proventos B3 por data-ex**, **quadro parcial com cobertura**. Faixas observadasmin–max, sem pesos/nota única; não criar rótulo de qualidade econômica. Semfonte, indicador indisponívelcom motivo; semcoerção parazero. O quadro parcial mostraN/5 e não penaliza como desempenho ruim. DadosDVA podem aparecer separados como contexto de competência, sem compor a contagemB3.
 
 D24 mantém qualidade empresarial, valuation e qualidade dos dados separados. A aprovação não autoriza inventar EBITDA/dívida reconciliada nem modificar valores das lentes existentes. F2C-2 deve verificar independência dos juros e usar exemplos da ficha, com mutação≥80% e predicado restrito do golden para o quadro adicional.
+
+## 8. Comparabilidade ratificada em 09/11/2026
+
+Decisão do Marcos, opção (a): exercícios completos contíguos do mesmo CNPJ e mesmo modelo demonstrado no BPP, com reserva D20 validada, são comparáveis. O produtor CVM grava `perimetro` (controladores/identidade/modelo) e `evidencia_comparabilidade` com critério, arquivo, referência, versão e D20; o transporte conserva a prova. O consumidor verifica contiguidade/identidade/perímetro e preserva a recusa de mudança estrutural explicitamente conhecida sem reconciliação.
+
+Aviso fixo: **reorganização societária no período não é detectada**. Detecção na Fase 3. Este critério operacional substitui a pendência de prova estrutural geral na continuidade ordinária; não promete detectar reorganizações nem certificar disponibilidade histórica PIT. PL inicial ausente/não positivo continua sem ROE; comparabilidade não inventa observações nem cobertura de proventos.

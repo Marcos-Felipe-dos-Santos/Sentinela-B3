@@ -264,6 +264,12 @@ class Qualidade:
             else:
                 selecionados = sorted(exercicios, key=lambda e: e["exercicio"])[-5:]
                 linhas = [_linha(e, as_of, modelo) for e in selecionados]
+                avisos = list(dict.fromkeys(
+                    e["aviso_comparabilidade"] for e in selecionados
+                    if _texto(e.get("aviso_comparabilidade"))
+                ))
+                if avisos:
+                    resultado["avisos"] = avisos
                 comparavel = bool(linhas) and all(
                     _texto(e.get("perimetro"))
                     and _texto(e.get("evidencia_comparabilidade"))
