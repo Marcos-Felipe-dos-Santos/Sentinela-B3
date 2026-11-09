@@ -286,3 +286,9 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2B-51 | venda parcial recalcula o preço médio pela média ponderada com o preço de venda (100 a R$ 10, venda de 50 a R$ 20: PM vira R$ 0,00), contra a regra do custo médio | database.py (adicionar_posicao) | auditoria rápida do fechamento (F2B-69), "Ficam para o Marcos" (xfail sem ID); registrado pós-fechamento, 25/10/2026 | tests/test_database_posicoes.py::test_venda_parcial_preserva_preco_medio (mantido nesse arquivo, fora de `tests/regressao/`) | F2C-48 | aberto |
 
 | BUG-2B-52 | o caminho DISTRESSED do motor de ações devolve `fair_value = preço` e `upside = 0`, números que parecem resultado sem método calculado | valuation_engine.py (processar, guarda de `DISTRESSED_TICKERS`) | auditoria rápida do fechamento (F2B-69), "Ficam para o Marcos" (fora da decisão 2 do F2B-69, card "Valor Justo"); registrado pós-fechamento, 25/10/2026 | test_bug_2b_52_distressed_valor_justo_preco.py | F2C-5 | corrigido pela apresentação separada; regressão pós-2B integrada no MERGE-MAIN-2C, XPASS estrito confirmado antes da retirada da marca |
+
+### Achado da auditoria de fechamento 2C (09/11/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-2C-60 | Análise pós-F2C-3 sem score agregado sai como FORA_DO_ESCOPO no backtest | Decisão Marcos 09/11/2026, opção (a): INDISPONIVEL até reconstrução na Fase 3 | auditoria Claude de fechamento 2C | `test_bug_2c_60_backtest_sem_score.py` | correção de fechamento 2C | corrigido |

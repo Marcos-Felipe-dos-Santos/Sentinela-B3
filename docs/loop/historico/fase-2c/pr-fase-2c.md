@@ -103,3 +103,11 @@ Marcadores de estimativa manual ficam apenas por leitura/compatibilidade histór
 Revisar primeiro decisões/fichas e predicados A/C; depois produtores de janela/comparabilidade/ausência; apresentação e histórico; integridadeFNET; gates/mutação e ressalvas D27. Auditoria externa por família diferente do executorCodex (D30) e decisão do Marcos são pendentes no Checkpoint. Nenhum push/PR/tag ou ativação de próxima fase autorizado.
 
 O próprio F2C-11 fecha este resumo e arquiva fila/diário/resumo no commit `docs: summarize phase 2C and archive the loop`; seu hash consta no git, sem autoalteração do commit. A fila ativa passa a conter apenas o Checkpoint.
+
+## Ressalva de fechamento resolvida — 09/11/2026
+
+Auditoria externa Claude sobre `bece683`: “pode seguir com uma ressalva”, achado 1 no backtest. Marcos aprovou a opção (a). BUG-2C-60 reproduzido antes da correção com xfail estrito e falha explícita com `--runxfail`: análise real pós-F2C-3 sem score era rotulada FORA_DO_ESCOPO. Corrigido no commit `fix: distinguish unavailable backtests from scope abstentions` (hash no git).
+
+Agora essa análise retorna status `INDISPONIVEL` e motivo “backtest indisponível desde a 2C: sem score agregado; reconstrução na Fase 3”. FORA_DO_ESCOPO fica para abstenção explícita do motor, com riscos/motivo preservados. Dublês do caminho atual usam lentes sem score; métricas históricas mantêm o contrato legado. Não se reconstrói backtest nesta fase.
+
+Gate após correção: 3507 passed / 1 skipped / 8 xfailed, um warning antigo; Ruff CI e data/methods verdes, Ruff completo com as mesmas 161 dívidas. Regressão permanente sem xfail, controles de escopo preservados. Checkpoint mantido, sem push ou ativação da próxima fase.

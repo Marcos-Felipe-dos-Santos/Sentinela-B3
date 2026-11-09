@@ -847,3 +847,14 @@
 - **Resíduos:** nenhum novo; caches/outputs/mutants fora do stage, nenhum não rastreado apagado.
 - **Decisões que ficaram para o Marcos:** auditoria externa2C-b e aceite/ressalvas noCheckpoint, destino doBUG51 ainda aberto. Nenhum push/PR/tag/merge remoto ou próxima fase ativados.
 - **Gate documental final:**3503passed/1skipped/8xfailed/1warning antigo,12,67s (/tmp/2c11-suite.txt), RuffCI e data/methods verdes. Renomes detectados no stage; gitlog--follow será conferido após o commit. Nenhum item[ ]/[!] permanece na fila arquivada.
+
+### BUG-2C-60 — fix: distinguish unavailable backtests from scope abstentions (09/11/2026)
+- **Executor:** codex.
+- **Status:** sucesso.
+- **Especificação e autorização:** auditoria Claude de fechamento (`auditoria-fechamento-2c-claude-relatorio.md`, achado 1), decisão expressa do Marcos em 09/11/2026, opção (a). Correção isolada após arquivamento; Checkpoint mantido, sem continuar fila.
+- **O que foi feito:** backtest reconhece abstenção real pelo campo explícito `abstencao` do motor, preservando riscos/motivo de escopo. Análise sem score agregado retorna `INDISPONIVEL`, motivo literal “backtest indisponível desde a 2C: sem score agregado; reconstrução na Fase 3”. Sem reconstruir score, métodos ou métricas.
+- **Regressão antes da correção:** BUG-2C-60 registrado com xfail estrito; 1 xfailed. Com `--runxfail`, análise real pós-F2C-3, com lentes e sem score/abstenção, falhou por FORA_DO_ESCOPO em vez de INDISPONIVEL. Após correção, marca retirada, teste permanente PASS. Dois controles adicionais preservam escopo com riscos e com motivo sem riscos; BUG-2B-44 continua PASS.
+- **Testes atuais e históricos:** dois dublês do caminho atual agora usam lentes sem score; rodada mensal não valida nem contabiliza acerto indisponível. Wrapper completo testado também com INDISPONIVEL. Métricas sobre resultados históricos conservam fixtures legadas com score_final.
+- **Testes:** baseline 3503 passed / 1 skipped / 8 xfailed → 3507 passed / 1 skipped / 8 xfailed; 1 warning antigo. Ruff CI e completos data/methods verdes; Ruff completo conserva 161 achados anteriores, sem dívida nova. Diff check verde. Item fix com regressão, sem tarefa autônoma de mutação.
+- **Resíduos:** nenhum novo; apenas motor de backtest, testes, registro de regressão, diário e resumo de fechamento alterados.
+- **Decisões pendentes:** nenhuma para esta correção. Reconstrução do backtest permanece na Fase 3. Parada solicitada, sem push.
