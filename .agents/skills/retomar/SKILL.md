@@ -10,8 +10,8 @@ Objetivo: saber exatamente onde o trabalho está **antes** de editar qualquer ar
 ## 1. Ler, nesta ordem
 
 1. `AGENTS.md` (seção "Multiagente") e `docs/loop/protocolo.md`.
-2. `docs/loop/fila.md`: o cabeçalho e o primeiro item que não está `[x]` antes do primeiro `[DECISÃO]`.
-3. `docs/loop/diario.md`: a última seção.
+2. A fila, sem abri-la inteira: `python scripts/fila.py status` e `python scripts/fila.py proximo` (saída 3: `[DECISÃO]` à frente).
+3. O diário, sem abri-lo inteiro: `tail -n 40 docs/loop/diario.md`.
 4. `outputs/passagem.md`, se existir (é escrito pela skill `passagem`; fica fora do git).
 5. O resumo do `ai-memory`, se a sessão recebeu um. É **pista**: onde divergir do git, da fila ou do diário, valem o git, a fila e o diário.
 

@@ -128,7 +128,7 @@ A regra completa e o registro estão em `tests/regressao/README.md`. No ciclo:
 ## 6. O `/goal`
 
 ```
-/goal Todos os itens de docs/loop/fila.md antes da linha [DECISÃO] estão marcados [x], ou algum item está [!] com o motivo registrado em docs/loop/diario.md. Leia e siga docs/loop/protocolo.md à risca. Nunca faça git push nem abra PR. Ao fechar cada item, rode cat docs/loop/fila.md e git log --oneline -3.
+/goal Todos os itens de docs/loop/fila.md antes da linha [DECISÃO] estão marcados [x], ou algum item está [!] com o motivo registrado em docs/loop/diario.md. Leia e siga docs/loop/protocolo.md à risca. Nunca faça git push nem abra PR. Ao fechar cada item, rode python scripts/fila.py status e git --no-pager log --oneline -3.
 ```
 
 ## 7. Roteiro até o fim

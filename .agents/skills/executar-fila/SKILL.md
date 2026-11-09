@@ -36,7 +36,7 @@ O checkpoint usa isso para escolher o auditor (ADR-0003, D30).
 - o item precisar de rede e o seu sandbox não tiver (marque `[!]` com o motivo "precisa de rede: rodar no Claude Code ou liberar a rede só para este item");
 - a cota estiver acabando: rode a skill `passagem` antes.
 
-Ao fechar cada item, mostre `cat docs/loop/fila.md` (só o item) e `git --no-pager log --oneline -3`.
+Ao fechar cada item, mostre `python scripts/fila.py status` e `git --no-pager log --oneline -3`.
 
 ## Nunca
 

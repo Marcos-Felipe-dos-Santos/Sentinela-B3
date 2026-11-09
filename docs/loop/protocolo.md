@@ -22,6 +22,8 @@ O cabeçalho da fila define o branch da fase e os arquivos intocáveis.
 
 ## Para cada item `[ ]`, em ordem
 
+Cada item começa com `python scripts/fila.py proximo`, que imprime só a linha do próximo item `[ ]`. Saída 3: a próxima linha aberta é `[DECISÃO]`; pare (passo 12). Saída 1 (nada aberto) ou 2 (fila ausente): registre no diário e pare. O `[DECISÃO]` de toda fila é escrito `- [ ] **[DECISÃO] ...**`; é o único formato que o `scripts/fila.py` reconhece.
+
 1. **Já feito?** Confira no código e no `git log`. Se o item já foi entregue, marque `[x]`, anote "já estava feito" no diário e siga.
 2. **Escopo.** Só o que o item descreve. Nenhuma correção extra "de passagem".
 3. **Rito pelo tipo do item:**
@@ -35,13 +37,13 @@ O cabeçalho da fila define o branch da fase e os arquivos intocáveis.
    - `limpeza`: remova só o que o item lista. Antes de remover, confirme por busca que nada usa o que sai. Arquivo rastreado sai com `git rm`, ou `git rm --cached` se deve continuar existindo localmente. Depois, rode de novo as ferramentas do inventário e atualize `docs/limpeza/inventario.md`.
 4. **Verificação.** `python -m pytest -q` e `ruff check --select E9,F63,F7,F82 .` verdes — o mesmo gate do CI. Também verde, e bloqueante, o `ruff check` com as regras completas em `sentinela/methods/` e `sentinela/data/`, só nos diretórios que existirem (o ruff falha com E902 em caminho inexistente). Fora desses diretórios, a dívida antiga do `ruff check .` completo fica no inventário (F0-7) e é paga a partir da Fase 1. `ruff format` só nos arquivos que o item criou ou alterou. No máximo 3 rodadas de correção; na 3ª falha, marque `[!]`, registre no diário e pare o loop.
 5. **Sem resíduo novo.** O item não acrescenta código comentado, import sem uso, print de depuração, arquivo temporário nem TODO sem item na fila.
-6. **Diário.** Acrescente a seção do item em `docs/loop/diario.md`, no formato abaixo.
-7. **Fila.** Marque o item como `[x]`.
-8. **Stage.** `git add` só nos arquivos do item, no diário e na fila — nunca `git add -A` nem `git add .`. Confira com `git status --porcelain` que nada do item ficou de fora e que nada alheio entrou.
-9. **Revisão.** `/review-diff`, que revisa exatamente o que está no stage — código, diário e fila. Reprovou: corrija, atualize o diário, refaça o stage e revise de novo; conta nas 3 rodadas. Na 3ª reprovação, troque o `[x]` por `[!]`, registre o motivo no diário e pare o loop.
+6. **Diário.** Escreva a seção do item, no formato abaixo, em `outputs/diario-item.md` (fora do git) e anexe-a com `python scripts/fila.py diario outputs/diario-item.md`, sem abrir o diário.
+7. **Fila.** `python scripts/fila.py marcar <ID> x` (ou `!`); ele altera exatamente a linha do item. Saída 2 (ID inexistente ou duplicado): o arquivo fica intacto; registre no diário e pare.
+8. **Stage.** `git add` só nos arquivos do item, no diário e na fila, e em `docs/loop/pendencias.md` quando o item escreveu nele (a linha nova é parte do item) — nunca `git add -A` nem `git add .`. Confira com `git status --porcelain` que nada do item ficou de fora e que nada alheio entrou.
+9. **Revisão.** `/review-diff`, que revisa exatamente o que está no stage — código, diário e fila. Reprovou: corrija, atualize a seção do item no diário sem abri-lo inteiro (localize com `grep -n "^### <ID>" docs/loop/diario.md` e edite só essa faixa; não rode `fila.py diario` de novo, que duplicaria a seção), refaça o stage e revise de novo; conta nas 3 rodadas. Na 3ª reprovação, troque o `[x]` por `[!]`, registre o motivo no diário e pare o loop.
 10. **Commit.** `/safe-commit`, um único commit por item. Ele não faz stage: commita exatamente o que o `/review-diff` aprovou. Título = o Conventional Commit do item. Nunca push.
-11. **Progresso.** Rode `cat docs/loop/fila.md` e `git log --oneline -3`.
-12. **Próximo.** Siga para o próximo `[ ]`. Se a próxima linha for `[DECISÃO]`, pare: a fase acabou.
+11. **Progresso.** Rode `python scripts/fila.py status` e `git --no-pager log --oneline -3`.
+12. **Próximo.** Siga para o próximo `[ ]` com `python scripts/fila.py proximo`. Se ele sair com 3 (`[DECISÃO]` à frente), pare: a fila acabou.
 
 ## Regras duras
 
@@ -54,6 +56,11 @@ O cabeçalho da fila define o branch da fase e os arquivos intocáveis.
 - Métodos de valuation não ganham rede, banco nem leitura de relógio.
 - O repositório é público: dados da carteira do Marcos (posições, pesos, lista de ativos) nunca entram em arquivo versionado — nem no diário. O que usar a carteira vai para `outputs/`.
 - Não fazer perguntas durante o loop. Onde a especificação dizia "me diga", "me mostre" ou "pare e me mostre o diff", escreva no diário e siga. Dúvida que muda o resultado vira `[!]`, registro no diário e parada.
+- Toda decisão provisória e todo `[!]` ganham também uma linha em `docs/loop/pendencias.md`: `python scripts/fila.py pendencia <ID> "<texto>"`. O Marcos revisa esse arquivo uma vez por dia.
+- Leitura por trecho: não abrir inteiros `docs/loop/fila.md`, `docs/loop/diario.md`, `docs/loop/fila-fase*-proposta.md`, `docs/PLANO.md`, `docs/decisoes/predicados-golden-2c.md`, `docs/loop/historico/**` nem `tests/fixtures/golden_motores.jsonl`. Consulta por `grep -n` e faixa de linhas; estado e próximo item pelo `scripts/fila.py`. Exceção: o item que manda editar a estrutura de um desses arquivos.
+- Comando ou script de dados imprime no máximo 30 linhas no contexto; o restante vai para `outputs/`.
+- O retorno do `junior-dev` ao orquestrador tem no máximo 15 linhas: arquivos, testes antes → depois, pendências.
+- Ideia nova não entra em fila ativa: vai para `docs/loop/ideias.md` e só é avaliada num checkpoint.
 
 ## Bugs e regressão
 
@@ -83,7 +90,7 @@ O último item de toda fila fecha a fase, nesta ordem:
 2. registra o próprio item no diário e o marca `[x]`;
 3. move com `git mv` a fila, o diário e o resumo para `docs/loop/historico/fase-N/`;
 4. cria um `docs/loop/fila.md` novo só com a linha `[DECISÃO]` apontando o histórico e a proposta da próxima fila;
-5. faz o stage, passa pelo `/review-diff`, commita com `/safe-commit` e roda `cat docs/loop/fila.md`.
+5. faz o stage, passa pelo `/review-diff`, commita com `/safe-commit` e roda `python scripts/fila.py status`.
 
 A próxima fila nunca é ativada pelo loop: quem a coloca em `docs/loop/fila.md` é o Marcos, depois de aprovar.
 
