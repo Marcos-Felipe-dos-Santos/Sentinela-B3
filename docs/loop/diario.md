@@ -137,3 +137,11 @@ O histórico anterior permanece em `historico/fase-2c/diario.md`. Esta fila comp
 - **O que foi feito:** _serie_cvm devolve o ano já selecionado no mesmo corte; _buscar_cvm o reutiliza. Sem segunda leitura de relógio/seletor, sem introduzir outra política temporal. Fonte que não demonstra seleção não vira ano padrão silencioso; interface antiga sem seletor preservada. Docstring atualizada. Nenhum número, fixture ou teste alterado.
 - **Testes:**44PASS da série+regressão66;3525PASS/1skip/8xfail, warning antigo; Ruff CI/data/methods/diff verdes. Ruff completo162→161achados, mesma dívida anterior. Chore de limpeza/lint, não novo bug econômico nem teste sem spec.
 - **Resíduos/decisões:** date.today original da série permanece destinado à Fase3. Revisão somente leitura antes do commit.
+
+### FC2C-69 — chore: remove unused aggregate score constants
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso.
+- **O que foi feito:** removidas12constantes sem nenhuma leitura, confirmadas por Vulture e busca por palavra inteira em todos os .py rastreados, incluindo testes/scripts, e dentro do próprio config. Lista integral e exceções em docs/limpeza/inventario.md. Retirados dois cabeçalhos vazios e identificados cenários históricos nos comentários, sem reformatar o arquivo.
+- **Exceções demonstradas:** ROE_PENALIDADE_MAX ainda lida pela grade protegida; REC_UPSIDE_COMPRA pela asserção de compatibilidade existente. Não eliminadas leituras/testes para tornar a constante artificialmente “sem leitor”. Quatro LYNCH só de scripts históricos; GRAHAM e DY_PERCENTUAL_THRESHOLD também pela grade. Todas documentadas, sem efeito de score/valor atual. TTLs com leitor interno preservados.
+- **Testes/inventário:**3525PASS/1skip/8xfail, warning antigo; Vulture global60%30→18achados (12removidos), Ruff completo161→161; CI/data/methods/diff verdes. Nenhuma fórmula, _normalizar_dy, teste ou golden alterado. Limpeza autorizada, não tarefa de teste.
+- **Resíduos/decisões:** apenas exceções com leitores, explícitas no inventário; nenhuma dependência/arquivo novo. Revisão somente leitura antes do commit.
