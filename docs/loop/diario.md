@@ -121,3 +121,11 @@ O histórico anterior permanece em `historico/fase-2c/diario.md`. Esta fila comp
 - **O que foi feito:** _fator_do_par ignora somente quando ambas espécies conhecidas estão fora dos componentes. Espécie desconhecida mantém recusa, evento envolvendo componente mantém exigência de reconciliação; não inventa fator nem dispensa evento oficial do componente.
 - **Testes:**104PASS nos fatores+regressão; suíte3519→3523PASS/1skip/8xfail, warning antigo. Fator oficial2 e quatro bases acumuladas conferidos por aritmética; controles PN→ON e ON→PN abstêm. Ruff CI/data/methods/diff verdes; nenhum golden alterado.
 - **Resíduos/decisões:** nenhum novo; revisão somente leitura antes do commit.
+
+### FC2C-68 — fix: use neutral MACD crossover descriptions
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso.
+- **D27 antes:** BUG-2C-68 estrito→2xfail; --runxfail confirmou rótulos de ordem de negociação em vez de “Cruzamento de alta/baixa” (/tmp/2c68-red.txt), antes da produção. A primeira execução do teste novo encontrou a precisão de saída em2casas; ajustado o esperado à representação publicada ANTES de qualquer alteração de produção, e repetido o vermelho pelo motivo correto.
+- **O que foi feito:** apenas os dois textos de cruzamento mudaram no produtor técnico. Fórmulas, limiares e todos os valores numéricos intactos. App já transporta tech_data para dados.tech e o exibe diretamente na tabela técnica (linhas283/289/416), sem remapear macd_rec; não precisou de mudança paralela.
+- **Testes:** impulso positivo/negativo após249preços constantes, EMAα12−α26 e histograma(1−α9) conferidos aritmeticamente, rótulos neutros;3523→3525PASS/1skip/8xfail, warning antigo; Ruff CI/data/methods/diff verdes. Nenhum golden alterado.
+- **Resíduos/decisões:** nenhum novo; revisão somente leitura antes do commit.

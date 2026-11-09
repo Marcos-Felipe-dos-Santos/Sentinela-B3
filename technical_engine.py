@@ -37,9 +37,9 @@ class TechnicalEngine:
         macd_rec = "Neutro"
         if len(macd_hist) >= 2:
             if macd_hist.iloc[-1] > 0 and macd_hist.iloc[-2] <= 0:
-                macd_rec = "Compra (Cruzamento Alta)"
+                macd_rec = "Cruzamento de alta"
             elif macd_hist.iloc[-1] < 0 and macd_hist.iloc[-2] >= 0:
-                macd_rec = "Venda (Cruzamento Baixa)"
+                macd_rec = "Cruzamento de baixa"
             elif macd_hist.iloc[-1] > 0:
                 macd_rec = "Alta"
             elif macd_hist.iloc[-1] < 0:
