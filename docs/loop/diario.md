@@ -31,3 +31,15 @@ Processo F3-0, bloco 1, antes da ativação da 3-a. O diário do fechamento da 2
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** a frase do formato de `[DECISÃO]` no protocolo; a partir deste commit vale o protocolo novo. Pendências do F3-0a ainda sem destino: `independentes` ignora caminho com `:linha` e glob; `test_branch_fora_de_repositorio_nao_quebra` não limpa `GIT_*`.
+
+### F3-0c — docs: let independent items continue after a blocked item
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso.
+- **O que foi feito:** seção nova "Item bloqueado" no protocolo: `[!]` pelos casos (a), (b), (e) ou (f) registra a pendência e segue só com `python scripts/fila.py independentes <ID>`, na ordem da fila, no máximo três adiante; resumo, limpeza e arquivamento nunca rodam com `[!]` aberto; (c), (d), parada por pergunta do pacote da fase, terceira reprovação e terceira falha da verificação param como antes. Ajustados só os trechos em contradição: regra dura dos intocáveis (era "marque `[!]` e pare"), regra das perguntas (era "registro no diário e parada"), condição de parada da `executar-fila` (§3) e a etapa 4 do ciclo.
+- **Conferência contra o `scripts/fila.py`:** `independentes` lista os itens abertos antes do primeiro `[DECISÃO]` aberto, na ordem da fila, excluindo quem cita o ID ou compartilha caminho fora de `tests/` e `docs/`.
+- **Dificuldades:** o `/goal` do ciclo §6 termina quando "algum item está `[!]`", o que contradiz a regra P2; o item só autoriza a etapa 4 do ciclo.
+- **Como resolvi:** não editei o §6; registrei a pendência em `docs/loop/pendencias.md`.
+- **Testes:** 3563 passed, 1 skipped, 8 xfailed → igual (item documental). Golden SHA igual.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** o texto do `/goal` (pendência acima).
+- **Para o Marcos revisar:** a terceira falha da verificação (passo 4) continua parando o loop; o pacote não a lista entre os casos que seguem.

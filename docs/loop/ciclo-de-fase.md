@@ -49,7 +49,8 @@ ai-memory run claude
 ```
 No Claude Code: `/retomar` e depois o `/goal` (seção 6).
 - **A cota do Claude acabou:** `ai-memory run codex`, `$retomar`, `$executar-fila`. Ao sair do Codex, `ai-memory finalize-session`. Nunca dois executores ao mesmo tempo (workflow, seção 5).
-- **Parou em `[!]` ou com três reprovações:** mande o trecho do diário ao Claude no chat. A sua decisão vira texto na fila, por commit seu, e o loop retoma.
+- **`[!]` pelos casos (a), (b), (e) ou (f):** o loop não para; registra a pendência em `docs/loop/pendencias.md` e segue com até três itens independentes (protocolo, "Item bloqueado"). Na revisão diária das pendências, mande o trecho do diário ao Claude no chat; a sua decisão vira texto na fila, por commit seu.
+- **Parou em `[!]` pelos casos (c) ou (d), por pergunta do pacote da fase ou com três reprovações:** mande o trecho do diário ao Claude no chat. A sua decisão vira texto na fila, por commit seu, e o loop retoma.
 - **"Para o Marcos revisar" no diário:** leia no fim de cada sessão. Bug confirmado vira teste no mesmo dia (seção 4).
 - Até o checkpoint da 2B, anote cada troca de executor em `outputs/piloto-multiagente.md` (workflow, seção 8).
 

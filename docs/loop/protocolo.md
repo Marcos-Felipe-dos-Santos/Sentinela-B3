@@ -49,18 +49,26 @@ Cada item começa com `python scripts/fila.py proximo`, que imprime só a linha 
 
 - Nunca `git push`, abrir PR, `git reset --hard`, `git clean`, `git commit --amend`, `git add -A` ou `git add .`.
 - Refactor e mudança de comportamento nunca no mesmo commit.
-- Não tocar nos arquivos intocáveis do cabeçalho da fila. Se um item parecer exigir isso, marque `[!]` e pare.
+- Não tocar nos arquivos intocáveis do cabeçalho da fila. Se um item parecer exigir isso, marque `[!]` (caso (b)) e siga a seção "Item bloqueado".
 - Não remover, pular (`skip`) nem enfraquecer testes para a suíte passar.
 - Remoção só do que o git devolve: arquivo rastreado, com `git rm`. Arquivo não rastreado e branch nunca são apagados pelo loop — vão para a lista do Marcos no diário. Item *investigar* do inventário nunca sai sem decisão.
 - Mutação sempre com a configuração do `[tool.mutmut]`, que desliga o `xfail_strict` só nessas rodadas. `mutants/` nunca entra em commit.
 - Métodos de valuation não ganham rede, banco nem leitura de relógio.
 - O repositório é público: dados da carteira do Marcos (posições, pesos, lista de ativos) nunca entram em arquivo versionado — nem no diário. O que usar a carteira vai para `outputs/`.
-- Não fazer perguntas durante o loop. Onde a especificação dizia "me diga", "me mostre" ou "pare e me mostre o diff", escreva no diário e siga. Dúvida que muda o resultado vira `[!]`, registro no diário e parada.
+- Não fazer perguntas durante o loop. Onde a especificação dizia "me diga", "me mostre" ou "pare e me mostre o diff", escreva no diário e siga. Dúvida que muda o resultado vira `[!]` e registro no diário; se o loop para ou segue, diz a seção "Item bloqueado".
 - Toda decisão provisória e todo `[!]` ganham também uma linha em `docs/loop/pendencias.md`: `python scripts/fila.py pendencia <ID> "<texto>"`. O Marcos revisa esse arquivo uma vez por dia.
 - Leitura por trecho: não abrir inteiros `docs/loop/fila.md`, `docs/loop/diario.md`, `docs/loop/fila-fase*-proposta.md`, `docs/PLANO.md`, `docs/decisoes/predicados-golden-2c.md`, `docs/loop/historico/**` nem `tests/fixtures/golden_motores.jsonl`. Consulta por `grep -n` e faixa de linhas; estado e próximo item pelo `scripts/fila.py`. Exceção: o item que manda editar a estrutura de um desses arquivos.
 - Comando ou script de dados imprime no máximo 30 linhas no contexto; o restante vai para `outputs/`.
 - O retorno do `junior-dev` ao orquestrador tem no máximo 15 linhas: arquivos, testes antes → depois, pendências.
 - Ideia nova não entra em fila ativa: vai para `docs/loop/ideias.md` e só é avaliada num checkpoint.
+
+## Item bloqueado
+
+Os casos são os do plano final da 2B (`docs/decisoes/plano-final-2b.md` §1.4).
+
+- Item marcado `[!]` pelos casos (a) regra econômica não prevista, (b) arquivo fora das permissões, (e) fonte oficial indisponível ou (f) bug que exige decisão de destino: registre a pendência (`python scripts/fila.py pendencia <ID> "<motivo>"`) e o motivo no diário, e siga só com os itens de `python scripts/fila.py independentes <ID>`, na ordem da fila, no máximo três adiante. Esgotados esses três, ou a lista, pare.
+- Item de resumo, de limpeza ou de arquivamento nunca roda com `[!]` aberto: chegando a ele, pare.
+- Param o loop como antes: `[!]` pelo caso (c) teste que só passaria enfraquecido ou (d) golden fora do predicado; parada por pergunta prevista no pacote da fase; terceira reprovação na revisão (passo 9); terceira falha da verificação (passo 4).
 
 ## Bugs e regressão
 
