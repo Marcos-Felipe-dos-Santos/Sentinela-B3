@@ -635,6 +635,17 @@ class ValuationEngine:
                 motivos.get("divida_liq_ebitda") if isinstance(motivos, dict) else None
             )
             causa = causa.strip() if isinstance(causa, str) and causa.strip() else None
+            if causa is None:
+                coletada = dados.get("alavancagem_cvm")
+                motivos_coletados = (
+                    coletada.get("motivos") if isinstance(coletada, dict) else None
+                )
+                causa_coletada = (
+                    motivos_coletados.get("divida_liq_ebitda")
+                    if isinstance(motivos_coletados, dict) else None
+                )
+                if isinstance(causa_coletada, str) and causa_coletada.strip():
+                    causa = causa_coletada.strip()
             aviso_alavancagem = f"alavancagem não avaliada: dívida líquida/EBITDA {causa or ('ausente' if divida is None else 'em texto' if isinstance(divida, str) else 'não numérica ou não finita')}"
         elif divida > MACRO.DIVIDA_EBITDA_LIMITE:
             riscos.append("Dívida elevada")

@@ -299,3 +299,4 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 |---|---|---|---|---|---|---|
 | BUG-2C-61 | Produtor TTM não declara comparabilidade demonstrada pelos documentos | decisão Marcos09/11 opção a | auditorias Gemini/Claude | `test_bug_2c_61_ttm_produtor.py` | FC2C-61 | corrigido |
 | BUG-2C-62 | Produtor anual não emite comparabilidade e impede média ROE da qualidade | decisão Marcos09/11 opção a | auditorias Gemini/Claude | `test_bug_2c_62_qualidade_produtor.py` | FC2C-62 | corrigido |
+| BUG-2C-63 | Aviso perde motivo CVM transportado em alavancagem_cvm.motivos | contrato F2C-40 e decisão09/11 | auditorias Gemini/Claude | `test_bug_2c_63_alavancagem_cascata.py` | FC2C-63 | corrigido |

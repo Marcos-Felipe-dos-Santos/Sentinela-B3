@@ -28,3 +28,12 @@ O histórico anterior permanece em `historico/fase-2c/diario.md`. Esta fila comp
 - **Universo inicial novamente medido:** 51 ações/units públicas do snapshot inicial `f2c1-universo21.pkl`, SHA256 `2f9c5cc99d103af5b54ffc9b6003eb8f7939bed8807d7e20dee98ffec506c050`, as_of2026-10-28T23:34:41.882351+00:00. Produtor/Market/motor relidos ANTES e DEPOIS, mesmos ZIPs2021–2025 com hashes idênticos aos registrados em f2c2-universo-pl.json; sem rede, sem nova coleta/preço. Comparáveis0→45; médiasROE0→44; anos B3 com cobertura0→0. Comparabilidade não é completude de todos os indicadores nem qualidade econômica. Logs/JSON comparativos em /tmp/2c62-{antes,depois}.txt e /tmp/2c62-universo-{antes,depois}.json, script /tmp/2c62-universo.py. Não extrapolar para toda B3 nem alegar replay PIT.
 - **Testes:** 3511→3513 passed, 1 skipped/8 xfailed, warning antigo; Ruff CI e data/methods verdes; diffcheck verde. Golden não regenerado; só quadro/prova informativa, nenhum valor individual de método recalibrado.
 - **Resíduos/decisões:** nenhuma prova manual, nenhum resíduo versionado; reorganizações e calendário anual continuam Fase3. Revisão somente leitura do stage antes do commit.
+
+### FC2C-63 — fix: preserve collected leverage abstention reasons
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso.
+- **D27 antes:** BUG-2C-63 estrito, 1xfail; --runxfail mostrou causa contábil longa versus aviso genérico “ausente” (/tmp/2c63-red.txt), antes de editar motor.
+- **O que foi feito:** motor lê também alavancagem_cvm.motivos, preservando a entrada legada válida e o aviso genérico para motivo inválido/ausente. Sem cálculo, risco ou valor de lente alterado.
+- **Integração:** ZIPs → CVMProvider real → _buscar_cvm real → ValuationEngine real, sem montar alavancagem_cvm no teste; motivo produzido reaparece no aviso. Regressões legadas de motivo/inteiro numérico continuam PASS.
+- **Testes:** 3513→3514 passed, 1 skipped/8 xfailed, warning antigo; Ruff CI/data/methods e diffcheck verdes. Sem regeneração golden ou resíduo.
+- **Decisões pendentes:** nenhuma neste item; omissão em banco é FC2C-64 separado. Revisão somente leitura antes do commit.
