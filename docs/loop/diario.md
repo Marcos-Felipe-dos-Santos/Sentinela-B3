@@ -95,3 +95,12 @@ O histórico anterior permanece em `historico/fase-2c/diario.md`. Esta fila comp
   - `banco-roe0.3-payout1.0-vpa18.5463`
   - `banco-roe0.3-payout1.0-vpa37.0926`
 - **Gate após liberação:**3515 passed / 1 skipped / 8 xfailed, warning antigo; Ruff CI/data/methods e diffcheck verdes. Diff da fixture inspecionado:40linhas removidas/40adicionadas, somente a chave autorizada; demais2251linhas byte a byte. Bloqueio resolvido, item concluído após revisão; sem push.
+
+### FC2C-65 — fix: enrich the reference CLI with official fund identities
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso.
+- **D27 antes:** BUG-2C-65 estrito→xfail; --runxfail falhou BTCI11 UNKNOWN != FII na entrada real do módulo (/tmp/2c65-red.txt), antes de editar produção.
+- **O que foi feito:** CLI e cascata compartilham montagem a partir das mesmas Fontes, com identidades_fii e corte/falha já existentes. Não duplica coleta, não adivinha classe pelo sufixo.
+- **Integração:** runpy na entrada equivalente a python -m sentinela.data.referencia → montagem real → índice salvo/lido: BTCI11/TRPL11 FII. Fontes tabulares sintéticas, identidades B3 arquivadas reais, sem chave de classe montada no teste. Ausência de arquivo e identidade futura mantêm UNKNOWN. Retirada da entrada de módulo já importada apenas no teste simula processo novo e evita warning do runpy.
+- **Testes:** 3515→3518 passed,1skip/8xfail; gates CI/data/methods/diff verdes. Três warnings de runpy observados na primeira suíte foram eliminados pela simulação de módulo frio; controles focados3PASS sem warning. Gate final da safe-commit registra o total final. Nenhum golden alterado neste item.
+- **Resíduos/decisões:** nenhum novo; revisão somente leitura antes do commit.

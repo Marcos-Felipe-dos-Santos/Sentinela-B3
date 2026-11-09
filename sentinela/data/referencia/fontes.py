@@ -238,7 +238,11 @@ def carregar_fontes(agora: datetime, pasta_dados: Path) -> Fontes:
 
 def construir_indice(agora: datetime, pasta_dados: Path) -> Indice:
     """Baixa as fontes e monta o índice (não grava)."""
-    f = carregar_fontes(agora, pasta_dados)
+    return montar_das_fontes(carregar_fontes(agora, pasta_dados))
+
+
+def montar_das_fontes(f: Fontes) -> Indice:
+    """Monta o índice com enriquecimento e corte idênticos na CLI e na cascata."""
     try:
         identidades = [i for i in ler_identidades_fii() if i.get("data", "") <= f.data]
     except (OSError, ValueError):
