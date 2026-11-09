@@ -98,3 +98,13 @@ Pelo inventário, com `git rm`:
 - o `limpar_banco.py`;
 - o `auditar_recomendacoes.py`;
 - os CSVs fabricados do backtest.
+
+---
+
+## Adendo de 09/11/2026 — reapresentações (decisão do Marcos após a auditoria DOCUMENTO)
+
+Acrescentado depois da auditoria DOCUMENTO do Codex sobre `docs/loop/fila-fase3-proposta.md` (veredito "não pode seguir"). O texto acima, até a seção 8, fica como foi aprovado; este adendo **prevalece sobre o §2.3** onde os dois divergirem.
+
+- O histórico **estrito** (ADR-0003, D17) usa só versões comprovadamente disponíveis na data (`DT_RECEB ≤ as_of`, com prova por arquivo ou documento). Sem essa prova, abstém. É o histórico que alimenta o **backtest principal**.
+- A exceção do §2.3 (usar a última versão entregue, com o aviso "possível reapresentação posterior não observável" na proveniência) vale **só no modo exploratório**, separado e rotulado.
+- Os dois modos nunca se misturam: nem na mesma série, nem no mesmo resultado, nem no mesmo quintil do backtest.
