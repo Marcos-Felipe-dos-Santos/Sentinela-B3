@@ -1024,6 +1024,9 @@ class MarketEngine:
             modelo = contas_cvm.modelo_do_setor(dados.get('setor'))
             extra = {} if modelo == 'empresa' else {'modelo': modelo}
             self._serie_cvm(ticker, dados, cvm, cd_cvm, modelo)
+            selecionar_exercicio = getattr(cvm, "exercicio_anual_mais_recente", None)
+            if callable(selecionar_exercicio):
+                extra["ano_final"] = selecionar_exercicio(cd_cvm, date.today())
             historico = cvm.calcular_indicadores(cd_cvm, anos=1, **extra)
             if not historico:
                 dados['cvm_disponivel'] = False

@@ -302,3 +302,4 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2C-63 | Aviso perde motivo CVM transportado em alavancagem_cvm.motivos | contrato F2C-40 e decisão09/11 | auditorias Gemini/Claude | `test_bug_2c_63_alavancagem_cascata.py` | FC2C-63 | corrigido |
 | BUG-2C-64 | Banco com lente aplicada recebe aviso de medida inaplicável | decisão Marcos09/11 F2C-45(iii) | auditorias Gemini/Claude | `test_bug_2c_64_banco_aviso.py` | FC2C-64 | corrigido; predicado golden autorizado em09/11/2026 |
 | BUG-2C-65 | CLI do índice perde identidades FII já ligadas à cascata | identidade oficial B3 arquivada e decisão09/11 | auditorias Gemini/Claude | `test_bug_2c_65_cli_identidades_fii.py` | FC2C-65 | corrigido |
+| BUG-2C-66 | Coleta corrente perde seleção do exercício anual não civil | datas publicadas CVM e decisão09/11 | auditorias Gemini/Claude | `test_bug_2c_66_exercicio_nao_civil_cascata.py` | FC2C-66 | corrigido |

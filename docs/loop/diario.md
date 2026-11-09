@@ -104,3 +104,12 @@ O histórico anterior permanece em `historico/fase-2c/diario.md`. Esta fila comp
 - **Integração:** runpy na entrada equivalente a python -m sentinela.data.referencia → montagem real → índice salvo/lido: BTCI11/TRPL11 FII. Fontes tabulares sintéticas, identidades B3 arquivadas reais, sem chave de classe montada no teste. Ausência de arquivo e identidade futura mantêm UNKNOWN. Retirada da entrada de módulo já importada apenas no teste simula processo novo e evita warning do runpy.
 - **Testes:** 3515→3518 passed,1skip/8xfail; gates CI/data/methods/diff verdes. Três warnings de runpy observados na primeira suíte foram eliminados pela simulação de módulo frio; controles focados3PASS sem warning. Gate final da safe-commit registra o total final. Nenhum golden alterado neste item.
 - **Resíduos/decisões:** nenhum novo; revisão somente leitura antes do commit.
+
+### FC2C-66 — fix: select the latest completed fiscal year in CVM collection
+- **Executor:** codex (GPT-6).
+- **Status:** sucesso.
+- **D27 antes:** BUG-2C-66 estrito→xfail; --runxfail confirmou lucro15 do exercício2025 no lugar do77 do exercício encerrado emfevereiro2026 (/tmp/2c66-red.txt), antes de editar MarketEngine.
+- **O que foi feito:** _buscar_cvm passa ano_final do seletor documental já existente a calcular_indicadores. Provedor sem seletor conserva assinatura anterior; nada muda no default do provedor ou em método de cálculo. Consulta de seleção reutiliza o cache de leitura; não cria fonte/contingência financeira.
+- **Integração:** ZIP CVM não civil março2025–fevereiro2026, seletor/calcular_indicadores/_buscar_cvm reais e saída atéValuationEngine; lucro77 e referência2026-02-28 preservados. Sem ano_final montado na entrada. Série com lacunas continua parcial, não se inventa continuidade na transição do exemplo.
+- **Testes:**3518→3519PASS/1skip/8xfail, warning antigo; Ruff CI/data/methods e diffcheck verdes. Nenhum golden alterado.
+- **Decisões/resíduos:** relógio real em _serie_cvm e no chamador de seleção fica com destino Fase3/FC2C-71; não alterar política temporal neste fix. Revisão somente leitura antes do commit.
