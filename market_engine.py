@@ -10,7 +10,7 @@ import yfinance as yf
 from yfinance.exceptions import YFException
 
 from brapi_provider import BrapiProvider
-from config import FII_MANUAL_FALLBACK, _normalizar_dy, get_taxa_real
+from config import _normalizar_dy, get_taxa_real
 from cvm_fii_provider import CVMFIIProvider
 from cvm_provider import CVMProvider
 from database import DatabaseManager
@@ -498,7 +498,7 @@ class MarketEngine:
         if list_missing_required_fields(dados, classifier):
             self._aplicar_cache_fundamentos(ticker, dados)
 
-        # F2A-23: a estimativa manual de FII (`FII_MANUAL_FALLBACK`) deixou de ser aplicada.
+        # F2A-23: estimativas manuais de FII não são aplicadas.
 
         # F2A-22: o Fundamentus saiu da cascata; a falta de campo obrigatório depois de
         # todas as fontes (inclusive cache e fallback manual) vira `fundamentos_incompletos`.
@@ -1464,32 +1464,6 @@ class MarketEngine:
             'campos fundamentais preenchidos via cache'
         )
         logger.info(f"[{ticker}] Usando cache de fundamentos ({len(preenchidos)} campos)")
-        return True
-
-    def _aplicar_fallback_manual_fii(self, ticker: str, dados: dict[str, Any]) -> bool:
-        ticker_norm = ticker.upper().replace(".SA", "").strip()
-        if not self._is_fii_ticker(ticker_norm, dados):
-            return False
-
-        fallback = FII_MANUAL_FALLBACK.get(ticker_norm)
-        if not fallback:
-            return False
-
-        preenchidos = merge_if_valid(
-            dados,
-            fallback,
-            allowed_keys={'dy', 'pvp', 'vacancia'},
-        )
-        self._record_field_sources(dados, preenchidos, 'manual_fallback')
-        if not preenchidos:
-            return False
-
-        dados['dados_manual'] = True
-        _registrar_fonte_fundamentos(dados, 'manual_fii')
-        dados.setdefault('riscos_dados', []).append(
-            'fundamentos FII preenchidos manualmente'
-        )
-        logger.info(f"[{ticker_norm}] Fallback manual FII preencheu {len(preenchidos)} campos")
         return True
 
     def _salvar_cache_se_valido(self, ticker: str, dados: dict[str, Any]) -> None:

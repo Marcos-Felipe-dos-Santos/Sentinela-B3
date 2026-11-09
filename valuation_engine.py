@@ -544,7 +544,7 @@ class ValuationEngine:
         if modelo == ModeloDemonstracao.BANCO.value and not isinstance(
             bancos, MethodResult
         ):
-            # Decisão provisória do F2B-32: sem a lente, o banco não tem método; abstenção
+            # Decisão do F2B-32 ratificada em 25/10/2026: sem a lente, o banco não tem método; abstenção
             # sem número, em vez do preço como valor da regra V1 de "nenhum método".
             dados.setdefault("bancos_diagnostico", bancos.motivo)
             return {

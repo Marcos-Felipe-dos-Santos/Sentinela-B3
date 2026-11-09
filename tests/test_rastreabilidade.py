@@ -123,7 +123,7 @@ def test_relatorio_mostra_cada_metodo_com_versao():
     assert "<h2>Selic usada</h2>" not in html
     assert "<tr><td>taxa_aplicada</td><td>6,00%</td></tr>" in html
     assert "Proventos do Bazin (relação B3, F2B-31)" in html
-    assert "critério fixo de 6% (ficha Bazin 1.0)" in html
+    assert "critério fixo de 6% (ficha Bazin 1.2)" in html
     assert "Mediana" not in html and "Score" not in html
     assert "Distância ao preço" in html
 

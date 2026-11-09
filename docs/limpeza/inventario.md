@@ -345,3 +345,17 @@ Antes → depois:
 | `deptry .` | 1 achado (`pytest` no `requirements.txt`) | o mesmo |
 
 Ocorrências que ficam dos nomes removidos: `docs/`; `README.md` (ticket C-A do Jules); `scripts/dossie_fase2.py` (tag da Fase 0) e `scripts/levantamento_fase2b.py` (commit `4881b83`), históricos; a lista de arquivos travados da seção "Fase atual" do `AGENTS.md` (cita `tests/test_invalidar_cache_cvm.py`), que é do Marcos. Resíduos para outras fases: `cdi`, `ipca_12m` e contingências (F3-1); `GORDON_DY_MIN`, `GORDON_ROE_MIN`, `GORDON_G_MAX` e `GORDON_PAYOUT_MAX`, sem leitor em produção desde o F2B-1 e fora da lista do item (o harness do golden lê os dois primeiros para as ids), para a limpeza da 2C; `get_selic_atual` e `SELIC_FALLBACK` (FII, Markowitz, E-6).
+
+## F2C-10 — limpeza em 09/11/2026
+
+Inventário antes → depois com os comandos da seção inicial: vulture≥80% **3→3** (argumentos de dublês em testes); deptry **83→83** (inclui falsos imports locais apoio_*; não representa 83 dependências novas); Ruff completo **161→161**. Logs /tmp/2c10-{vulture,deptry,ruff}-{before,after}.txt. Gates RuffCI e completos data/methods verdes. Nenhuma dependência instalada/removida.
+
+Removidos somente tabela/helper/import do fallback FII sem chamada, o teste direto desse helper, quatro constantes GORDON sem leitor de produção, dois parâmetros monkeypatch sem uso e redundância maior/da_maior da composição já filtrada por versão. Bancos.requires não repete classe/modelo validados pelo contrato. F2B-5 já removeu os resíduos de desconto Selic; F2C-9 já retirou o otimizador.
+
+**Mantidos:** dados_manual/manual_fii/manual_fallback em leitores e testes de compatibilidade histórica/proveniência (market/data_quality/models/app/CLI/relatório/repositório); não são novo produtor manual. DY_PERCENTUAL_THRESHOLD é usado pela grade, logo não elegível para remoção. Sem consolidação extra de QUEBRA ESPERADA nas seçõesA/C. Patches VACANCIA já ausentes.
+
+Harness: GORDON_DY_MIN0,04/ROE_MIN0,10 substituídos por literais históricos, IDs/grade intactos; chave selic retirada só de2003casos de ação,288FII intactos. Comparação exata contra a7d4fc6 confirmou nenhuma mudança de entrada/saída/ID/ordem além dessa chave sem leitor. Não regenerado golden.
+
+Bazin: citações vigentes em método/provider/relatório passam de ficha1.0 para1.2; testes textuais atualizados só nessa referência. Changelog1.0 e documentos históricos preservados. Aviso fixo de extraordinária já aplicado mesmo comD=0 em valuation_engine, fora de risco/classificação; nenhum comportamento novo. Comentário bancário cita ratificação25/10.
+
+FNET: arquivos rastreados deBTCI11/TRPL11 agora conservam só linhasHTML literais de nome/CNPJ e ticker/ISIN, sem scripts/contatos de outras linhas. sha256 verifica recorte; sha256_original em cada documento/CSV conserva o hash da página íntegra, com URL/coleta. Metadata dos membros recalculada; leitores existentes verificam o recorte e vínculo cadastral pelo mesmo contrato. Nenhum arquivo apagado.

@@ -201,6 +201,7 @@ def avaliar(
     não positivas abstêm (a fração vale, ficha FII 1.2); só tijolo pela composição do mês final; desdobramento ou grupamento
     da B3 na janela (do primeiro VP ao as_of), ou a B3 sem resposta válida, abstêm. A
     conferência com o rendimento da B3 só gera aviso. Emissões ficam em contexto.
+    Conflitos da mesma versão abstêm; coleta e taxa são conferidas em `entradas`.
     """
     elegiveis = [r for r in registros if _entregue(r, dia_as_of)]
     meses, conflitos = _por_mes(elegiveis)
@@ -259,12 +260,10 @@ def avaliar(
     ]
     if not composicao:
         return Abstencao(MOTIVO_SEM_COMPOSICAO)
-    maior = max(map(_versao, composicao))
-    da_maior = [c for c in composicao if _versao(c) == maior]
-    if len({fii_elegibilidade.posicoes(c) for c in da_maior}) > 1:
+    if len({fii_elegibilidade.posicoes(c) for c in composicao}) > 1:
         # F2B-57 (BUG-2B-37, reaberto): composições da mesma versão em conflito abstêm.
         return Abstencao(f"{MOTIVO_CONFLITO}: {_rotulo(final)} (composição)")
-    tipo = fii_elegibilidade.tipo_pela_composicao(da_maior[0])
+    tipo = fii_elegibilidade.tipo_pela_composicao(composicao[0])
     if isinstance(tipo, fii_elegibilidade.Abstencao):
         return Abstencao(tipo.motivo)
     if tipo != "tijolo":
@@ -365,6 +364,7 @@ def entradas(dados: Mapping, instante: datetime) -> dict | Abstencao:
     """`avaliar` sobre o que a cascata gravou (`informe_fii`, `b3_fundo`, preço), no as_of.
 
     O dia do as_of é o de Brasília; as_of sem fuso abstém.
+    Confere conflitos, instante de coleta e validade da taxa; usa `ntnb_real` explícita.
     """
     if instante.tzinfo is None or instante.utcoffset() is None:
         return Abstencao("as_of exige fuso horário")

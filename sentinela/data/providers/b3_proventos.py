@@ -1,4 +1,4 @@
-"""Relação de proventos em dinheiro da B3, empresas listadas (F2B-31; ficha Bazin 1.0, §2).
+"""Relação de proventos em dinheiro da B3, empresas listadas (F2B-31; ficha Bazin 1.2, §2).
 
 Serviço CompanyCall de `sistemaswebb3-listados.b3.com.br`, conferido em 20/10/2026 (contrato
 D18 em `tests/fixtures/contratos/b3_proventos_lren_2026.json`). Os parâmetros vão em JSON,

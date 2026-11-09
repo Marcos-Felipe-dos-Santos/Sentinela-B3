@@ -819,3 +819,21 @@
 - **Testes:**3504passed/1skipped/8xfailed/1warning antigo,12,92s; RuffCI e data/methods verdes. Nenhum teste novo ou cálculo alterado; mutação não aplicável à fixação do relógio de teste.
 - **Resíduos:** nenhum novo.
 - **Decisões pendentes:** nenhuma para esta integração; auditoria externa no Checkpoint.
+
+### F2C-10 — inventário e predicado ANTES (09/11/2026)
+- **Executor:** codex. Baseline a7d4fc6,3504PASS/1skip/8xfail. Inventário: vulture3achados de argumentos de dublês; deptry83 (inclui imports locais de apoio); Ruff161dívidas. Logs /tmp/2c10-*-before.txt.
+- **Predicado harness/IDs antes:** todos os casos motor=acoes perdem somente a chave selic, sem mudar entrada/saida/id/ordem; casos FII ficam iguais. Harness deixa de transportar selic de ação; nomes históricos selic no ID permanecem. GORDON_DY_MIN0,04/ROE_MIN0,10 viram literais locais históricos do harness; grade idêntica. Nenhuma regeneração de saída numérica. VACANCIA já não tem patch. SeçõesA/C não serão tocadas.
+- **Busca:** método fallback só chamado por teste direto morto; remover esse teste e a tabela/método/import. Outros testes de ausência de fallback continuam. dados_manual/manual_fii/manual_fallback têm leitores de compatibilidade em app, CLI, modelos, relatórios, qualidade e proveniência: preservar explicitamente como históricos, sem produtor de estimativa. DY_PERCENTUAL_THRESHOLD tem leitores na grade, preservar. Otimizador já saiu noF2C-9 e constantes Selic/Bazin antigas noF2B-5.
+- **FNET antes:** recortar trechos literais de CNPJ/nome/ticker/ISIN em cada página (sem reconstruir os campos), mantendo URL/data/hash original separado do hash do recorte, atualizar metadados e CSV; leitor verifica bytes arquivados pelo hash do recorte.
+
+### F2C-10 — chore: clean up phase 2C residue
+- **Executor:** codex.
+- **Status:** sucesso.
+- **O que foi feito:** remoções e exceções históricas do inventário prévio executadas; docs/limpeza/inventario.md atualizado. Removido teste direto do helper morto, mantendo todos os testes da cascata que recusam estimativa manual. Bancos.requires não duplica validação de classe/modelo; composição FII elimina filtro redundante sobre versão já selecionada. Nenhuma fórmula/taxa/risco/classificação alterada.
+- **Golden:** comparação independente contraa7d4fc6 confirma apenas retirada de selic em2003casos de ação;288FII, IDs/ordem/entradas/saídas intactos. LimiaresGordon históricos locais no harness. Nenhuma alteraçãoA/C ou regeneração.
+- **FNET:** recortes literais conferidos contra o git anterior, identidade/fonte/data e hashes originais preservados por documento/CSV. BTCI11de6791→896bytes; TRPL11de11456→1012bytes. Metadata e arquivos duplicados de contrato atualizados coerentemente; leitor existente valida hash do recorte e vínculo.
+- **Dificuldades:** primeira suíte3501PASS/2FAIL somente por esperado textual da fichaBazin1.0; atualizadas essas duas referências para1.2, sem alterar números/assertivas. Final3503PASS/1skip/8xfail/1warning antigo,14,47s. Baseline3504PASS; um teste morto removido conforme ticket.
+- **Mutação:** run dos dois módulos integrais terminouexit0, export só apósfim; rendimento_fii509/549=92,71%, bancos339/388=87,37%; sempendente/timeout/semcobertura. Todos os alvos estavam sem resultado antes da execução e foram medidos. Log/tmp/2c10-mutmut.txt; contagens/tmp/2c10-mutacao-final.json; export/tmp/2c10-export.txt. Alterações de teste posteriores ao início limitaram-se às referências textuais da ficha e formatação da assinatura sem monkeypatch; árvore final passou suíte.
+- **Inventário/gates:** Vulture3→3, Deptry83→83, Ruff161→161; RuffCI/data/methods e diffcheck verdes. Formatação preservada nos arquivos antigos fora dos trechos; assinatura alterada da regressão27 formatada.
+- **Resíduos:** marcadores históricos mantidos com leitores documentados; DY_PERCENTUAL_THRESHOLD usado pela grade. Arquivos não rastreados/caches/mutants não apagados nem versionados.
+- **Decisões pendentes:** nenhuma para o10; não consolidada seçãoA além das autorizações29/10 já executadas. Auditoria externa noCheckpoint.

@@ -560,28 +560,6 @@ def test_manual_fallback_provenance_marks_manual_fields(monkeypatch):
         assert dados["field_provenance"][field]["value"] is None
 
 
-def test_market_engine_manual_fii_fallback_does_not_apply_to_known_unit(monkeypatch):
-    monkeypatch.setitem(
-        market_engine.FII_MANUAL_FALLBACK,
-        "SANB11",
-        {"dy": 0.11, "pvp": 0.88, "vacancia": 0.02},
-    )
-    engine = MarketEngine.__new__(MarketEngine)
-    dados = {
-        "ticker": "SANB11",
-        "quote_type": "MUTUALFUND",
-        "riscos_dados": [],
-    }
-
-    applied = engine._aplicar_fallback_manual_fii("SANB11", dados)
-
-    assert applied is False
-    assert dados.get("dados_manual") is not True
-    assert "dy" not in dados
-    assert "pvp" not in dados
-    assert "vacancia" not in dados
-
-
 def test_manual_fii_fallback_never_overwrites_fresh_provider_values(monkeypatch):
     engine = _engine(
         monkeypatch,

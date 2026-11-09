@@ -10,7 +10,7 @@ from valuation_engine import ValuationEngine
 
 
 @pytest.mark.parametrize("qual", ["DFP", "composicao"])
-def test_reprocessamento_nao_aceita_evidencia_posterior_ao_asof(qual, monkeypatch):
+def test_reprocessamento_nao_aceita_evidencia_posterior_ao_asof(qual):
     d = enriquecer_gordon(
         {
             "ticker": "TSTA3",
@@ -49,9 +49,7 @@ def test_reprocessamento_nao_aceita_evidencia_posterior_ao_asof(qual, monkeypatc
 @pytest.mark.parametrize(
     "instante_macro", ["2026-10-20T18:00:00+00:00", "2026-02-20T18:00:00"]
 )
-def test_reprocessamento_recusa_contexto_macro_posterior_ou_sem_fuso(
-    instante_macro, monkeypatch
-):
+def test_reprocessamento_recusa_contexto_macro_posterior_ou_sem_fuso(instante_macro):
     d = enriquecer_gordon(
         {
             "ticker": "TSTA3",

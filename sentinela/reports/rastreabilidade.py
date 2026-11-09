@@ -503,7 +503,7 @@ def _texto_proventos_bazin(dados: dict[str, Any]) -> str:
     return (
         f"R$ {_numero(serie['d_bruto_12m'], 6)} brutos por papel em 12 meses, datas ex "
         f"de {serie['inicio_exclusivo']} (exclusive) a {serie['referencia']}, "
-        f"{len(serie['eventos'])} eventos; critério fixo de 6% (ficha Bazin 1.0)"
+        f"{len(serie['eventos'])} eventos; critério fixo de 6% (ficha Bazin 1.2)"
     )
 
 
