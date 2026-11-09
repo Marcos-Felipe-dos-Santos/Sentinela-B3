@@ -1,5 +1,7 @@
 # Ações ON, classes preferenciais e units — F2C-38
 
+**Atualização Marcos09/11/2026:** F2C-38 mantido como está; atribuição entre classes e limitação D0 da lente Bancos migram para F3-P09 da [proposta da Fase3](../loop/fila-fase3-proposta.md), sem implementar nova regra neste fechamento.
+
 **Levantamento em27/10/2026. Decisão metodológica pendente do Marcos.**
 Nenhum código, método, parâmetro ou fixture financeira muda aqui. Não aprova lente para os casos abstidos.
 

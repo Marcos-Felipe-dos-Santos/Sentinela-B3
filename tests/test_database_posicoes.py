@@ -35,7 +35,7 @@ def test_aporte_adicional_media_ponderada(db):
     raises=AssertionError,
     reason=(
         "BUG-2B-51 · venda parcial recalcula o preço médio pelo preço de venda, contra a "
-        "regra do custo médio · corrige: F2C-48"
+        "regra do custo médio · corrige: F3-P02 (origem F2C-48)"
     ),
 )
 def test_venda_parcial_preserva_preco_medio(db):

@@ -1,5 +1,7 @@
 # Escopo e avisos pendentes — F2C-45
 
+**Atualização do Marcos —09/11/2026:** mantidos o escopo/limitações do F2C-45(i)/(ii), inclusive seleção das contas e abstenção sem modelo demonstrado, com destinos F3-P10/F3-P11 na proposta não ativada da Fase3. A decisão de aviso bancário F2C-45(iii) é retirar aviso_alavancagem de banco com lente Bancos, corrigido no FC2C-64. Os marcadores antigos abaixo descrevem o levantamento de27/10, não novas decisões pendentes para encerrar a2C. [Proposta e aceites](../loop/fila-fase3-proposta.md).
+
 **Status: levantamento; quatro decisões pendentes para o Marcos.** Executor: Codex, 27/10/2026. Não aprova nova regra, não implementa exceção e não ativa item da 2C-b. Cada decisão futura exige especificação, item `fix:` próprio e regressão antes da correção.
 
 ## Base, denominador e limites

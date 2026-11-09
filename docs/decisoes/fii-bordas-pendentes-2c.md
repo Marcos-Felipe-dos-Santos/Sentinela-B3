@@ -1,5 +1,7 @@
 # Bordas do Informe e da taxa do FII — F2C-47
 
+**Atualização do Marcos —09/11/2026:** as oito regras deste levantamento foram ratificadas; o texto de27/10 abaixo preserva a cronologia, e seus marcadores de decisão pendente ficam superados por esta ratificação. Não houve mudança de produção neste registro. Matriz atual e limites em [proposta da Fase3](../loop/fila-fase3-proposta.md#f2c-47--oito-regras-ratificadas-em-09112026). BUG-2C-27 permanece aberto/xfail e migra a F3-P08, como exige a decisão de migrar os oito casos; sentinela ilegível não é convertida em versão numérica legítima pela ratificação.
+
 **Status: levantamento; seis decisões pendentes e duas confirmações provisórias para ratificação do Marcos.** Executor: Codex, 27/10/2026. Nenhuma produção, ficha aprovada, parâmetro ou comportamento é alterado. Confirmar ou reverter uma hipótese exige decisão explícita; a correção decorrente ganha item `fix:` próprio e regressão antes da implementação. A simples descrição do comportamento não o promove a especificação.
 
 ## Fontes conferidas e limites

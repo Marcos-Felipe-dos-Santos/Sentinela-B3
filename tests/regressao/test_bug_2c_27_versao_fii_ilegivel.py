@@ -10,7 +10,7 @@ from sentinela.data import rendimento_fii as rf
 from tests.test_fii_rendimento_elegivel import _avaliar, _composicao, _registros
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-2C-27: proposta F2C-55 na 2C-b")
+@pytest.mark.xfail(strict=True, reason="BUG-2C-27: corrige F3-P08 (origem F2C-55)")
 def test_todas_as_versoes_ilegiveis_nao_autorizam_rendimento():
     registros = _registros()
     composicoes = _composicao()

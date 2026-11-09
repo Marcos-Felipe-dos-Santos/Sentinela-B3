@@ -9,7 +9,7 @@ from market_engine import MarketEngine
 
 @pytest.mark.xfail(
     strict=True,
-    reason="BUG-2C-12 · falha do Informe sem riscos_dados · corrige: F2C-51 (2C-b)",
+    reason="BUG-2C-12 · falha do Informe sem riscos_dados · corrige: F3-P04 (origem F2C-51)",
 )
 def test_falha_do_informe_preserva_motivo_nos_riscos() -> None:
     def indisponivel(cnpj: str) -> dict:

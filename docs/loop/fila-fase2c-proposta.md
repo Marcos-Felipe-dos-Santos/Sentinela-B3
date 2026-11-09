@@ -1,5 +1,7 @@
 # Proposta da fila — Fase 2C (Qualidade e apresentação)
 
+**Migração autorizada em09/11/2026:** F2C-23/48/50–55 não ativados nesta fila foram transferidos com aceites para a [proposta complementar da Fase3](fila-fase3-proposta.md), F3-P01…P08. O conteúdo abaixo permanece como histórico da proposta original; não é uma segunda fila ativa. F2C-38/45 mantidos também têm destinos F3-P09/10/11.
+
 > **Referência revisada em 26/10/2026; execução somente pela fila ativa.** Levantamento F2B-34, 22/10/2026. Nenhum método, parâmetro, janela ou migração é aprovado por este texto. O Marcos ativa a fila depois das decisões e auditorias abaixo. A autoridade operacional é `docs/loop/fila.md` (2C-a após a ativação autorizada em 26/10/2026).
 
 Branch proposto: `v2/fase-2c`, criado da `main` que contiver o fechamento aprovado da 2B. Protocolo: `docs/loop/protocolo.md`. Diário futuro: `docs/loop/diario.md`. PLANO: §6, Fase 2C, e §15. ADR-0003: D19–D28 e D30–D32. Vocabulário: ADR-0002 D10; carteira: D15. Fontes e rastreabilidade do levantamento na última seção.

@@ -126,3 +126,13 @@ Registrar antes/depois no diário e quebra aprovada no cabeçalho do arquivo. Ne
 ## 13. Quinta substituição aprovada — Marcos,29/10/2026
 
 Autorizada também a adaptação de `test_c_fair_value_e_preco_estao_na_mesma_escala` conforme a proposta local: mesmas grades, preço e limites atuais0,1–20, aplicados a cada lente com valor. Lente abstida não entra na razão e deve conservar motivo. A grade precisa ter ao menos uma lente com valor, evitando aprovação vazia. Registrar cabeçalho e diário. Nenhuma outra asserçãoA/C muda; aparecendo uma sexta, parar. A autorização resolve o bloqueio restante doF2C-5, sem autorizar agregado oculto, mudança de fórmula ou push.
+
+## Fechamento — decisões expressas do Marcos em 09/11/2026
+
+Após auditoria FASE Gemini e conferência Claude, comparabilidade opção(a): exercícios/trimestres contíguos, mesmo CNPJ e modelo demonstrado no BPP, reserva D20 validada. Produtor grava perímetro/evidência com critério e documentos; aviso fixo “reorganização societária no período não é detectada”, detecção Fase3. Ficha qualidade1.0 e contrato de insumos recebem a decisão; sem criar pontuação, valor agregado ou promessa PIT.
+
+F2C-45(iii): banco com lente Bancos não recebe aviso_alavancagem. F2C-38 e F2C-45(i)/(ii) mantidos com destinos escritos F3-P09/10/11. Oito regras F2C-47 ratificadas, com rastreabilidade e limites na proposta da Fase3; BUG-2C-27 segue entre os oito casos xfail migrados, sem aprovação tácita de versão ilegível.
+
+Autorização adicional do mesmo dia: em tests/fixtures/golden_motores.jsonl, retirar exclusivamente aviso_alavancagem dos40IDs de modelo banco com lente Bancos enumerados no diário, mantendo outros2251casos byte a byte. Predicado, lista e SHA256 antes/depois em `docs/loop/diario.md`, FC2C-64. Nenhuma autorização geral para regenerar fixture/harness/comparador.
+
+Fila complementar de fechamento em docs/loop/fila.md; pendências F2C-23/48/50–55, oito xfails, relógio da série e demais limites ganham destinos na [proposta não ativada da Fase3](../loop/fila-fase3-proposta.md). Cada fix mantém sequência D27 estrita, um commit por bug; parada no Checkpoint, sem push.

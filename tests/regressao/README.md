@@ -90,7 +90,7 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2B-26 | espécie única inferida só do índice, contra Composição do Capital com ON e PN | market_engine.py (_por_acao_cvm) | ressalva Gemini, aceite F2B-1,20/10/2026 | test_bug_2b_26_especie_unica_composicao.py | F2B-1 | corrigido |
 | BUG-2B-27 | reprocessamento usa DFP/composição ou contexto macro com evidência posterior ao as_of | sentinela/data/gordon_cvm.py e valuation_engine.py | revisão1 do F2B-1,20/10/2026 | test_bug_2b_27_gordon_evidencia_futura.py | F2B-1 | corrigido |
 | BUG-2B-28 | valor extraordinário ilegível vira zero e deixa de impedir projeção | cvm_provider.py (gordon_do_documento) | conferência final do F2B-1,20/10/2026 | test_bug_2b_28_gordon_extraordinario_invalido.py | F2B-1 | corrigido |
-| BUG-2B-29 | relação de proventos da B3 pelo nome de pregão com barra ("AMBEV S/A", "KLABIN S/A") vem vazia; o Bazin se abstém pela conferência do emissor | sentinela/data/providers/b3_proventos.py (coletar) | auditoria do Claude (chat) do F2B-48/F2B-30, sobre o F2B-31, 20/10/2026 | test_bug_2b_29_b3_nome_de_pregao_com_barra.py | F2C-23 (proposta; ativação pendente) | aberto |
+| BUG-2B-29 | relação de proventos da B3 pelo nome de pregão com barra ("AMBEV S/A", "KLABIN S/A") vem vazia; o Bazin se abstém pela conferência do emissor | sentinela/data/providers/b3_proventos.py (coletar) | auditoria do Claude (chat) do F2B-48/F2B-30, sobre o F2B-31, 20/10/2026 | test_bug_2b_29_b3_nome_de_pregao_com_barra.py | F3-P01 (origem F2C-23) | aberto |
 | BUG-2B-30 | `MacroProvider.registro` devolve `None` sem o motivo quando a cesta abstém ou a fonte falha; o Gordon mostrava "inflação incompatível com a janela da DFP" | sentinela/data/providers/macro.py (registro) e sentinela/data/gordon_cvm.py (entradas) | auditoria do Claude (chat) do F2B-48/F2B-30, achado 1, 20/10/2026 | test_bug_2b_30_taxa_real_sem_motivo.py | F2B-51 | corrigido |
 | BUG-2B-31 | o `except` do provedor macro captura `KeyError` e `TypeError` e trata erro do código como falha da fonte | sentinela/data/providers/macro.py (registro) | mesma auditoria, ressalva 2 | test_bug_2b_31_macro_engole_erro_de_programacao.py | F2B-51 | corrigido |
 | BUG-2B-32 | `data_divulgacao` do calendário do IBGE lida como UTC, e não no horário de Brasília (latente: só a data é usada) | sentinela/data/providers/macro.py (inflacao) | mesma auditoria, ressalva 3 | test_bug_2b_32_ibge_divulgacao_em_utc.py | F2B-51 | corrigido |
@@ -149,10 +149,10 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 
 | ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
 |---|---|---|---|---|---|---|
-| BUG-2C-11 | Conferência da unit compara média recalculada com primeira classe em vez da soma ponderada | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_11_unit_conferencia_ponderada.py` | F2C-50 (2C-b, não ativado) | aberto, xfail estrito |
-| BUG-2C-12 | Falha do Informe não é propagada a riscos_dados | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_12_informe_risco_ausente.py` | F2C-51 (2C-b, não ativado) | aberto, xfail estrito |
-| BUG-2C-13 | Literal OData CodInst interpola apóstrofo sem escape | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_13_odata_literal_codinst.py` | F2C-52 (2C-b, não ativado) | aberto, xfail estrito |
-| BUG-2C-14 | Prompt não distingue classe inferida de classe oficial | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_14_prompt_classe_inferida.py` | F2C-53 (2C-b, não ativado) | aberto, xfail estrito |
+| BUG-2C-11 | Conferência da unit compara média recalculada com primeira classe em vez da soma ponderada | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_11_unit_conferencia_ponderada.py` | F3-P03 (origem F2C-50) | aberto, xfail estrito |
+| BUG-2C-12 | Falha do Informe não é propagada a riscos_dados | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_12_informe_risco_ausente.py` | F3-P04 (origem F2C-51) | aberto, xfail estrito |
+| BUG-2C-13 | Literal OData CodInst interpola apóstrofo sem escape | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_13_odata_literal_codinst.py` | F3-P05 (origem F2C-52) | aberto, xfail estrito |
+| BUG-2C-14 | Prompt não distingue classe inferida de classe oficial | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_14_prompt_classe_inferida.py` | F3-P06 (origem F2C-53) | aberto, xfail estrito |
 
 ### Correção F2C-36 (27/10/2026)
 
@@ -200,7 +200,7 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 
 | ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
 |---|---|---|---|---|---|---|
-| BUG-2C-27 | Complemento e composição com todas as versões ilegíveis casam por -inf e produzem rendimento | Dicionário CVM / ficha FII 1.3 §3/§3c | F2C-47,27/10/2026 | `test_bug_2c_27_versao_fii_ilegivel.py` | proposta F2C-55, 2C-b; não ativada | aberto |
+| BUG-2C-27 | Complemento e composição com todas as versões ilegíveis casam por -inf e produzem rendimento | Dicionário CVM / ficha FII 1.3 §3/§3c | F2C-47,27/10/2026 | `test_bug_2c_27_versao_fii_ilegivel.py` | F3-P08 (origem F2C-55) | aberto |
 
 ### Achado F2C-7 (27/10/2026)
 
@@ -283,7 +283,7 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 |---|---|---|---|---|---|---|
 | BUG-2C-58 | Leitores CLI fabricam síntese zero ou pedem veredito para apresentação1.0 | Ficha apresentação1.0§8, lentes separadas sem sinal | inventário F2C-4 | `test_bug_2c_58_cli_lentes.py` | F2C-4 | corrigido |
 | BUG-2C-59 | Invariantes históricos ignoram números inválidos no transporte valuation/raw | Invariantes externos de finitude e score[0,100], compatibilidadeF2C-4 | revisão F2C-4 | `test_bug_2c_59_invariantes_historicas.py` | F2C-4 | corrigido |
-| BUG-2B-51 | venda parcial recalcula o preço médio pela média ponderada com o preço de venda (100 a R$ 10, venda de 50 a R$ 20: PM vira R$ 0,00), contra a regra do custo médio | database.py (adicionar_posicao) | auditoria rápida do fechamento (F2B-69), "Ficam para o Marcos" (xfail sem ID); registrado pós-fechamento, 25/10/2026 | tests/test_database_posicoes.py::test_venda_parcial_preserva_preco_medio (mantido nesse arquivo, fora de `tests/regressao/`) | F2C-48 | aberto |
+| BUG-2B-51 | venda parcial recalcula o preço médio pela média ponderada com o preço de venda (100 a R$ 10, venda de 50 a R$ 20: PM vira R$ 0,00), contra a regra do custo médio | database.py (adicionar_posicao) | auditoria rápida do fechamento (F2B-69), "Ficam para o Marcos" (xfail sem ID); registrado pós-fechamento, 25/10/2026 | tests/test_database_posicoes.py::test_venda_parcial_preserva_preco_medio (mantido nesse arquivo, fora de `tests/regressao/`) | F3-P02 (origem F2C-48) | aberto |
 
 | BUG-2B-52 | o caminho DISTRESSED do motor de ações devolve `fair_value = preço` e `upside = 0`, números que parecem resultado sem método calculado | valuation_engine.py (processar, guarda de `DISTRESSED_TICKERS`) | auditoria rápida do fechamento (F2B-69), "Ficam para o Marcos" (fora da decisão 2 do F2B-69, card "Valor Justo"); registrado pós-fechamento, 25/10/2026 | test_bug_2b_52_distressed_valor_justo_preco.py | F2C-5 | corrigido pela apresentação separada; regressão pós-2B integrada no MERGE-MAIN-2C, XPASS estrito confirmado antes da retirada da marca |
 
@@ -305,3 +305,7 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 | BUG-2C-66 | Coleta corrente perde seleção do exercício anual não civil | datas publicadas CVM e decisão09/11 | auditorias Gemini/Claude | `test_bug_2c_66_exercicio_nao_civil_cascata.py` | FC2C-66 | corrigido |
 | BUG-2C-67 | Evento entre espécies alheias ao ticker bloqueia fator oficial elegível | critério de componentes e decisão09/11 | auditorias Gemini/Claude | `test_bug_2c_67_eventos_outras_especies.py` | FC2C-67 | corrigido |
 | BUG-2C-68 | MACD atual usa ordens de negociação no rótulo de cruzamento | vocabulário neutro obrigatório e decisão09/11 | auditorias Gemini/Claude | `test_bug_2c_68_macd_neutro.py` | FC2C-68 | corrigido |
+
+### Destinos pós-fechamento 2C (09/11/2026)
+
+Os sete bugs abertos em oito casos xfail estritos foram migrados à proposta não ativada `docs/loop/fila-fase3-proposta.md` (F3-P01/02/03/04/05/06/08). O oitavo caso é a segunda parametrização de BUG-2C-13. Marcas, condições e asserções preservadas; apenas destinos atualizados. F2C-54, sem xfail próprio, é F3-P07. A ratificação F2C-47 não fecha BUG-2C-27.

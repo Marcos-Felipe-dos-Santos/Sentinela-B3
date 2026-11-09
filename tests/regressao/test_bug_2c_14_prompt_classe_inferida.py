@@ -9,7 +9,7 @@ from sentinela.services.asset_classifier import AssetClassifier
 
 @pytest.mark.xfail(
     strict=True,
-    reason="BUG-2C-14 · prompt não identifica classe inferida · corrige: F2C-53 (2C-b)",
+    reason="BUG-2C-14 · prompt não identifica classe inferida · corrige: F3-P06 (origem F2C-53)",
 )
 def test_prompt_distingue_classe_sem_fonte_oficial(tmp_path) -> None:
     classificador = AssetClassifier(

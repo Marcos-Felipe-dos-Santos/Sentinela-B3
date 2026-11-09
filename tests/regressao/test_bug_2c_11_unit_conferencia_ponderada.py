@@ -9,7 +9,7 @@ from sentinela.data.acoes_cvm import LpaDivulgado
 
 @pytest.mark.xfail(
     strict=True,
-    reason="BUG-2C-11 · conferência da unit ignora pesos · corrige: F2C-50 (2C-b)",
+    reason="BUG-2C-11 · conferência da unit ignora pesos · corrige: F3-P03 (origem F2C-50)",
 )
 def test_unit_sem_divergencia_na_soma_ponderada() -> None:
     # Unit: 1 ON de LPA1 + 2 PN de LPA2 =5. Recalculado também5 por unit.
