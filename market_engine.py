@@ -852,6 +852,10 @@ class MarketEngine:
                 'abstencao': f"relação de proventos da B3 indisponível: {exc}"
             }
             return
+        if relacao.identidade is not None:
+            # F3-P01, decisão 33: relação pelo nome sem identidade do emissor comprovada.
+            dados['proventos_b3'] = {'abstencao': relacao.identidade}
+            return
         dividendos = None
         if 'Dividends' in historico:
             pagos = historico['Dividends'][historico['Dividends'] > 0]

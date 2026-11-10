@@ -24,6 +24,12 @@ inválido, provento negativo, natureza diferente de dividendo e JCP na janela, e
 ações na janela (sem reconciliação nesta versão) e unit sem composição válida.
 Duplicatas idênticas contam uma vez.
 
+Identidade do emissor (F3-P01, decisões 30 e 33 do Marcos, 10/11/2026): `conferir_emissor`
+aceita a relação lida pelo nome de pregão só se (a) cada espécie (`typeStock`) dela tem ISIN
+da companhia no GetDetail pelo código CVM, (b) cada provento em dinheiro do complemento
+aparece nela com a mesma data com e o mesmo valor na precisão da relação (`mesmo_valor`) e
+(c) o complemento traz algum provento; qualquer falha devolve o motivo da abstenção.
+
 Função pura: sem rede, sem relógio, sem `config`.
 """
 
@@ -33,6 +39,7 @@ import math
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from zoneinfo import ZoneInfo
 
 FUSO = ZoneInfo("America/Sao_Paulo")
@@ -44,6 +51,10 @@ FOLGA_SEM_PREGAO = timedelta(days=7)
 # R$ 3,0064572, yfinance R$ 3,006456); o mínimo de R$ 0,000001 é o do marcador da 2B, §2.3.
 TOLERANCIA_CONFERENCIA = 1e-6
 ESPECIE_DO_ISIN = {"ACNOR": "ON", "ACNPR": "PN", "ACNPA": "PNA", "ACNPB": "PNB"}
+# Decisão 33 (b): o complemento traz 11 casas e a relação, em geral, 4; o valor confere se
+# |relação − complemento arredondado a 4 casas| ≤ 0,00005. Empate arredonda para cima.
+CASAS_COMPLEMENTO = Decimal("0.0001")
+TOLERANCIA_COMPLEMENTO = Decimal("0.00005")
 
 MOTIVO_SEM_RELACAO = "insumo ausente: relação de proventos da B3"
 MOTIVO_INCOMPLETA = (
@@ -73,6 +84,7 @@ MOTIVO_COLETA = (
 MOTIVO_CRUZAMENTO = (
     "relação B3 pelo nome de pregão sem provento do complemento do emissor"
 )
+MOTIVO_IDENTIDADE = "identidade do emissor não comprovada"
 AVISO_SEM_CONFERENCIA = "conferência dos proventos no yfinance indisponível"
 # Ficha Bazin 1.2, §3 (decisão do Marcos de 20/10/2026): fora de `riscos`.
 AVISO_EXTRAORDINARIA = (
@@ -131,6 +143,76 @@ def _numero(bruto: object, nome: str) -> float | Abstencao:
     if math.isinf(numero):
         return Abstencao(f"insumo inválido: {nome}, infinito")
     return numero
+
+
+def _decimal(bruto: object) -> Decimal | None:
+    """Valor da B3 (vírgula decimal) como `Decimal` finito, ou `None`."""
+    texto = _texto(bruto)
+    if texto is None or "_" in texto:  # `Decimal` aceitaria "1_000"
+        return None
+    if "," in texto:
+        texto = texto.replace(".", "").replace(",", ".")
+    try:
+        numero = Decimal(texto)
+    except InvalidOperation:
+        return None
+    return numero if numero.is_finite() else None
+
+
+def mesmo_valor(relacao: object, complemento: object) -> bool:
+    """Decisão 33 (b): valor da relação igual ao do complemento na precisão da relação."""
+    r, c = _decimal(relacao), _decimal(complemento)
+    if r is None or c is None:
+        return False
+    arredondado = c.quantize(CASAS_COMPLEMENTO, rounding=ROUND_HALF_UP)
+    return abs(r - arredondado) <= TOLERANCIA_COMPLEMENTO
+
+
+def conferir_emissor(
+    registros: Iterable[object], complemento: Iterable[object], isins: Iterable[str]
+) -> str | None:
+    """Motivo da abstenção se a relação não é comprovadamente do emissor; senão `None`.
+
+    `isins` são os da companhia no GetDetail pelo código CVM (`otherCodes`); `complemento`,
+    os proventos em dinheiro do GetListedSupplementCompany do emissor. Leitura literal da
+    decisão 33 (b), "todo provento do complemento": sem o corte de espécie e de janela do
+    `_cruzamento`. Provento por ISIN da unit (`CDAM`), que a relação por espécie não traz,
+    e anúncio que a relação ainda não traz abstêm (DD-06).
+    """
+    isins = tuple(isins)
+    if not isins:
+        return f"{MOTIVO_IDENTIDADE}: GetDetail sem ISIN da companhia"
+    especies = {ESPECIE_DO_ISIN.get(str(isin)[6:11]) for isin in isins} - {None}
+    lidos = []
+    for registro in registros:
+        if not isinstance(registro, Mapping):
+            return f"{MOTIVO_IDENTIDADE}: registro da relação ilegível"
+        especie = registro.get("typeStock")
+        if especie not in especies:
+            return (
+                f"{MOTIVO_IDENTIDADE}: espécie {especie} da relação sem ISIN da "
+                "companhia no GetDetail"
+            )
+        lidos.append(
+            (ler_data(registro.get("lastDatePriorEx")), registro.get("valueCash"))
+        )
+    complemento = tuple(complemento)
+    if not complemento:
+        return f"{MOTIVO_IDENTIDADE}: complemento sem proventos para conferir"
+    for evento in complemento:
+        if not isinstance(evento, Mapping):
+            return f"{MOTIVO_IDENTIDADE}: provento do complemento ilegível"
+        data_com = ler_data(evento.get("lastDatePrior"))
+        if data_com is None or _decimal(evento.get("rate")) is None:
+            return f"{MOTIVO_IDENTIDADE}: provento do complemento ilegível"
+        if not any(
+            d == data_com and mesmo_valor(v, evento.get("rate")) for d, v in lidos
+        ):
+            return (
+                f"{MOTIVO_IDENTIDADE}: provento do complemento {evento.get('label')} "
+                f"{evento.get('lastDatePrior')} ausente da relação"
+            )
+    return None
 
 
 def inicio_da_janela(referencia: date) -> date:
@@ -218,7 +300,7 @@ def _cruzamento(
                     r.get("typeStock"),
                     r.get("corporateAction"),
                     r.get("lastDatePriorEx"),
-                    valor,
+                    r.get("valueCash"),
                 )
             )
     for evento in complemento:
@@ -229,7 +311,8 @@ def _cruzamento(
         valor = _numero(evento.get("rate"), "valor")
         chave = (especie, evento.get("label"), evento.get("lastDatePrior"))
         if isinstance(valor, Abstencao) or not any(
-            (e, n, d) == chave and abs(v - valor) <= 1e-9 for e, n, d, v in chaves
+            (e, n, d) == chave and mesmo_valor(v, evento.get("rate"))
+            for e, n, d, v in chaves
         ):
             return f"{chave[1]} {chave[2]} {especie}"
     return None
