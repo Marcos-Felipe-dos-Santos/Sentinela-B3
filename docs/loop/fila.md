@@ -133,7 +133,7 @@ As da 2C, mais duas novas.
 
 - [x] **F3-P03** · fix · `fix: weight unit components in reported EPS check` — BUG-2C-11. Arquivos: `market_engine.py` (`_lpa_divulgado_comparado`), `sentinela/data/acoes_cvm.py` se a soma ponderada couber lá, regressão `test_bug_2c_11_*` (só a marca), registro. **Aceite:** conforme a tabela F3-P03; composição incompleta não escolhe a primeira classe; LPA dos métodos e limiar de divergência iguais. G.
 
-- [ ] **F3-P08** · fix · `fix: reject FII reports when every version is unreadable` — BUG-2C-27. Arquivos: `sentinela/data/rendimento_fii.py`, regressão `test_bug_2c_27_*` (só a marca), registro. **Aceite:** conforme a tabela F3-P08 e as regras F2C-47 (2) abaixo; coexistência válida/ilegível e ausência legada no escopo ratificado, sem ampliar o predicado. Fonte: domínio numérico CVM e ficha FII 1.3. G.
+- [x] **F3-P08** · fix · `fix: reject FII reports when every version is unreadable` — BUG-2C-27. Arquivos: `sentinela/data/rendimento_fii.py`, regressão `test_bug_2c_27_*` (só a marca), registro. **Aceite:** conforme a tabela F3-P08 e as regras F2C-47 (2) abaixo; coexistência válida/ilegível e ausência legada no escopo ratificado, sem ampliar o predicado. Fonte: domínio numérico CVM e ficha FII 1.3. G.
 
 - [ ] **F3-P02** · fix · `fix: keep average cost on partial position reduction` — BUG-2B-51. Arquivos: `database.py` (`adicionar_posicao`), `tests/test_database_posicoes.py` (só a marca de `test_venda_parcial_preserva_preco_medio`), registro. **Aceite:** conforme a tabela F3-P02; zeragem e excesso de redução como documentados; sem schema nem tela; sem carteira real. Vem antes do F3-2 para que o teste, já verde, prove que a migração preserva a regra. G.
 

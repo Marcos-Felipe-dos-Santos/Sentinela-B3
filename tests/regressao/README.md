@@ -200,7 +200,7 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 
 | ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
 |---|---|---|---|---|---|---|
-| BUG-2C-27 | Complemento e composição com todas as versões ilegíveis casam por -inf e produzem rendimento | Dicionário CVM / ficha FII 1.3 §3/§3c | F2C-47,27/10/2026 | `test_bug_2c_27_versao_fii_ilegivel.py` | F3-P08 (origem F2C-55) | aberto |
+| BUG-2C-27 | Complemento e composição com todas as versões ilegíveis casam por -inf e produzem rendimento | Dicionário CVM / ficha FII 1.3 §3/§3c | F2C-47,27/10/2026 | `test_bug_2c_27_versao_fii_ilegivel.py` | F3-P08 (origem F2C-55) | corrigido (F3-P08) |
 
 ### Achado F2C-7 (27/10/2026)
 

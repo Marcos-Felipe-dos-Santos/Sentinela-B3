@@ -35,6 +35,7 @@ MOTIVO_MESES_INCOMPLETOS = "menos de 12 meses com DY e valor da cota do mês ant
 MOTIVO_PRECO = "preço ausente ou não positivo"
 MOTIVO_NAO_FINITO = "resultado não finito: rendimento de 12 meses do FII"
 MOTIVO_CONFLITO = "Informe com linhas conflitantes da mesma versão"
+MOTIVO_VERSAO_ILEGIVEL = "versão do Informe ilegível, sem identidade documental"
 # Ficha FII 1.3 (BUG-2B-37, reaberto): todo campo usado do complemento entra no conflito.
 _COLUNAS_DA_CONTA = (
     "Percentual_Dividend_Yield_Mes",
@@ -59,6 +60,21 @@ def _numero(bruto: object) -> float | None:
     except ValueError:
         return None
     return numero if math.isfinite(numero) else None
+
+
+def versao_ilegivel(registro: Mapping) -> bool:
+    """Versão presente e não numérica: explicitamente ilegível (F3-P08, BUG-2C-27).
+
+    O dicionário da CVM traz `Versao` numérica; texto não vazio que não é número finito não
+    demonstra identidade documental. Ausência legada (sem a chave, `None`, vazio ou `NaN`)
+    não entra aqui e segue o escopo ratificado no F2C-47 (regra 2).
+    """
+    bruto = registro.get("Versao")
+    if bruto is None or (isinstance(bruto, float) and math.isnan(bruto)):
+        return False
+    if isinstance(bruto, str) and not bruto.strip():
+        return False
+    return _numero(bruto) is None
 
 
 def _versao(registro: Mapping) -> float:
@@ -254,9 +270,15 @@ def avaliar(
         return medida
     # F2B-59 (BUG-2B-47; ficha 1.3, §3c): só a composição da versão do complemento
     # selecionado no mês final; de outra versão não classifica o fundo.
+    # F3-P08 (BUG-2C-27): o mês final só com versões explicitamente ilegíveis (a válida
+    # venceria na seleção) não demonstra a versão; e composição ilegível não casa por -inf.
+    if versao_ilegivel(meses[final]):
+        return Abstencao(f"{MOTIVO_VERSAO_ILEGIVEL}: {_rotulo(final)}")
     selecionada = _versao(meses[final])
     composicao = [
-        c for c in composicoes if _mes(c) == final and _versao(c) == selecionada
+        c
+        for c in composicoes
+        if _mes(c) == final and _versao(c) == selecionada and not versao_ilegivel(c)
     ]
     if not composicao:
         return Abstencao(MOTIVO_SEM_COMPOSICAO)
