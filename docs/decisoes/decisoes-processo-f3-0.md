@@ -84,3 +84,14 @@ As pendências correspondentes saem de `docs/loop/pendencias.md`. Dois itens ent
 
 - **F3-0j** · fix · `fix: treat root files as paths in queue independence`. Arquivos: `scripts/fila.py`, `tests/test_script_fila.py`. **Aceite**, com teste vermelho antes: nome entre crases com extensão e sem barra (`config.py`, `app.py`) conta como caminho, e dois itens que o citam são dependentes; barras repetidas são normalizadas (`scripts//fila.py` equivale a `scripts/fila.py`); palavra sem extensão e sem barra continua ignorada. Se o primeiro teste já passar no código atual, registre "já estava feito" e entregue só o que faltar.
 - **F3-0k** · docs · `docs: update the execution step for the blocked-item rule`. Arquivos: `docs/loop/ciclo-de-fase.md` (etapa 4). **Aceite:** a linha da tabela e a frase dos casos (a), (b), (e) ou (f) passam a descrever a regra vigente, inclusive a parada no segundo `[!]`. Nada além desses dois trechos.
+
+## Terceiro adendo de 10/11/2026 — rodada 3 da auditoria DOCUMENTO (decisão do Marcos)
+
+Sobre o relatório `auditoria-documento-fila-fase3-proposta-codex-3-relatorio.md` ("não pode seguir"). Incorporadas em `docs/loop/fila-fase3-proposta.md` como decisões 18 a 23. A 3-a não é ativada.
+
+1. **P7 revista (prevalece sobre o texto original da P7):** o loop publica o branch da fase só em `[DECISÃO]` de checkpoint, depois da auditoria cruzada do F3-0e, e só com parecer "pode seguir" ou "pode seguir com ressalvas". Em `[!]` ou com bloqueio aberto, nada é publicado. A D30 não tem exceção. No F3-0f, o `push_fase.py` recebe o caminho do relatório e recusa sem parecer ou com "não pode seguir", com teste para cada recusa; o ciclo §6 entra nos arquivos autorizados.
+2. **F3-8b:** autorizado a incluir em `source_paths` do `pyproject.toml` só o módulo novo do backtest ponto-no-tempo, com o comando de medição no aceite. O backtest legado fica fora da mutação.
+3. **Baseline:** separar a baseline histórica (`main` `284165f`) da de ativação, a medir na reconferência, com o Bloco 1 do F3-0 incluído.
+4. **Gate G:** citar a exceção de mutação para scripts de processo (`decisoes-processo-f3-0.md`, seção 3).
+5. **F3-0d:** o `gate.py` roda de novo depois do stage final e antes de cada revisão, inclusive após correções.
+6. **F3-0e:** o prompt da auditoria lista os hashes dos commits de cada executor (`git log --grep`), cada família audita todos os commits da outra, e o teste do prompt confere essa seleção.
