@@ -226,19 +226,20 @@ class MacroContext:
     # ── Indicadores dinâmicos ──────────────────────────────────────────────────
 
     def __init__(self, selic: float | None = None):
-        # selic explícito: útil em testes (evita chamada BCB). Sem arg: usa get_selic_atual().
-        self._selic: float = selic if selic is not None else get_selic_atual()
+        # selic explícito: útil em testes (evita chamada BCB). Sem arg, a Selic é lida sob
+        # demanda por get_selic_atual(), com o cache de 24 h e o fallback dela (E-6, F3-1a).
+        self._selic: float | None = selic
         self._cdi:      float | None = None
         self._ipca_12m: float | None = None
 
     @property
     def selic(self) -> float:
-        return self._selic
+        return self._selic if self._selic is not None else get_selic_atual()
 
     @property
     def selic_liquida(self) -> float:
         """Selic líquida de IR para FIIs: Selic × 0.85."""
-        return self._selic * self.FII_FATOR_IR
+        return self.selic * self.FII_FATOR_IR
 
     @property
     def cdi(self) -> float:
@@ -301,7 +302,7 @@ class MacroContext:
             return IPCA_12M_FALLBACK
 
 
-# Instância global — engines importam MACRO em vez de literais
+# Instância global — engines importam MACRO em vez de literais; o import não faz rede.
 MACRO = MacroContext()
 
 

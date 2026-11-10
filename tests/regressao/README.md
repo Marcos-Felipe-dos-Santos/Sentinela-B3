@@ -309,3 +309,9 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 ### Destinos pós-fechamento 2C (09/11/2026)
 
 Os sete bugs abertos em oito casos xfail estritos foram migrados à proposta não ativada `docs/loop/fila-fase3-proposta.md` (F3-P01/02/03/04/05/06/08). O oitavo caso é a segunda parametrização de BUG-2C-13. Marcas, condições e asserções preservadas; apenas destinos atualizados. F2C-54, sem xfail próprio, é F3-P07. A ratificação F2C-47 não fecha BUG-2C-27.
+
+### Fase 3 (a partir de 10/11/2026)
+
+| ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
+|---|---|---|---|---|---|---|
+| BUG-3-01 | importar `config` chama o BCB (Selic, série 432), porque `MACRO = MacroContext()` buscava a Selic no construtor | `config.py:230` (`MacroContext.__init__`), `:305` (`MACRO`) | E-6 (auditoria red team de 9/9/2026), F3-1a | `test_bug_3_01_config_import_com_rede.py` | F3-1a | corrigido |
