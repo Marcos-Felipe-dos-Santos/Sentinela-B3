@@ -715,11 +715,15 @@ class MarketEngine:
             return
         try:
             dados['informe_fii'] = ler(cnpj)
-        except Exception as exc:
+        except (OSError, ValueError) as exc:
+            # F3-P04 (BUG-2C-12): falha da fonte vira abstenção e risco de dados; erro de
+            # programação (TypeError, KeyError, AttributeError...) propaga.
             logger.warning(
                 f"[{ticker}] Informe Mensal indisponível para o rendimento: {exc}"
             )
-            dados['informe_fii'] = {'abstencao': f"Informe Mensal indisponível: {exc}"}
+            motivo = f"Informe Mensal indisponível: {exc}"
+            dados['informe_fii'] = {'abstencao': motivo}
+            dados.setdefault('riscos_dados', []).append(f"{motivo} (rendimento do FII)")
             return
         provedor = getattr(self, 'b3_fundos', None)
         if provedor is None:

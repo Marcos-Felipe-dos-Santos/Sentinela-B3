@@ -267,7 +267,9 @@ class CVMFIIProvider:
         de dois anos atrás: lê também esse Informe. Devolve todas as linhas do complemento
         (todas as versões; a escolha da maior é da conta, `sentinela.data.rendimento_fii`),
         com a entrega e o ISIN do `geral`, as do `ativo_passivo` (F2B-2), o ISIN da linha
-        mais recente e a proveniência dela. Ano que falha fica de fora, com aviso no log.
+        mais recente e a proveniência dela. Ano que falha fica de fora, com aviso no log; se
+        todos os anos lidos falham, a fonte está indisponível e sai `OSError` (F3-P04,
+        BUG-3-02), que a cascata registra em `riscos_dados`.
         """
         cnpj = cnpj_fundo.strip()
         ano_atual = date.today().year
@@ -275,11 +277,13 @@ class CVMFIIProvider:
         composicoes: list[dict] = []
         mais_recente = None
         anos = [ano_atual, ano_atual - 1]
+        falhas = []
         for ano in anos:
             lido = self._linhas_do_fundo(cnpj, ano)
             if ano == ano_atual and not (lido and lido[1]):
                 anos.append(ano_atual - 2)
             if lido is None:
+                falhas.append(ano)
                 continue
             zip_path, linhas, do_ano = lido
             registros.extend(linhas)
@@ -294,6 +298,11 @@ class CVMFIIProvider:
                 )
                 if mais_recente is None or chave > mais_recente[0]:
                     mais_recente = (chave, zip_path, ano, linha)
+        if len(falhas) == len(anos):
+            raise OSError(
+                "Informe Mensal ilegível ou indisponível em todos os anos lidos: "
+                + ", ".join(str(ano) for ano in falhas)
+            )
         proveniencia_recente = (
             self._proveniencia(mais_recente[1], mais_recente[2], mais_recente[3])
             if mais_recente

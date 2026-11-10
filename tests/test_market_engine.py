@@ -723,3 +723,74 @@ def test_falha_do_coletor_de_liquidez_chega_como_aviso(monkeypatch):
     assert "falha de coleta" in dados["liquidez"]["abstencao"]
     resultado = ValuationEngine().processar(de_empresa(dados))
     assert resultado["aviso_liquidez"].startswith("liquidez não medida:")  # F2B-45
+
+
+# F3-P04 (BUG-2C-12): o Informe do rendimento do FII nos riscos de dados.
+
+
+def _motor_fii(ler=None):
+    from types import SimpleNamespace
+
+    motor = object.__new__(MarketEngine)
+    motor._is_fii_ticker = lambda *args: True
+    motor.cvm_fii = (
+        SimpleNamespace() if ler is None else SimpleNamespace(obter_rendimentos_fii=ler)
+    )
+    return motor
+
+
+def test_informe_do_rendimento_com_sucesso_nao_gera_risco():
+    informe = {"registros": [], "composicoes": [], "isin": None, "proveniencia": None}
+    motor = _motor_fii(lambda cnpj: informe)
+    dados = {"cnpj": "11.111.111/0001-11", "classe_ativo": "FII"}
+    motor._buscar_rendimento_fii("TSTF11", dados)
+    assert dados["informe_fii"] is informe
+    assert "riscos_dados" not in dados
+
+
+def test_provedor_sem_interface_do_rendimento_nao_grava_nada():
+    motor = _motor_fii()
+    dados = {"cnpj": "11.111.111/0001-11", "classe_ativo": "FII"}
+    motor._buscar_rendimento_fii("TSTF11", dados)
+    assert dados == {"cnpj": "11.111.111/0001-11", "classe_ativo": "FII"}
+
+
+@pytest.mark.parametrize("erro", [ValueError("Informe ilegível"), OSError("timeout")])
+def test_falha_de_fonte_do_rendimento_vira_abstencao_e_risco(erro):
+    def ler(cnpj):
+        raise erro
+
+    motor = _motor_fii(ler)
+    dados = {"cnpj": "11.111.111/0001-11", "classe_ativo": "FII"}
+    motor._buscar_rendimento_fii("TSTF11", dados)
+    motivo = f"Informe Mensal indisponível: {erro}"
+    assert dados["informe_fii"] == {"abstencao": motivo}
+    assert dados["riscos_dados"] == [f"{motivo} (rendimento do FII)"]
+
+
+@pytest.mark.parametrize("erro", [TypeError, KeyError, AttributeError])
+def test_erro_de_programacao_no_rendimento_propaga(erro):
+    def ler(cnpj):
+        raise erro("bug")
+
+    motor = _motor_fii(ler)
+    dados = {"cnpj": "11.111.111/0001-11", "classe_ativo": "FII"}
+    with pytest.raises(erro):
+        motor._buscar_rendimento_fii("TSTF11", dados)
+    assert "informe_fii" not in dados
+    assert "riscos_dados" not in dados
+
+
+def test_informe_com_um_ano_ilegivel_nao_vira_falha_da_fonte(monkeypatch):
+    from datetime import date
+
+    from cvm_fii_provider import CVMFIIProvider
+
+    provedor = CVMFIIProvider.__new__(CVMFIIProvider)
+    ano_atual = date.today().year
+
+    def linhas(cnpj, ano):
+        return None if ano == ano_atual else ("informe.zip", [], [])
+
+    monkeypatch.setattr(provedor, "_linhas_do_fundo", linhas)
+    assert provedor.obter_rendimentos_fii("11.111.111/0001-11")["registros"] == []
