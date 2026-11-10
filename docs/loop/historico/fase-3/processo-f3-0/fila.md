@@ -20,4 +20,4 @@ Gate G em todos, com as ressalvas do pacote §3: nos itens `feat` de script, `sc
 
 - [x] **F3-0k** · docs · `docs: update the execution step for the blocked-item rule` — segundo adendo de 09/11/2026 ao pacote F3-0. Arquivos: `docs/loop/ciclo-de-fase.md` (etapa 4). **Aceite:** a linha da tabela e a frase dos casos (a), (b), (e) ou (f) passam a descrever a regra vigente, inclusive a parada no segundo `[!]`. Nada além desses dois trechos. G documental.
 
-- [ ] **[DECISÃO] Processo F3-0, bloco 1.** O Marcos confere o Bloco 1 e decide a ativação da 3-a (com o Bloco 2 já na proposta, antes do F3-A-R).
+- [x] **[DECISÃO] Processo F3-0, bloco 1.** O Marcos confere o Bloco 1 e decide a ativação da 3-a (com o Bloco 2 já na proposta, antes do F3-A-R).
