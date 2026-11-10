@@ -14,17 +14,15 @@ Suíte em 09/11/2026: 3525 passed, 1 skipped, 8 xfailed.
 
 ## Fase atual
 
-**Entre fases: a 2C (Qualidade e apresentação) foi concluída** (tag `v2-fase-2c`;
-histórico em `docs/loop/historico/fase-2c/`). A **Fase 3 (Tempo como entrada)** ainda
-não tem fila ativa: os itens migrados da 2C estão registrados para a proposta da Fase 3.
-O mantenedor trabalha num branch local por fase e só publica no fim de cada fase.
-Baseie seu branch sempre na `main` mais recente.
+**Fase 3 (Tempo como entrada) ativa** no branch `v2/fase-3`, em três metades
+(3-a fundação e dívidas, 3-b histórico ponto-no-tempo, 3-c backtest).
+Executores alternados Claude Code e Codex. O mantenedor trabalha num branch
+local por fase e só publica nos checkpoints. Baseie seu branch sempre na
+`main` mais recente.
 
-Até a Fase 3 ser ativada, nenhum arquivo está travado por fase. Ainda assim, PR que toque
-`sentinela/methods/`, `sentinela/data/`, os motores (`valuation_engine.py`,
-`fii_engine.py`, `market_engine.py`), `config.py` ou `tests/fixtures/` precisa de
-aprovação do mantenedor antes de abrir. A lista de arquivos travados da Fase 3 entra aqui
-na ativação.
+Arquivos travados nesta fase: `config.py`, `database.py`, `backtesting/`,
+`sentinela/data/`, `sentinela/services/`, `app.py`, `limpar_banco.py` e
+`auditar_recomendacoes.py`. Nenhum PR pode tocá-los até o fim da fase.
 
 ## Regra fundamental: especificação externa
 
