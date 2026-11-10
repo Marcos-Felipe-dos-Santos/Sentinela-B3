@@ -128,3 +128,14 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Para o Marcos decidir junto (revisão: PODE COMMITAR):** na P1, a primeira parte só derruba homônimo com espécie que a companhia não tem; quem distingue de fato é a segunda. Em P1 e P2, complemento sem provento recente torna a segunda parte verdadeira por vacuidade: precisa dizer se isso é abstenção. E "mesmo valor" precisa de escala ou tolerância escrita (o complemento traz 11 casas, a relação 4).
 - **Testes:** nenhum código alterado. Suíte e golden como no commit anterior.
 - **Sequência:** pela seção "Item bloqueado", sigo com até três independentes: F3-P02, F3-2a e F3-2b (`fila.py independentes F3-P01`).
+
+### F3-P02 — fix: keep average cost on partial position reduction
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso (primeiro independente do segundo `[!]` do F3-P01).
+- **O que foi feito:** `DatabaseManager.adicionar_posicao`: redução parcial (`qtd` < 0 com saldo positivo) mantém o preço médio; compra continua pela média ponderada; zeragem e redução maior que a posição continuam removendo a linha (`test_zeragem_remove_posicao`, `test_venda_maior_que_posicao` intactos). Sem schema, sem tela, sem carteira real (só banco temporário dos testes).
+- **Regressão:** BUG-2B-51, `tests/test_database_posicoes.py::test_venda_parcial_preserva_preco_medio`. Com `--runxfail`, antes: `assert 0.0 == 10.0 ± 1.0e-05` (100 a R$ 10, venda de 50 a R$ 20: PM R$ 0,00). Marca retirada, sem mudar asserção, PASS; README: "corrigido (F3-P02)".
+- **Mutação:** `python -m mutmut run "database.xǁDatabaseManagerǁadicionar_posicao*"`: 57 mutantes, 45 mortos, 12 sobreviventes, todos equivalentes: 8 trocam a caixa do SQL (o SQLite não diferencia), 2 a caixa da chave do `sqlite3.Row` (também não diferencia) e 2 trocam `qtd < 0` por `qtd <= 0`/`qtd < 1`, iguais com `qtd = 0` (a média ponderada com zero devolve o PM antigo). 45 de 45 não equivalentes (100%); bruto 79%. Saída em `outputs/f3-p02-mutmut.txt`.
+- **Testes:** 3728 passed, 1 skipped, 6 xfailed → 3729 passed, 1 skipped, 5 xfailed (a regressão sai de xfailed). Ruff CI, Ruff completo em `sentinela/methods` e `sentinela/data`: verdes; os avisos de `ruff check database.py` (SIM117, DTZ005) são anteriores ao item, mesma contagem. Golden SHA igual.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** "preco" de uma venda passa a ser ignorado; a data de aporte não muda na redução, como antes. Revisão: PODE COMMITAR, com observações: a tela (`app.py:481`, `min_value=1`) não permite reduzir posição, então a correção só vale para a API interna e para a migração do F3-2; faltam (fora da lista do item, que só permite a marca) um teste de compra, redução e nova compra e a asserção do PM em `test_venda_deixando_um_na_posicao`; vender mais que a posição continua apagando a linha sem erro e sem ganho realizado (candidato à Fase 4).

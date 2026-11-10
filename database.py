@@ -54,7 +54,12 @@ class DatabaseManager:
                 """)
 
     def adicionar_posicao(self, ticker: str, qtd: int, preco: float) -> None:
-        """Adiciona ou atualiza uma posição na carteira com preço médio ponderado."""
+        """Adiciona ou reduz uma posição da carteira pela regra do custo médio.
+
+        Compra (`qtd` > 0) recalcula o preço médio pela média ponderada; redução parcial
+        (`qtd` < 0) mantém o preço médio (F3-P02, BUG-2B-51). Zeragem e redução maior que
+        a posição removem a linha, como antes.
+        """
         ticker = ticker.upper().strip()
         with closing(self._get_conn()) as conn:
             with conn:
@@ -71,7 +76,10 @@ class DatabaseManager:
                     nova_qtd   = qtd_antiga + qtd
 
                     if nova_qtd > 0:
-                        novo_pm = ((qtd_antiga * pm_antigo) + (qtd * preco)) / nova_qtd
+                        if qtd < 0:
+                            novo_pm = pm_antigo
+                        else:
+                            novo_pm = ((qtd_antiga * pm_antigo) + (qtd * preco)) / nova_qtd
                         conn.execute(
                             "UPDATE carteira_real SET quantidade=?, preco_medio=? WHERE ticker=?",
                             (nova_qtd, novo_pm, ticker)
