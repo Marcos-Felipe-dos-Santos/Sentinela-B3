@@ -3,7 +3,10 @@ import math
 from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
-from config import MACRO, _normalizar_dy, get_selic_atual
+from config import MACRO, MacroContext, _normalizar_dy
+from config import (
+    get_selic_atual as get_selic_atual,  # noqa: PLC0414 — reexportação pública legada
+)
 from sentinela.data import liquidez, rendimento_fii
 from sentinela.domain.apresentacao import bloco, finalizar
 from sentinela.domain.enums import AssetType
@@ -42,13 +45,17 @@ class FIIEngine:
             inputs, FiiYieldParams(spread=getattr(MACRO, "FII_SPREAD_TIJOLO", None))
         )
 
-    def _faixa_pvp(self, pvp):
+    def _faixa_pvp(self, pvp, *, as_of: datetime | None = None):
         """Lente de P/VP; None quando o P/VP não é finito (a lente não é calculada)."""
         if not math.isfinite(pvp):
             return None
         return _FII_NAV.calcular(
             MethodInputs(
-                as_of=date.today(), pvp=Ratio(pvp), classe_ativo=AssetType.FII
+                as_of=date.today()  # noqa: DTZ011 — padrão legado, as_of explícito usa fuso
+                if as_of is None
+                else as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date(),
+                pvp=Ratio(pvp),
+                classe_ativo=AssetType.FII,
             ),
             FiiNavParams(
                 premio_alto=MACRO.FII_PVP_PREMIO_ALTO,
@@ -178,7 +185,9 @@ class FIIEngine:
             )
 
         # ── Score ─────────────────────────────────────────────────────────────
-        selic = get_selic_atual()
+        selic = MacroContext(
+            as_of=instante.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+        ).selic
         dy_efetivo = dy
         # Selic não finita fica sem a comparação, em vez de levar NaN à saída (F2A-24).
         selic_liquida = (
@@ -188,7 +197,7 @@ class FIIEngine:
         )
         # O patrimônio e a taxa nominal permanecem contexto, sem pontos ou sinais.
         if pvp is not None:
-            self._faixa_pvp(pvp)
+            self._faixa_pvp(pvp, as_of=instante)
         tipo = str(dados.get("tipo") or "TIPO INDISPONÍVEL")
 
         return _com_aviso(

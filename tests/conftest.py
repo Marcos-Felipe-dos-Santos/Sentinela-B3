@@ -120,3 +120,18 @@ def pytest_configure(config):
     fallback = Path(tempfile.gettempdir()) / "sentinela_pytest"
     fallback.mkdir(parents=True, exist_ok=True)
     config.option.basetemp = str(fallback)
+
+
+@pytest.fixture(autouse=True)
+def _macro_fii_cenario_temporal(monkeypatch):
+    """Mantém a injeção dos cenários antigos na nova fábrica, sem rede em testes.
+
+    É semente de cenário, não histórico observado. Testes temporais de integração
+    sobrescrevem a fábrica com MacroContext e provedor SGS reais.
+    """
+    import fii_engine
+
+    def contexto(*, as_of):
+        return config.MacroContext(selic=fii_engine.get_selic_atual(), as_of=as_of)
+
+    monkeypatch.setattr(fii_engine, "MacroContext", contexto)

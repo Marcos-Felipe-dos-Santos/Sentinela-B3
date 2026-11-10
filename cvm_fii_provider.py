@@ -9,8 +9,9 @@ Observação: vacância física NÃO está disponível no informe mensal.
 """
 import logging
 import zipfile
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -130,8 +131,11 @@ class CVMFIIProvider:
     # API pública
     # ------------------------------------------------------------------
 
-    def obter_dados_fii(self, cnpj_fundo: str) -> dict | None:
+    def obter_dados_fii(self, cnpj_fundo: str, *, as_of: datetime | None = None) -> dict | None:
         """Retorna os dados mais recentes do fundo, ou None se não encontrado.
+
+        as_of seleciona os anos pela data de São Paulo; versões históricas estritas
+        são responsabilidade do leitor da 3-b, não deste carregamento.
 
         Campos no retorno:
           cnpj_fundo, dt_referencia, patrimonio_liquido, cotas_emitidas,
@@ -143,7 +147,10 @@ class CVMFIIProvider:
         `{"abstencao": MOTIVO_DATA_ILEGIVEL}` (F2B-2, aceite Gemini HEAD60e61e2).
         """
         cnpj = cnpj_fundo.strip()
-        ano_atual = date.today().year
+        if as_of is not None and as_of.utcoffset() is None:
+            raise ValueError("as_of exige fuso horário")
+        dia = date.today() if as_of is None else as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+        ano_atual = dia.year
 
         for ano in [ano_atual, ano_atual - 1]:
             try:
@@ -259,7 +266,7 @@ class CVMFIIProvider:
             return None
         return zip_path, linhas, composicoes
 
-    def obter_rendimentos_fii(self, cnpj_fundo: str) -> dict:
+    def obter_rendimentos_fii(self, cnpj_fundo: str, *, as_of: datetime | None = None) -> dict:
         """Meses do fundo nos Informes do ano e do anterior, para o rendimento de 12 meses (F2B-28).
 
         Sem meses do fundo no ano corrente (começo do ano, antes do Informe de janeiro, ou
@@ -272,7 +279,10 @@ class CVMFIIProvider:
         BUG-3-02), que a cascata registra em `riscos_dados`.
         """
         cnpj = cnpj_fundo.strip()
-        ano_atual = date.today().year
+        if as_of is not None and as_of.utcoffset() is None:
+            raise ValueError("as_of exige fuso horário")
+        dia = date.today() if as_of is None else as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+        ano_atual = dia.year
         registros: list[dict] = []
         composicoes: list[dict] = []
         mais_recente = None

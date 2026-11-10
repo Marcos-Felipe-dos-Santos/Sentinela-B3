@@ -146,7 +146,12 @@ class AnalysisService:
     ) -> AnalysisResult:
         """Executa a sequência atual de motores compartilhada pelas entradas do serviço."""
         ticker_norm = str(ticker or "").upper().strip()
-        dados = self.market_engine.buscar_dados_ticker(ticker_norm)
+        if as_of is not None and self._has_explicit_method(
+            self.market_engine, "buscar_dados_ticker_em"
+        ):
+            dados = self.market_engine.buscar_dados_ticker_em(ticker_norm, as_of)
+        else:
+            dados = self.market_engine.buscar_dados_ticker(ticker_norm)
         if not dados or "erro" in dados:
             return AnalysisResult(
                 ticker=ticker_norm,

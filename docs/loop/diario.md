@@ -282,3 +282,56 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Decisão delegada DD-16:** F3-6b, como conservar a orquestração antiga até F3-9a sem executá-la duas vezes → função privada _orquestrar_analise_legada com corpo original e sem chamador de produção, corpo conferido por hash AST anterior e oráculo independente congelado nos testes, sem criar chamador da função do app (classe 4, desempate 3 e 6; alternativas: remover já no F3-6b, duplicar a execução).
 - **Resíduos:** outputs/f3-6b-*, plugins de quebra outputs/f3_6b_* e temporários no cache externo já aprovado; nada apagado. Stash anterior intacto. Nenhum banco real do mantenedor aberto nesta verificação: AppTest muda para diretórios temporários antes de inicializar DatabaseManager.
 - **Para o Marcos revisar:** retenção sem execução do legado é intencional até F3-9a. Persistência nova está no serviço e foi conferida no SQLite temporário; nenhum efeito visual observado nas cinco comparações. Ainda faltam F3-6c e F3-P13 para propagação do as_of abaixo da cascata; este item usa só data atual, como a guarda do serviço exige. Sem push/PR, .env, dados da carteira ou dependência nova.
+
+### F3-6c — feat: pass as_of from the service through cascade and engines
+- **Executor:** codex.
+- **Status:** sucesso.
+- **Baseline:** 3973 passed, 1 skipped, 4 xfailed; outputs/f3-6c-baseline.txt.
+- **Inventário em 09/11 (git 284165f):** 34 leituras, contagens exatamente como no aceite. Cada linha abaixo indica o papel e destino, com a linha histórica.
+
+| Arquivo/linha em 09/11 | Função | Papel | Destino |
+|---|---|---|---|
+| market_engine.py:490 | buscar_dados_ticker | referência | IF.data e janelas recebem as_of; coleta do IPCA continua real, separada do corte. |
+| market_engine.py:496 | buscar_dados_ticker | referência | IF.data e janelas recebem as_of; coleta do IPCA continua real, separada do corte. |
+| market_engine.py:523 | _aplicar_referencia | coleta/TTL | IndiceProvider.indice usa carregado_em/falhou_em e obter_indice; não retroagir cadastro. |
+| market_engine.py:728 | _buscar_rendimento_fii | coleta/TTL | B3 fundsCall grava coleta literal; anos do Informe recebem referência separada. |
+| market_engine.py:762 | _buscar_taxa_real | coleta/TTL | MacroProvider usa instante na coleta de snapshots e TTL; taxa observada hoje não prova disponibilidade passada, consumidor abstém. |
+| market_engine.py:801 | _buscar_proventos_b3 | referência | Separar corte de fechamento (as_of) da coleta B3, que permanece real. |
+| market_engine.py:877 | _buscar_liquidez | coleta/TTL | COTAHIST atual coleta meses recentes e controla falhas/TTL; leitor histórico é F3-4a/3d, sem retroagir o download. |
+| market_engine.py:1076 | _buscar_cvm | referência | Disponibilidade de Gordon e composição até o corte; mtime do documento é coleta real. |
+| market_engine.py:1248 | _serie_cvm | referência | Corte anual/TTM reservado expressamente a F3-P13; não muda neste item. |
+| valuation_engine.py:136 | _montar_inputs | referência | As_of explícito nas entradas; clock padrão apenas para chamadas legadas sem referência. |
+| valuation_engine.py:187 | processar | referência | As_of explícito nas entradas; clock padrão apenas para chamadas legadas sem referência. |
+| valuation_engine.py:230 | _processar_valuation | referência | As_of explícito nas entradas; clock padrão apenas para chamadas legadas sem referência. |
+| fii_engine.py:51 | _faixa_pvp | referência | As_of explícito nas entradas; clock padrão apenas para chamadas legadas sem referência. |
+| fii_engine.py:61 | analisar | referência | As_of explícito nas entradas; clock padrão apenas para chamadas legadas sem referência. |
+| fii_engine.py:165 | _analisar_lentes | referência | As_of explícito nas entradas; clock padrão apenas para chamadas legadas sem referência. |
+| database.py:85 | adicionar_posicao | coleta/TTL | Data operacional do aporte, gravação de análise/cache ou expiração; não é referência dos cálculos, sem edição. |
+| database.py:122 | salvar_analise | coleta/TTL | Data operacional do aporte, gravação de análise/cache ou expiração; não é referência dos cálculos, sem edição. |
+| database.py:168 | salvar_fundamentos_cache | coleta/TTL | Data operacional do aporte, gravação de análise/cache ou expiração; não é referência dos cálculos, sem edição. |
+| database.py:199 | buscar_fundamentos_cache | coleta/TTL | Data operacional do aporte, gravação de análise/cache ou expiração; não é referência dos cálculos, sem edição. |
+| auditoria.py:599 | main | coleta/TTL | Borda CLI: timestamp da execução ou aquisição atual; rastreabilidade.main também escolhe referência atual nessa borda, sem edição. |
+| auditoria.py:607 | main | coleta/TTL | Borda CLI: timestamp da execução ou aquisição atual; rastreabilidade.main também escolhe referência atual nessa borda, sem edição. |
+| auditoria.py:614 | main | coleta/TTL | Borda CLI: timestamp da execução ou aquisição atual; rastreabilidade.main também escolhe referência atual nessa borda, sem edição. |
+| config.py:88 | get_selic_atual | coleta/TTL | Cache Selic e instante real da coleta/observação; get_taxa_real já admite as_of explícito e mantém padrão na API. |
+| config.py:133 | get_taxa_real | coleta/TTL | Cache Selic e instante real da coleta/observação; get_taxa_real já admite as_of explícito e mantém padrão na API. |
+| cvm_fii_provider.py:146 | obter_dados_fii | referência | Ano dos arquivos solicitado pela data local de as_of; padrão legado preservado. Reconstrução estrita vem na 3-b. |
+| cvm_fii_provider.py:273 | obter_rendimentos_fii | referência | Ano dos arquivos solicitado pela data local de as_of; padrão legado preservado. Reconstrução estrita vem na 3-b. |
+| auditar_recomendacoes.py:203 | auditar | coleta/TTL | Borda CLI: timestamp da execução ou aquisição atual; rastreabilidade.main também escolhe referência atual nessa borda, sem edição. |
+| auditar_recomendacoes.py:210 | auditar | coleta/TTL | Borda CLI: timestamp da execução ou aquisição atual; rastreabilidade.main também escolhe referência atual nessa borda, sem edição. |
+| cvm_provider.py:521 | calcular_indicadores | referência | Ano dos arquivos solicitado pela data local de as_of; padrão legado preservado. Reconstrução estrita vem na 3-b. |
+| cvm_download.py:19 | is_fresh | coleta/TTL | Idade do arquivo para download, sem edição. |
+| peers_engine.py:32 | comparar | coleta/TTL | Índice atual para pares; serviço continua recusando data passada e na 3-b não chamará pares históricos. |
+| sentinela/repositories/analysis_repository.py:104 | save_run | coleta/TTL | created_at é execução, as_of fica na tabela imutável, sem edição. |
+| sentinela/reports/rastreabilidade.py:966 | main | referência | Escolhida na borda CLI atual e passada ao contexto, não abaixo dela; sem edição. |
+| sentinela/data/referencia/__main__.py:26 | main | coleta/TTL | Borda CLI: timestamp da execução ou aquisição atual; rastreabilidade.main também escolhe referência atual nessa borda, sem edição. |
+
+- **Diferenças atuais:** config tem quatro leituras (antes duas): _instante_coleta e _hoje_no_relogio são coleta/disponibilidade real e guardas do fallback atual, não referência de cálculo; ficam. O app ganhou uma leitura de borda no F3-6b. Sem leitura de referência abaixo da borda nos arquivos somente inventariados que afete o gate da 3-a; seleção histórica de pares segue Fase 4/decisão 15.
+- **Decisão delegada DD-17:** F3-6c, ligação do serviço à cascata sem quebrar adaptadores antigos → acrescentar no MarketEngine uma entrada explícita buscar_dados_ticker_em(ticker, as_of), delegando ao fluxo único; serviço usa essa capacidade somente se declarada, mantendo a interface antiga dos adaptadores que não a possuem. Permissão técnica mínima estendida a sentinela/services/analyze_asset.py (classe 4, desempate 3 e 4; alternativas: mudar chamadas antigas, duplicar orquestração).
+- **Decisão delegada DD-18:** F3-6c, relógios de MacroProvider usados também para carimbar coleta → não passar data passada como coleta; aquisição com instante real e referência separada no consumidor, que abstém se a fonte é posterior ao corte. Cadastro, fundsCall e COTAHIST atual mantêm instante real; histórico será ligado na 3-b (classe 3, desempate 1 e 6; alternativas: retroagir metadados, ampliar provedores históricos antes da 3-b).
+- **Decisão delegada DD-19:** F3-6c, cenários legados injetam Selic por getter enquanto decisão 31 exige MacroContext por as_of → semente adicional de teste na fábrica MacroContext do FII, construindo MacroContext(selic=taxa_do_cenario, as_of=data_recebida). Não editar harness, golden ou asserções; teste temporal usa provedor SGS real e sobrescreve a fábrica de cenário. Só o elo do teste F3-1b muda conforme decisão 31 (classe 4, desempate 5; alternativas: tocar testes protegidos, manter contexto corrente em produção). Contraprova isolada: contexto temporal real muda só selic_liquida; semente preserva os 288 casos FII, zero divergências, outputs/f3-6c-prova-semente-cenarios.json.
+- **O que foi feito:** as_of sai do serviço pela capacidade declarada do MarketEngine e chega aos cortes CVM/Informe/IF.data/Gordon/proventos/janelas e às entradas dos motores. Aquisição conserva a hora real; _serie_cvm fica para F3-P13. Selic contextual do FII passa por MacroContext(as_of). Sem alteração em métodos ou parâmetros.
+- **Testes:** 10 falhas antes da implementação pelo motivo esperado, outputs/f3-6c-vermelho.txt; suíte depois: 3987 passed, 1 skipped, 4 xfailed (outputs/f3-6c-suite1.txt). Testes novos congelam relógio diferente e atravessam fronteira de dia/fuso. Teste SGS real verifica data recebida e 13,75% × 0,85, sem getter corrente. A primeira rodada focada teve erro de preparação do classificador do teste (is_fii ausente), corrigido no cenário.
+- **Verificação:** Ruff CI e completos data/methods verdes, nenhum diagnóstico novo nos arquivos alterados; diff check limpo. Golden SHA256 500645a3263ad25e492bff56e00c9b3552b84a243136d3397f520d4a79c24bcc preservado. Mutmut 3 final e export-cicd-stats concluídos; outputs/f3-6c-mutacao-modulos.txt, outputs/f3-6c-mutacao-export.txt e outputs/f3-6c-mutacao-score-final.json. Score bruto mortos/total (timeouts permanecem no denominador, zero exclusões): market_engine 2641/3150 = 83,84%; valuation_engine 1170/1350 = 86,67%; fii_engine 305/346 = 88,15%; cvm_provider 2604/2979 = 87,41%; cvm_fii_provider 462/548 = 84,31% (84 sobreviventes, 2 timeouts); analyze_asset 324/379 = 85,49%.
+- **Resíduos:** outputs/f3-6c-*, mutants e temporários no cache externo aprovado; nada apagado. Metadados anteriores de mutação preservados em outputs/f3-6c-mutmut-stats-anterior.json.
+- **Para o Marcos revisar:** DD-17/18/19, especialmente a semente sintética de cenários preservados em contraste com o teste SGS real. Nenhum teste protegido/harness/golden alterado; somente o elo autorizado da decisão 31 mudou entre os testes existentes. Ratificação em lote; DD-18 aguarda conferência da outra família. Nenhum [!] novo.

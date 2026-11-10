@@ -434,14 +434,20 @@ def test_as_of_hoje_reproduz_o_valor_atual(sgs, monkeypatch):
 
 def test_sgs_oficial_ate_o_motor_do_fii(sgs, monkeypatch):
     provedor, _ = sgs
-    macro = _macro(provedor, date(2025, 7, 1))
-    # Até o F3-6c o motor lê a Selic por `get_selic_atual`; o elo é esse ponto.
-    monkeypatch.setattr(fii_engine, "get_selic_atual", lambda: macro.selic)
+    referencias = []
+
+    def contexto(*, as_of):
+        referencias.append(as_of)
+        return _macro(provedor, as_of)
+
+    monkeypatch.setattr(fii_engine, "MacroContext", contexto)
+    monkeypatch.setattr(fii_engine, "get_selic_atual", lambda: pytest.fail("getter corrente não é o elo temporal"))
     dados = enriquecer_fii(
         {"ticker": "TSTI11", "preco_atual": 100.0, "dy": 0.09, "pvp": 1.0}, ntnb=0.07
     )
     resultado = FIIEngine().analisar(dados, as_of=AS_OF_GORDON)
-    assert resultado["selic_liquida"] == pytest.approx(0.15 * 0.85)
+    assert referencias == [date(2026, 10, 20)]
+    assert resultado["selic_liquida"] == pytest.approx(0.1375 * 0.85)
 
 
 # proveniência e resultado não representável (F3-1d; BUG-3-06, BUG-3-07, BUG-3-08)

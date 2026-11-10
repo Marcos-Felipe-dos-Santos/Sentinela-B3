@@ -9,6 +9,7 @@ from collections import OrderedDict
 from dataclasses import replace
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -498,11 +499,12 @@ class CVMProvider:
     # ------------------------------------------------------------------
 
     def calcular_indicadores(
-        self, cd_cvm: int, anos: int = 5, modelo: str = "empresa", ano_final: int | None = None
+        self, cd_cvm: int, anos: int = 5, modelo: str = "empresa", ano_final: int | None = None,
+        *, as_of: datetime | None = None
     ) -> dict:
         """
         Retorna dict {ano: {indicador: valor}} para os últimos N anos, até `ano_final`
-        (padrão: o ano anterior ao corrente).
+        (padrão: o ano anterior ao dia local de as_of, ou ao corrente na API legada).
 
         Indicadores: ativo_total, ativo_circulante, passivo_total,
         passivo_circulante, patrimonio_liquido, receita_liquida, ebit,
@@ -518,7 +520,10 @@ class CVMProvider:
         os modelos, como o F2A-3 fazia pela descrição.
         """
         if ano_final is None:
-            ano_final = date.today().year - 1
+            if as_of is not None and as_of.utcoffset() is None:
+                raise ValueError("as_of exige fuso horário")
+            dia = date.today() if as_of is None else as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+            ano_final = dia.year - 1
         resultado: dict[int, dict] = {}
 
         for delta in range(anos):

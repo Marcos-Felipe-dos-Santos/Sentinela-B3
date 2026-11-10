@@ -474,8 +474,19 @@ class MarketEngine:
         }
         dados.pop('_field_sources', None)
 
-    def buscar_dados_ticker(self, ticker: str) -> dict[str, Any] | None:
+    def buscar_dados_ticker_em(self, ticker: str, as_of: datetime) -> dict[str, Any] | None:
+        """Referência explícita na cascata; não é ainda o leitor histórico estrito.
+
+        O serviço recusa passado até F3-3d; fontes atuais conservam a coleta real.
+        """
+        return self.buscar_dados_ticker(ticker, as_of=as_of)
+
+    def buscar_dados_ticker(
+        self, ticker: str, *, as_of: datetime | None = None
+    ) -> dict[str, Any] | None:
         """Busca dados de mercado com fallback multi-fonte."""
+        if as_of is not None and as_of.utcoffset() is None:
+            raise ValueError("as_of exige fuso horário")
         # F2A-12: ticker fora do formato da B3 não chega a nenhuma fonte externa.
         normalizado = ticker_b3.normalizar(ticker)
         if normalizado is None:
@@ -517,18 +528,33 @@ class MarketEngine:
 
         # 3. CVM: fundamentos oficiais das demonstrações financeiras.
         #    Roda após brapi para ter a última palavra nos campos que provê.
-        self._buscar_cvm(ticker, dados)
+        if as_of is None:
+            self._buscar_cvm(ticker, dados)
+        else:
+            self._buscar_cvm(ticker, dados, as_of=as_of)
 
         if not dados.get('fonte_preco'):
             return None
 
-        self._buscar_ifdata(dados, as_of=datetime.now(UTC))
-        self._buscar_cvm_fii(ticker, dados)
-        self._buscar_rendimento_fii(ticker, dados)
-        self._buscar_proventos_b3(ticker, dados)
+        self._buscar_ifdata(dados, as_of=as_of if as_of is not None else datetime.now(UTC))
+        if as_of is None:
+            self._buscar_cvm_fii(ticker, dados)
+        else:
+            self._buscar_cvm_fii(ticker, dados, as_of=as_of)
+        if as_of is None:
+            self._buscar_rendimento_fii(ticker, dados)
+        else:
+            self._buscar_rendimento_fii(ticker, dados, as_of=as_of)
+        if as_of is None:
+            self._buscar_proventos_b3(ticker, dados)
+        else:
+            self._buscar_proventos_b3(ticker, dados, as_of=as_of)
         self._buscar_liquidez(ticker, dados)
         self._buscar_taxa_real(dados)
-        self._contexto_janelas(dados, datetime.now(UTC))
+        if as_of is None:
+            self._contexto_janelas(dados, datetime.now(UTC))
+        else:
+            self._contexto_janelas(dados, as_of, coletado_em=datetime.now(UTC))
 
         if list_missing_required_fields(dados, classifier):
             self._aplicar_cache_fundamentos(ticker, dados)
@@ -733,7 +759,7 @@ class MarketEngine:
 
         return False
 
-    def _buscar_rendimento_fii(self, ticker: str, dados: dict[str, Any]) -> None:
+    def _buscar_rendimento_fii(self, ticker: str, dados: dict[str, Any], *, as_of: datetime | None = None) -> None:
         """Informe Mensal e complemento da B3 do FII, para a lente de rendimento (F2B-2).
 
         Grava, fora do prompt, `dados['informe_fii']` (linhas do complemento com a entrega e
@@ -749,7 +775,7 @@ class MarketEngine:
         if ler is None or not cnpj:
             return
         try:
-            dados['informe_fii'] = ler(cnpj)
+            dados['informe_fii'] = ler(cnpj) if as_of is None else ler(cnpj, as_of=as_of)
         except (OSError, ValueError) as exc:
             # F3-P04 (BUG-2C-12): falha da fonte vira abstenção e risco de dados; erro de
             # programação (TypeError, KeyError, AttributeError...) propaga.
@@ -771,7 +797,9 @@ class MarketEngine:
                 'abstencao': f"complemento da B3 do fundo indisponível: {exc}"
             }
 
-    def _contexto_janelas(self, dados: dict[str, Any], instante: datetime) -> None:
+    def _contexto_janelas(
+        self, dados: dict[str, Any], instante: datetime, *, coletado_em: datetime | None = None
+    ) -> None:
         """Disponibiliza fontes existentes; não presume eventos/perímetros conciliados."""
         from sentinela.data.janelas_fundamentais import entradas
 
@@ -783,7 +811,9 @@ class MarketEngine:
         exercicios = (dados.get("serie_cvm") or {}).get("exercicios") or []
         if len(exercicios) == 5 and not dados.get("ipca_serie"):
             try:
-                dados["ipca_serie"] = MacroProvider().ipca_serie(exercicios, instante)
+                dados["ipca_serie"] = MacroProvider().ipca_serie(
+                    exercicios, instante if coletado_em is None else coletado_em
+                )
             except FALHAS_DA_FONTE as erro:
                 dados["ipca_serie"] = _falha_da_fonte(erro)
             except ERROS_DO_CODIGO as erro:
@@ -801,7 +831,7 @@ class MarketEngine:
             as_of=datetime.now(UTC), janela=janela
         )
 
-    def _buscar_proventos_b3(self, ticker: str, dados: dict[str, Any]) -> None:
+    def _buscar_proventos_b3(self, ticker: str, dados: dict[str, Any], *, as_of: datetime | None = None) -> None:
         """Relação de proventos em dinheiro da B3 para o Bazin (F2B-31), fora do prompt.
 
         Só STOCK e UNIT do modelo empresa pelo BPP consolidado (ficha Bazin 1.0, §4). Grava em
@@ -838,7 +868,8 @@ class MarketEngine:
             dados['proventos_b3'] = {'abstencao': proventos_b3.MOTIVO_PRECO}
             return
         agora = datetime.now(UTC)
-        hoje = agora.astimezone(proventos_b3.FUSO).date()
+        referencia_analise = agora if as_of is None else as_of
+        hoje = referencia_analise.astimezone(proventos_b3.FUSO).date()
         anteriores = [date.fromisoformat(d) for d in fechamentos if date.fromisoformat(d) < hoje]
         if not anteriores:
             dados['proventos_b3'] = {'abstencao': proventos_b3.MOTIVO_PRECO_NAO_ENCERRADO}
@@ -937,7 +968,7 @@ class MarketEngine:
             pregoes = len({c.data for c in coleta.cotacoes})
             dados['liquidez']['incompleta'] = pregoes < 63
 
-    def _buscar_cvm_fii(self, ticker: str, dados: dict[str, Any]) -> bool:
+    def _buscar_cvm_fii(self, ticker: str, dados: dict[str, Any], *, as_of: datetime | None = None) -> bool:
         """VPA, P/VP, PL e cotas do FII pelo Informe Mensal da CVM (F2A-11; E-10, armadilha 9).
 
         O CNPJ vem só do índice oficial (F2A-31; sem ele, o Informe não é consultado). O P/VP
@@ -955,7 +986,10 @@ class MarketEngine:
                 dados.setdefault('riscos_dados', []).append(RISCO_FII_FORA_DO_INFORME)
             return False
         try:
-            informe = provedor.obter_dados_fii(cnpj)
+            informe = (
+                provedor.obter_dados_fii(cnpj) if as_of is None
+                else provedor.obter_dados_fii(cnpj, as_of=as_of)
+            )
         except Exception as exc:
             logger.warning(f"[{ticker}] Informe Mensal do FII indisponível: {exc}")
             dados.setdefault('riscos_dados', []).append(
@@ -1039,7 +1073,7 @@ class MarketEngine:
         )
         return None
 
-    def _buscar_cvm(self, ticker: str, dados: dict[str, Any]) -> bool:
+    def _buscar_cvm(self, ticker: str, dados: dict[str, Any], *, as_of: datetime | None = None) -> bool:
         """Preenche fundamentos a partir das DFPs oficiais da CVM.
 
         Cobre: ROE (dos controladores), margens, PL, lucro, receita, ativo circulante/total,
@@ -1066,6 +1100,8 @@ class MarketEngine:
             # para manter a interface dos provedores anteriores ao F2A-33.
             modelo = contas_cvm.modelo_do_setor(dados.get('setor'))
             extra = {} if modelo == 'empresa' else {'modelo': modelo}
+            if as_of is not None:
+                extra['as_of'] = as_of
             ano_final = self._serie_cvm(ticker, dados, cvm, cd_cvm, modelo)
             selecionar_exercicio = getattr(cvm, "exercicio_anual_mais_recente", None)
             if callable(selecionar_exercicio):
@@ -1116,7 +1152,7 @@ class MarketEngine:
                 dados["modelo_bpp_proveniencia"] = ind.get("proveniencia")
             obter_gordon = getattr(cvm, "gordon_do_documento", None)
             if callable(obter_gordon):
-                instante_gordon = datetime.now(UTC)
+                instante_gordon = as_of if as_of is not None else datetime.now(UTC)
                 fato = obter_gordon(cd_cvm, ind, instante_gordon)
                 if "abstencao" not in fato:
                     acoes = dados.get("acoes_cvm") or {}

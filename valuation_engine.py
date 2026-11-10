@@ -123,6 +123,7 @@ class ValuationEngine:
         *,
         classe,
         modelo,
+        as_of: datetime | None = None,
     ):
         """Converte os dados já normalizados da V1 em MethodInputs (uma única vez)."""
         p, pl, pvp = _finito(p), _finito(pl), _finito(pvp)
@@ -133,7 +134,7 @@ class ValuationEngine:
         if p is not None and pvp is not None:
             vpa = _finito(p / pvp) if pvp > 0 else 0.0
         return MethodInputs(
-            as_of=date.today(),
+            as_of=date.today() if as_of is None else as_of.astimezone(FUSO).date(),
             preco=None if p is None else BRL(p),
             pl=None if pl is None else Ratio(pl),
             pvp=None if pvp is None else Ratio(pvp),
@@ -405,6 +406,7 @@ class ValuationEngine:
             lpa=lpa,
             classe=AssetType(classe),
             modelo=ModeloDemonstracao(modelo),
+            as_of=instante,
         )
         if instante.tzinfo is None or instante.utcoffset() is None:
             entradas_gordon = gordon_cvm.Abstencao("as_of exige fuso horário")
