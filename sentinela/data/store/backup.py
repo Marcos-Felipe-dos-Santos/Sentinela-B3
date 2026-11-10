@@ -7,7 +7,7 @@ e confere tabelas, índices e contagens. Banco ausente é registro de ausência:
 criado. Nenhum destino existente é sobrescrito.
 
 Linha de comando: `python -m sentinela.data.store.backup <diretório> [bancos...]`, sem
-bancos lê os dois atuais (`BANCOS`). Cada execução grava numa pasta própria,
+bancos lê os dois antigos e o banco único (`PADRAO`). Cada execução grava numa pasta própria,
 `<diretório>/<carimbo UTC>/` (decisão 34 do Marcos, 10/11/2026; BUG-3-10), as cópias e
 `backup.json` (cópias verificadas e ausências); erro num banco (arquivo que não é SQLite,
 falha de disco, nome repetido) vai para `erros.json`, relatório separado, e os seguintes
@@ -30,8 +30,12 @@ from datetime import UTC, datetime
 from itertools import count
 from pathlib import Path
 
-# `database.py` (DatabaseManager) e `AnalysisRepository`, caminhos padrão.
+# Os dois bancos antigos (caminhos padrão do `DatabaseManager` e do `AnalysisRepository`
+# até o F3-2c).
 BANCOS = ("sentinela_v6.db", "sentinela.db")
+# Linha de comando sem bancos: os antigos e o banco único do F3-2c (`unico.BANCO_UNICO`),
+# que as classes usam desde então.
+PADRAO = (*BANCOS, "sentinela_store.db")
 RELATORIO = "backup.json"
 ERROS = "erros.json"
 CARIMBO = "%Y%m%dT%H%M%S%fZ"
@@ -191,7 +195,7 @@ def main(argv: list[str] | None = None, agora: datetime | None = None) -> int:
         argumentos[0], datetime.now(UTC) if agora is None else agora
     )
     relatorio, erros, ok = [], [], True
-    for banco in argumentos[1:] or BANCOS:
+    for banco in argumentos[1:] or PADRAO:
         origem = Path(banco)
         try:
             copia = copiar(origem, pasta / origem.name)

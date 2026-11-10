@@ -67,8 +67,16 @@ def aplicar(conn: sqlite3.Connection, diretorio: Path = DIRETORIO) -> list[int]:
     try:
         conn.execute(_SCHEMA_VERSION)
         aplicadas = dict(conn.execute("SELECT versao, sha256 FROM schema_version"))
+        migracoes = listar(diretorio)
+        # DD-02 (auditoria FASE do Codex ao F3-2b): banco mais novo que o código é recusado.
+        desconhecidas = sorted(set(aplicadas) - {numero for numero, _ in migracoes})
+        if desconhecidas:
+            raise ValueError(
+                "versão do banco ausente do diretório: "
+                + ", ".join(str(v) for v in desconhecidas)
+            )
         novas = []
-        for numero, arquivo in listar(diretorio):
+        for numero, arquivo in migracoes:
             texto = arquivo.read_text(encoding="utf-8")
             digest = hashlib.sha256(texto.encode("utf-8")).hexdigest()
             if numero in aplicadas:

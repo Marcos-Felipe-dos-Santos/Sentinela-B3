@@ -4,6 +4,7 @@ import sqlite3
 from contextlib import closing
 from datetime import datetime, timedelta
 
+from sentinela.data.store import unico
 from sentinela.domain.apresentacao import adaptar_leitura
 
 logger = logging.getLogger("Database")
@@ -14,8 +15,9 @@ class DatabaseManager:
     # Riscos: dados defasados usados em análise fresca sem aviso ao usuário.
     # Implementar apenas quando houver flag clara de "cache_stale" no resultado.
     # Por ora, salvar_analise() já persiste dados_completos como JSON readonly.
-    def __init__(self, db_path="sentinela_v6.db"):
-        self.db_path = db_path
+    def __init__(self, db_path=None):
+        # F3-2c: sem caminho, o banco único (`sentinela.data.store.unico.caminho_padrao`).
+        self.db_path = unico.caminho_padrao() if db_path is None else db_path
         self._init_db()
 
     def _get_conn(self):

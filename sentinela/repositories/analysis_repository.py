@@ -9,6 +9,7 @@ from contextlib import closing
 from datetime import datetime
 from typing import Any
 
+from sentinela.data.store import unico
 from sentinela.domain.apresentacao import adaptar_leitura
 from sentinela.domain.models import AnalysisResult
 
@@ -16,8 +17,9 @@ from sentinela.domain.models import AnalysisResult
 class AnalysisRepository:
     """Stores analysis runs without replacing previous snapshots."""
 
-    def __init__(self, db_path: str = "sentinela.db") -> None:
-        self.db_path = db_path
+    def __init__(self, db_path: str | None = None) -> None:
+        # F3-2c: without a path, the single store (`unico.caminho_padrao`).
+        self.db_path = unico.caminho_padrao() if db_path is None else db_path
         self._init_db()
 
     def _get_conn(self) -> sqlite3.Connection:
