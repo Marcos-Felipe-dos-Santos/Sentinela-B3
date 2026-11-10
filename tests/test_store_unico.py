@@ -88,7 +88,10 @@ def test_migracao_sem_perda_e_leitura_pelas_classes(tmp_path):
     assert novo == 4
     # esquema do banco novo é o das migrações
     with closing(sqlite3.connect(destino)) as conn:
-        assert [v for (v,) in conn.execute("SELECT versao FROM schema_version")] == [1]
+        assert [v for (v,) in conn.execute("SELECT versao FROM schema_version")] == [
+            1,
+            2,
+        ]
     # os bancos antigos ficam no disco, intactos
     assert all(p.is_file() for p in origens.values())
 
@@ -234,7 +237,10 @@ def test_caminho_padrao_sem_banco_nenhum_cria_pelo_esquema(tmp_path, monkeypatch
     assert db.db_path == unico.BANCO_UNICO
     assert AnalysisRepository().db_path == unico.BANCO_UNICO
     with closing(sqlite3.connect(tmp_path / unico.BANCO_UNICO)) as conn:
-        assert [v for (v,) in conn.execute("SELECT versao FROM schema_version")] == [1]
+        assert [v for (v,) in conn.execute("SELECT versao FROM schema_version")] == [
+            1,
+            2,
+        ]
 
 
 def test_caminho_padrao_aplica_pendentes_no_banco_unico(tmp_path, monkeypatch):
@@ -292,9 +298,11 @@ def test_linha_de_comando_sem_argumentos_mostra_o_uso(capsys):
 def test_aplicar_recusa_versao_que_o_diretorio_nao_tem(tmp_path):
     with closing(sqlite3.connect(tmp_path / "x.db")) as conn:
         migracoes.aplicar(conn)
-        conn.execute("INSERT INTO schema_version VALUES (2, '002_futura.sql', 'x')")
+        conn.execute("INSERT INTO schema_version VALUES (99, '099_futura.sql', 'x')")
         conn.commit()
-        with pytest.raises(ValueError, match="versão do banco ausente do diretório: 2"):
+        with pytest.raises(
+            ValueError, match="versão do banco ausente do diretório: 99"
+        ):
             migracoes.aplicar(conn)
 
 

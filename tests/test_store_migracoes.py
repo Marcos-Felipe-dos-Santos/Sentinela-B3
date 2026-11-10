@@ -10,6 +10,17 @@ from sentinela.data.store import migracoes
 from sentinela.repositories.analysis_repository import AnalysisRepository
 
 
+def _so_001(tmp_path):
+    """Diretório só com a 001: os testes do F3-2b medem a 001, sem as migrações seguintes."""
+    pasta = tmp_path / "so_001"
+    pasta.mkdir()
+    origem = migracoes.DIRETORIO / "001_esquema_inicial.sql"
+    (pasta / origem.name).write_text(
+        origem.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    return pasta
+
+
 def _aplicar(caminho, diretorio=None):
     with closing(sqlite3.connect(caminho)) as conn:
         if diretorio is None:
@@ -85,7 +96,7 @@ def test_001_reproduz_as_tabelas_do_repositorio(tmp_path):
 
 
 def test_001_cria_so_as_tabelas_dos_dois_bancos(tmp_path):
-    _aplicar(tmp_path / "novo.db")
+    _aplicar(tmp_path / "novo.db", _so_001(tmp_path))
     with closing(sqlite3.connect(tmp_path / "novo.db")) as conn:
         tabelas = {
             r[0]
@@ -97,9 +108,9 @@ def test_001_cria_so_as_tabelas_dos_dois_bancos(tmp_path):
 
 
 def test_registra_versao_e_e_idempotente(tmp_path):
-    banco = tmp_path / "novo.db"
-    assert _aplicar(banco) == [1]
-    assert _aplicar(banco) == []
+    banco, pasta = tmp_path / "novo.db", _so_001(tmp_path)
+    assert _aplicar(banco, pasta) == [1]
+    assert _aplicar(banco, pasta) == []
     assert _versoes(banco) == [(1, "001_esquema_inicial.sql")]
 
 
