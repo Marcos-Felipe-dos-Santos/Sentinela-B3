@@ -4,6 +4,7 @@ import hashlib
 import json
 import sqlite3
 from contextlib import closing
+from datetime import UTC, datetime
 
 import pytest
 
@@ -25,6 +26,12 @@ def _banco(caminho, wal=False):
     conn.execute('INSERT INTO "tabela ""estranha""" VALUES (1)')
     conn.commit()
     return conn
+
+
+def _execucao(destino):
+    """A única pasta de execução da linha de comando em `destino` (BUG-3-10)."""
+    (pasta,) = destino.iterdir()
+    return pasta
 
 
 def test_copia_consistente_com_hash_e_contagens(tmp_path):
@@ -119,12 +126,13 @@ def test_linha_de_comando_grava_o_relatorio(tmp_path):
     ausente = tmp_path / "sentinela.db"
     destino = tmp_path / "saida"
     assert backup.main([str(destino), str(a), str(ausente)]) == 0
-    relatorio = json.loads((destino / "backup.json").read_text())
+    pasta = _execucao(destino)
+    relatorio = json.loads((pasta / "backup.json").read_text())
     assert relatorio[0]["iguais"] is True
     assert relatorio[0]["restauracao_iguais"] is True
     assert (
         relatorio[0]["sha256"]
-        == hashlib.sha256((destino / "a.db").read_bytes()).hexdigest()
+        == hashlib.sha256((pasta / "a.db").read_bytes()).hexdigest()
     )
     assert relatorio[1] == {"origem": str(ausente), "ausente": True}
     assert not ausente.exists()
@@ -148,7 +156,7 @@ def test_ausente_antes_nao_interrompe_os_seguintes(tmp_path):
     _banco(a).close()
     destino = tmp_path / "x" / "y"
     assert backup.main([str(destino), str(tmp_path / "falta.db"), str(a)]) == 0
-    relatorio = json.loads((destino / "backup.json").read_text())
+    relatorio = json.loads((_execucao(destino) / "backup.json").read_text())
     assert [item.get("ausente", False) for item in relatorio] == [True, False]
 
 
@@ -177,14 +185,14 @@ def test_le_os_argumentos_da_linha_de_comando(tmp_path, monkeypatch):
     destino = tmp_path / "saida"
     monkeypatch.setattr("sys.argv", ["backup", str(destino), str(a)])
     assert backup.main() == 0
-    assert (destino / "a.db").is_file()
+    assert (_execucao(destino) / "a.db").is_file()
 
 
 def test_sem_bancos_le_os_dois_atuais_do_diretorio_corrente(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _banco(tmp_path / "sentinela_v6.db").close()
     assert backup.main(["saida"]) == 0
-    relatorio = json.loads((tmp_path / "saida" / "backup.json").read_text())
+    relatorio = json.loads((_execucao(tmp_path / "saida") / "backup.json").read_text())
     assert relatorio[0]["origem"] == "sentinela_v6.db"
     assert relatorio[1] == {"origem": "sentinela.db", "ausente": True}
     assert not (tmp_path / "sentinela.db").exists()
@@ -193,22 +201,89 @@ def test_sem_bancos_le_os_dois_atuais_do_diretorio_corrente(tmp_path, monkeypatc
 def test_so_ausentes_ainda_grava_o_relatorio(tmp_path):
     destino = tmp_path / "x" / "y"
     assert backup.main([str(destino), str(tmp_path / "falta.db")]) == 0
-    assert json.loads((destino / "backup.json").read_text()) == [
+    pasta = _execucao(destino)
+    assert json.loads((pasta / "backup.json").read_text()) == [
         {"origem": str(tmp_path / "falta.db"), "ausente": True}
     ]
+    assert not (pasta / "erros.json").exists()
 
 
-def test_rodar_de_novo_no_mesmo_diretorio_registra_o_erro(tmp_path):
+def test_rodar_de_novo_no_mesmo_diretorio_cria_outra_pasta(tmp_path):
     a = tmp_path / "a.db"
     _banco(a).close()
     destino = tmp_path / "saida"
-    assert backup.main([str(destino), str(a)]) == 0
-    copia = (destino / "a.db").read_bytes()
-    assert backup.main([str(destino), str(a)]) == 1
-    relatorio = json.loads((destino / "backup.json").read_text())
-    esperado = f"destino já existe: {destino / 'a.db'}"
-    assert relatorio == [{"origem": str(a), "erro": esperado}]
-    assert (destino / "a.db").read_bytes() == copia
+    instante = datetime(2026, 11, 10, 12, 0, 0, 123456, tzinfo=UTC)
+    assert backup.main([str(destino), str(a)], agora=instante) == 0
+    primeira = destino / "20261110T120000123456Z"
+    arquivos = {p.name: p.read_bytes() for p in primeira.iterdir()}
+    # Mesmo carimbo (mesmo instante): outra pasta, sem tocar na primeira.
+    assert backup.main([str(destino), str(a)], agora=instante) == 0
+    assert backup.main([str(destino), str(a)], agora=instante) == 0
+    assert sorted(p.name for p in destino.iterdir()) == [
+        "20261110T120000123456Z",
+        "20261110T120000123456Z-2",
+        "20261110T120000123456Z-3",
+    ]
+    assert {p.name: p.read_bytes() for p in primeira.iterdir()} == arquivos
+    segunda = json.loads(
+        (destino / "20261110T120000123456Z-2" / "backup.json").read_text()
+    )
+    assert segunda[0]["iguais"] is True
+
+
+def test_carimbo_e_o_instante_em_utc(tmp_path):
+    from datetime import timedelta, timezone
+
+    brasilia = timezone(timedelta(hours=-3))
+    pasta = backup.pasta_da_execucao(
+        tmp_path, datetime(2026, 11, 10, 9, 5, 7, 1, tzinfo=brasilia)
+    )
+    assert pasta == tmp_path / "20261110T120507000001Z"
+    assert pasta.is_dir()
+
+
+def test_pasta_cria_diretorios_intermediarios(tmp_path):
+    instante = datetime(2026, 11, 10, 12, tzinfo=UTC)
+    pasta = backup.pasta_da_execucao(tmp_path / "a" / "b", instante)
+    assert pasta == tmp_path / "a" / "b" / "20261110T120000000000Z"
+    assert pasta.is_dir()
+
+
+def test_relatorio_de_erros_em_utf8_legivel(tmp_path):
+    a = tmp_path / "a.db"
+    outro = tmp_path / "outro" / "a.db"
+    outro.parent.mkdir()
+    _banco(a).close()
+    _banco(outro).close()
+    assert backup.main([str(tmp_path / "saida"), str(a), str(outro)]) == 1
+    texto = (_execucao(tmp_path / "saida") / "erros.json").read_bytes().decode("utf-8")
+    assert "destino já existe" in texto
+
+
+def test_carimbo_sem_fuso_e_recusado(tmp_path):
+    with pytest.raises(ValueError, match="^instante da execução exige fuso horário$"):
+        backup.pasta_da_execucao(tmp_path / "x", datetime(2026, 11, 10, 12))  # noqa: DTZ001
+    assert not (tmp_path / "x").exists()
+
+
+def test_relatorio_existente_nao_e_sobrescrito(tmp_path):
+    caminho = tmp_path / "backup.json"
+    caminho.write_text("valido")
+    with pytest.raises(FileExistsError):
+        backup._gravar(caminho, [])
+    assert caminho.read_text() == "valido"
+
+
+def test_linha_de_comando_mostra_a_pasta(tmp_path, capsys):
+    a = tmp_path / "a.db"
+    _banco(a).close()
+    assert backup.main([str(tmp_path / "saida"), str(a)]) == 0
+    assert capsys.readouterr().out.strip() == str(_execucao(tmp_path / "saida"))
+
+
+def test_restaurar_copia_ausente_cita_o_caminho(tmp_path):
+    with pytest.raises(FileNotFoundError, match="nao_existe.db"):
+        backup.restaurar(tmp_path / "nao_existe.db", tmp_path / "r.db")
 
 
 def test_falha_no_meio_nao_deixa_copia_parcial(tmp_path):
@@ -241,28 +316,37 @@ def test_contagem_antes_e_da_mesma_leitura_da_copia(tmp_path, monkeypatch):
     assert backup.contagens(destino)["carteira_real"] == 2
 
 
-def test_erro_num_banco_nao_interrompe_os_seguintes(tmp_path):
+def test_erro_num_banco_vai_para_relatorio_separado(tmp_path):
     a, b = tmp_path / "a.db", tmp_path / "b.db"
-    _banco(a).close()
-    _banco(b).close()
+    outro = tmp_path / "outro" / "a.db"
+    outro.parent.mkdir()
+    for banco in (a, b, outro):
+        _banco(banco).close()
     destino = tmp_path / "saida"
-    destino.mkdir()
-    (destino / "a.db").write_bytes(b"x")
-    assert backup.main([str(destino), str(a), str(b)]) == 1
-    relatorio = json.loads((destino / "backup.json").read_text())
-    assert "erro" in relatorio[0]
-    assert relatorio[1]["iguais"] is True
+    # O segundo "a.db" cai no mesmo nome da pasta da execução: erro só dele.
+    assert backup.main([str(destino), str(a), str(outro), str(b)]) == 1
+    pasta = _execucao(destino)
+    relatorio = json.loads((pasta / "backup.json").read_text())
+    assert [item["origem"] for item in relatorio] == [str(a), str(b)]
+    assert all(item["iguais"] for item in relatorio)
+    erros = json.loads((pasta / "erros.json").read_text())
+    assert erros == [
+        {"origem": str(outro), "erro": f"destino já existe: {pasta / 'a.db'}"}
+    ]
 
 
-def test_banco_corrompido_no_meio_entra_no_relatorio(tmp_path):
+def test_banco_corrompido_no_meio_entra_no_relatorio_de_erros(tmp_path):
     ruim, b = tmp_path / "ruim.db", tmp_path / "b.db"
     ruim.write_bytes(b"nao e sqlite" * 100)
     _banco(b).close()
     destino = tmp_path / "saida"
     assert backup.main([str(destino), str(ruim), str(b)]) == 1
-    relatorio = json.loads((destino / "backup.json").read_text())
-    assert relatorio[0]["origem"] == str(ruim) and "erro" in relatorio[0]
-    assert relatorio[1]["iguais"] is True
+    pasta = _execucao(destino)
+    erros = json.loads((pasta / "erros.json").read_text())
+    assert [e["origem"] for e in erros] == [str(ruim)] and "erro" in erros[0]
+    relatorio = json.loads((pasta / "backup.json").read_text())
+    assert [item["origem"] for item in relatorio] == [str(b)]
+    assert relatorio[0]["iguais"] is True
 
 
 def test_restauracao_de_teste_nao_fica_no_diretorio(tmp_path):
@@ -270,4 +354,7 @@ def test_restauracao_de_teste_nao_fica_no_diretorio(tmp_path):
     _banco(a).close()
     destino = tmp_path / "saida"
     assert backup.main([str(destino), str(a)]) == 0
-    assert sorted(p.name for p in destino.iterdir()) == ["a.db", "backup.json"]
+    assert sorted(p.name for p in _execucao(destino).iterdir()) == [
+        "a.db",
+        "backup.json",
+    ]

@@ -7,10 +7,14 @@ e confere tabelas, índices e contagens. Banco ausente é registro de ausência:
 criado. Nenhum destino existente é sobrescrito.
 
 Linha de comando: `python -m sentinela.data.store.backup <diretório> [bancos...]`, sem
-bancos lê os dois atuais (`BANCOS`); grava as cópias e `backup.json` no diretório (use um
-diretório em `outputs/`, fora do git: as contagens são da carteira real). A restauração de
-teste é feita num diretório temporário. Erro num banco (destino existente, arquivo que não
-é SQLite, falha de disco) entra no relatório, e os seguintes continuam.
+bancos lê os dois atuais (`BANCOS`). Cada execução grava numa pasta própria,
+`<diretório>/<carimbo UTC>/` (decisão 34 do Marcos, 10/11/2026; BUG-3-10), as cópias e
+`backup.json` (cópias verificadas e ausências); erro num banco (arquivo que não é SQLite,
+falha de disco, nome repetido) vai para `erros.json`, relatório separado, e os seguintes
+continuam. Nada de uma execução anterior é sobrescrito: a pasta e os relatórios só são
+criados se ainda não existem, e carimbo repetido ganha sufixo `-2`, `-3`... Use um
+diretório em `outputs/`, fora do git: as contagens são da carteira real. A restauração de
+teste é feita num diretório temporário. O relógio do carimbo é lido só aqui (borda).
 """
 
 from __future__ import annotations
@@ -22,11 +26,15 @@ import sys
 import tempfile
 from contextlib import closing
 from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
+from itertools import count
 from pathlib import Path
 
 # `database.py` (DatabaseManager) e `AnalysisRepository`, caminhos padrão.
 BANCOS = ("sentinela_v6.db", "sentinela.db")
 RELATORIO = "backup.json"
+ERROS = "erros.json"
+CARIMBO = "%Y%m%dT%H%M%S%fZ"
 
 
 @dataclass(frozen=True)
@@ -104,6 +112,9 @@ def _backup(origem: Path, destino: Path) -> dict[str, int]:
 
     Falha no meio apaga o destino que esta chamada criou, para não bloquear outra cópia.
     """
+    if not origem.is_file():
+        # BUG-3-09: `sqlite3.connect` criaria a origem ausente, e o banco vazio passaria.
+        raise FileNotFoundError(f"origem não existe: {origem}")
     if destino.exists():
         raise FileExistsError(f"destino já existe: {destino}")
     destino.parent.mkdir(parents=True, exist_ok=True)
@@ -147,18 +158,43 @@ def restaurar(copia: Path | str, destino: Path | str) -> Conferencia:
     return conferir(copia, destino)
 
 
-def main(argv: list[str] | None = None) -> int:
-    """Copia e restaura em teste cada banco; 1 se alguma contagem ou esquema divergir."""
+def pasta_da_execucao(diretorio: Path | str, agora: datetime) -> Path:
+    """Cria e devolve `<diretório>/<carimbo UTC>`; carimbo repetido ganha `-2`, `-3`..."""
+    if agora.utcoffset() is None:
+        raise ValueError("instante da execução exige fuso horário")
+    diretorio = Path(diretorio)
+    diretorio.mkdir(parents=True, exist_ok=True)
+    base = agora.astimezone(UTC).strftime(CARIMBO)
+    for numero in count(1):
+        pasta = diretorio / (base if numero == 1 else f"{base}-{numero}")
+        try:
+            pasta.mkdir()
+        except FileExistsError:
+            continue
+        return pasta
+    raise AssertionError("inalcançável")  # pragma: no cover
+
+
+def _gravar(caminho: Path, conteudo: list) -> None:
+    """Grava o relatório só se ele ainda não existe (`x`): nunca sobrescreve."""
+    with caminho.open("x", encoding="utf-8") as arquivo:
+        arquivo.write(json.dumps(conteudo, ensure_ascii=False, indent=2))
+
+
+def main(argv: list[str] | None = None, agora: datetime | None = None) -> int:
+    """Copia e restaura em teste cada banco; 1 se algum falhar ou divergir."""
     argumentos = sys.argv[1:] if argv is None else argv
     if not argumentos:
         print("uso: python -m sentinela.data.store.backup <diretório> [bancos...]")
         return 2
-    diretorio = Path(argumentos[0])
-    relatorio, ok = [], True
+    pasta = pasta_da_execucao(
+        argumentos[0], datetime.now(UTC) if agora is None else agora
+    )
+    relatorio, erros, ok = [], [], True
     for banco in argumentos[1:] or BANCOS:
         origem = Path(banco)
         try:
-            copia = copiar(origem, diretorio / origem.name)
+            copia = copiar(origem, pasta / origem.name)
             if isinstance(copia, Ausente):
                 relatorio.append({"origem": copia.origem, "ausente": True})
                 continue
@@ -166,7 +202,7 @@ def main(argv: list[str] | None = None) -> int:
             with tempfile.TemporaryDirectory() as temporario:
                 teste = restaurar(copia.destino, Path(temporario) / origem.name)
         except (OSError, sqlite3.Error) as erro:
-            relatorio.append({"origem": str(origem), "erro": str(erro)})
+            erros.append({"origem": str(origem), "erro": str(erro)})
             ok = False
             continue
         ok = ok and copia.iguais and teste.iguais
@@ -177,10 +213,10 @@ def main(argv: list[str] | None = None) -> int:
                 "restauracao_iguais": teste.iguais,
             }
         )
-    diretorio.mkdir(parents=True, exist_ok=True)
-    (diretorio / RELATORIO).write_text(
-        json.dumps(relatorio, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    _gravar(pasta / RELATORIO, relatorio)
+    if erros:
+        _gravar(pasta / ERROS, erros)
+    print(pasta)
     return 0 if ok else 1
 
 

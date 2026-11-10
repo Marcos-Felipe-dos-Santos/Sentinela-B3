@@ -10,7 +10,6 @@ import pytest
 from sentinela.data.store import backup
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-3-09, corrige F3-2a-fix")
 def test_restaurar_copia_ausente_recusa_sem_criar_arquivo(tmp_path):
     copia = tmp_path / "nao_existe.db"
     destino = tmp_path / "restaurado.db"

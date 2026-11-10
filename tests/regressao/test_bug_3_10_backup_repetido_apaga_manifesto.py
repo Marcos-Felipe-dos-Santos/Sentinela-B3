@@ -9,8 +9,6 @@ carimbo, sem sobrescrever `backup.json` válido. Auditoria FASE do Codex; destin
 import sqlite3
 from contextlib import closing
 
-import pytest
-
 from sentinela.data.store import backup
 
 
@@ -29,7 +27,6 @@ def _arquivos(diretorio):
     }
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-3-10, corrige F3-2a-fix")
 def test_segunda_execucao_preserva_manifesto_e_copias(tmp_path):
     banco = tmp_path / "origem.db"
     _banco(banco)
