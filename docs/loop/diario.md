@@ -54,3 +54,18 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** `caminho_cadastro` (raiz do CNPJ) não usa o literal; o item cobre só o código da instituição.
+
+### F3-P01 — fix: resolve B3 issuer by CVM code
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** bloqueado, `[!]` pelo caso (f): bug confirmado que exige decisão de destino.
+- **O que foi feito:** conferência no serviço real da B3 (CompanyCall), em 10/11/2026, da forma de correção da tabela F3-P01 ("código CVM do GetDetail; se recusado pela API, nome de pregão retornado pelo próprio GetDetail, sem construir à mão"). Nenhum código alterado; a regressão BUG-2B-29 continua xfail estrito.
+- **Evidência** (`outputs/f3-p01-evidencia.txt`, fora do git, SHA-256 `c36f9fdfda50ac4639c22f185e5bcccd1e03ae3662ae852ec821fd2bede4846d`; chamadas a `https://sistemaswebb3-listados.b3.com.br/listedCompaniesProxy/CompanyCall/<método>/<JSON em base64>`, `pageSize` 120, todas as páginas):
+  - `GetListedCashDividends` recusa o emissor por código: com `codeCVM` "23264", com `codeCVM` e `tradingName` juntos e com `issuingCompany` "ABEV", `totalRecords` = 0.
+  - `GetDetail` e `GetInitialCompanies` devolvem só `tradingName` "AMBEV S/A" (e "KLABIN S/A"), com `companyName` "AMBEV S.A."; nenhum outro campo traz nome de pregão. Com esse nome, a relação vem vazia, em qualquer codificação (base64 cru, base64 com percentual, nome com percentual; o base64 não contém `/`).
+  - Por nomes que a fonte não devolve: "AMBEV SA", 40 registros ON de 2014 a 2026 (a companhia atual); "AMBEV", 134 registros ON e PN de 2000 a 2013, um homônimo da companhia antiga. "KLABIN SA", 219 registros ON, PN e UNT de 2002 a 2025; "KLABIN", 18 de 1996 a 2001.
+- **Dificuldades:** o único nome que liga ao emissor correto é montado à mão (tirar a barra), o que a tabela proíbe; e o caminho mais curto ("AMBEV") cai num homônimo, que a tabela também proíbe.
+- **Como resolvi:** não resolvi; `[!]` com pendência e registro. O loop segue com até três itens de `python scripts/fila.py independentes F3-P01` (protocolo, "Item bloqueado").
+- **Testes:** 3681 passed, 1 skipped, 6 xfailed → igual. Golden SHA igual.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** como a relação de proventos chega ao emissor quando o nome de pregão do GetDetail tem barra: (1) autorizar uma transformação documentada do nome (por exemplo, tirar a barra), conferida pelo complemento do emissor (`GetListedSupplementCompany`, ISIN), que é a conferência que já existe; (2) outra fonte ou chamada oficial; (3) manter a abstenção para esses emissores e mudar o destino do BUG-2B-29.
+- **Para o Marcos revisar:** a evidência acima, refeita no dia.
