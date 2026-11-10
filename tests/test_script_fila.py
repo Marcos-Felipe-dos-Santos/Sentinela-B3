@@ -139,6 +139,8 @@ def test_branch_dentro_de_repositorio_le_o_nome(fila_mod, tmp_path, monkeypatch)
 
 
 def test_branch_fora_de_repositorio_nao_quebra(fila_mod, tmp_path, monkeypatch):
+    for variavel in [v for v in os.environ if v.startswith("GIT_")]:
+        monkeypatch.delenv(variavel)
     monkeypatch.chdir(tmp_path)
     assert fila_mod._branch() == "desconhecido"
 
@@ -260,9 +262,9 @@ def test_independentes_exclui_citacao_e_caminho_compartilhado(
 ):
     codigo, saida, _ = _rodar(fila_mod, arquivos, capsys, "independentes", "T-3")
     assert codigo == 0
-    # T-4 compartilha `sentinela/data/pit/` (prefixo); T-5 cita T-3; T-6 só compartilha
-    # caminhos de tests/ e docs/, que não contam; T-7 está depois do [DECISÃO].
-    assert saida.splitlines() == ["T-2", "T-6", "T-30"]
+    # T-4 compartilha `sentinela/data/pit/` (prefixo); T-5 cita T-3; T-6 compartilha
+    # `docs/b.md` e `tests/test_y.py` (F3-0h); T-7 está depois do [DECISÃO].
+    assert saida.splitlines() == ["T-2", "T-30"]
 
 
 def test_independentes_de_item_inexistente_falha(fila_mod, arquivos, capsys):
@@ -284,7 +286,145 @@ def test_independentes_caminho_igual_conta(fila_mod, arquivos, capsys):
 
 def test_caminhos_ignoram_mensagem_de_commit_e_comando(fila_mod):
     linha = "- [ ] **A-1** · feat · `feat: add x` — rode `python scripts/fila.py status`; `docs/x.md`."
-    assert fila_mod._caminhos(linha) == {"scripts/fila.py"}
+    assert fila_mod._caminhos(linha) == {"scripts/fila.py", "docs/x.md"}
+
+
+# independentes conservador (F3-0h)
+
+
+def _independentes(fila_mod, arquivos, capsys, texto, ident="A-1"):
+    arquivos["fila"].write_text(texto, encoding="utf-8")
+    codigo, saida, _ = _rodar(fila_mod, arquivos, capsys, "independentes", ident)
+    assert codigo == 0
+    return saida.splitlines()
+
+
+def test_independentes_conta_tests_e_docs_menos_os_arquivos_do_loop(
+    fila_mod, arquivos, capsys
+):
+    texto = (
+        "- [!] **A-1** · x — `docs/x.md`, `tests/test_a.py`, `docs/loop/fila.md`,"
+        " `docs/loop/diario.md`, `docs/loop/pendencias.md`.\n"
+        "- [ ] **A-2** · y — `docs/x.md`.\n"
+        "- [ ] **A-3** · z — `tests/test_a.py`.\n"
+        "- [ ] **A-4** · w — `docs/loop/fila.md`, `docs/loop/diario.md`,"
+        " `docs/loop/pendencias.md`.\n"
+    )
+    assert _independentes(fila_mod, arquivos, capsys, texto) == ["A-4"]
+
+
+@pytest.mark.parametrize(
+    ("alvo", "outro"),
+    [
+        ("config.py:332", "config.py"),
+        ("config.py", "config.py:332"),
+        ("scripts/x.py:10-20", "scripts/x.py:40"),
+        ("sentinela/data/a.py:10,20", "sentinela/data/a.py"),
+    ],
+)
+def test_independentes_corta_sufixo_de_linha(fila_mod, arquivos, capsys, alvo, outro):
+    texto = f"- [!] **A-1** · x — `{alvo}`.\n- [ ] **A-2** · y — `{outro}`.\n"
+    assert _independentes(fila_mod, arquivos, capsys, texto) == []
+
+
+@pytest.mark.parametrize(
+    ("a", "b", "dependentes"),
+    [
+        ("sentinela/data/**", "sentinela/data/pit/x.py", True),
+        ("tests/test_*.py", "tests/test_x.py", True),
+        ("sentinela/*/x.py", "sentinela/data/", True),
+        ("sentinela/data", "sentinela/data/pit/x.py", True),
+        ("sentinela/data/", "sentinela/data/pit/x.py", True),
+        ("scripts/fila?.py", "scripts/fila_[ab].py", True),
+        ("tests/test_*.py", "tests/conftest.py", False),
+        ("sentinela/dados*", "sentinela/data/x.py", False),
+    ],
+)
+@pytest.mark.parametrize("ordem", ["a_alvo", "b_alvo"])
+def test_independentes_casa_glob_e_diretorio_nos_dois_sentidos(
+    fila_mod, arquivos, capsys, a, b, dependentes, ordem
+):
+    alvo, outro = (a, b) if ordem == "a_alvo" else (b, a)
+    texto = f"- [!] **A-1** · x — `{alvo}`.\n- [ ] **A-2** · y — `{outro}`.\n"
+    esperado = [] if dependentes else ["A-2"]
+    assert _independentes(fila_mod, arquivos, capsys, texto) == esperado
+
+
+def test_independentes_vale_nos_dois_sentidos(fila_mod, arquivos, capsys):
+    texto = (
+        "- [!] **A-1** · x — depende do A-2. `a.py`.\n"
+        "- [ ] **A-2** · y — `b.py`.\n"
+        "- [ ] **A-3** · z — `c.py`.\n"
+    )
+    assert _independentes(fila_mod, arquivos, capsys, texto) == ["A-3"]
+
+
+def test_caminho_ininterpretavel_torna_o_item_dependente(fila_mod, arquivos, capsys):
+    texto = (
+        "- [!] **A-1** · x — `a.py`.\n"
+        "- [ ] **A-2** · y — `sentinela/data/{pit,store}/x.py`.\n"
+        "- [ ] **A-3** · z — `c.py`.\n"
+    )
+    assert _independentes(fila_mod, arquivos, capsys, texto) == ["A-3"]
+
+
+def test_sufixo_de_linha_cortado_deixa_o_caminho_comparavel(fila_mod):
+    linha = "- [ ] **A-1** · x — `sentinela/data/a.py:10,20`, `b.py:7-9`."
+    assert fila_mod._caminhos(linha) == {"sentinela/data/a.py", "b.py"}
+    assert not fila_mod._ininterpretavel(linha)
+
+
+@pytest.mark.parametrize(
+    "caminho", ["./scripts/fila.py", "scripts/../fila.py", "docs/x.md."]
+)
+def test_ponto_e_ponto_ponto_tornam_o_item_dependente(
+    fila_mod, arquivos, capsys, caminho
+):
+    texto = (
+        "- [!] **A-1** · x — `scripts/fila.py`.\n"
+        f"- [ ] **A-2** · y — `{caminho}`.\n"
+        "- [ ] **A-3** · z — `c.py`.\n"
+    )
+    assert _independentes(fila_mod, arquivos, capsys, texto) == ["A-3"]
+
+
+def test_alvo_com_caminho_ininterpretavel_nao_tem_independentes(
+    fila_mod, arquivos, capsys
+):
+    texto = "- [!] **A-1** · x — `~/projetos/a.py`.\n- [ ] **A-2** · y — `b.py`.\n"
+    assert _independentes(fila_mod, arquivos, capsys, texto) == []
+
+
+DECISAO_BLOQUEADA = (
+    "- [x] **A-1** · x — `a.py`.\n"
+    "- [!] **A-2** · y — `b.py`.\n"
+    "- [!] **[DECISÃO] Checkpoint bloqueado.** texto\n"
+    "- [ ] **A-3** · z — `c.py`.\n"
+)
+
+
+def test_decisao_bloqueada_encerra_a_contagem(fila_mod, arquivos, capsys, monkeypatch):
+    monkeypatch.setattr(fila_mod, "_branch", lambda: "b")
+    arquivos["fila"].write_text(DECISAO_BLOQUEADA, encoding="utf-8")
+    _, saida, _ = _rodar(fila_mod, arquivos, capsys, "status")
+    linhas = saida.splitlines()
+    assert "[ ]: 0" in linhas
+    assert "próximo: nenhum" in linhas
+    assert any(
+        linha.startswith("[DECISÃO]: - [!] **[DECISÃO] Checkpoint bloqueado.**")
+        for linha in linhas
+    )
+
+
+def test_decisao_bloqueada_encerra_os_independentes(fila_mod, arquivos, capsys):
+    assert _independentes(fila_mod, arquivos, capsys, DECISAO_BLOQUEADA, "A-2") == []
+
+
+def test_proximo_para_na_decisao_bloqueada(fila_mod, arquivos, capsys):
+    arquivos["fila"].write_text(DECISAO_BLOQUEADA, encoding="utf-8")
+    codigo, saida, _ = _rodar(fila_mod, arquivos, capsys, "proximo")
+    assert codigo == 3
+    assert saida.startswith("- [!] **[DECISÃO] Checkpoint bloqueado.**")
 
 
 # diario

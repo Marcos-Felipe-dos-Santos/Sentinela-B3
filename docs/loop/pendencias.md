@@ -3,3 +3,4 @@
 Uma linha por decisão provisória ou `[!]` (pacote F3-0, P3).
 
 - 2026-11-09 · F3-0c · o /goal do ciclo §6 ainda termina quando 'algum item está [!]'; com a regra P2, o loop pararia no primeiro [!] dos casos (a), (b), (e) ou (f). O F3-0c só autoriza a etapa 4 do ciclo; ajuste do texto do /goal fica para o Marcos
+- 2026-11-09 · F3-0h · item fix com testes de regressão em tests/test_script_fila.py, não em tests/regressao/ com registro no README: a lista de arquivos do item não inclui tests/regressao/; decisão provisória do executor

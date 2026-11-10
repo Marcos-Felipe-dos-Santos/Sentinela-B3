@@ -3,7 +3,7 @@
 Subcomandos sobre `docs/loop/fila.md`, sem abrir o arquivo inteiro no contexto do agente:
 
     python scripts/fila.py status
-    python scripts/fila.py proximo              # 3 se a próxima linha aberta for [DECISÃO]; 1 se nada aberto
+    python scripts/fila.py proximo              # 3 se o próximo [DECISÃO] não-[x] vier antes; 1 se nada aberto
     python scripts/fila.py item <ID>
     python scripts/fila.py marcar <ID> x|!
     python scripts/fila.py independentes <ID>
@@ -32,7 +32,9 @@ CABECALHO_PENDENCIAS = "# Pendências do loop\n\nUma linha por decisão provisó
 _ITEM = re.compile(r"^- \[(?P<estado>[ x!])\] \*\*(?P<rotulo>[^*]+)\*\*")
 _DECISAO = "[DECISÃO]"
 _CRASES = re.compile(r"`([^`]+)`")
-_CAMINHO = re.compile(r"^[\w.*-]+(?:/[\w.*-]*)*$")
+_CAMINHO = re.compile(r"^[\w.*?\[\]-]+(?:/[\w.*?\[\]-]*)*$")
+_SUFIXO_LINHA = re.compile(r":\d+(?:[-,]\d+)*$")
+_CURINGAS = re.compile(r"[*?\[]")
 _EXTENSOES = (
     ".py",
     ".md",
@@ -46,7 +48,9 @@ _EXTENSOES = (
     ".yml",
     ".yaml",
 )
-_IGNORADOS = ("tests/", "docs/")
+_DO_LOOP = frozenset(
+    {"docs/loop/fila.md", "docs/loop/diario.md", "docs/loop/pendencias.md"}
+)
 
 LIMITE_DECISAO = 120
 
@@ -110,7 +114,7 @@ def _e_decisao(rotulo: str) -> bool:
 
 
 def _ate_decisao(linhas: list[str]) -> tuple[list[tuple[int, str, str]], str | None]:
-    """Itens antes do primeiro [DECISÃO] aberto, e a linha desse [DECISÃO]."""
+    """Itens antes do primeiro [DECISÃO] que não está [x], e a linha desse [DECISÃO]."""
     itens: list[tuple[int, str, str]] = []
     for indice, linha in enumerate(linhas):
         dados = _item(linha)
@@ -118,7 +122,7 @@ def _ate_decisao(linhas: list[str]) -> tuple[list[tuple[int, str, str]], str | N
             continue
         estado, rotulo = dados
         if _e_decisao(rotulo):
-            if estado == " ":
+            if estado != "x":
                 return itens, linha
             continue
         itens.append((indice, estado, rotulo))
@@ -138,28 +142,55 @@ def _localizar(linhas: list[str], ident: str) -> int:
     return achados[0]
 
 
-def _caminhos(linha: str) -> set[str]:
-    """Caminhos citados entre crases, fora de `tests/` e `docs/`."""
-    caminhos: set[str] = set()
+def _candidatos(linha: str) -> list[str]:
+    """Trechos entre crases com cara de caminho, sem o sufixo `:linha`."""
+    candidatos = []
     for trecho in _CRASES.findall(linha):
         for parte in trecho.split():
-            parte = parte.strip(",;:()")
-            if not _CAMINHO.match(parte):
-                continue
-            if "/" not in parte and not parte.endswith(_EXTENSOES):
-                continue
-            if parte.startswith(_IGNORADOS):
-                continue
-            caminhos.add(parte)
-    return caminhos
+            parte = _SUFIXO_LINHA.sub("", parte.strip(",;:()"))
+            if "/" in parte or parte.endswith(_EXTENSOES):
+                candidatos.append(parte)
+    return candidatos
+
+
+def _legivel(parte: str) -> bool:
+    """Forma reconhecida, sem segmento `.` ou `..` nem ponto final, que o script não normaliza."""
+    if not _CAMINHO.match(parte) or parte.endswith("."):
+        return False
+    return not any(segmento in {".", ".."} for segmento in parte.split("/"))
+
+
+def _caminhos(linha: str) -> set[str]:
+    """Caminhos citados entre crases, menos os três arquivos do próprio loop."""
+    return {
+        parte
+        for parte in _candidatos(linha)
+        if _legivel(parte) and parte not in _DO_LOOP
+    }
+
+
+def _ininterpretavel(linha: str) -> bool:
+    """Algum trecho parece caminho, mas o script não sabe compará-lo."""
+    return any(not _legivel(parte) for parte in _candidatos(linha))
+
+
+def _raiz(caminho: str) -> str:
+    """Parte fixa de um padrão, antes do primeiro curinga."""
+    curinga = _CURINGAS.search(caminho)
+    return caminho if curinga is None else caminho[: curinga.start()]
+
+
+def _casam(x: str, y: str) -> bool:
+    """Conservador: com curinga, basta a parte fixa de um prefixar a do outro."""
+    if _CURINGAS.search(x) or _CURINGAS.search(y):
+        rx, ry = _raiz(x), _raiz(y)
+        return rx.startswith(ry) or ry.startswith(rx)
+    x, y = x.rstrip("/"), y.rstrip("/")
+    return x == y or x.startswith(y + "/") or y.startswith(x + "/")
 
 
 def _compartilham(a: set[str], b: set[str]) -> bool:
-    return any(
-        x == y or x.startswith(y.rstrip("/") + "/") or y.startswith(x.rstrip("/") + "/")
-        for x in a
-        for y in b
-    )
+    return any(_casam(x, y) for x in a for y in b)
 
 
 def _cita(linha: str, ident: str) -> bool:
@@ -184,9 +215,12 @@ def status(fila: Path) -> list[str]:
 def proximo(fila: Path) -> tuple[int, str | None]:
     for linha in _linhas(fila):
         dados = _item(linha)
-        if dados is None or dados[0] != " ":
+        if dados is None or dados[0] == "x":
             continue
-        return (SAIDA_DECISAO if _e_decisao(dados[1]) else SAIDA_OK), linha
+        if _e_decisao(dados[1]):
+            return SAIDA_DECISAO, linha
+        if dados[0] == " ":
+            return SAIDA_OK, linha
     return SAIDA_VAZIA, None
 
 
@@ -205,6 +239,8 @@ def marcar(fila: Path, ident: str, estado: str) -> None:
 def independentes(fila: Path, ident: str) -> list[str]:
     linhas = _linhas(fila)
     alvo = linhas[_localizar(linhas, ident)]
+    if _ininterpretavel(alvo):
+        return []
     caminhos_alvo = _caminhos(alvo)
     itens, _ = _ate_decisao(linhas)
     resultado = []
@@ -212,7 +248,12 @@ def independentes(fila: Path, ident: str) -> list[str]:
         if estado != " " or rotulo == ident:
             continue
         linha = linhas[indice]
-        if _cita(linha, ident) or _compartilham(_caminhos(linha), caminhos_alvo):
+        if (
+            _cita(linha, ident)
+            or _cita(alvo, rotulo)
+            or _ininterpretavel(linha)
+            or _compartilham(_caminhos(linha), caminhos_alvo)
+        ):
             continue
         resultado.append(rotulo)
     return resultado
