@@ -31,7 +31,8 @@ O checkpoint usa isso para escolher o auditor (ADR-0003, D30).
 ## 3. Parar quando
 
 - todos os itens antes do primeiro `[DECISÃO]` estiverem `[x]`;
-- um item ficar `[!]` pelos casos (c) ou (d), ou por pergunta do pacote da fase, com o motivo no diário; pelos casos (a), (b), (e) ou (f), siga só com os independentes, como diz a seção "Item bloqueado" de `docs/loop/protocolo.md` (no máximo três adiante; resumo, limpeza e arquivamento nunca com `[!]` aberto);
+- um item ficar `[!]` pelos casos (c) ou (d), ou por pergunta do pacote da fase, com o motivo no diário; pelos casos (a), (b), (e) ou (f), siga só com os independentes, como diz a seção "Item bloqueado" de `docs/loop/protocolo.md` (no máximo três adiante; resumo, limpeza e arquivamento nunca com `[!]` aberto); um segundo `[!]` entre esses independentes para o loop;
+- a verificação (passo 4 do protocolo) falhar pela terceira vez no mesmo item: marque `[!]`, registre no diário e pare, também num item independente;
 - um item for reprovado três vezes na revisão;
 - o item precisar de rede e o seu sandbox não tiver (marque `[!]` com o motivo "precisa de rede: rodar no Claude Code ou liberar a rede só para este item");
 - a cota estiver acabando: rode a skill `passagem` antes.

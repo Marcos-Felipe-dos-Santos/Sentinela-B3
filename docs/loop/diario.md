@@ -62,3 +62,14 @@ Processo F3-0, bloco 1, antes da ativação da 3-a. O diário do fechamento da 2
 - **Resíduos:** nenhum no repositório; saídas em `outputs/f3-0h-vermelho.txt`, `outputs/f3-0h-vermelho-r2.txt` e `outputs/f3-0h-mutacao.txt`.
 - **Decisões que ficaram para o Marcos:** a regra de regressão para `fix` de script (acima).
 - **Para o Marcos revisar:** o `proximo` também passou a parar em `[DECISÃO]` `[!]`; o aceite falava em "contagem", e estendi ao `proximo` para não pular um checkpoint bloqueado.
+
+### F3-0i — docs: align the goal and the blocked-item rule
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso.
+- **O que foi feito:** o `/goal` do ciclo §6 termina quando todos os itens antes do `[DECISÃO]` estão `[x]`, ou o protocolo mandou parar (motivo no diário), ou não resta item executável: todo item aberto antes do `[DECISÃO]` está `[!]`, depende de um `[!]` (`python scripts/fila.py independentes <ID>`) ou ficou além do limite de três adiante. Protocolo, "Item bloqueado": um segundo `[!]` entre os independentes para o loop, sem nova busca de independentes; a terceira falha da verificação (passo 4) continua parando, também num item independente, e não abre a busca. `executar-fila` §3 ganhou as mesmas duas paradas. Saiu de `docs/loop/pendencias.md` a linha do F3-0c sobre o `/goal`; fica a do F3-0h.
+- **Conferência contra o `scripts/fila.py`:** `independentes` (F3-0h) lista os itens abertos antes do primeiro `[DECISÃO]` não-`[x]`, excluindo os que citam ou são citados pelo alvo, compartilham caminho ou trazem caminho que o script não interpreta; com caminho ilegível no alvo, a lista sai vazia.
+- **Dificuldades:** a lista de arquivos do item não traz `docs/loop/pendencias.md`, mas o aceite manda tirar a pendência; segui o aceite. A linha da etapa 4 na tabela do ciclo ("ou parada em `[!]`") fica fora do §6 e não foi editada.
+- **Testes:** 3594 passed, 1 skipped, 8 xfailed → igual (item documental). Golden SHA igual.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** fora do §6, a linha da etapa 4 na tabela do ciclo ("ou parada em `[!]`") e o parágrafo do `[!]` (a)/(b)/(e)/(f) da etapa 4, que não fala do segundo `[!]` nem da terceira falha num independente; com o F3-0h, um item que cita comando com barra no início (`/goal`) fica sem independentes quando é o `[!]` e nunca entra na lista de independentes de outro `[!]`.

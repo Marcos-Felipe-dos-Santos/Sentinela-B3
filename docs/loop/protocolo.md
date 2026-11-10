@@ -66,9 +66,9 @@ Cada item começa com `python scripts/fila.py proximo`, que imprime só a linha 
 
 Os casos são os do plano final da 2B (`docs/decisoes/plano-final-2b.md` §1.4).
 
-- Item marcado `[!]` pelos casos (a) regra econômica não prevista, (b) arquivo fora das permissões, (e) fonte oficial indisponível ou (f) bug que exige decisão de destino: registre a pendência (`python scripts/fila.py pendencia <ID> "<motivo>"`) e o motivo no diário, e siga só com os itens de `python scripts/fila.py independentes <ID>`, na ordem da fila, no máximo três adiante. Esgotados esses três, ou a lista, pare.
+- Item marcado `[!]` pelos casos (a) regra econômica não prevista, (b) arquivo fora das permissões, (e) fonte oficial indisponível ou (f) bug que exige decisão de destino: registre a pendência (`python scripts/fila.py pendencia <ID> "<motivo>"`) e o motivo no diário, e siga só com os itens de `python scripts/fila.py independentes <ID>`, na ordem da fila, no máximo três adiante. Esgotados esses três, ou a lista, pare. Se um desses itens independentes também ficar `[!]`, por qualquer caso, pare: não se procuram independentes de um segundo `[!]`.
 - Item de resumo, de limpeza ou de arquivamento nunca roda com `[!]` aberto: chegando a ele, pare.
-- Param o loop como antes: `[!]` pelo caso (c) teste que só passaria enfraquecido ou (d) golden fora do predicado; parada por pergunta prevista no pacote da fase; terceira reprovação na revisão (passo 9); terceira falha da verificação (passo 4).
+- Param o loop como antes: `[!]` pelo caso (c) teste que só passaria enfraquecido ou (d) golden fora do predicado; parada por pergunta prevista no pacote da fase; terceira reprovação na revisão (passo 9); terceira falha da verificação (passo 4), também quando ocorre num item independente: ela não é caso (a), (b), (e) nem (f) e não abre a busca por independentes.
 
 ## Bugs e regressão
 
