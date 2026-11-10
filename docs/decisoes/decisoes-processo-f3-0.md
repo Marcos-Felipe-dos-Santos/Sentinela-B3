@@ -71,3 +71,16 @@ Dois itens entram na fila antes do `[DECISÃO] Processo F3-0, bloco 1`, executad
 
 - **F3-0h** · fix · `fix: make queue independence conservative`. Arquivos: `scripts/fila.py`, `tests/test_script_fila.py`. **Aceite**, com teste vermelho antes de cada correção: `independentes` conta todo caminho entre crases, menos `docs/loop/fila.md`, `docs/loop/diario.md` e `docs/loop/pendencias.md`; sufixo `:linha` é cortado antes da comparação; glob e diretório casam por padrão, nos dois sentidos; a dependência vale nos dois sentidos (A cita B ou B cita A); caminho que o script não consegue interpretar torna o item dependente; qualquer linha `[DECISÃO]` que não esteja `[x]` encerra a contagem; o teste do `_branch` limpa as variáveis `GIT_*`. Cada teste novo falha com a função quebrada à mão, registrado no diário.
 - **F3-0i** · docs · `docs: align the goal and the blocked-item rule`. Arquivos: `docs/loop/ciclo-de-fase.md` (§6), `docs/loop/protocolo.md`, `.agents/skills/executar-fila/SKILL.md`. **Aceite:** o `/goal` termina quando todos os itens antes do `[DECISÃO]` estão `[x]`, ou o protocolo mandou parar, ou não resta item executável (todo item aberto está `[!]`, depende de um `[!]`, ou o limite de três adiante foi atingido); um segundo `[!]` entre os itens independentes para o loop; a terceira falha da verificação continua parando, e isso fica escrito; a pendência correspondente sai de `docs/loop/pendencias.md`.
+
+## Segundo adendo de 09/11/2026 — segunda rodada do Bloco 1 (decisão do Marcos)
+
+Decisões sem item:
+
+1. Teste de script de processo fica em `tests/test_script_*.py`, fora do registro D27 de `tests/regressao/`.
+2. `proximo` parar em `[DECISÃO]` `[!]` com saída 3 está aprovado.
+3. Item que cita comando entre crases fica sem independentes, sem correção.
+
+As pendências correspondentes saem de `docs/loop/pendencias.md`. Dois itens entram na fila antes do `[DECISÃO] Processo F3-0, bloco 1`; o loop para no `[DECISÃO]` e a 3-a não é ativada.
+
+- **F3-0j** · fix · `fix: treat root files as paths in queue independence`. Arquivos: `scripts/fila.py`, `tests/test_script_fila.py`. **Aceite**, com teste vermelho antes: nome entre crases com extensão e sem barra (`config.py`, `app.py`) conta como caminho, e dois itens que o citam são dependentes; barras repetidas são normalizadas (`scripts//fila.py` equivale a `scripts/fila.py`); palavra sem extensão e sem barra continua ignorada. Se o primeiro teste já passar no código atual, registre "já estava feito" e entregue só o que faltar.
+- **F3-0k** · docs · `docs: update the execution step for the blocked-item rule`. Arquivos: `docs/loop/ciclo-de-fase.md` (etapa 4). **Aceite:** a linha da tabela e a frase dos casos (a), (b), (e) ou (f) passam a descrever a regra vigente, inclusive a parada no segundo `[!]`. Nada além desses dois trechos.

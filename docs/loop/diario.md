@@ -73,3 +73,8 @@ Processo F3-0, bloco 1, antes da ativação da 3-a. O diário do fechamento da 2
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** fora do §6, a linha da etapa 4 na tabela do ciclo ("ou parada em `[!]`") e o parágrafo do `[!]` (a)/(b)/(e)/(f) da etapa 4, que não fala do segundo `[!]` nem da terceira falha num independente; com o F3-0h, um item que cita comando com barra no início (`/goal`) fica sem independentes quando é o `[!]` e nunca entra na lista de independentes de outro `[!]`.
+
+### Segundo adendo — segunda rodada do Bloco 1 (F3-0j e F3-0k na fila)
+- **Executor:** claude-code (Claude Opus 5.5).
+- **O que foi feito:** decisões do Marcos de 09/11/2026 anexadas como segundo adendo ao fim de `docs/decisoes/decisoes-processo-f3-0.md`, só com acréscimo; F3-0j e F3-0k inseridos na fila antes do `[DECISÃO] Processo F3-0, bloco 1`; cabeçalho da fila atualizado. Saiu de `docs/loop/pendencias.md` a linha do F3-0h (decisão 1); as decisões 2 e 3 respondiam a observações do diário do F3-0h e do F3-0i, sem linha em `pendencias.md`, que fica só com o cabeçalho.
+- **Estado:** `fila.py status`: [x] 5, [ ] 2, próximo F3-0j. A 3-a continua inativa.
