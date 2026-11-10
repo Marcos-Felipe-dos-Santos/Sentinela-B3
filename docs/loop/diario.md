@@ -43,3 +43,8 @@ Processo F3-0, bloco 1, antes da ativação da 3-a. O diário do fechamento da 2
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos:** o texto do `/goal` (pendência acima).
 - **Para o Marcos revisar:** a terceira falha da verificação (passo 4) continua parando o loop; o pacote não a lista entre os casos que seguem.
+
+### Adendo — pendências do Bloco 1 (F3-0h e F3-0i na fila)
+- **Executor:** claude-code (Claude Opus 5.5).
+- **O que foi feito:** decisões do Marcos de 09/11/2026 anexadas como adendo ao fim de `docs/decisoes/decisoes-processo-f3-0.md`, sem alterar o texto original (SHA256 anterior `29dabe40…`; o diff só acrescenta linhas); F3-0h e F3-0i inseridos na fila antes do `[DECISÃO] Processo F3-0, bloco 1`; o cabeçalho da fila passa a dizer de onde vêm as linhas.
+- **Estado:** `fila.py status`: [x] 3, [ ] 2, próximo F3-0h. A 3-a continua inativa.

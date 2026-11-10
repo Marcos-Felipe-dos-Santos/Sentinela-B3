@@ -64,3 +64,10 @@ Formato da fila. Gate G em todos, com duas ressalvas: `scripts/` está fora do `
 2. Ativar a proteção da `main` no GitHub (sem push direto, sem force push).
 3. Uma revisão diária de `docs/loop/pendencias.md`.
 4. No checkpoint da 3-a: decidir se um segundo executor pode trabalhar em outro branch (hoje a regra é um executor por vez) e se o `CLAUDE.md` será dividido.
+
+## Adendo de 09/11/2026 — pendências do Bloco 1 (decisão do Marcos)
+
+Dois itens entram na fila antes do `[DECISÃO] Processo F3-0, bloco 1`, executados pelo protocolo novo; o loop para no `[DECISÃO]` e a 3-a não é ativada.
+
+- **F3-0h** · fix · `fix: make queue independence conservative`. Arquivos: `scripts/fila.py`, `tests/test_script_fila.py`. **Aceite**, com teste vermelho antes de cada correção: `independentes` conta todo caminho entre crases, menos `docs/loop/fila.md`, `docs/loop/diario.md` e `docs/loop/pendencias.md`; sufixo `:linha` é cortado antes da comparação; glob e diretório casam por padrão, nos dois sentidos; a dependência vale nos dois sentidos (A cita B ou B cita A); caminho que o script não consegue interpretar torna o item dependente; qualquer linha `[DECISÃO]` que não esteja `[x]` encerra a contagem; o teste do `_branch` limpa as variáveis `GIT_*`. Cada teste novo falha com a função quebrada à mão, registrado no diário.
+- **F3-0i** · docs · `docs: align the goal and the blocked-item rule`. Arquivos: `docs/loop/ciclo-de-fase.md` (§6), `docs/loop/protocolo.md`, `.agents/skills/executar-fila/SKILL.md`. **Aceite:** o `/goal` termina quando todos os itens antes do `[DECISÃO]` estão `[x]`, ou o protocolo mandou parar, ou não resta item executável (todo item aberto está `[!]`, depende de um `[!]`, ou o limite de três adiante foi atingido); um segundo `[!]` entre os itens independentes para o loop; a terceira falha da verificação continua parando, e isso fica escrito; a pendência correspondente sai de `docs/loop/pendencias.md`.
