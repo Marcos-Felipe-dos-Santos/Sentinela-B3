@@ -240,12 +240,19 @@ def _retrato(dados: dict[str, Any]) -> dict[str, Any]:
 
 
 def _lpa_divulgado_comparado(
-    divulgados: dict[str, Any], especie: str | None, especie_base: str | None = None
+    divulgados: dict[str, Any],
+    especie: str | None,
+    especie_base: str | None = None,
+    acoes_por_unit: dict | None = None,
+    *,
+    escala: bool = False,
 ) -> dict[str, Any] | None:
-    """LPA divulgado coerente da classe do ticker (F2A-5), ou o da espécie sem a classe.
+    """LPA divulgado coerente da classe do ticker (F2A-5), ou o da unit pela composição.
 
     Só o coerente (F2B-14; ficha, 7.3 e 7.5): com o divulgado da classe descartado pela D19, não
-    há conferência, e o alerta é o da incoerência. Sem classe (unit ou sem índice), o da escala.
+    há conferência, e o alerta é o da incoerência. Sem classe: ação que não é unit
+    (`escala=True`) confere com o da escala, como antes; unit, com a soma ponderada dos
+    componentes, e sem composição completa não escolhe a primeira classe (F3-P03).
     """
     for chave in (especie, especie_base):
         if chave in divulgados:
@@ -253,13 +260,41 @@ def _lpa_divulgado_comparado(
             if not isinstance(achado, acoes_cvm.LpaDivulgado):
                 return None
             return {'especie': chave, 'valor': achado.valor}
-    if especie is None:
+    if especie is None and escala:
         ordem = [*acoes_cvm.ORDEM_DA_ESCALA, *sorted(set(divulgados) - set(acoes_cvm.ORDEM_DA_ESCALA))]
         for chave in ordem:
             achado = divulgados.get(chave)
             if isinstance(achado, acoes_cvm.LpaDivulgado):
                 return {'especie': chave, 'valor': achado.valor}
+        return None
+    if especie is None:
+        return _lpa_divulgado_da_unit(divulgados, acoes_por_unit)
     return None
+
+
+def _lpa_divulgado_da_unit(
+    divulgados: dict[str, Any], acoes_por_unit: dict | None
+) -> dict[str, Any] | None:
+    """Divulgado da unit na base por ação: Σ quantidade × LPA da classe ÷ Σ quantidade.
+
+    F3-P03 (BUG-2C-11; ficha por ação, §1 e 7.3): a conferência compara o recalculado da unit
+    dividido pelas ações por unit (`acoes_por_papel`) com esta média ponderada. Composição
+    ausente, inválida ou incompleta (componente sem divulgado coerente, ou com mais de uma
+    classe da espécie) não escolhe a primeira classe: sem conferência.
+    """
+    if not acoes_cvm._unit_valida(acoes_por_unit):
+        return None
+    soma = 0.0
+    for componente, quantidade in acoes_por_unit.items():
+        especie = acoes_cvm.especie_da_classe(componente)
+        classes = [c for c in divulgados if acoes_cvm.especie_da_classe(c) == especie]
+        if len(classes) != 1 or not isinstance(
+            divulgados[classes[0]], acoes_cvm.LpaDivulgado
+        ):
+            return None
+        soma += quantidade * divulgados[classes[0]].valor
+    rotulo = " + ".join(f"{q:g} {c}" for c, q in acoes_por_unit.items())
+    return {'especie': f"unit ({rotulo})", 'valor': soma / sum(acoes_por_unit.values())}
 
 
 def _linhas_de_lpa(ind: dict[str, Any]) -> dict[str, list]:
@@ -1406,6 +1441,8 @@ class MarketEngine:
                 divulgados,
                 None if eh_unit else classe,
                 None if eh_unit else dados.get('especie'),
+                acoes_por_unit if eh_unit else None,
+                escala=not eh_unit,
             ),
         }
         dados['divergencia_acoes'] = acoes_cvm.divergencia_acoes(
