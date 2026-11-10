@@ -151,7 +151,7 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 |---|---|---|---|---|---|---|
 | BUG-2C-11 | Conferência da unit compara média recalculada com primeira classe em vez da soma ponderada | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_11_unit_conferencia_ponderada.py` | F3-P03 (origem F2C-50) | aberto, xfail estrito |
 | BUG-2C-12 | Falha do Informe não é propagada a riscos_dados | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_12_informe_risco_ausente.py` | F3-P04 (origem F2C-51) | aberto, xfail estrito |
-| BUG-2C-13 | Literal OData CodInst interpola apóstrofo sem escape | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_13_odata_literal_codinst.py` | F3-P05 (origem F2C-52) | aberto, xfail estrito |
+| BUG-2C-13 | Literal OData CodInst interpola apóstrofo sem escape | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_13_odata_literal_codinst.py` | F3-P05 (origem F2C-52) | corrigido (F3-P05) |
 | BUG-2C-14 | Prompt não distingue classe inferida de classe oficial | contratos-fronteiras-dados-2c.md | F2C-32,27/10/2026 | `test_bug_2c_14_prompt_classe_inferida.py` | F3-P06 (origem F2C-53) | aberto, xfail estrito |
 
 ### Correção F2C-36 (27/10/2026)

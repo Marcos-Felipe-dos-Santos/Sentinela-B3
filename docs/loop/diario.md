@@ -41,3 +41,16 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Resíduos:** nenhum; `mutants/` fora do git. O cache do `baixar` grava um arquivo por URL; como a última janela termina na data da coleta, a coleta de cada dia cria arquivos novos em `data/macro/` (fora do git, como o cache que já existia).
 - **Decisões que ficaram para o Marcos:** as duas provisórias acima.
 - **Para o Marcos revisar:** a regra do IPCA M+2; os tipos de `selic`, `cdi` e `ipca_12m` passam a admitir `None` só com `as_of`.
+
+### F3-P05 — fix: escape OData literals for IF.data institution codes
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso.
+- **O que foi feito:** `literal_odata` em `sentinela/data/providers/ifdata.py`: duplica o apóstrofo (OASIS OData 4.01, Part 2, §2.2) e codifica o literal em UTF-8 com percentual (`quote(..., safe="")`), para que `&`, `+`, `#`, `%`, `=`, `;`, `/` e `?` não mudem a query; `caminho_capital` usa o literal e `caminho_carteira` continua derivando dele. Código numérico sai idêntico ao de antes (identidade da instituição igual).
+- **Regressão:** BUG-2C-13, `tests/regressao/test_bug_2c_13_odata_literal_codinst.py`, dois casos (capital e carteira). Com `--runxfail`, antes: `assert "CodInst eq 'O'Neil'" == "CodInst eq 'O''Neil'"` nos dois; depois da correção, marca retirada sem mudar asserção, PASS. Registro no README muda para "corrigido (F3-P05)".
+- **Contrato novo:** `tests/test_ifdata_literal_odata.py`, para capital e carteira: Unicode (`Banco São João`, `Ünïcödé 銀行`), reservados (`&`, `+`, `#`, `%`, `=`, `;`, `/?`), apóstrofo com acento e literal só de apóstrofos voltam iguais pela leitura da URL; código numérico produz o caminho literal de antes; `X&$top=1` não abre parâmetro novo; Unicode e `%26` literal saem codificados (caminho só ASCII). Antes da correção: 12 falhas e 14 passaram na primeira versão; os 6 casos do caminho ASCII, acrescentados depois da revisão, também falham no código antigo.
+- **Mutação:** `python -m mutmut run "sentinela.data.providers.ifdata.x_literal_odata*" "...x_caminho_capital*" "...x_caminho_carteira*"`: 31 de 33 mortos (94%). Os dois sobreviventes são equivalentes: `safe` padrão (`"/"`) e `safe="XXXX"` deixam sem codificar só `/` e `X`, legítimos na query.
+- **Revisão:** PODE COMMITAR; os casos de Unicode não discriminavam (o `parse_qs` aceita não-ASCII cru) e ganharam a conferência do caminho só ASCII. A chave do cache em disco do IF.data (SHA-256 do caminho) não muda para código numérico; o cache existente continua válido.
+- **Testes:** 3647 passed, 1 skipped, 8 xfailed → 3681 passed, 1 skipped, 6 xfailed (+32 do contrato e os 2 casos da regressão, que saem de xfailed). Ruff CI, Ruff completo em `sentinela/methods` e `sentinela/data`: verdes. Golden SHA igual. Sem rede.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** `caminho_cadastro` (raiz do CNPJ) não usa o literal; o item cobre só o código da instituição.
