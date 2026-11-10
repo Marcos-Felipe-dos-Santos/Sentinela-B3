@@ -3,7 +3,7 @@
 Sem linhas do fundo no ano corrente, a janela de 12 meses depende dos Informes dos anos
 anteriores. Se esses dois falham, `obter_rendimentos_fii` devolve rendimento vazio com cara
 de sucesso, porque o ano corrente foi lido; a falha não chega a `riscos_dados`. Borda
-registrada na revisão do F3-P04 (10/11/2026); decisão do Marcos de 10/11/2026: destino F3-3c.
+registrada na revisão do F3-P04 (10/11/2026); decisão do Marcos de 10/11/2026: destino F3-3c-fix (decisão 36).
 """
 
 from pathlib import Path
@@ -14,7 +14,7 @@ from cvm_fii_provider import CVMFIIProvider
 from market_engine import MarketEngine
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-3-03, corrige F3-3c")
+@pytest.mark.xfail(strict=True, reason="BUG-3-03, corrige F3-3c-fix")
 def test_anos_da_janela_ilegiveis_entram_nos_riscos(monkeypatch):
     provedor = CVMFIIProvider.__new__(CVMFIIProvider)
     lidos = []
