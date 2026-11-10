@@ -95,3 +95,12 @@ Sobre o relatório `auditoria-documento-fila-fase3-proposta-codex-3-relatorio.md
 4. **Gate G:** citar a exceção de mutação para scripts de processo (`decisoes-processo-f3-0.md`, seção 3).
 5. **F3-0d:** o `gate.py` roda de novo depois do stage final e antes de cada revisão, inclusive após correções.
 6. **F3-0e:** o prompt da auditoria lista os hashes dos commits de cada executor (`git log --grep`), cada família audita todos os commits da outra, e o teste do prompt confere essa seleção.
+
+## Quarto adendo de 10/11/2026 — rodada 4 da auditoria DOCUMENTO (decisão do Marcos)
+
+Sobre o relatório `auditoria-documento-fila-fase3-proposta-codex-4-relatorio.md` ("não pode seguir"). Incorporadas em `docs/loop/fila-fase3-proposta.md` como decisões 25 a 28. A 3-a não é ativada.
+
+1. **A P7 e a decisão 18 estão retiradas** (o item 1 do terceiro adendo deixa de valer). O loop nunca faz push; a publicação continua exclusiva do Marcos, no checkpoint, como antes do pacote. O F3-0f fica só com `scripts/fechar_fase.py` e seus testes: saem o `push_fase.py`, o `--relatorio`, a leitura de parecer, a definição de bloqueio aberto e todas as alterações de texto sobre push (`CLAUDE.md`, `AGENTS.md`, protocolo, ciclo §5 e §6, skills). A proibição 8 e o checkpoint final voltam ao texto anterior à decisão 18.
+2. **F3-0e:** a auditoria cruzada continua sendo rodada pelo loop ao chegar no `[DECISÃO]` de checkpoint. O veredito e o caminho do relatório entram no diário por um commit `docs:` próprio, fora do intervalo auditado, antes de parar.
+3. **F3-8b:** a lista de arquivos permite duas edições no `pyproject.toml`: a linha do módulo novo em `source_paths` e, só se houver sobreposição, a troca de `backtesting/` no `also_copy`.
+4. Nenhum item desta fila altera o §7 do PLANO.
