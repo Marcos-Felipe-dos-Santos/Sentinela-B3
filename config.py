@@ -299,7 +299,10 @@ class MacroContext:
         return datetime.now(ZoneInfo("America/Sao_Paulo")).date()
 
     def registro_por_data(self, nome: str) -> dict:
-        """Valor e data vigentes em as_of, ou `{"abstencao": motivo}`; com coleta, mais a `proveniencia`."""
+        """Valor e data vigentes em as_of, ou `{"abstencao": motivo}`.
+
+        Com coleta do provedor, o registro leva também a `proveniencia` (BUG-3-06).
+        """
         if nome not in self._por_data:
             from sentinela.data import macro_por_data
             from sentinela.data.providers.macro import MacroProvider
