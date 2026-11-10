@@ -90,3 +90,12 @@ Processo F3-0, bloco 1, antes da ativação da 3-a. O diário do fechamento da 2
 - **Resíduos:** nenhum no repositório; saídas em `outputs/f3-0j-vermelho.txt` e `outputs/f3-0j-mutacao.txt`.
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** trecho com ponto final e sem barra (`fila.py.`) continua fora dos candidatos, sem tornar o item dependente; o aceite não o pede.
+
+### F3-0k — docs: update the execution step for the blocked-item rule
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso.
+- **O que foi feito:** em `docs/loop/ciclo-de-fase.md`, etapa 4, só os dois trechos: a linha da tabela passa de "ou parada em `[!]`" para "parada do protocolo, ou nenhum item executável (todo item aberto `[!]`, dependente de um `[!]` ou além dos três adiante)", o mesmo fim do `/goal` do §6; a frase dos casos (a), (b), (e) ou (f) passa a citar `python scripts/fila.py independentes <ID>` e a dizer quando o loop para: independentes esgotados, segundo `[!]` entre eles ou qualquer outra parada do protocolo (terceira falha da verificação, terceira reprovação na revisão), como no protocolo, "Item bloqueado". Revisão: PODE COMMITAR; a ressalva de lista parcial de paradas foi atendida neste mesmo trecho.
+- **Testes:** 3599 passed, 1 skipped, 8 xfailed → igual (item documental). Golden SHA igual.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** a terceira falha e a terceira reprovação entraram na frase por serem parte da regra vigente; o aceite citava expressamente só o segundo `[!]`.

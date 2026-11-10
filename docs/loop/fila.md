@@ -18,6 +18,6 @@ Gate G em todos, com as ressalvas do pacote §3: nos itens `feat` de script, `sc
 
 - [x] **F3-0j** · fix · `fix: treat root files as paths in queue independence` — segundo adendo de 09/11/2026 ao pacote F3-0. Arquivos: `scripts/fila.py`, `tests/test_script_fila.py`. **Aceite**, com teste vermelho antes: nome entre crases com extensão e sem barra (`config.py`, `app.py`) conta como caminho, e dois itens que o citam são dependentes; barras repetidas são normalizadas (`scripts//fila.py` equivale a `scripts/fila.py`); palavra sem extensão e sem barra continua ignorada. Se o primeiro teste já passar no código atual, registre "já estava feito" e entregue só o que faltar. G.
 
-- [ ] **F3-0k** · docs · `docs: update the execution step for the blocked-item rule` — segundo adendo de 09/11/2026 ao pacote F3-0. Arquivos: `docs/loop/ciclo-de-fase.md` (etapa 4). **Aceite:** a linha da tabela e a frase dos casos (a), (b), (e) ou (f) passam a descrever a regra vigente, inclusive a parada no segundo `[!]`. Nada além desses dois trechos. G documental.
+- [x] **F3-0k** · docs · `docs: update the execution step for the blocked-item rule` — segundo adendo de 09/11/2026 ao pacote F3-0. Arquivos: `docs/loop/ciclo-de-fase.md` (etapa 4). **Aceite:** a linha da tabela e a frase dos casos (a), (b), (e) ou (f) passam a descrever a regra vigente, inclusive a parada no segundo `[!]`. Nada além desses dois trechos. G documental.
 
 - [ ] **[DECISÃO] Processo F3-0, bloco 1.** O Marcos confere o Bloco 1 e decide a ativação da 3-a (com o Bloco 2 já na proposta, antes do F3-A-R).

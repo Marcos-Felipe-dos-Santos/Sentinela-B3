@@ -10,7 +10,7 @@
 | 1 | Proposta | loop (item `levantamento` da fase anterior) | `docs/loop/fila-faseN-proposta.md` | o item está commitado |
 | 2 | Revisão da proposta | Codex (DOCUMENTO), Claude no chat (consolida e prepara as decisões), Marcos | proposta corrigida, com as `[DECISÃO]` de ativação respondidas por escrito | auditoria "pode seguir" ou "pode seguir com ressalvas" |
 | 3 | Ativação | Marcos | branch `v2/fase-N`, `docs/loop/fila.md`, "Fase atual" do `AGENTS.md` | commit `chore: activate phase N queue` |
-| 4 | Execução | loop: Claude Code; Codex quando a cota do Claude acaba | um commit por item, diário | itens antes do `[DECISÃO]` em `[x]`, ou parada em `[!]` |
+| 4 | Execução | loop: Claude Code; Codex quando a cota do Claude acaba | um commit por item, diário | itens antes do `[DECISÃO]` em `[x]`, parada do protocolo, ou nenhum item executável (todo item aberto `[!]`, dependente de um `[!]` ou além dos três adiante) |
 | 5 | Fichas do meio da fase | loop escreve, Codex audita (FICHA), Gemini desempata, Marcos aprova | `docs/metodologia/<lente>.md` aprovada | ficha "aprovada" e o marcador do `[DECISÃO]` trocado por `[x]` |
 | 6 | Auditoria da fase | Codex (FASE) e Gemini 4 Argon no app (FASE, pelo pacote de texto) | `docs/loop/historico/fase-N/auditoria-externa.md` | todo bug confirmado virou teste (seção 4); bloqueios corrigidos ou dispensados por escrito |
 | 7 | Fechamento | loop (fila de fechamento, se houver), Codex (auditoria rápida), Marcos | PR, merge commit, tag `v2-fase-N` | CI verde no PR |
@@ -49,7 +49,7 @@ ai-memory run claude
 ```
 No Claude Code: `/retomar` e depois o `/goal` (seção 6).
 - **A cota do Claude acabou:** `ai-memory run codex`, `$retomar`, `$executar-fila`. Ao sair do Codex, `ai-memory finalize-session`. Nunca dois executores ao mesmo tempo (workflow, seção 5).
-- **`[!]` pelos casos (a), (b), (e) ou (f):** o loop não para; registra a pendência em `docs/loop/pendencias.md` e segue com até três itens independentes (protocolo, "Item bloqueado"). Na revisão diária das pendências, mande o trecho do diário ao Claude no chat; a sua decisão vira texto na fila, por commit seu.
+- **`[!]` pelos casos (a), (b), (e) ou (f):** o loop não para; registra a pendência em `docs/loop/pendencias.md` e segue com até três itens de `python scripts/fila.py independentes <ID>` (protocolo, "Item bloqueado"). Para quando esses itens acabam, quando um segundo `[!]` aparece entre eles ou em qualquer outra parada do protocolo, como a terceira falha da verificação ou a terceira reprovação na revisão num deles. Na revisão diária das pendências, mande o trecho do diário ao Claude no chat; a sua decisão vira texto na fila, por commit seu.
 - **Parou em `[!]` pelos casos (c) ou (d), por pergunta do pacote da fase ou com três reprovações:** mande o trecho do diário ao Claude no chat. A sua decisão vira texto na fila, por commit seu, e o loop retoma.
 - **"Para o Marcos revisar" no diário:** leia no fim de cada sessão. Bug confirmado vira teste no mesmo dia (seção 4).
 - Até o checkpoint da 2B, anote cada troca de executor em `outputs/piloto-multiagente.md` (workflow, seção 8).
