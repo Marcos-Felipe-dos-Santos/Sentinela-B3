@@ -442,3 +442,76 @@ def test_sgs_oficial_ate_o_motor_do_fii(sgs, monkeypatch):
     )
     resultado = FIIEngine().analisar(dados, as_of=AS_OF_GORDON)
     assert resultado["selic_liquida"] == pytest.approx(0.15 * 0.85)
+
+
+# proveniência e resultado não representável (F3-1d; BUG-3-06, BUG-3-07, BUG-3-08)
+
+
+@pytest.mark.parametrize("nome", ["selic", "cdi", "ipca_12m"])
+def test_registro_por_data_leva_a_proveniencia_da_coleta(sgs, nome):
+    provedor, _ = sgs
+    registro = _macro(provedor, date(2025, 10, 15)).registro_por_data(nome)
+    assert "valor" in registro
+    assert registro["proveniencia"]
+    for janela in registro["proveniencia"]:
+        assert janela["fonte"].startswith("https://api.bcb.gov.br/")
+        assert len(janela["hash_sha256"]) == 64
+        assert set(janela) == {"fonte", "data_coleta", "hash_sha256", "aviso"}
+
+
+def test_abstencao_calculada_leva_a_proveniencia(sgs):
+    provedor, _ = sgs
+    registro = _macro(provedor, date(2000, 1, 3)).registro_por_data("ipca_12m")
+    assert "abstencao" in registro and "valor" not in registro
+    assert registro["proveniencia"]
+
+
+def test_falha_do_provedor_fica_sem_proveniencia(monkeypatch, sgs):
+    provedor, _ = sgs
+
+    def _fora(url, *args, **kwargs):
+        raise provedor_macro.requests.ConnectionError("SGS fora do ar")
+
+    monkeypatch.setattr(provedor_macro.requests, "get", _fora)
+    registro = _macro(provedor, date(2025, 10, 15)).registro_por_data("selic")
+    assert set(registro) == {"abstencao"}
+
+
+@pytest.mark.parametrize("valor", [1e10, 1e300, -100.0, -150.0])
+def test_cdi_nao_representavel_abstem(valor):
+    registro = mpd.cdi([mpd.Observacao(date(2026, 1, 2), valor)], date(2026, 1, 5))
+    assert registro == {
+        "abstencao": "série SGS 12: resultado não representável com a observação de 2026-01-02"
+    }
+
+
+def test_cdi_no_limite_finito_continua_valor():
+    registro = mpd.cdi([mpd.Observacao(date(2026, 1, 2), -99.0)], date(2026, 1, 5))
+    assert registro["valor"] == pytest.approx(0.01**252 - 1)
+
+
+@pytest.mark.parametrize(
+    ("valor", "data"), [(-100.0, "2025-03-01"), (-120.0, "2025-03-01")]
+)
+def test_ipca_com_fator_nao_positivo_abstem(valor, data):
+    observacoes = [
+        mpd.Observacao(date(2025, mes, 1), valor if mes == 3 else 0.5)
+        for mes in range(1, 13)
+    ]
+    registro = mpd.ipca_12m(observacoes, date(2026, 6, 1), date(2026, 6, 1))
+    assert registro == {
+        "abstencao": f"série SGS 433: resultado não representável com a observação de {data}"
+    }
+
+
+def test_ipca_infinito_abstem_pela_ultima_observacao():
+    observacoes = [mpd.Observacao(date(2025, mes, 1), 1e300) for mes in range(1, 13)]
+    registro = mpd.ipca_12m(observacoes, date(2026, 6, 1), date(2026, 6, 1))
+    assert registro == {
+        "abstencao": "série SGS 433: resultado não representável com a observação de 2025-12-01"
+    }
+
+
+def test_booleano_recusado_com_a_observacao():
+    with pytest.raises(ValueError, match=r"SGS: observação inválida: .*True"):
+        mpd.ler_sgs('[{"data": "02/01/2026", "valor": true}]')

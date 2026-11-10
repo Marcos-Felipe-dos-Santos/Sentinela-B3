@@ -9,19 +9,15 @@ FASE do Codex, 10/11/2026; destino F3-1d.
 import math
 from datetime import date
 
-import pytest
-
 from sentinela.data import macro_por_data as mpd
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-3-07, corrige F3-1d")
 def test_cdi_extremo_abstem_sem_excecao():
     registro = mpd.cdi([mpd.Observacao(date(2026, 1, 2), 1e10)], date(2026, 1, 5))
     assert "valor" not in registro
     assert registro["abstencao"]
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-3-07, corrige F3-1d")
 def test_ipca_extremo_abstem_sem_infinito():
     observacoes = [mpd.Observacao(date(2025, mes, 1), 1e300) for mes in range(1, 13)]
     registro = mpd.ipca_12m(observacoes, date(2026, 6, 1), date(2026, 6, 1))

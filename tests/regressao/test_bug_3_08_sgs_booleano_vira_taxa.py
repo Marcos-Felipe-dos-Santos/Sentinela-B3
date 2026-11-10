@@ -13,7 +13,6 @@ import pytest
 from sentinela.data import macro_por_data as mpd
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-3-08, corrige F3-1d")
 @pytest.mark.parametrize("valor", [True, False])
 def test_booleano_nao_vira_observacao(valor):
     with pytest.raises(ValueError, match="SGS"):

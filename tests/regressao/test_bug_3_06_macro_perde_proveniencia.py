@@ -32,7 +32,6 @@ class _Provedor:
         }
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-3-06, corrige F3-1d")
 @pytest.mark.parametrize("nome", ["selic", "cdi"])
 def test_registro_por_data_preserva_proveniencia(nome):
     macro = MacroContext(

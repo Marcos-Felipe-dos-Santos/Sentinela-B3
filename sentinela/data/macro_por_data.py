@@ -67,6 +67,10 @@ def ler_sgs(conteudo: str) -> tuple[Observacao, ...]:
     for item in dados:
         if not isinstance(item, dict) or "data" not in item or "valor" not in item:
             raise ValueError("SGS: observação sem data ou valor")
+        if isinstance(item["valor"], bool):
+            # BUG-3-08: `float(True)` é 1.0; marcador lógico não demonstra taxa. Falha da
+            # fonte (ValueError), como as outras observações inválidas.
+            raise ValueError(f"SGS: observação inválida: {item!r}")  # noqa: TRY004
         try:
             dia = data_sgs(item["data"])
             valor = float(item["valor"])
@@ -95,6 +99,16 @@ def _sem_observacao(serie: int, as_of: date) -> dict:
     return {"abstencao": f"série SGS {serie} sem observação até {as_of.isoformat()}"}
 
 
+def _nao_representavel(serie: int, data: date) -> dict:
+    """BUG-3-07: entrada finita com resultado não finito ou fator não positivo."""
+    return {
+        "abstencao": (
+            f"série SGS {serie}: resultado não representável com a observação de "
+            f"{data.isoformat()}"
+        )
+    }
+
+
 def vigente(observacoes: Iterable[Observacao], as_of: date) -> Observacao | None:
     """Última observação com data até `as_of`; datas futuras da série ficam de fora."""
     anteriores = [o for o in observacoes if o.data <= as_of]
@@ -114,10 +128,14 @@ def cdi(observacoes: Iterable[Observacao], as_of: date) -> dict:
     observacao = vigente(observacoes, as_of)
     if observacao is None:
         return _sem_observacao(CDI, as_of)
-    return {
-        "valor": (1 + observacao.valor / 100) ** DIAS_UTEIS_ANO - 1,
-        "data": observacao.data,
-    }
+    fator = 1 + observacao.valor / 100
+    try:
+        valor = fator**DIAS_UTEIS_ANO - 1
+    except OverflowError:
+        return _nao_representavel(CDI, observacao.data)
+    if fator <= 0 or not math.isfinite(valor):
+        return _nao_representavel(CDI, observacao.data)
+    return {"valor": valor, "data": observacao.data}
 
 
 def _indice_mes(dia: date) -> int:
@@ -152,5 +170,10 @@ def ipca_12m(observacoes: Iterable[Observacao], as_of: date, coleta: date) -> di
         }
     acumulado = 1.0
     for observacao in disponiveis:
-        acumulado *= 1 + observacao.valor / 100
+        fator = 1 + observacao.valor / 100
+        if fator <= 0:
+            return _nao_representavel(IPCA, observacao.data)
+        acumulado *= fator
+    if not math.isfinite(acumulado):
+        return _nao_representavel(IPCA, disponiveis[-1].data)
     return {"valor": acumulado - 1, "data": disponiveis[-1].data}

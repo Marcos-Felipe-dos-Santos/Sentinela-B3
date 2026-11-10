@@ -299,7 +299,7 @@ class MacroContext:
         return datetime.now(ZoneInfo("America/Sao_Paulo")).date()
 
     def registro_por_data(self, nome: str) -> dict:
-        """Valor e data da observação vigente em as_of, ou `{"abstencao": motivo}`."""
+        """Valor e data vigentes em as_of, ou `{"abstencao": motivo}`; com coleta, mais a `proveniencia`."""
         if nome not in self._por_data:
             from sentinela.data import macro_por_data
             from sentinela.data.providers.macro import MacroProvider
@@ -324,6 +324,10 @@ class MacroContext:
                 else:
                     calculo = getattr(macro_por_data, nome)
                     registro = calculo(dados["observacoes"], self.as_of)
+                # BUG-3-06: a proveniência da coleta (fonte, data, hash e aviso de cada
+                # janela) acompanha o valor e a abstenção calculada.
+                if "proveniencia" in dados:
+                    registro = {**registro, "proveniencia": dados["proveniencia"]}
             self._por_data[nome] = registro
         return self._por_data[nome]
 
