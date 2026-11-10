@@ -35,6 +35,7 @@ _CRASES = re.compile(r"`([^`]+)`")
 _CAMINHO = re.compile(r"^[\w.*?\[\]-]+(?:/[\w.*?\[\]-]*)*$")
 _SUFIXO_LINHA = re.compile(r":\d+(?:[-,]\d+)*$")
 _CURINGAS = re.compile(r"[*?\[]")
+_BARRAS = re.compile(r"/{2,}")
 _EXTENSOES = (
     ".py",
     ".md",
@@ -143,11 +144,11 @@ def _localizar(linhas: list[str], ident: str) -> int:
 
 
 def _candidatos(linha: str) -> list[str]:
-    """Trechos entre crases com cara de caminho, sem o sufixo `:linha`."""
+    """Trechos entre crases com cara de caminho, sem o sufixo `:linha` e sem barra repetida."""
     candidatos = []
     for trecho in _CRASES.findall(linha):
         for parte in trecho.split():
-            parte = _SUFIXO_LINHA.sub("", parte.strip(",;:()"))
+            parte = _BARRAS.sub("/", _SUFIXO_LINHA.sub("", parte.strip(",;:()")))
             if "/" in parte or parte.endswith(_EXTENSOES):
                 candidatos.append(parte)
     return candidatos

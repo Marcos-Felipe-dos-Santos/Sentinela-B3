@@ -395,6 +395,39 @@ def test_alvo_com_caminho_ininterpretavel_nao_tem_independentes(
     assert _independentes(fila_mod, arquivos, capsys, texto) == []
 
 
+# arquivos na raiz e barras repetidas (F3-0j)
+
+
+def test_arquivo_na_raiz_conta_como_caminho(fila_mod, arquivos, capsys):
+    texto = (
+        "- [!] **A-1** · x — `config.py`.\n"
+        "- [ ] **A-2** · y — muda `config.py` e `ruff`.\n"
+        "- [ ] **A-3** · z — `app.py`.\n"
+    )
+    assert fila_mod._caminhos(texto.splitlines()[1]) == {"config.py"}
+    assert _independentes(fila_mod, arquivos, capsys, texto) == ["A-3"]
+
+
+@pytest.mark.parametrize(
+    ("alvo", "outro"),
+    [
+        ("scripts//fila.py", "scripts/fila.py"),
+        ("scripts/fila.py", "scripts//fila.py"),
+        ("sentinela//data/", "sentinela/data/pit/x.py"),
+    ],
+)
+def test_barras_repetidas_sao_normalizadas(fila_mod, arquivos, capsys, alvo, outro):
+    texto = f"- [!] **A-1** · x — `{alvo}`.\n- [ ] **A-2** · y — `{outro}`.\n"
+    assert _independentes(fila_mod, arquivos, capsys, texto) == []
+    assert fila_mod._caminhos(f"`{alvo}`") == {alvo.replace("//", "/")}
+
+
+def test_palavra_sem_extensao_e_sem_barra_continua_ignorada(fila_mod):
+    linha = "- [ ] **A-1** · x — rode `ruff` e `pytest -q`; veja `README`."
+    assert fila_mod._caminhos(linha) == set()
+    assert not fila_mod._ininterpretavel(linha)
+
+
 DECISAO_BLOQUEADA = (
     "- [x] **A-1** · x — `a.py`.\n"
     "- [!] **A-2** · y — `b.py`.\n"

@@ -78,3 +78,15 @@ Processo F3-0, bloco 1, antes da ativação da 3-a. O diário do fechamento da 2
 - **Executor:** claude-code (Claude Opus 5.5).
 - **O que foi feito:** decisões do Marcos de 09/11/2026 anexadas como segundo adendo ao fim de `docs/decisoes/decisoes-processo-f3-0.md`, só com acréscimo; F3-0j e F3-0k inseridos na fila antes do `[DECISÃO] Processo F3-0, bloco 1`; cabeçalho da fila atualizado. Saiu de `docs/loop/pendencias.md` a linha do F3-0h (decisão 1); as decisões 2 e 3 respondiam a observações do diário do F3-0h e do F3-0i, sem linha em `pendencias.md`, que fica só com o cabeçalho.
 - **Estado:** `fila.py status`: [x] 5, [ ] 2, próximo F3-0j. A 3-a continua inativa.
+
+### F3-0j — fix: treat root files as paths in queue independence
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso.
+- **Já estava feito:** nome entre crases com extensão e sem barra já contava como caminho desde o F3-0a (`_candidatos` aceita `parte.endswith(_EXTENSOES)`), e palavra sem extensão e sem barra já era ignorada. O teste `test_arquivo_na_raiz_conta_como_caminho` (linhas sintéticas com `config.py` e `app.py`, nenhum arquivo intocável alterado) passou no código anterior; ele e `test_palavra_sem_extensao_e_sem_barra_continua_ignorada` ficam como guarda.
+- **O que foi feito:** barras repetidas normalizadas em `_candidatos` (`_BARRAS`, `/{2,}` → `/`), depois do corte do `:linha`; `scripts//fila.py` equivale a `scripts/fila.py`, nos dois sentidos, e `sentinela//data/` casa com o que está abaixo de `sentinela/data/`.
+- **Teste vermelho antes da correção:** `test_barras_repetidas_sao_normalizadas`, 3 casos, 3 falhas no código anterior (71 passed); depois, 74 passed.
+- **Mutação à mão:** 3 mutações, 3 mortas: sem normalizar barras (3 falhas); arquivo na raiz deixa de ser candidato; palavra sem extensão vira candidato.
+- **Testes:** 3594 passed, 1 skipped, 8 xfailed → 3599 passed, 1 skipped, 8 xfailed (+5). Ruff CI, Ruff completo em `sentinela/methods` e `sentinela/data`: verdes. Golden SHA igual.
+- **Resíduos:** nenhum no repositório; saídas em `outputs/f3-0j-vermelho.txt` e `outputs/f3-0j-mutacao.txt`.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** trecho com ponto final e sem barra (`fila.py.`) continua fora dos candidatos, sem tornar o item dependente; o aceite não o pede.
