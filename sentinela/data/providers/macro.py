@@ -1,4 +1,4 @@
-"""SIDRA 1737, Focus PIB e calendários públicos, com cache observado e sem reserva."""
+"""SIDRA 1737, Focus PIB, séries do SGS e calendários públicos, com cache observado e sem reserva."""
 
 from __future__ import annotations
 
@@ -16,11 +16,13 @@ from zoneinfo import ZoneInfo
 
 import requests
 
+from sentinela.data import macro_por_data
 from sentinela.data.taxas import Calendario
 
 IBGE_CALENDARIO = "https://servicodados.ibge.gov.br/api/v3/calendario/9256"
 FOCUS = "https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/ExpectativasMercadoAnuais"
 ANBIMA = "https://www.anbima.com.br/feriados/fer_nacionais/{ano}.asp"
+SGS = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.{serie}/dados?formato=json"
 TTL = 86400
 FUSO = ZoneInfo("America/Sao_Paulo")
 # Falha da fonte ou do formato vira abstenção com o motivo da exceção; KeyError e TypeError
@@ -373,6 +375,41 @@ class MacroProvider:
         return resultado | {
             "proveniencia": serie.proveniencia(),
             "calendario": agenda.proveniencia(),
+        }
+
+    def serie_sgs(self, serie: int, fim: date, instante: datetime) -> dict:
+        """Série completa do SGS até `fim` (F3-1b): diárias em janelas de até 10 anos.
+
+        Devolve `observacoes`, `coleta` (data local da coleta mais antiga, limite de
+        divulgação do que está na série) e `proveniencia` de cada janela; falha da fonte ou do
+        formato vira `{"abstencao": motivo}`.
+        """
+        base = SGS.format(serie=serie)
+        inicio = macro_por_data.INICIO_SERIE.get(serie)
+        urls = (
+            [
+                f"{base}&dataInicial={de:%d/%m/%Y}&dataFinal={ate:%d/%m/%Y}"
+                for de, ate in macro_por_data.janelas(inicio, fim)
+            ]
+            if inicio is not None
+            else [base]
+        )
+        try:
+            snapshots = [self.baixar(url, instante) for url in urls]
+            observacoes = macro_por_data.juntar(
+                macro_por_data.ler_sgs(s.conteudo) for s in snapshots
+            )
+        except FALHAS_DA_FONTE as erro:
+            return _falha_da_fonte(erro)
+        except ERROS_DO_CODIGO as erro:
+            return _erro_do_codigo(erro)
+        if not snapshots:
+            return {"abstencao": f"série SGS {serie} sem janela até {fim.isoformat()}"}
+        coleta = min(_local(datetime.fromisoformat(s.coleta)) for s in snapshots)
+        return {
+            "observacoes": observacoes,
+            "coleta": coleta,
+            "proveniencia": [s.proveniencia() for s in snapshots],
         }
 
     def registro(

@@ -225,25 +225,48 @@ class MacroContext:
 
     # ── Indicadores dinâmicos ──────────────────────────────────────────────────
 
-    def __init__(self, selic: float | None = None):
+    def __init__(
+        self,
+        selic: float | None = None,
+        as_of: date | None = None,
+        provedor=None,
+        instante: datetime | None = None,
+    ):
         # selic explícito: útil em testes (evita chamada BCB). Sem arg, a Selic é lida sob
         # demanda por get_selic_atual(), com o cache de 24 h e o fallback dela (E-6, F3-1a).
+        # Com as_of (F3-1b), Selic, CDI e IPCA vêm da série completa do SGS vigente naquela
+        # data; ausência com as_of passado abstém (None), sem fallback fixo.
+        if isinstance(as_of, datetime):
+            raise TypeError("as_of do MacroContext é date (dia de Brasília), não datetime")
+        if instante is not None and instante.utcoffset() is None:
+            raise ValueError("instante da coleta exige fuso horário")
         self._selic: float | None = selic
         self._cdi:      float | None = None
         self._ipca_12m: float | None = None
+        self.as_of = as_of
+        self._provedor = provedor
+        self._instante = instante
+        self._por_data: dict[str, dict] = {}
 
     @property
-    def selic(self) -> float:
-        return self._selic if self._selic is not None else get_selic_atual()
+    def selic(self) -> float | None:
+        if self._selic is not None:
+            return self._selic
+        if self.as_of is not None:
+            return self._valor_por_data("selic", SELIC_FALLBACK)
+        return get_selic_atual()
 
     @property
-    def selic_liquida(self) -> float:
+    def selic_liquida(self) -> float | None:
         """Selic líquida de IR para FIIs: Selic × 0.85."""
-        return self.selic * self.FII_FATOR_IR
+        selic = self.selic
+        return None if selic is None else selic * self.FII_FATOR_IR
 
     @property
-    def cdi(self) -> float:
+    def cdi(self) -> float | None:
         """CDI anualizado base 252 (BCB SGS série 12). Fallback: CDI_FALLBACK."""
+        if self.as_of is not None:
+            return self._valor_por_data("cdi", CDI_FALLBACK)
         if self._cdi is None:
             d = self._fetch_bcb(12)        # CDI diário % a.d. como decimal
             if d is not None:
@@ -253,11 +276,72 @@ class MacroContext:
         return self._cdi
 
     @property
-    def ipca_12m(self) -> float:
+    def ipca_12m(self) -> float | None:
         """IPCA acumulado últimos 12 meses (BCB SGS série 433). Fallback: IPCA_12M_FALLBACK."""
+        if self.as_of is not None:
+            return self._valor_por_data("ipca_12m", IPCA_12M_FALLBACK)
         if self._ipca_12m is None:
             self._ipca_12m = self._fetch_ipca_acumulado()
         return self._ipca_12m
+
+    # ── Por data (F3-1b) ───────────────────────────────────────────────────────
+
+    def _instante_coleta(self) -> datetime:
+        if self._instante is None:
+            self._instante = datetime.now(UTC)
+        return self._instante
+
+    def _hoje(self) -> date:
+        return self._instante_coleta().astimezone(ZoneInfo("America/Sao_Paulo")).date()
+
+    @staticmethod
+    def _hoje_no_relogio() -> date:
+        return datetime.now(ZoneInfo("America/Sao_Paulo")).date()
+
+    def registro_por_data(self, nome: str) -> dict:
+        """Valor e data da observação vigente em as_of, ou `{"abstencao": motivo}`."""
+        if nome not in self._por_data:
+            from sentinela.data import macro_por_data
+            from sentinela.data.providers.macro import MacroProvider
+
+            serie = {
+                "selic": macro_por_data.SELIC_META,
+                "cdi": macro_por_data.CDI,
+                "ipca_12m": macro_por_data.IPCA,
+            }[nome]
+            hoje = self._hoje()
+            if self.as_of > hoje:
+                registro = {"abstencao": "as_of posterior à data da coleta"}
+            else:
+                provedor = self._provedor if self._provedor is not None else MacroProvider()
+                dados = provedor.serie_sgs(serie, hoje, self._instante_coleta())
+                if "abstencao" in dados:
+                    registro = dados
+                elif nome == "ipca_12m":
+                    registro = macro_por_data.ipca_12m(
+                        dados["observacoes"], self.as_of, dados["coleta"]
+                    )
+                else:
+                    calculo = getattr(macro_por_data, nome)
+                    registro = calculo(dados["observacoes"], self.as_of)
+            self._por_data[nome] = registro
+        return self._por_data[nome]
+
+    def _valor_por_data(self, nome: str, fallback: float) -> float | None:
+        registro = self.registro_por_data(nome)
+        if "valor" in registro:
+            return registro["valor"]
+        # Fallback existente só para as_of = hoje, no relógio e na coleta; data passada
+        # abstém (F3-1b), mesmo com instante de coleta injetado no passado.
+        if self.as_of == self._hoje() == self._hoje_no_relogio():
+            return fallback
+        return None
+
+    def motivo(self, nome: str) -> str | None:
+        """Motivo da abstenção por data de `selic`, `cdi` ou `ipca_12m`; None sem as_of."""
+        if self.as_of is None:
+            return None
+        return self.registro_por_data(nome).get("abstencao")
 
     def cost_of_equity_real(self) -> float | None:
         """Custo real do F2B-30, sem contingência nem prêmio duplicado."""
