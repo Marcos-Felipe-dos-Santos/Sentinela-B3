@@ -13,8 +13,52 @@ import pandas as pd
 
 from sentinela.data.store import resultados, unico
 from sentinela.domain.apresentacao import mesclar_analise
+from sentinela.domain.enums import AssetType
 from sentinela.domain.models import AnalysisResult
 from sentinela.services.asset_classifier import AssetClassifier
+
+
+def contexto_classe_ia(dados: dict[str, Any]) -> str:
+    """Descreve a prova da classe sem transformar inferência em elegibilidade."""
+    valor = dados.get("classe_ativo")
+    try:
+        classe = AssetType(str(valor or "UNKNOWN").upper().strip()).value
+    except ValueError:
+        classe = "UNKNOWN"
+    if classe == "UNKNOWN":
+        return (
+            "Classe do ativo: UNKNOWN; origem: indisponível; motivo: classe não demonstrada; "
+            "não presumir tipo nem elegibilidade."
+        )
+    referencia = dados.get("referencia_oficial")
+    fonte = referencia.get("fonte") if isinstance(referencia, dict) else None
+    if isinstance(fonte, dict):
+        fonte = fonte.get("arquivo")
+    if isinstance(fonte, str) and fonte.strip():
+        return (
+            f"Classe do ativo: {classe}; origem: oficial ({fonte.strip()}); "
+            "motivo: registro da referência oficial fornecido com a classe."
+        )
+    riscos = dados.get("riscos_dados")
+    motivos = (
+        [
+            r
+            for r in riscos
+            if isinstance(r, str)
+            and ("referência" in r.lower() or "índice" in r.lower())
+        ]
+        if isinstance(riscos, list)
+        else []
+    )
+    motivo = (
+        "; ".join(motivos)
+        or "referência oficial não demonstrada para a classe fornecida"
+    )
+    return (
+        f"Classe do ativo: {classe}; origem: inferida a partir da classe fornecida, "
+        f"sem fonte oficial comprovada; motivo: {motivo}. "
+        "A inferência não comprova elegibilidade para métodos."
+    )
 
 
 class AnalysisService:
