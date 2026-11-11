@@ -43,7 +43,7 @@ Cada item começa com `python scripts/fila.py proximo`, que imprime só a linha 
 9. **Revisão.** Só com a última execução do `gate.py` verde sobre o stage que vai à revisão: rode-o de novo antes de cada `/review-diff`, inclusive depois de correções (decisão 22). `/review-diff` revisa exatamente o que está no stage — código, diário e fila. Reprovou: corrija, atualize a seção do item no diário sem abri-lo inteiro (localize com `grep -n "^### <ID>" docs/loop/diario.md` e edite só essa faixa; não rode `fila.py diario` de novo, que duplicaria a seção), refaça o stage e revise de novo; conta nas 3 rodadas. Na 3ª reprovação, troque o `[x]` por `[!]`, registre o motivo no diário e pare o loop.
 10. **Commit.** `/safe-commit`, um único commit por item. Ele não faz stage: commita exatamente o que o `/review-diff` aprovou. Título = o Conventional Commit do item. Nunca push.
 11. **Progresso.** Rode `python scripts/fila.py status` e `git --no-pager log --oneline -3`.
-12. **Próximo.** Siga para o próximo `[ ]` com `python scripts/fila.py proximo`. Se ele sair com 3 (`[DECISÃO]` à frente), pare: a fila acabou.
+12. **Próximo.** Siga para o próximo `[ ]` com `python scripts/fila.py proximo`. Se ele sair com 3 (`[DECISÃO]` à frente), pare: a fila acabou. Se o `[DECISÃO]` for checkpoint de metade, antes de parar rode a auditoria cruzada por autoria (`scripts/auditar.py`, ciclo de fase, etapa 4) e registre veredito e caminho do relatório num commit `docs:` próprio. O alvo `claude` roda sem Bash, numa cópia temporária da árvore rastreada, com as evidências de git e Ruff geradas pelo script (decisões 37 e 38; ciclo de fase, etapa 6).
 
 ## Regras duras
 

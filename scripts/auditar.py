@@ -2,11 +2,21 @@
 
 Uso, na raiz do repositório (WSL, venv ativa):
     python scripts/auditar.py codex MODO --fase 2b [--arquivo A] [--desde C] [--foco T]
+    python scripts/auditar.py claude MODO --fase 3 [--arquivo A] [--desde C] [--foco T]
     python scripts/auditar.py gemini MODO --fase 2b [--arquivo A] [--foco T]
     python scripts/auditar.py prompt MODO --fase 2b [--para gemini] [...]
 
-MODO: documento | ficha | fase | fechamento (o fechamento é só no Codex).
+MODO: documento | ficha | fase | fechamento (o fechamento não vai ao Gemini).
 - codex: roda o Codex em sandbox só de leitura e grava o log inteiro e o relatório final.
+- claude: roda o Claude Code não interativo (-p), só com Read, Grep e Glob (sem Bash, decisões
+  37 e 38), com o mesmo prompt e o mesmo relatório, numa cópia da árvore rastreada do commit
+  final (git archive extraído numa pasta temporária nova, fora do repositório, apagada ao
+  fim). Antes, o próprio script roda no repositório os comandos fixos (git log/show/diff entre
+  commits e ruff check --select E9,F63,F7,F82 --no-cache) e grava a saída em evidencias.txt,
+  na raiz da cópia, que o prompt manda o auditor ler.
+- No modo fase com --desde (checkpoint, F3-0e, decisão 23), a seleção é por autoria: o
+  prompt de cada família traz todos os hashes `Executor:` da outra família no intervalo
+  <desde>..HEAD; commit sem linha `Executor:` vai à parte, para o relatório listar.
 - gemini: grava o prompt e o pacote de texto (partes de até 350 KB, linhas numeradas) para
   anexar no app do Gemini, que não lê o repositório nem anexos maiores.
 - prompt: só imprime o prompt preenchido.
@@ -16,10 +26,13 @@ Os modelos dos prompts ficam em docs/loop/prompts/. Nada é escrito no repositó
 """
 
 import argparse
+import io
 import re
 import shutil
 import subprocess
 import sys
+import tarfile
+import tempfile
 from pathlib import Path
 
 FASES = ["0", "1", "2a", "2b", "2c", "3", "4", "5", "6", "7", "8"]
@@ -53,6 +66,16 @@ FOCO_PADRAO = {
 }
 
 ACESSO = {
+    "claude": (
+        "ACESSO: você está na raiz de uma cópia dos arquivos rastreados do commit final "
+        "(HEAD {HEAD}), só com Read, Grep e Glob: sem terminal, sem edição e sem o .git. As "
+        "saídas de git log, show e diff do intervalo e do ruff check --select E9,F63,F7,F82 "
+        "--no-cache . foram geradas pelo auditar.py no repositório antes desta sessão e estão "
+        "em {EVIDENCIAS}: leia esse arquivo antes de começar e use-o onde este prompt mandar "
+        "rodar git ou ruff. A suíte não roda nesta "
+        'auditoria: resultado de teste citado sem execução vai para "Não verificado". Não '
+        "regenere o golden, não rode mutmut e não use a rede."
+    ),
     "codex": (
         "ACESSO: você está na raiz do repositório, num sandbox só de leitura. Leia os arquivos "
         "e use git (log, show, diff) à vontade. Pode rodar, sem escrever no repositório, "
@@ -130,6 +153,35 @@ def aviso(msg):
     print(f"Aviso: {msg}", file=sys.stderr)
 
 
+# Executor do commit, pela linha do corpo (protocolo, "Troca de executor"; decisão 23).
+FAMILIAS = {"claude": "claude-code", "codex": "codex"}
+OUTRA = {"claude": "codex", "codex": "claude"}
+# Claude Code não interativo e só de leitura (decisões 37 e 38): só Read, Grep e Glob, sem
+# Bash, numa cópia da árvore rastreada. A cópia não tem arquivo ignorado; estas negações são
+# só a segunda camada (decisão 38). As regras Read(...) valem também para o Grep e o Glob: o
+# CLI recusa Grep(caminho) e Glob(caminho) e manda usar Read.
+CLAUDE_FERRAMENTAS = ["Read", "Grep", "Glob"]
+LEITURA_NEGADA = [
+    "**/.env",
+    "**/.env.*",
+    "**/*.db",
+    "**/*.db.*",
+    "**/*.db-*",
+    "**/*.sqlite*",
+    "./outputs/**",
+]
+EVIDENCIAS = "evidencias.txt"
+CLAUDE_NEGADOS = [
+    "Edit",
+    "Write",
+    "NotebookEdit",
+    "Bash",
+    *(f"Read({padrao})" for padrao in LEITURA_NEGADA),
+]
+GOLDEN = "tests/fixtures/golden_motores.jsonl"
+RUFF_CI = ["ruff", "check", "--select", "E9,F63,F7,F82", "--no-cache", "."]
+
+
 def git(*args, check=True):
     r = subprocess.run(["git", *args], capture_output=True, text=True, check=check)
     return r.stdout.strip()
@@ -161,6 +213,8 @@ def contexto(a):
         "PREFIXO": f"F{a.fase.upper()}",
         "ARQUIVO": a.arquivo or "",
         "DESDE": a.desde or "",
+        "EVIDENCIAS": getattr(a, "evidencias", None)
+        or "(arquivo de evidências gerado por `auditar.py claude`)",
         "ATUAL": git("branch", "--show-current") or "(HEAD destacado)",
         "HEAD": git("rev-parse", "--short", "HEAD"),
     }
@@ -174,13 +228,56 @@ def preencher(texto, valores):
     return texto
 
 
-def montar_prompt(a, para):
+def commits_por_executor(desde):
+    """Hashes do intervalo <desde>..HEAD por executor (linha `Executor:` do corpo) e os sem linha."""
+    intervalo = f"{desde}..HEAD"
+    selecao = {
+        familia: git(
+            "--no-pager", "log", "--format=%H", f"--grep=^Executor: {nome}$", intervalo
+        ).split()
+        for familia, nome in FAMILIAS.items()
+    }
+    com = {h for hashes in selecao.values() for h in hashes}
+    todos = git("--no-pager", "log", "--format=%H", intervalo).split()
+    selecao["sem"] = [h for h in todos if h not in com]
+    return selecao
+
+
+def bloco_autoria(para, selecao):
+    """Lista do que o auditor `para` audita: todos os commits da outra família."""
+    outra = OUTRA[para]
+    alvo = selecao[outra]
+    cabecalho = (
+        "SELEÇÃO POR AUTORIA (decisão 23), que restringe o ESCOPO acima: audite todos "
+        f"estes commits, e só eles, marcados `Executor: {FAMILIAS[outra]}` no intervalo "
+        f"({len(alvo)}):"
+    )
+    linhas = ["", cabecalho, *(f"- {h}" for h in alvo)]
+    if not alvo:
+        linhas.append(
+            "- (nenhum: registre no relatório que não há commit dessa família no intervalo)"
+        )
+    if selecao["sem"]:
+        sem = (
+            "Commits sem linha `Executor:` no intervalo; liste-os à parte no relatório, "
+            f"sem auditar ({len(selecao['sem'])}):"
+        )
+        linhas += [sem, *(f"- {h}" for h in selecao["sem"])]
+    return "\n".join(linhas) + "\n"
+
+
+def montar_prompt(a, para, selecao=None):
     v = contexto(a)
     v["ACESSO"] = preencher(ACESSO[para], v)
     texto = preencher((PROMPTS / f"{a.modo}.md").read_text(encoding="utf-8"), v)
     sobra = re.findall(r"\{[A-Z_]+\}", texto)
     if sobra:
         sys.exit(f"Marcadores sem valor no prompt: {sorted(set(sobra))}")
+    if a.modo == "fase" and a.desde and para in OUTRA:
+        selecao = commits_por_executor(a.desde) if selecao is None else selecao
+        if not selecao[OUTRA[para]]:
+            aviso(f"nenhum commit `Executor: {FAMILIAS[OUTRA[para]]}` no intervalo.")
+        texto += bloco_autoria(para, selecao)
     return texto, v
 
 
@@ -195,6 +292,23 @@ def validar(a):
         a.arquivo and Path(a.arquivo).is_file()
     ):
         sys.exit(f"O modo {a.modo} precisa de --arquivo com um arquivo que exista.")
+    if (
+        a.modo == "fase"
+        and a.desde
+        and subprocess.run(
+            [
+                "git",
+                "rev-parse",
+                "--verify",
+                "-q",
+                "--end-of-options",
+                a.desde + "^{commit}",
+            ],
+            capture_output=True,
+            check=False,
+        ).returncode
+    ):
+        sys.exit(f"--desde {a.desde}: commit não encontrado.")
     if a.modo == "fechamento":
         if not a.desde:
             sys.exit(
@@ -312,6 +426,220 @@ def cmd_codex(a):
         if "output-last-message" in log.read_text(encoding="utf-8"):
             aviso("este Codex não aceita --output-last-message: atualize o Codex CLI.")
     print("Mande o relatório (e, se pedirem, o log) para o Claude no chat consolidar.")
+
+
+def inicio_do_intervalo(a, base):
+    """Commit inicial dos comandos de evidência: --desde (fechamento ou fase), senão a base."""
+    return a.desde if a.desde and a.modo in ("fase", "fechamento") else base
+
+
+def commit_completo(ref):
+    """Hash completo do commit (`--end-of-options`: a referência nunca vira opção do git)."""
+    r = subprocess.run(
+        ["git", "rev-parse", "--verify", "-q", "--end-of-options", ref + "^{commit}"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if r.returncode:
+        sys.exit(f"{ref}: commit não encontrado.")
+    return r.stdout.strip()
+
+
+def comandos_de_evidencia(modo, ini, selecao=None, *, final):
+    """Comandos fixos, só entre commits: git log/show/diff (nunca --no-index) e o Ruff do CI.
+
+    `ini`, `final` (o commit exportado) e a seleção são hashes completos, nunca texto livre
+    que o git leria como opção.
+    """
+    hashes = [ini, final, *(selecao or [])]
+    if not all(re.fullmatch(r"[0-9a-f]{40}", h) for h in hashes):
+        raise ValueError("comandos de evidência só aceitam hashes completos de commit")
+    sem_golden = ["--", ".", f":(exclude){GOLDEN}"]
+    comandos = [
+        [
+            "git",
+            "--no-pager",
+            "log",
+            "--reverse",
+            "--stat",
+            "--format=fuller",
+            f"{ini}..{final}",
+        ]
+    ]
+    if modo not in ("documento", "ficha"):
+        comandos.append(["git", "--no-pager", "diff", "--stat", f"{ini}...{final}"])
+        if selecao is not None:
+            comandos += [
+                [
+                    "git",
+                    "--no-pager",
+                    "show",
+                    "--format=fuller",
+                    "--stat",
+                    "--patch",
+                    h,
+                    *sem_golden,
+                ]
+                for h in reversed(selecao)
+            ]
+        else:
+            comandos.append(
+                ["git", "--no-pager", "diff", f"{ini}...{final}", *sem_golden]
+            )
+    comandos.append(RUFF_CI)
+    return comandos
+
+
+def rodar_capturando(comando):
+    """Código e saída (stdout e stderr); comando ausente do PATH vira saída 127, sem exceção."""
+    try:
+        r = subprocess.run(comando, capture_output=True, text=True, check=False)
+    except FileNotFoundError:
+        return 127, f"comando não encontrado: {comando[0]}\n"
+    return r.returncode, r.stdout + r.stderr
+
+
+def evidencias(modo, ini, final, selecao=None, rodar=rodar_capturando):
+    """Texto do arquivo de evidências: cada comando, a saída e o código de saída."""
+    partes = [
+        "# Evidências da auditoria (geradas pelo auditar.py antes do auditor)\n",
+        f"Commit exportado: {final}\n",
+    ]
+    for comando in comandos_de_evidencia(modo, ini, selecao, final=final):
+        codigo, saida = rodar(comando)
+        partes.append(f"\n===== $ {' '.join(comando)} (saída {codigo}) =====\n{saida}")
+    return "".join(partes)
+
+
+def exportar_arvore(commit, destino):
+    """Extrai a árvore rastreada de `commit` (hash completo) em `destino`, vazia e nova.
+
+    `git archive` só traz arquivos rastreados: nada do que o .gitignore ignora (.env, bancos,
+    logs, outputs/) chega à cópia. O filtro `data` do tarfile recusa caminho absoluto, `..` e
+    link para fora da pasta.
+    """
+    if not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise ValueError("a exportação só aceita hash completo de commit")
+    pacote = subprocess.run(
+        ["git", "archive", "--format=tar", commit + "^{tree}"],
+        capture_output=True,
+        check=True,
+    ).stdout
+    with tarfile.open(fileobj=io.BytesIO(pacote), mode="r:") as tar:
+        tar.extractall(destino, filter="data")
+
+
+def pasta_temporaria_fora(raiz):
+    """Pasta temporária nova, fora do repositório (recusa TMPDIR dentro dele)."""
+    pasta = Path(tempfile.mkdtemp(prefix="sentinela-auditoria-"))
+    real = pasta.resolve()
+    if real == raiz or raiz in real.parents:
+        pasta.rmdir()
+        sys.exit(
+            "A pasta temporária do sistema fica dentro do repositório; mude o TMPDIR."
+        )
+    return pasta
+
+
+def documento_na_copia(arquivo, copia):
+    """O alvo claude só audita documento rastreado no commit final (decisão 38).
+
+    Caminho absoluto ou com `..` é recusado: `copia / "/abs"` descartaria a cópia e o teste
+    olharia o repositório real.
+    """
+    relativo = Path(arquivo)
+    if relativo.is_absolute() or ".." in relativo.parts:
+        sys.exit(f"--arquivo {arquivo}: use o caminho relativo à raiz do repositório.")
+    if not (copia / relativo).is_file():
+        sys.exit(
+            f"--arquivo {arquivo}: não está rastreado no commit final; commite-o antes "
+            "(o auditor Claude só vê a árvore rastreada)."
+        )
+
+
+def comando_claude(texto, raiz):
+    """Linha de comando do Claude Code não interativo e só de leitura (decisões 37 e 38).
+
+    Roda com cwd na cópia. Sem liberação ampla de Read: o dontAsk nega toda leitura fora da
+    pasta de trabalho, e o repositório real (`raiz`) ainda é negado por regra própria. O
+    caminho do repositório aparece só nesta negação, nunca no prompt.
+    """
+    return [
+        "claude",
+        "-p",
+        "--setting-sources",
+        "project",
+        "--strict-mcp-config",
+        "--permission-mode",
+        "dontAsk",
+        "--tools",
+        *CLAUDE_FERRAMENTAS,
+        "--disallowedTools",
+        *CLAUDE_NEGADOS,
+        f"Read(/{Path(raiz).resolve()}/**)",
+        "--output-format",
+        "text",
+        "--",
+        texto,
+    ]
+
+
+def cmd_claude(a, rodar=subprocess.run):
+    if not shutil.which("claude"):
+        sys.exit("claude não encontrado no PATH.")
+    pasta = pasta_saida(a)
+    pasta.mkdir(parents=True, exist_ok=True)
+    log = livre(pasta, f"auditoria-{a.modo}-{rotulo(a)}-claude", ".txt")
+    rel = log.with_name(log.stem + "-relatorio.md")
+    selecao = None
+    if a.modo == "fase" and a.desde:
+        selecao = commits_por_executor(a.desde)
+    a.evidencias = EVIDENCIAS
+    texto, v = montar_prompt(a, "claude", selecao)
+    ini = commit_completo(inicio_do_intervalo(a, v["BASE"]))
+    final = commit_completo("HEAD")
+    raiz = Path(git("rev-parse", "--show-toplevel")).resolve()
+    copia = pasta_temporaria_fora(raiz)
+    try:
+        exportar_arvore(final, copia)
+        if a.modo in ("documento", "ficha"):
+            documento_na_copia(a.arquivo, copia)
+        texto_ev = evidencias(
+            a.modo, ini, final, selecao[OUTRA["claude"]] if selecao else None
+        )
+        (copia / EVIDENCIAS).write_text(texto_ev, encoding="utf-8")
+        livre(pasta, log.stem + "-evidencias", ".txt").write_text(
+            texto_ev, encoding="utf-8"
+        )
+        print(
+            f"Claude auditando ({a.modo}, fase {a.fase}) numa cópia de {final[:7]}. "
+            f"Log em {log}. Pode levar vários minutos."
+        )
+        r = rodar(
+            comando_claude(texto, raiz),
+            cwd=copia,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    finally:
+        shutil.rmtree(copia)
+    log.write_text(r.stdout + r.stderr, encoding="utf-8")
+    rel.write_text(r.stdout.strip() + "\n", encoding="utf-8")
+    corpo = rel.read_text(encoding="utf-8")
+    print(
+        f"Saída do claude: {r.returncode}. Relatório: {rel} ({len(corpo.splitlines())} linhas)"
+    )
+    print(f"Veredito: {veredito(corpo)}")
+    if not r.returncode and not corpo.strip():
+        aviso("o Claude terminou sem relatório; leia o log.")
+    if r.returncode:
+        aviso(
+            f"o Claude terminou com erro ({r.returncode}); leia o log. Sem cota: registre "
+            "e pare, sem trocar a família do auditor."
+        )
 
 
 def blocos(caminhos):
@@ -456,7 +784,7 @@ def cmd_gemini(a):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="acao", required=True)
-    for nome in ("prompt", "codex", "gemini"):
+    for nome in ("prompt", "codex", "claude", "gemini"):
         p = sub.add_parser(nome)
         p.add_argument("modo", choices=MODOS)
         p.add_argument(
@@ -469,7 +797,10 @@ def main():
         )
         p.add_argument(
             "--desde",
-            help="commit anterior ao 1º item da fila de fechamento (modo fechamento)",
+            help=(
+                "commit anterior ao 1º item da fila de fechamento (modo fechamento) ou da "
+                "metade (modo fase, seleção por autoria)"
+            ),
         )
         p.add_argument("--foco", help="substitui a 1ª prioridade do prompt")
         p.add_argument(
@@ -477,10 +808,17 @@ def main():
             help="pasta de saída (padrão: Downloads do Windows ou outputs/auditorias)",
         )
         if nome == "prompt":
-            p.add_argument("--para", choices=["codex", "gemini"], default="codex")
+            p.add_argument(
+                "--para", choices=["codex", "claude", "gemini"], default="codex"
+            )
     a = ap.parse_args()
     validar(a)
-    {"prompt": cmd_prompt, "codex": cmd_codex, "gemini": cmd_gemini}[a.acao](a)
+    {
+        "prompt": cmd_prompt,
+        "codex": cmd_codex,
+        "claude": cmd_claude,
+        "gemini": cmd_gemini,
+    }[a.acao](a)
 
 
 if __name__ == "__main__":
