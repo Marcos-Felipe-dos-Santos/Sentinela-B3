@@ -196,14 +196,14 @@ ponto-no-tempo será reconstruído na Fase 3 (F3-8/F3-P16).
 
 **7. Suíte verde não é sinal**
 `app.py`, `auditoria.py`, `limpar_banco.py` em 0%. `adicionar_posicao` tem teste (`tests/test_database_posicoes.py`).
-`tests/conftest.py` semeia Selic e taxa real: semeia o BCB (14,75%, igual ao fallback) durante o import de
-`config` — contorno do E-6, não correção — e bloqueia `socket.connect`, falhando o teste e a sessão
+`tests/conftest.py` semeia Selic e taxa real: a Selic (14,75%, igual ao fallback) vai direto para o cache de
+`config.get_selic_atual` (o import de `config` não faz rede desde o F3-1a) e bloqueia `socket.connect`, falhando o teste e a sessão
 que tentarem rede. A semente de taxa real substitui o carregador só nos testes; não existe contingência equivalente em produção. Também ajusta `sys.path` e `basetemp` no Windows.
 
-**8. `config.py:329` faz rede no import**
-`MACRO = MacroContext()` chama a API do BCB ao importar. Em CI ou daemon isso vira
-chamada externa a cada execução, e a Selic fica congelada pelo tempo do processo.
-A suíte contorna isso com a semente do `tests/conftest.py`; a correção (E-6) é anterior ao monitoramento contínuo.
+**8. Rede no import de `config` — corrigida (F3-1a, E-6)**
+`MACRO = MacroContext()` não chama mais o BCB ao importar: a Selic é lida sob demanda por
+`get_selic_atual` (cache de 24 h e `SELIC_FALLBACK`), e a regressão BUG-3-01 importa `config` com a rede
+bloqueada. Selic e IPCA por data vêm de `MacroContext(as_of=...)` (F3-1b/F3-1d). Não volte a ler a rede no import.
 
 **9. Integrações vigentes e resíduos**
 `get_taxa_real` é chamado pela cascata; Gordon e FII consomem o registro. A antiga

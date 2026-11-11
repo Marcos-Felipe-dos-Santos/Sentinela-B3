@@ -169,8 +169,8 @@ verificá-lo. Reporte a divergência; não a "conserte".
   ou R$ 100 mil (FII). Incompletude/falha de coleta produz aviso, sem tratar ausência como zero.
 - Duas camadas de orquestração: `app.py` (roda) e `sentinela/services/`
   (implementada, não conectada). Não adicione a mesma feature nas duas
-- Importar `config` dispara uma chamada HTTP ao Banco Central. A suíte só fica sem
-  rede com a fixture de Selic do `tests/conftest.py` (criada no item F0-2)
+- Importar `config` não faz rede desde o F3-1a (E-6, regressão BUG-3-01): a Selic é lida
+  sob demanda por `get_selic_atual`, e o `tests/conftest.py` semeia esse cache
 - `BRAPI_TOKEN` é lido em `brapi_provider.py:64` e, segundo o levantamento, falta no `.env.example` (o loop não lê `.env*`; não verificado)
 
 ---

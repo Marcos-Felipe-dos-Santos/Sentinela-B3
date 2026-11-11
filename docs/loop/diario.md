@@ -456,3 +456,13 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Decisões delegadas novas:** nenhuma.
 - **Revisão rodada 1:** PODE COMMITAR; corrigidos a ordem dos passos da etapa 2 (o 5 vinha antes do 4) e a primeira frase do passo 9 ("antes de cada revisão"); registrado o resíduo do `safe-commit` e do passo 10; fica a nota de que ficha escrita pelo loop como item `docs` passa a ter revisão por item no Sonnet (a auditoria FICHA continua).
 - **Para o Marcos revisar:** este próprio item passa pelo `/review-diff` (Opus), não pelo leve, porque a regra nova só vale depois do commit; o `review-diff` continua descrito como "use sempre antes de qualquer commit", o que o protocolo agora restringe aos tipos que não são `docs` nem `levantamento`.
+
+### F3-A-R — docs: summarize phase 3-a
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso.
+- **O que foi feito:** `docs/loop/resumo-3a.md`. Traz os 23 itens da 3-a com commit e executor (tabela gerada da fila e do `git log`, pela linha `Executor:` do corpo) e os 8 commits fora dos itens; os testes da baseline de ativação (3599 passed, 1 skipped, 8 xfailed) até agora (4186 passed, 1 skipped, 3 xfailed); o gate da 3-a (golden SHA `500645a3…` igual com os testes de equivalência em PASS no caminho padrão, `as_of` = hoje; banco migrado sem perda pelos registros de `outputs/` do F3-2c, citados sem conteúdo; E-6 corrigido); os três xfails restantes (BUG-3-03/04/05 → F3-3c-fix); as decisões provisórias e as delegadas DD-01 a DD-28 em seção própria, com situação (as conferidas pela outra família são DD-05, DD-06, DD-11 e DD-18; DD-23 e DD-26, classe 2, aguardam o Codex); os resíduos para o Marcos; e o que auditar primeiro, por executor (D30). `CLAUDE.md`, armadilhas 7 e 8, e `AGENTS.md`, nota da rede no import: o import de `config` não faz rede desde o F3-1a (DD-04, ressalva da auditoria FASE do Codex); a "Fase atual" do `AGENTS.md` não mudou.
+- **Testes:** 4186 passed, 1 skipped, 3 xfailed → 4186 passed, 1 skipped, 3 xfailed (item só de documentação). Ruff CI e Ruff completo: verdes. Golden SHA igual.
+- **Resíduos:** nenhum novo (os da fase estão listados no resumo).
+- **Decisões delegadas novas:** nenhuma.
+- **Revisão rodada 1 (`/review-diff-leve`):** NÃO PODE COMMITAR, só texto: a seção de provisórias copiava linhas cortadas do `pendencias.md` (com o cabeçalho e sem o desfecho); reescrita com o desfecho de cada uma; ajustadas as frases dos xfails herdados e da revisão cruzada do Codex.
+- **Para o Marcos revisar:** primeiro item revisado pelo `/review-diff-leve` (F3-0g); a seguir vem o `[DECISÃO]` do checkpoint da 3-a, com a auditoria cruzada pelo `auditar.py` (passo 6 do `/goal`).
