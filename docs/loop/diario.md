@@ -601,3 +601,13 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
   - 2026-11-11 · claude-code · decisão delegada DD-36: alinhamento Ibovespa e CDI no último pregão da B3 do mês, CDI acumulado até esse dia (classe 2, desempate 6)
 - **Testes:** 4231 passed, 1 skipped, 4 xfailed (sem mudança). Golden SHA igual.
 - **Resíduos:** nenhum.
+
+### F3-P12 — docs: specify strict history contract for FII reports and rates
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso.
+- **O que foi feito:** `docs/decisoes/contrato-historico-estrito-3.md`: para Informe (geral, complemento e ativo/passivo), composição, eventos de cota da B3 e taxa do Tesouro, o que prova disponibilidade em D, o que vai para o modo estrito e o que vai para a reconstrução exploratória (D17), com rótulo e motivo; preserva as oito regras F2C-47 e a assimetria FII/Gordon; nenhuma mudança de produção. Evidência nova: `inf_mensal_fii_2023.zip` baixado em 11/11/2026 (SHA-256 `954d6754…`, em `data/fontes/l1/cvm/`): três arquivos com a chave (CNPJ, referência, versão), `Data_Entrega` só no geral, 10.256 documentos com uma única versão cada (a fonte só guarda a vigente).
+- **Testes:** 4231 passed, 1 skipped, 4 xfailed (sem mudança). Golden SHA igual.
+- **Resíduos:** `data/fontes/l1/cvm/inf_mensal_fii_2023.zip` (fora do git).
+- **Decisões delegadas novas:**
+  - 2026-11-11 · claude-code · decisão delegada DD-37: F3-P12, taxa do Tesouro no histórico → modo estrito com a linha datada do CSV histórico (`Data Base` anterior ao dia de D, guardas de idade e registro do mesmo dia de D), com a limitação "revisão posterior não observável" na proveniência, em vez de mandar a taxa para o exploratório; eventos de cota da B3 no estrito quando `lastDatePrior` ≤ D e o snapshot cobre a janela, senão abstenção pelo motivo atual (classe 2, desempate 2 e 6; alternativas: taxa só no exploratório, que deixaria o FII e o Gordon sem estrito em todo o histórico)
+- **Revisão rodada 1 (`/review-diff-leve`):** PODE COMMITAR. Aplicados no texto: o corte do Informe passa a ser `Data_Entrega` anterior ao dia de D, como a `Data Base` da taxa (a entrega não tem hora; o preço é D-1); a suposição de que o evento de cota com data-com até D era conhecido em D fica declarada, com o aviso na proveniência; o rótulo exploratório não muda nada nos eventos. A DD-37 segue para ratificação.
