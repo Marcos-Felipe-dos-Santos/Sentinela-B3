@@ -11,7 +11,6 @@ Corrige: F3-A-F3.
 from types import SimpleNamespace
 
 import pandas as pd
-import pytest
 
 import market_engine
 from market_engine import MarketEngine
@@ -26,9 +25,6 @@ class _Ticker:
         return pd.DataFrame({"Close": [20.0, 21.0, 22.0]}, index=indice)
 
 
-@pytest.mark.xfail(
-    strict=True, reason="BUG-3-16 · preço sem data no produtor · corrige: F3-A-F3"
-)
 def test_preco_do_historico_traz_a_data_do_fechamento(monkeypatch):
     monkeypatch.setattr(market_engine, "yf", SimpleNamespace(Ticker=_Ticker))
     motor = MarketEngine.__new__(MarketEngine)

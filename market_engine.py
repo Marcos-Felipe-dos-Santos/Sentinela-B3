@@ -349,6 +349,24 @@ def _fundamentos_validos_para_cache(
     return not list_missing_required_fields(dados, asset_classifier)
 
 
+# F3-A-F3 (BUG-3-16): fonte de preço que não diz a data do fechamento grava o motivo.
+MOTIVO_SEM_DATA = {
+    'yfinance_historico': 'yfinance: histórico sem data legível no último fechamento',
+    'yfinance_info': 'yfinance: currentPrice sem data do fechamento',
+    'brapi': 'brapi: preço sem data do fechamento',
+}
+
+
+def _data_do_fechamento(indice: Any) -> str | None:
+    """Data ISO do índice do histórico (Timestamp ou date); `None` se não for data (`NaT`)."""
+    if pd.isna(indice):
+        return None
+    try:
+        return indice.date().isoformat()
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
 class MarketEngine:
     def __init__(self, asset_classifier: AssetClassifier | None = None) -> None:
         self.brapi = BrapiProvider()
@@ -624,6 +642,12 @@ class MarketEngine:
                 dados['historico'] = hist
                 dados['preco_atual'] = hist['Close'].iloc[-1]
                 dados['fonte_preco'] = 'yfinance'
+                # F3-A-F3 (BUG-3-16): a data do fechamento usado acompanha o preço.
+                data_preco = _data_do_fechamento(hist.index[-1])
+                if data_preco:
+                    dados['data_preco'] = data_preco
+                else:
+                    dados['motivo_data_preco'] = MOTIVO_SEM_DATA['yfinance_historico']
                 self._record_field_sources(dados, ('preco_atual',), 'yfinance')
                 # F2B-54 (BUG-2B-33): o DY da B3 usa o fechamento bruto (ficha Bazin, §2); o
                 # `historico` ajustado fica para retorno e técnico (armadilha 11).
@@ -663,6 +687,7 @@ class MarketEngine:
                 if not dados.get('fonte_preco') and preco_info and preco_info > 0:
                     dados['preco_atual'] = preco_info
                     dados['fonte_preco'] = 'yfinance'
+                    dados['motivo_data_preco'] = MOTIVO_SEM_DATA['yfinance_info']
                     self._record_field_sources(dados, ('preco_atual',), 'yfinance')
 
                 shares = _as_float(info.get('sharesOutstanding'))
@@ -744,6 +769,10 @@ class MarketEngine:
             if _is_field_missing('preco_atual', dados.get('preco_atual'), dados):
                 preenchidos_preco = merge_if_valid(dados, brapi_data, allowed_keys={'preco_atual'})
                 self._record_field_sources(dados, preenchidos_preco, 'brapi')
+                if 'preco_atual' in preenchidos_preco:
+                    # o fechamento do yfinance, se houve, não é o preço usado
+                    dados.pop('data_preco', None)
+                    dados['motivo_data_preco'] = MOTIVO_SEM_DATA['brapi']
 
             if dados.get('preco_atual') and not dados.get('fonte_preco'):
                 dados['fonte_preco'] = 'brapi'

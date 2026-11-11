@@ -136,8 +136,16 @@ class AnalysisService:
         lentes = result.raw.get("lentes") or {}
         proveniencia = {
             campo: result.raw.get(campo)
-            for campo in ("fonte_preco", "data_preco", "fonte_fundamentos")
+            for campo in (
+                "fonte_preco",
+                "data_preco",
+                "motivo_data_preco",
+                "fonte_fundamentos",
+            )
         }
+        if not proveniencia["data_preco"] and not proveniencia["motivo_data_preco"]:
+            # F3-A-F3 (BUG-3-16): nunca `None` silencioso no registro imutável.
+            proveniencia["motivo_data_preco"] = "data do preço não informada"
         proveniencia["fontes"] = {
             nome: bloco["proveniencia"]
             for nome, bloco in result.raw.items()
