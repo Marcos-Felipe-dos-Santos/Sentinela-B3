@@ -753,26 +753,51 @@ def gravar_series(
         return _inserir(conn, linhas)
 
     def _selic():
+        """Cada observação com a fonte e o hash da janela do SGS que a devolveu (BUG-3-18).
+
+        A janela de cada proveniência vem da própria URL (`dataInicial` e `dataFinal`); sem
+        elas, a coleta foi a série inteira numa só chamada. Observação fora de toda janela,
+        ou em mais de uma, abstém a família: nunca leva a proveniência de outra janela.
+        """
         dados = provedor.serie_sgs(macro_por_data.SELIC_META, max(datas), coleta)
         if "abstencao" in dados:
             raise ValueError(dados["abstencao"])
-        prov = dados["proveniencia"][0] if dados["proveniencia"] else {}
-        return _inserir(
-            conn,
-            [
+        if not dados["proveniencia"]:
+            raise ValueError("Selic sem proveniência da coleta")
+        janelas = []
+        for prov in dados["proveniencia"]:
+            casado = re.search(
+                r"[?&]dataInicial=([^&]+)&dataFinal=([^&]+)", prov["fonte"]
+            )
+            if casado is None:
+                if "dataInicial" in prov["fonte"] or "dataFinal" in prov["fonte"]:
+                    raise ValueError(f"Selic: janela ilegível na fonte {prov['fonte']}")
+                janelas.append((prov, None, None))
+            else:
+                de, ate = (macro_por_data.data_sgs(t) for t in casado.groups())
+                janelas.append((prov, de, ate))
+        linhas = []
+        for o in dados["observacoes"]:
+            donos = [
+                prov for prov, de, ate in janelas if de is None or de <= o.data <= ate
+            ]
+            if len(donos) != 1:
+                raise ValueError(
+                    f"Selic: observação de {o.data.isoformat()} sem janela única da coleta"
+                )
+            linhas.append(
                 (
                     "sgs_432",
                     o.data.isoformat(),
                     o.valor,
                     None,
                     _detalhe({}),
-                    prov.get("fonte", SGS),
+                    donos[0]["fonte"],
                     coleta_iso,
-                    prov.get("hash_sha256", ""),
+                    donos[0]["hash_sha256"],
                 )
-                for o in dados["observacoes"]
-            ],
-        )
+            )
+        return _inserir(conn, linhas)
 
     familia("tesouro", _tesouro)
     familia("anbima", _anbima)

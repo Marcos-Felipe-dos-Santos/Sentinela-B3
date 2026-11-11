@@ -704,3 +704,16 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Pendência:** a leitura do `sgs_432` gravado pelo `MacroContext(as_of)` não existe e não está no escopo da 3-a (`docs/loop/pendencias.md`).
 - **Achados 2 a 5:** não conferidos, por falta do relatório; parada pedida ao Marcos depois do F3-A-F6, porque a ordem dele põe o achado 2 antes de seguir na 3-b.
 - **DD-41:** a contestação do relatório coincide com os achados 1 e 3; a do achado 1 está tratada aqui; a do 3 depende do relatório.
+
+### F3-A-F6 — fix: store each Selic window with its own provenance
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso.
+- **O que foi feito:** `sentinela/data/providers/macro.py`, só o `_selic` de `gravar_series`: a janela de cada proveniência do `serie_sgs` sai da própria URL (`dataInicial` e `dataFinal`, lidas por `macro_por_data.data_sgs`); sem elas, a coleta foi a série inteira numa só chamada e cobre tudo. Cada observação recebe a fonte e o hash da única janela que a contém. Observação fora de toda janela, ou em mais de uma, fonte com só um dos parâmetros da janela (ou fora de ordem) e coleta sem proveniência abstêm a família `selic` com motivo (as outras famílias seguem); proveniência sem `fonte` ou `hash_sha256` é erro do código (motivo próprio), e o caminho antigo com `SGS` e hash vazio saiu.
+- **D27:** `tests/regressao/test_bug_3_18_selic_com_hash_da_primeira_janela.py` sem a marca falhou no código anterior (todas as linhas com a janela 1999–2009) e passa agora, sem mudar asserção; a marca saiu (só ela e o import do `pytest`).
+- **Testes:** `tests/test_series_macro.py` (+10): uma observação em cada janela, com a fonte e o hash de cada uma; série sem janela na URL com a única coleta; observação fora de toda janela, em duas janelas e coleta sem proveniência abstêm a família com o motivo, sem linha gravada, e o Tesouro segue gravado; janela ilegível na URL (só `dataInicial`, só `dataFinal` ou fora de ordem) abstém; proveniência sem hash ou sem fonte é erro do código.
+- **Mutação:** `gravar_series`: 315 mortos e 39 sobreviventes (89,0%). Nenhum sobrevivente no `_selic`; os 39 estão nas famílias Tesouro, ANBIMA, Focus e IPCA, do F3-1c, fora deste item (log em `outputs/f3-a-f6-mutmut.log`).
+- **Suíte:** 4375 passed, 1 skipped, 5 xfailed → 4386 passed, 1 skipped, 4 xfailed (+10 testes e a regressão em PASS). Ruff CI e Ruff de `sentinela/data`: verdes. Golden SHA igual. Banco real não aberto.
+- **Pendência mantida:** a leitura do `sgs_432` pelo `MacroContext(as_of)` (`docs/loop/pendencias.md`).
+- **Resíduos:** `outputs/f3-a-f6-mutmut.log`.
+
+- **Revisão rodada 1:** NÃO PODE COMMITAR, por texto: a contagem dizia +7 para 6 testes. Corrigida, com dois médios aplicados: fonte com só um dos parâmetros da janela abstém, em vez de valer pela série inteira; proveniência sem fonte com teste. Fica para depois: hash vazio presente na proveniência é aceito, como no padrão da ANBIMA (F3-1c).

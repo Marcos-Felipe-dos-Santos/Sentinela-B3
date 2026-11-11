@@ -466,3 +466,118 @@ def test_banco_sem_a_tabela_abstem(monkeypatch):
     monkeypatch.setattr(config, "_conexao_series_macro", lambda: sem_tabela)
     motivo = config._taxa_real_do_banco(D, JANELA)["abstencao"]
     assert motivo.startswith("series_macro indisponível: no such table")
+
+
+# --- F3-A-F6 (BUG-3-18): proveniência da Selic por janela ----------------------------------
+
+_JANELA_A = "https://sgs?formato=json&dataInicial=01/01/2015&dataFinal=31/12/2015"
+_JANELA_B = "https://sgs?formato=json&dataInicial=01/01/2016&dataFinal=31/12/2016"
+
+
+def _sgs_falso(monkeypatch, provedor, observacoes, proveniencia):
+    from sentinela.data.macro_por_data import Observacao
+
+    def serie_sgs(serie, fim, instante):
+        return {
+            "observacoes": tuple(
+                Observacao(date.fromisoformat(d), v) for d, v in observacoes
+            ),
+            "coleta": instante.date(),
+            "proveniencia": proveniencia,
+        }
+
+    monkeypatch.setattr(provedor, "serie_sgs", serie_sgs)
+
+
+def test_selic_de_cada_janela_com_a_sua_proveniencia(conn, provedor, monkeypatch):
+    _sgs_falso(
+        monkeypatch,
+        provedor,
+        [("2015-12-31", 14.25), ("2016-01-01", 14.25)],
+        [
+            {"fonte": _JANELA_A, "hash_sha256": "a" * 64},
+            {"fonte": _JANELA_B, "hash_sha256": "b" * 64},
+        ],
+    )
+    assert _gravar(conn, provedor)["selic"] == 2
+    assert [(l[1], l[5], l[6]) for l in _linhas(conn, "sgs_432")] == [
+        ("2015-12-31", _JANELA_A, "a" * 64),
+        ("2016-01-01", _JANELA_B, "b" * 64),
+    ]
+
+
+def test_serie_sem_janela_na_url_usa_a_unica_coleta(conn, provedor, monkeypatch):
+    url = "https://sgs?formato=json"
+    _sgs_falso(
+        monkeypatch,
+        provedor,
+        [("2016-01-04", 14.25)],
+        [{"fonte": url, "hash_sha256": "c" * 64}],
+    )
+    assert _gravar(conn, provedor)["selic"] == 1
+    assert [(l[5], l[6]) for l in _linhas(conn, "sgs_432")] == [(url, "c" * 64)]
+
+
+@pytest.mark.parametrize(
+    ("observacoes", "proveniencia", "motivo"),
+    [
+        (
+            [("2017-01-02", 13.75)],
+            [
+                {"fonte": _JANELA_A, "hash_sha256": "a" * 64},
+                {"fonte": _JANELA_B, "hash_sha256": "b" * 64},
+            ],
+            "Selic: observação de 2017-01-02 sem janela única da coleta",
+        ),
+        (
+            [("2015-06-01", 13.75)],
+            [
+                {"fonte": _JANELA_A, "hash_sha256": "a" * 64},
+                {"fonte": _JANELA_A, "hash_sha256": "d" * 64},
+            ],
+            "Selic: observação de 2015-06-01 sem janela única da coleta",
+        ),
+        ([("2015-06-01", 13.75)], [], "Selic sem proveniência da coleta"),
+    ],
+)
+def test_selic_sem_janela_unica_abstem_a_familia(
+    conn, provedor, monkeypatch, observacoes, proveniencia, motivo
+):
+    _sgs_falso(monkeypatch, provedor, observacoes, proveniencia)
+    resumo = _gravar(conn, provedor)
+    assert resumo["selic"] == {"abstencao": motivo}
+    assert _linhas(conn, "sgs_432") == []
+    assert isinstance(resumo["tesouro"], int)  # as outras famílias seguem
+
+
+@pytest.mark.parametrize(
+    "proveniencia", [{"fonte": _JANELA_A}, {"hash_sha256": "a" * 64}]
+)
+def test_selic_com_proveniencia_incompleta_e_erro_do_codigo(
+    conn, provedor, monkeypatch, proveniencia
+):
+    _sgs_falso(monkeypatch, provedor, [("2015-06-01", 13.75)], [proveniencia])
+    motivo = _gravar(conn, provedor)["selic"]["abstencao"]
+    assert motivo == "erro inesperado no provedor macro: KeyError"
+    assert _linhas(conn, "sgs_432") == []
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://sgs?formato=json&dataInicial=01/01/2015",
+        "https://sgs?formato=json&dataFinal=31/12/2015",
+        "https://sgs?formato=json&dataFinal=31/12/2015&dataInicial=01/01/2015",
+    ],
+)
+def test_selic_com_janela_ilegivel_na_url_abstem(conn, provedor, monkeypatch, url):
+    _sgs_falso(
+        monkeypatch,
+        provedor,
+        [("2015-06-01", 13.75)],
+        [{"fonte": url, "hash_sha256": "a" * 64}],
+    )
+    assert _gravar(conn, provedor)["selic"] == {
+        "abstencao": f"Selic: janela ilegível na fonte {url}"
+    }
+    assert _linhas(conn, "sgs_432") == []

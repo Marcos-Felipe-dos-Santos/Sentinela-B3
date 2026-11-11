@@ -12,7 +12,6 @@ import re
 import sqlite3
 from contextlib import closing
 
-import pytest
 from test_macro_por_data import _sgs_oficial
 from test_taxa_real_data_passada import COLETA, JANELA, D, _provedor
 
@@ -27,11 +26,6 @@ def _dia(texto):
     return f"{ano}-{mes}-{dia}"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="BUG-3-18 · Selic gravada com o hash da primeira janela · corrige: F3-A-F6",
-)
 def test_cada_observacao_com_a_fonte_e_o_hash_da_sua_janela(tmp_path, monkeypatch):
     provedor, _ = _provedor(tmp_path, monkeypatch, COLETA)
     original = provedor.baixar
