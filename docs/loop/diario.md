@@ -783,3 +783,7 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Suíte:** 4466 passed, 1 skipped, 8 xfailed → 4471 passed, 1 skipped, 6 xfailed (+3 testes e as duas regressões em PASS). Golden SHA igual. Banco real não aberto.
 - **Resíduos:** `outputs/f3-a-f7-mutmut.log`.
 - **Revisão rodada 1:** PODE COMMITAR, com médios. Aplicados: o teste do título fora da cesta usa um Tesouro Selic bem formado (o da fixture não tinha nenhum); o teste do conflito exige a abstenção e o motivo; imports no topo; docstring do `gravar_series`. O médio 1, conflito fantasma entre coletas (`_ultimas` escolhe a coleta mais recente por série e data, então a série `|2` de uma coleta antiga continua lida depois que o arquivo foi corrigido; o desvio vai para a abstenção), é bug novo fora do escopo deste item: vira regressão xfail e item próprio logo depois deste commit.
+
+### Registro — BUG-3-23 (revisão do F3-A-F7)
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Achado, confirmado:** `_ultimas` escolhe a coleta mais recente por (série, data); a série `tesouro|…|2` gravada por uma coleta com conflito continua a mais recente da série dela depois que a coleta seguinte traz o arquivo corrigido. Regressão `tests/regressao/test_bug_3_23_conflito_fantasma_entre_coletas.py`: sem a marca, o caminho histórico da segunda coleta dá número e o banco abstém com `linhas conflitantes no par de aplicação`; com a marca, xfail estrito. Item F3-A-F7b logo depois do F3-A-F7.
