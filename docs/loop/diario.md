@@ -717,3 +717,9 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Resíduos:** `outputs/f3-a-f6-mutmut.log`.
 
 - **Revisão rodada 1:** NÃO PODE COMMITAR, por texto: a contagem dizia +7 para 6 testes. Corrigida, com dois médios aplicados: fonte com só um dos parâmetros da janela abstém, em vez de valer pela série inteira; proveniência sem fonte com teste. Fica para depois: hash vazio presente na proveniência é aceito, como no padrão da ANBIMA (F3-1c).
+
+### Registro — auditoria do Gemini sem relatório (DD-44)
+- **Executor:** claude-code (Claude Opus 5.5).
+- **O que foi feito:** depois do F3-A-F6, os achados 2 a 5 seguem sem conferência: o relatório indicado não existe. Pela DD-44, a 3-b segue pela fila e os achados entram quando o relatório chegar. Pendências da revisão do F3-A-F6 (hash vazio aceito e instante da coleta por gravação) registradas em `docs/loop/pendencias.md`.
+- **Decisões delegadas novas:**
+  - 2026-11-11 · claude-code · decisão delegada DD-44: auditoria do Gemini sem relatório → o achado 1, descrito na mensagem do Marcos, foi confirmado e corrigido (BUG-3-18, F3-A-F6); os achados 2 a 5 ficam pendentes até o relatório aparecer, e a 3-b segue pela fila, porque o `/goal` só manda parar nos casos do passo 7 e a falta do arquivo não é um deles; ao chegar o relatório, os achados confirmados viram BUG com xfail estrito e item `fix:` na frente da fila, inclusive se o achado 2 atingir item da 3-b já feito (classe 6, desempate 5; alternativas: parar e esperar o relatório, contrária ao passo 7; inferir os achados sem o texto)
