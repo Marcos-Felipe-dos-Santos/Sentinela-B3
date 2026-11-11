@@ -503,3 +503,12 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Resíduos:** `outputs/f3-a-f1-quebras.txt`.
 - **Revisão rodada 1:** PODE COMMITAR. Ficam, menores: na falha pelo índice a linha mostra o SHA256 da cópia de trabalho, não o do blob do índice; o docstring do módulo ainda fala em "SHA-256 igual ao do HEAD" sem o índice; golden em conflito de merge reprova como "sem … no índice".
 - **Decisões delegadas novas:** nenhuma.
+
+### F3-A-F2 — test: raise the ai_core mutation score to the module gate
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso.
+- **O que foi feito:** `tests/test_ai_core_contrato.py` (novo, 17 testes, sem rede nem credencial: Groq, Gemini e o `requests.post` do Ollama são dublês) trava o contrato do `ai_core` fora do texto do prompt: `_safe_text` e `_formatar_alertas`; `_formatar_dados` exclui os 37 campos volumosos e os nulos e fica `str` fora de dict; proveniência por campo com confiança formatada, flags `cache`/`manual`/`stale`, alertas e os três casos de indisponível; um único trabalhador no executor do Gemini e `shutdown(wait=False)` no `__del__`; erro registrado quando falta o pacote do Gemini; ticker inválido sem provedor; Groq com prompt, modelo e `timeout=20`; Groq falho registra e cai no Gemini (`timeout=15`); timeout do Gemini cancela, registra e cai no Ollama; erro do Gemini registra; Ollama com URL, corpo e `timeout=30`, resposta 200, HTTP de erro e exceção caindo no texto "IA Indisponível". Nenhum código de produção mudou; nenhuma asserção existente mudou.
+- **Mutação:** `python -m mutmut run "ai_core*"`, módulo inteiro, bruto: antes 246/345 (71,3%; o 68,7% do F3-P06 era de antes de testes posteriores), depois **345/345 (100%)**, sem equivalente declarado (`outputs/f3-a-f2-mutmut-antes.txt`, `outputs/f3-a-f2-mutmut-depois.txt`, sobreviventes antes em `outputs/f3-a-f2-sobreviventes-antes.txt`). A DD-23 fica revertida (DD-29): o gate mediu o módulo.
+- **Testes:** 4192 passed, 1 skipped, 5 xfailed → 4209 passed, 1 skipped, 5 xfailed (+17). Ruff CI e Ruff completo: verdes. Golden SHA igual.
+- **Resíduos:** `outputs/f3-a-f2-*`; `mutants/` (fora do git).
+- **Decisões delegadas novas:** nenhuma.
