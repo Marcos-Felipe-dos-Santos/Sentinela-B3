@@ -611,3 +611,15 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Decisões delegadas novas:**
   - 2026-11-11 · claude-code · decisão delegada DD-37: F3-P12, taxa do Tesouro no histórico → modo estrito com a linha datada do CSV histórico (`Data Base` anterior ao dia de D, guardas de idade e registro do mesmo dia de D), com a limitação "revisão posterior não observável" na proveniência, em vez de mandar a taxa para o exploratório; eventos de cota da B3 no estrito quando `lastDatePrior` ≤ D e o snapshot cobre a janela, senão abstenção pelo motivo atual (classe 2, desempate 2 e 6; alternativas: taxa só no exploratório, que deixaria o FII e o Gordon sem estrito em todo o histórico)
 - **Revisão rodada 1 (`/review-diff-leve`):** PODE COMMITAR. Aplicados no texto: o corte do Informe passa a ser `Data_Entrega` anterior ao dia de D, como a `Data Base` da taxa (a entrega não tem hora; o preço é D-1); a suposição de que o evento de cota com data-com até D era conhecido em D fica declarada, com o aviso na proveniência; o rótulo exploratório não muda nada nos eventos. A DD-37 segue para ratificação.
+
+### F3-1c — divisão em dois itens (DD-38) e cobertura do calendário do IBGE (DD-39)
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** registro; o trabalho começa pelo F3-1c-a.
+- **O que foi feito:** o F3-1c pede leitor histórico do Tesouro, Focus e IPCA, a troca da regra M+2 pelo calendário do IBGE e a tabela `series_macro` com gravação e leitura; dividido em F3-1c-a (cálculo numa data passada, coleta real separada do corte, como na DD-18 e no contrato F3-P12) e F3-1c (a tabela e a leitura por ela). Medida: a API do calendário do IBGE (`servicodados.ibge.gov.br/api/v3/calendario/9256`, com ou sem `de`/`ate`) devolve referências de 12/2016 (divulgada em 11/01/2017) a 11/2026; nada antes.
+- **Decisões delegadas novas:**
+  - 2026-11-11 · claude-code · decisão delegada DD-38: divisão do F3-1c em F3-1c-a e F3-1c (classe 4, desempate 4 e 6)
+  - 2026-11-11 · claude-code · decisão delegada DD-39: prova de divulgação do IPCA pelo calendário do IBGE, com os meses anteriores provados pela divulgação de um mês posterior; sem prova antes de 11/01/2017, o estrito abstém; a regra M+2 sai (classe 2, desempate 1)
+- **Para o Marcos:** a DD-39 adia o IPCA estrito para 11/01/2017; o Graham e o Lynch de 2016 ficam sem estrito até essa data (pendência registrada).
+- **Testes:** 4231 passed, 1 skipped, 4 xfailed (sem mudança). Golden SHA igual.
+- **Resíduos:** nenhum.
+- **Revisão:** PODE COMMITAR; aplicado: o aceite do F3-1c (parte b) fala só da `series_macro`; o F3-1c-a exige teste de datas crescentes no calendário; a pendência diz que vale para qualquer D antes de 11/01/2017; a saída da M+2 é cumprimento da decisão 31.
