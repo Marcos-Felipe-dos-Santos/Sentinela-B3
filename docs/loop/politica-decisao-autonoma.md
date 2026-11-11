@@ -36,7 +36,7 @@ Toda decisão delegada das classes 2 e 3 é revista pela **outra família** na p
 2. **Golden** fora do predicado do item, ou teste protegido (seções A/B/C, equivalência, `tests/regressao/`) que só passaria enfraquecido.
 3. **Risco de perda de dado do Marcos:** carteira, banco ou backup. Qualquer migração, sobrescrita ou remoção sem backup verificado.
 4. **Publicação e segredo:** push, PR, `.env`, dados da carteira em arquivo versionado.
-5. **Volume:** projeção de brutos acima de 20 GB, ou disco abaixo do dobro da projeção.
+5. **Volume:** projeção de brutos acima de 100 GB, ou disco livre abaixo do dobro da projeção, medido no sistema de arquivos onde está `data/`, dentro do WSL (decisão 39 do Marcos, 11/11/2026; antes, 20 GB).
 6. **Decisão delegada contestada** sem acordo entre as duas famílias.
 7. **Três reprovações de código ou de regra** no mesmo item (o limite do protocolo). Reprovação só de texto não conta.
 

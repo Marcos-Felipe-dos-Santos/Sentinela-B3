@@ -569,3 +569,13 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Testes:** 4231 passed, 1 skipped, 4 xfailed (sem mudança neste commit). Golden SHA igual.
 - **Resíduos:** nenhum novo.
 - **Decisões delegadas novas:** nenhuma.
+
+### Decisão 39 — limite de volume
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** registrada (commit `docs:` pedido pelo Marcos).
+- **O que foi feito:** `docs/loop/politica-decisao-autonoma.md`, §3 caso 5: limite de brutos de 20 GB para 100 GB; disco livre abaixo do dobro da projeção continua parando, medido no sistema de arquivos onde está `data/`, dentro do WSL. `docs/loop/fila.md`: decisão 39 na lista; condição de ativação 4, regra 2 de execução, aceite do F3-L1, linha do `[DECISÃO]` após o L1 e aceite do F3-7 passam a citar 100 GB de brutos (antes 20 GB). Downloads com pausa e repetição, sem paralelismo agressivo contra CVM e B3, com hash e proveniência.
+- **Medida de hoje:** `df -h data/` → `/dev/sdd`, 1007 GB, 938 GB livres.
+- **Testes:** 4231 passed, 1 skipped, 4 xfailed (sem mudança). Golden SHA igual.
+- **Resíduos:** nenhum.
+- **Decisões delegadas novas:** nenhuma.
+- **Revisão:** PODE COMMITAR. O pacote aprovado (`docs/decisoes/decisoes-fase3.md` §2.5) ainda diz 20 GB; fica como registro histórico do pacote, e a decisão 39 prevalece pela fila e pela política.
