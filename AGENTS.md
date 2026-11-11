@@ -108,11 +108,18 @@ Decisão do mantenedor de 15/10/2026. Registro e detalhe em `tests/regressao/REA
 
 ---
 
+## Ambiente
+
+- **Nunca no `/tmp`** (instrução do Marcos, 11/11/2026; DD-46): o `/tmp` do WSL é tmpfs (RAM) e o `/tmp/pytest-of-<usuário>` chegou a 7,8 GB, derrubando a mutação. Todo pytest roda com `TMPDIR=$HOME/.cache/sentinela-testes-<executor>` e `--basetemp=$HOME/.cache/sentinela-testes-<executor>/pytest`; o mutmut, com o mesmo `TMPDIR` e `--max-children 2` (se cair por memória, um módulo de cada vez). A pasta `$HOME/.cache/sentinela-testes-<executor>` é do executor, fica fora do repositório e pode ser limpa por ele antes de cada suíte (não é resíduo do Marcos); crie-a antes do primeiro uso (`mkdir -p`).
+
+---
+
 ## Comandos
 
 ```bash
-python -m pytest tests/ -x --tb=short
-python -m mutmut run "<modulo>*"        # mutmut 3; configuração em [tool.mutmut] do pyproject.toml
+T=$HOME/.cache/sentinela-testes-<executor>; mkdir -p $T    # nunca o /tmp (tmpfs)
+TMPDIR=$T python -m pytest tests/ -x --tb=short --basetemp=$T/pytest
+TMPDIR=$T python -m mutmut run --max-children 2 "<modulo>*"   # mutmut 3; configuração em [tool.mutmut]
 python -m mutmut export-cicd-stats      # mortos e sobreviventes, para o mutation score
 ruff check .
 ```

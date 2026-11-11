@@ -28,6 +28,7 @@ A seção “Fase atual” do `AGENTS.md` é mantida exclusivamente pelo Marcos.
 - Python 3.13, venv em `venv/` (criada com `uv venv --python 3.13 --seed venv`).
 - Ative a venv antes de abrir o Claude Code: `source venv/bin/activate`.
 - O loop roda dentro do tmux, em modo auto: `claude --permission-mode auto`.
+- **Nunca no `/tmp`** (instrução do Marcos, 11/11/2026; DD-46): o `/tmp` do WSL é tmpfs (RAM) e o `/tmp/pytest-of-<usuário>` chegou a 7,8 GB, derrubando a mutação. Todo pytest roda com `TMPDIR=$HOME/.cache/sentinela-testes-<executor>` e `--basetemp=$HOME/.cache/sentinela-testes-<executor>/pytest`; o mutmut, com o mesmo `TMPDIR` e `--max-children 2` (se cair por memória, um módulo de cada vez). A pasta `$HOME/.cache/sentinela-testes-<executor>` é do executor, fica fora do repositório e pode ser limpa por ele antes de cada suíte (não é resíduo do Marcos); crie-a antes do primeiro uso (`mkdir -p`).
 
 ---
 
@@ -35,10 +36,11 @@ A seção “Fase atual” do `AGENTS.md` é mantida exclusivamente pelo Marcos.
 
 ```bash
 streamlit run app.py                               # app (V1)
-python -m pytest tests/ -x --tb=short              # suíte (3525 passed, 1 skipped, 8 xfailed)
+T=$HOME/.cache/sentinela-testes-<executor>; mkdir -p $T   # nunca o /tmp (tmpfs)
+TMPDIR=$T python -m pytest tests/ -x --tb=short --basetemp=$T/pytest   # suíte (3525 passed, 1 skipped, 8 xfailed)
 python -m pytest tests/test_x.py::test_y -v        # teste único
 python -m pytest tests/ --cov=. --cov-report=term-missing
-python -m mutmut run "technical_engine*"           # mutação de um módulo (config em [tool.mutmut])
+TMPDIR=$T python -m mutmut run --max-children 2 "technical_engine*"           # mutação de um módulo (config em [tool.mutmut])
 python -m mutmut export-cicd-stats                 # mortos e sobreviventes, para o mutation score
 ruff check .
 ruff format <arquivos alterados>                   # nunca no repositório inteiro

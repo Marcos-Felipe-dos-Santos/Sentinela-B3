@@ -8,6 +8,7 @@ O cabeçalho da fila define o branch da fase e os arquivos intocáveis.
 
 - WSL2, repositório em `~/projetos/Sentinela_B3`, venv `venv/` ativada.
 - Confira com `which python`: se não apontar para `venv/bin/python`, pare — o ambiente está errado.
+- **Nunca no `/tmp`** (instrução do Marcos, 11/11/2026; DD-46): o `/tmp` do WSL é tmpfs (RAM) e o `/tmp/pytest-of-<usuário>` chegou a 7,8 GB, derrubando a mutação. Todo pytest roda com `TMPDIR=$HOME/.cache/sentinela-testes-<executor>` e `--basetemp=$HOME/.cache/sentinela-testes-<executor>/pytest`; o mutmut, com o mesmo `TMPDIR` e `--max-children 2` (se cair por memória, um módulo de cada vez). A pasta `$HOME/.cache/sentinela-testes-<executor>` é do executor, fica fora do repositório e pode ser limpa por ele antes de cada suíte (não é resíduo do Marcos); crie-a antes do primeiro uso (`mkdir -p`).
 
 ## Agentes
 
