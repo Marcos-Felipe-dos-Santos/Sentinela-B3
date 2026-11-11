@@ -57,6 +57,8 @@ class _Repo:
             return self.respostas["check"]
         if "--name-only" in comando:
             return self.respostas["name-only"]
+        if comando[:2] == ["git", "rev-parse"] and comando[2].startswith(":"):
+            return self.respostas.get("indice", self.respostas["rev-parse"])
         return self.respostas[comando[1]]
 
 
@@ -276,3 +278,30 @@ def test_execucao_roda_na_raiz_do_repositorio(tmp_path, monkeypatch):
     feito = gate.executar([sys.executable, "-c", "import os; print(os.getcwd())"])
     assert feito.saida.strip() == str(gate.RAIZ)
     assert (gate.RAIZ / "scripts" / "gate.py").is_file()
+
+
+def test_golden_do_indice_e_conferido(tmp_path):
+    """BUG-3-14: o blob que vai ao commit (índice) também precisa ser o do HEAD."""
+    repo = _Repo(tmp_path)
+    _rodar(tmp_path, repo)
+    assert ["git", "rev-parse", f":{gate.GOLDEN}"] in repo.chamadas
+
+
+def test_golden_diferente_no_indice_reprova_e_autorizado_vira_aviso(tmp_path):
+    repo = _Repo(tmp_path, indice=gate.Execucao(0, "outro\n"))
+    codigo, linhas = _rodar(tmp_path, repo)
+    assert codigo == 1
+    assert any(
+        linha.startswith("[FALHA] golden: diferente do HEAD no índice")
+        for linha in linhas
+    )
+    codigo, linhas = _rodar(tmp_path, repo, golden_autorizado=True)
+    assert codigo == 0
+    assert "[AVISO] golden: diferente do HEAD no índice, autorizado" in linhas
+
+
+def test_golden_fora_do_indice_reprova(tmp_path):
+    repo = _Repo(tmp_path, indice=gate.Execucao(128, "fatal\n"))
+    codigo, linhas = _rodar(tmp_path, repo)
+    assert codigo == 1
+    assert f"[FALHA] golden: sem {gate.GOLDEN} no índice" in linhas

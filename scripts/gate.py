@@ -117,7 +117,11 @@ def diff_check(rodar: Executar) -> Resultado:
 
 
 def golden(rodar: Executar, raiz: Path, autorizado: bool) -> Resultado:
-    """Mesmo blob do `HEAD` (`git rev-parse` contra `git hash-object`, sem decodificar)."""
+    """Mesmo blob do `HEAD` no índice e na cópia de trabalho (BUG-3-14), sem decodificar.
+
+    `git rev-parse :<golden>` dá o blob que vai ao commit; `git hash-object` o da cópia de
+    trabalho. Os dois precisam ser o do `HEAD`, salvo `--golden-autorizado`.
+    """
     atual = raiz / GOLDEN
     if not atual.is_file():
         return Resultado("golden", False, f"{GOLDEN} ausente")
@@ -125,12 +129,25 @@ def golden(rodar: Executar, raiz: Path, autorizado: bool) -> Resultado:
     no_head = rodar(["git", "rev-parse", f"HEAD:{GOLDEN}"])
     if no_head.codigo != 0:
         return Resultado("golden", False, f"sem {GOLDEN} no HEAD")
+    no_indice = rodar(["git", "rev-parse", f":{GOLDEN}"])
+    if no_indice.codigo != 0:
+        return Resultado("golden", False, f"sem {GOLDEN} no índice")
     agora = rodar(["git", "hash-object", GOLDEN])
-    if agora.codigo == 0 and agora.saida.strip() == no_head.saida.strip():
+    blob = no_head.saida.strip()
+    if (
+        agora.codigo == 0
+        and agora.saida.strip() == blob
+        and no_indice.saida.strip() == blob
+    ):
         return Resultado("golden", True, f"igual ao HEAD (SHA256 {sha_atual[:16]}…)")
+    onde = " no índice" if no_indice.saida.strip() != blob else ""
     if autorizado:
-        return Resultado("golden", True, "diferente do HEAD, autorizado", aviso=True)
-    return Resultado("golden", False, f"diferente do HEAD (SHA256 {sha_atual[:16]}…)")
+        return Resultado(
+            "golden", True, f"diferente do HEAD{onde}, autorizado", aviso=True
+        )
+    return Resultado(
+        "golden", False, f"diferente do HEAD{onde} (SHA256 {sha_atual[:16]}…)"
+    )
 
 
 def stage(rodar: Executar) -> list[str] | None:

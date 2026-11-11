@@ -190,7 +190,7 @@ As da 2C, mais duas novas.
 
 **Fechamento da 3-a (auditoria cruzada de 11/11/2026, `docs/loop/auditorias/3-a-claude-code.md` e `3-a-codex.md`).** Decisões delegadas DD-29 a DD-31.
 
-- [ ] **F3-A-F1** · fix · `fix: check the staged golden blob in the gate` — BUG-3-14. Arquivos: `scripts/gate.py`, `tests/test_script_gate.py`, regressão `test_bug_3_14_*` (só a marca), registro. **Aceite:** D27; o gate compara com o blob do `HEAD` também o golden do índice (`git rev-parse :<golden>`), além da cópia de trabalho; diferença em qualquer um reprova sem `--golden-autorizado`; golden ausente do índice reprova; BUG-3-14 em PASS sem mudar asserção; exceção dos scripts de processo (decisão 21). G.
+- [x] **F3-A-F1** · fix · `fix: check the staged golden blob in the gate` — BUG-3-14. Arquivos: `scripts/gate.py`, `tests/test_script_gate.py`, regressão `test_bug_3_14_*` (só a marca), registro. **Aceite:** D27; o gate compara com o blob do `HEAD` também o golden do índice (`git rev-parse :<golden>`), além da cópia de trabalho; diferença em qualquer um reprova sem `--golden-autorizado`; golden ausente do índice reprova; BUG-3-14 em PASS sem mudar asserção; exceção dos scripts de processo (decisão 21). G.
 
 - [ ] **F3-A-F2** · test · `test: raise the ai_core mutation score to the module gate` — DD-23 revertida por acordo (DD-29). Arquivos: testes de `ai_core.py` (novos ou em `tests/test_ai_*.py`), registro. **Aceite:** `python -m mutmut run "ai_core*"` com score bruto ≥ 80% no módulo inteiro (era 237/345 = 68,7%), sem mudar código de produção nem asserção existente; equivalentes autodeclarados não entram na conta até o Marcos responder a pergunta 3 da auditoria da 3-a (`docs/loop/pendencias.md`); sem rede (fakes das APIs). G.
 

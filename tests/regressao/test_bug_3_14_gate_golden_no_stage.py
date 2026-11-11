@@ -75,9 +75,6 @@ def test_golden_inalterado_passa(repo):
     assert gate.golden(_rodar_em(repo), repo, autorizado=False).ok
 
 
-@pytest.mark.xfail(
-    strict=True, reason="BUG-3-14 · golden do stage não é conferido · corrige: F3-A-F1"
-)
 def test_golden_alterado_so_no_stage_reprova(repo):
     golden = repo / gate.GOLDEN
     golden.write_text('{"a": 2}\n', encoding="utf-8")
