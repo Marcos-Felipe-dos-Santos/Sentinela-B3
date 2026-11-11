@@ -50,11 +50,11 @@
 | Baseline de ativação (`da0a78c`, diário) | 3599 passed, 1 skipped, 8 xfailed | `500645a3263ad25e…bcc` |
 | Agora (`d7043fc`) | 4186 passed, 1 skipped, 3 xfailed | `500645a3263ad25e…bcc` |
 
-São +587 testes. Ruff CI e Ruff completo (`sentinela/methods`, `sentinela/data`, `sentinela/data/store`) estão verdes. Os números de cada item estão no diário.
+São +587 PASS. Em casos coletados, foram de 3608 para 4190, ou seja, +582 (correção da auditoria Codex de 11/11). Ruff CI e Ruff completo (`sentinela/methods`, `sentinela/data`, `sentinela/data/store`) estão verdes. Os números de cada item estão no diário.
 
 ## Gate da 3-a
 
-- **Golden com `as_of` = hoje.** O SHA256 de `tests/fixtures/golden_motores.jsonl` é `500645a3263ad25e492bff56e00c9b3552b84a243136d3397f520d4a79c24bcc`, igual ao histórico e ao de ativação. `tests/test_equivalencia_motores.py` passa (4 passed, 1 skipped), no caminho padrão dos motores, sem `as_of` explícito: a referência é hoje, e desde o F3-6c o `as_of` chega à cascata e aos motores sem mudar a grade. Nenhum item regenerou o golden.
+- **Golden.** O SHA256 de `tests/fixtures/golden_motores.jsonl` é `500645a3263ad25e492bff56e00c9b3552b84a243136d3397f520d4a79c24bcc`, igual ao histórico e ao de ativação, e `tests/test_equivalencia_motores.py` passa (4 passed, 1 skipped). Nenhum item regenerou o golden. **Correção (auditoria Codex, 11/11):** o harness do golden passa um `as_of` fixo, `AS_OF_GORDON` = 20/10/2026 (`tests/golden_motores.py:65` e `:73`), e não hoje. O caminho com `as_of` = hoje aparece só nos testes do F3-6c (`tests/test_as_of_cascata.py`), na comparação de tela do F3-6b e, para a Selic do FII, no item novo F3-A-F4. Portanto, "golden igual com `as_of` = hoje" ainda não está demonstrado pelo golden.
 - **Banco migrado sem perda (F3-2c).** O backup verificado e a migração rodaram nos bancos reais, com saída 0 nos dois. A conferência independente, só de leitura, achou as três tabelas de `sentinela_v6.db` iguais linha a linha no `sentinela_store.db`; `sentinela.db` estava ausente. Os registros ficam fora do git, citados sem conteúdo: `outputs/f3-2c-backup/`, `outputs/f3-2c-migracao.json` e `outputs/f3-2c-conferencia.txt`. Os bancos antigos continuam no disco até o F3-9.
 - **Rede no import corrigida (E-6, F3-1a).** A regressão BUG-3-01 está em PASS. A armadilha 8 do `CLAUDE.md` e a nota do `AGENTS.md` foram atualizadas neste item (DD-04, ressalva da auditoria FASE do Codex). A "Fase atual" do `AGENTS.md` não mudou.
 
@@ -139,3 +139,7 @@ Também ficam para o Marcos dois efeitos da leitura literal da decisão 33 (DD-0
 2. F3-6a e F3-6b (`917994e`, `33acf20`): `AnalysisService` com `as_of` e o app chamando o serviço (DD-13, DD-14, DD-16).
 3. F3-2d (`9ae3006`): resultados imutáveis, o hash e o desvio de cronologia declarado (DD-12).
 4. F3-P13 (`a8265d4`) e F3-P06 (`89fcaa6`, com os dois executores): corte da série CVM e contexto da classe na IA (DD-20 a DD-23).
+
+## Checkpoint (11/11/2026)
+
+As duas auditorias cruzadas estão em `docs/loop/auditorias/`. A do Claude, sobre os commits do Codex, deu "pode seguir com ressalvas". A do Codex, sobre os commits do Claude Code, deu "não pode seguir". O tratamento dos achados está na fila (F3-A-F1 a F3-A-F4) e em `docs/loop/pendencias.md` (DD-29 a DD-31 e as perguntas para o Marcos).
