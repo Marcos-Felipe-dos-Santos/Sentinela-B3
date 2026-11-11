@@ -251,9 +251,13 @@ class MacroProvider:
             date(ano, 1, 1), date(ano, 12, 31), feriados, snapshot.proveniencia()
         )
 
-    def inflacao(self, inicio: date, fim: date, instante: datetime) -> dict:
+    def inflacao(
+        self, inicio: date, fim: date, instante: datetime, coleta: datetime | None = None
+    ) -> dict:
+        """IPCA da janela contábil divulgado até `instante`; baixa com `coleta` (F3-1c-a)."""
         dia = _local(instante)
-        agenda = self.baixar(IBGE_CALENDARIO, instante)
+        coleta = instante if coleta is None else coleta
+        agenda = self.baixar(IBGE_CALENDARIO, coleta)
         publicacoes = {}
         for evento in json.loads(agenda.conteudo)["items"]:
             if evento.get("produto_id") == 9256:
@@ -264,7 +268,7 @@ class MacroProvider:
             raise ValueError("IPCA publicado ausente no calendário")
         ultimo = max(publicados)
         url = f"https://apisidra.ibge.gov.br/values/t/1737/n1/all/v/63/p/{inicio:%Y%m}-{ultimo}?formato=json"
-        serie = self.baixar(url, instante)
+        serie = self.baixar(url, coleta)
         resultado = ipca_da_janela(
             json.loads(serie.conteudo),
             publicacoes,
@@ -343,10 +347,12 @@ class MacroProvider:
             "tabela": "1737",
         }
 
-    def pib(self, instante: datetime) -> dict:
+    def pib(self, instante: datetime, coleta: datetime | None = None) -> dict:
+        """Edição Focus devida até `instante`; baixa com `coleta` (F3-1c-a)."""
         dia = _local(instante)
+        coleta = instante if coleta is None else coleta
         url_agenda = f"https://www.bcb.gov.br/api/servico/sitebcb/calendario?inicioAgenda=%27{dia.year}-01-01%27&fimAgenda=%27{dia.year}-12-31%27&lista=Focus"
-        agenda = self.baixar(url_agenda, instante)
+        agenda = self.baixar(url_agenda, coleta)
         edicoes = {}
         for evento in json.loads(agenda.conteudo)["conteudo"]:
             if evento.get("evento") == "Relatório Focus":
@@ -366,7 +372,7 @@ class MacroProvider:
             FOCUS
             + f"?$format=json&$filter=Indicador%20eq%20%27PIB%20Total%27%20and%20Data%20eq%20%27{pesquisa}%27"
         )
-        serie = self.baixar(url, instante)
+        serie = self.baixar(url, coleta)
         resultado = pib_focus(
             json.loads(serie.conteudo)["value"], edicoes, as_of=instante
         )
@@ -376,6 +382,24 @@ class MacroProvider:
             "proveniencia": serie.proveniencia(),
             "calendario": agenda.proveniencia(),
         }
+
+    def publicacoes_ipca(self, instante: datetime) -> dict:
+        """Dia de divulgação de cada mês do IPCA (`AAAAMM` → data), pelo calendário do
+        IBGE (decisão 31, F3-1c-a), com a proveniência da agenda; falha vira abstenção."""
+        try:
+            agenda = self.baixar(IBGE_CALENDARIO, instante)
+            publicacoes = {
+                f"{int(e['ano_referencia_inicio']):04}{int(e['mes_referencia_inicio']):02}": (
+                    divulgacao_ibge(e["data_divulgacao"]).date()
+                )
+                for e in json.loads(agenda.conteudo)["items"]
+                if e.get("produto_id") == 9256
+            }
+        except FALHAS_DA_FONTE as erro:
+            return _falha_da_fonte(erro)
+        except ERROS_DO_CODIGO as erro:
+            return _erro_do_codigo(erro)
+        return {"publicacoes": publicacoes, "proveniencia": agenda.proveniencia()}
 
     def serie_sgs(self, serie: int, fim: date, instante: datetime) -> dict:
         """Série completa do SGS até `fim` (F3-1b): diárias em janelas de até 10 anos.
@@ -413,27 +437,39 @@ class MacroProvider:
         }
 
     def registro(
-        self, instante: datetime, janela: tuple[date, date] | None = None
+        self,
+        instante: datetime,
+        janela: tuple[date, date] | None = None,
+        coleta: datetime | None = None,
     ) -> dict:
         """Orquestra fontes; dado sem prova não vira constante de contingência.
 
         Sem a taxa real, `{"abstencao": motivo}`: o da `Abstencao` da cesta ou o da falha da
         fonte; erro do código tem motivo próprio e vai para o log (F2B-51).
+
+        `coleta` (F3-1c-a): instante real dos downloads, posterior ao corte `instante` numa
+        data passada (DD-18); o Tesouro passa então pelo leitor histórico (DD-37) e o registro
+        leva a coleta e o aviso. Sem `coleta`, o corte é a própria coleta, como na 2B.
         """
         from sentinela.data import taxas
         from sentinela.data.providers.tesouro import (
+            AVISO_HISTORICO,
             TesouroProvider,
+            ler_historico,
             ler_snapshot,
             selecionar_ofertas,
         )
 
+        historico = coleta is not None and coleta > instante
+        coleta = instante if coleta is None else coleta
         try:
-            arquivo = TesouroProvider(self.cache_dir / "tesouro").baixar(instante)
-            cesta = selecionar_ofertas(ler_snapshot(arquivo, as_of=instante))
+            arquivo = TesouroProvider(self.cache_dir / "tesouro").baixar(coleta)
+            leitor = ler_historico if historico else ler_snapshot
+            cesta = selecionar_ofertas(leitor(arquivo, as_of=instante))
             dia = _local(instante)
             ano_inicial = cesta.data_base.year if cesta.data_base else dia.year
             calendarios = [
-                self.calendario(ano, instante)
+                self.calendario(ano, coleta)
                 for ano in range(ano_inicial, dia.year + 1)
             ]
             calendario = Calendario(
@@ -456,19 +492,28 @@ class MacroProvider:
             return _falha_da_fonte(erro)
         except ERROS_DO_CODIGO as erro:
             return _erro_do_codigo(erro)
+        if historico:
+            resultado["coleta"] = coleta.isoformat()
+            resultado["avisos"] = [AVISO_HISTORICO]
         if janela is None:
             resultado["inflacao"] = {
                 "abstencao": "janela contábil anual não demonstrada"
             }
         else:
             try:
-                resultado["inflacao"] = self.inflacao(*janela, instante)
+                resultado["inflacao"] = (
+                    self.inflacao(*janela, instante, coleta)
+                    if historico
+                    else self.inflacao(*janela, instante)
+                )
             except FALHAS_DA_FONTE as erro:
                 resultado["inflacao"] = _falha_da_fonte(erro)
             except ERROS_DO_CODIGO as erro:
                 resultado["inflacao"] = _erro_do_codigo(erro)
         try:
-            resultado["pib"] = self.pib(instante)
+            resultado["pib"] = (
+                self.pib(instante, coleta) if historico else self.pib(instante)
+            )
         except FALHAS_DA_FONTE as erro:
             resultado["pib"] = _falha_da_fonte(erro)
         except ERROS_DO_CODIGO as erro:

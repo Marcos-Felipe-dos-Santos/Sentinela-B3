@@ -11,7 +11,7 @@ INSTANTE = datetime(2026, 10, 20, 15, tzinfo=UTC)
 def test_abstencao_nao_fica_no_cache(monkeypatch):
     chamadas = []
 
-    def carregar(instante, janela):
+    def carregar(instante, janela, coleta=None):
         chamadas.append(instante)
         return {"abstencao": "desatualizada"}
 
@@ -26,7 +26,7 @@ def test_abstencao_nao_fica_no_cache(monkeypatch):
 def test_registro_valido_fica_no_cache(monkeypatch):
     chamadas = []
 
-    def carregar(instante, janela):
+    def carregar(instante, janela, coleta=None):
         chamadas.append(instante)
         return {"custo_capital_real": 0.12, "pib": {}}
 

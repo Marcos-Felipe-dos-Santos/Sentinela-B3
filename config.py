@@ -119,18 +119,25 @@ _taxa_real_cache: dict = {}
 
 
 def _carregar_taxa_real(
-    instante: datetime, janela: tuple[date, date] | None
+    instante: datetime,
+    janela: tuple[date, date] | None,
+    coleta: datetime | None = None,
 ) -> dict | None:
     from sentinela.data.providers.macro import MacroProvider
 
-    return MacroProvider().registro(instante, janela)
+    return MacroProvider().registro(instante, janela, coleta=coleta)
+
+
+def _dia_sp(instante: datetime) -> date:
+    return instante.astimezone(ZoneInfo("America/Sao_Paulo")).date()
 
 
 def get_taxa_real(
     *, as_of: datetime | None = None, janela: tuple[date, date] | None = None
 ) -> dict | None:
     """Registro observado até as_of; ausência não usa contingência numérica."""
-    instante = as_of if as_of is not None else datetime.now(UTC)
+    agora = datetime.now(UTC)
+    instante = as_of if as_of is not None else agora
     if instante.tzinfo is None or instante.utcoffset() is None:
         return None
     chave = (janela, instante.astimezone(ZoneInfo("America/Sao_Paulo")).date())
@@ -142,7 +149,14 @@ def get_taxa_real(
         edicao_devida = proxima is not None and datetime.fromisoformat(proxima) <= instante
         if 0 <= idade < _TAXA_REAL_TTL and not edicao_devida:
             return registro
-    registro = _carregar_taxa_real(instante, janela)
+    # F3-1c-a: numa data de dia anterior ao de hoje, a coleta é o instante real e o
+    # corte é as_of (DD-18); no mesmo dia, o corte é a própria coleta, como na 2B.
+    passado = _dia_sp(instante) < _dia_sp(agora)
+    registro = (
+        _carregar_taxa_real(instante, janela, agora)
+        if passado
+        else _carregar_taxa_real(instante, janela)
+    )
     # F2B-51: a abstenção não fica no cache; a próxima análise consulta de novo.
     if registro is not None and "abstencao" not in registro:
         _taxa_real_cache[chave] = (instante, registro)
@@ -320,10 +334,24 @@ class MacroContext:
                 dados = provedor.serie_sgs(serie, hoje, self._instante_coleta())
                 if "abstencao" in dados:
                     registro = dados
-                elif nome == "ipca_12m":
+                elif nome == "ipca_12m" and self.as_of >= dados["coleta"]:
+                    # na data da coleta, o que está na série já saiu: sem calendário
                     registro = macro_por_data.ipca_12m(
                         dados["observacoes"], self.as_of, dados["coleta"]
                     )
+                elif nome == "ipca_12m":
+                    # Decisão 31 (F3-1c-a): data real de divulgação pelo calendário do IBGE.
+                    agenda = provedor.publicacoes_ipca(self._instante_coleta())
+                    if "abstencao" in agenda:
+                        registro = {"abstencao": agenda["abstencao"]}
+                    else:
+                        registro = macro_por_data.ipca_12m(
+                            dados["observacoes"],
+                            self.as_of,
+                            dados["coleta"],
+                            agenda["publicacoes"],
+                        )
+                        registro = {**registro, "calendario": agenda["proveniencia"]}
                 else:
                     calculo = getattr(macro_por_data, nome)
                     registro = calculo(dados["observacoes"], self.as_of)

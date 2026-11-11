@@ -35,7 +35,7 @@ TAXA_REAL_SEMENTE = {
     "pib": {"valor": 0.02, "ano": 2030},
     "proveniencia": {"fonte": "semente de teste"},
 }
-config._carregar_taxa_real = lambda instante, janela: dict(TAXA_REAL_SEMENTE)
+config._carregar_taxa_real = lambda instante, janela, coleta=None: dict(TAXA_REAL_SEMENTE)
 
 
 @pytest.fixture(autouse=True, scope="session")

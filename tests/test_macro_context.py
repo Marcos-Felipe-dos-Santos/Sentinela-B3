@@ -173,7 +173,7 @@ def test_taxa_real_cache_por_janela_dia_e_edicao(monkeypatch):
     monkeypatch.setattr(config, "_taxa_real_cache", {})
     chamadas = []
 
-    def carregar(instante, janela):
+    def carregar(instante, janela, coleta=None):
         chamadas.append((instante, janela))
         return {
             "ntnb": 0.07,

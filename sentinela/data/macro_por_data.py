@@ -12,6 +12,7 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date, timedelta
+from itertools import pairwise
 
 SELIC_META = 432
 CDI = 12
@@ -142,20 +143,53 @@ def _indice_mes(dia: date) -> int:
     return dia.year * 12 + dia.month - 1
 
 
-def ipca_disponivel(referencia: date, as_of: date, coleta: date) -> bool:
-    """Mês de referência M conta a partir do primeiro dia de M+2 (decisão provisória, F3-1b).
+MOTIVO_CALENDARIO_IPCA = "calendário de divulgação do IPCA ausente ou fora de ordem"
 
-    O SGS não traz a data de divulgação; na coleta, tudo o que está na série já saiu.
+
+def calendario_crescente(publicacoes: dict[str, date]) -> bool:
+    """Datas de divulgação crescentes com o mês de referência (o IPCA sai em ordem)."""
+    datas = [publicacoes[mes] for mes in sorted(publicacoes)]
+    return bool(datas) and all(a < b for a, b in pairwise(datas))
+
+
+def ipca_publicado(
+    referencia: date,
+    as_of: date,
+    coleta: date,
+    publicacoes: dict[str, date] | None,
+) -> bool:
+    """O mês de referência M estava divulgado em `as_of`? (decisão 31, F3-1c-a; DD-39)
+
+    Na data da coleta ou depois, tudo o que está na série já saiu. Antes dela, só o
+    calendário do IBGE prova: M divulgado antes de `as_of`, ou um mês posterior a M
+    divulgado antes de `as_of` (o IPCA sai em ordem). Sem prova, não conta.
     """
     if referencia > as_of:
         return False
-    return as_of >= coleta or _indice_mes(as_of) >= _indice_mes(referencia) + 2
+    if as_of >= coleta:
+        return True
+    chave = f"{referencia:%Y%m}"
+    calendario = publicacoes or {}
+    if chave in calendario:
+        return calendario[chave] < as_of
+    return any(mes > chave and dia < as_of for mes, dia in calendario.items())
 
 
-def ipca_12m(observacoes: Iterable[Observacao], as_of: date, coleta: date) -> dict:
-    """IPCA acumulado dos 12 últimos meses disponíveis em `as_of` (SGS 433), em razão."""
+def ipca_12m(
+    observacoes: Iterable[Observacao],
+    as_of: date,
+    coleta: date,
+    publicacoes: dict[str, date] | None = None,
+) -> dict:
+    """IPCA acumulado dos 12 últimos meses divulgados até `as_of` (SGS 433), em razão.
+
+    Antes da data da coleta, a divulgação de cada mês vem do calendário do IBGE
+    (`publicacoes`, mês `AAAAMM` → dia); sem calendário em ordem, abstém.
+    """
+    if as_of < coleta and not calendario_crescente(publicacoes or {}):
+        return {"abstencao": MOTIVO_CALENDARIO_IPCA}
     disponiveis = sorted(
-        (o for o in observacoes if ipca_disponivel(o.data, as_of, coleta)),
+        (o for o in observacoes if ipca_publicado(o.data, as_of, coleta, publicacoes)),
         key=lambda o: o.data,
     )[-MESES_IPCA:]
     if len(disponiveis) < MESES_IPCA or (

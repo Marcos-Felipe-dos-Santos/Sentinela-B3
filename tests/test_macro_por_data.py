@@ -19,6 +19,12 @@ from sentinela.data.providers import macro as provedor_macro
 from sentinela.data.providers.macro import MacroProvider
 
 SGS = Path(__file__).parent / "fixtures" / "sgs"
+# Calendário oficial do IBGE (produto 9256), recorte das referências de 2025 e 2026.
+CALENDARIO_IBGE = json.loads(
+    (Path(__file__).parent / "fixtures" / "contratos" / "macro_2026.json").read_text(
+        encoding="utf-8"
+    )
+)["fontes"]["ibge_calendario"]
 # Instante da coleta das fixtures (FONTE.md): 10/11/2026 00:33 em Brasília.
 COLETA = datetime(2026, 11, 10, 3, 33, tzinfo=UTC)
 HOJE = date(2026, 11, 10)
@@ -40,7 +46,9 @@ class _Resposta:
 
 
 def _sgs_oficial(url, *args, **kwargs):
-    """Responde como a API do SGS, a partir das fixtures oficiais."""
+    """Responde como a API do SGS (e o calendário do IBGE), a partir das fixtures oficiais."""
+    if "calendario/9256" in url:  # calendário do IBGE (F3-1c-a, decisão 31)
+        return _Resposta(json.loads(CALENDARIO_IBGE["conteudo"]))
     caminho = urlparse(url)
     serie = int(caminho.path.split("bcdata.sgs.")[1].split("/")[0])
     dados = _fixture(serie)
@@ -172,19 +180,69 @@ def test_cdi_vigente_anualizado_em_252_dias(sgs):
     assert m.cdi == pytest.approx((1 + float(diario) / 100) ** 252 - 1)
 
 
-def test_ipca_passado_so_conta_mes_ja_divulgado(sgs):
-    provedor, _ = sgs
-    # Em 15/10/2025, o IPCA de setembro/2025 ainda não tinha saído pela regra
-    # conservadora (mês M só a partir do primeiro dia de M+2): a janela vai até agosto.
-    m = _macro(provedor, date(2025, 10, 15))
+def _janela_ipca(ate):
     meses = sorted((mpd.data_sgs(o["data"]), float(o["valor"])) for o in _fixture(433))
-    janela = [(d, v) for d, v in meses if d <= date(2025, 8, 1)][-12:]
+    janela = [(d, v) for d, v in meses if d <= ate][-12:]
     esperado = 1.0
     for _, valor in janela:
         esperado *= 1 + valor / 100
-    assert janela[-1][0] == date(2025, 8, 1)
-    assert m.ipca_12m == pytest.approx(esperado - 1)
-    assert m.registro_por_data("ipca_12m")["data"] == date(2025, 8, 1)
+    return janela, esperado - 1
+
+
+def test_ipca_passado_so_conta_mes_ja_divulgado(sgs):
+    """Decisão 31 (F3-1c-a): a data real de divulgação do calendário do IBGE, não M+2.
+
+    O IPCA de setembro/2025 saiu em 09/10/2025: em 15/10/2025 ele já conta (pela regra
+    provisória M+2, a janela parava em agosto); no próprio dia 09/10, ainda não.
+    """
+    provedor, _ = sgs
+    janela, esperado = _janela_ipca(date(2025, 9, 1))
+    m = _macro(provedor, date(2025, 10, 15))
+    assert janela[-1][0] == date(2025, 9, 1)
+    assert m.ipca_12m == pytest.approx(esperado)
+    assert m.registro_por_data("ipca_12m")["data"] == date(2025, 9, 1)
+    no_dia = _macro(provedor, date(2025, 10, 9))
+    assert no_dia.registro_por_data("ipca_12m")["data"] == date(2025, 8, 1)
+
+
+def test_ipca_publicado_pelo_calendario():
+    publicacoes = {"202501": date(2025, 2, 11), "202502": date(2025, 3, 12)}
+    coleta = date(2026, 11, 10)
+
+    def publicado(referencia, as_of):
+        return mpd.ipca_publicado(referencia, as_of, coleta, publicacoes)
+
+    # mês no calendário: só depois do dia da divulgação
+    assert publicado(date(2025, 1, 1), date(2025, 2, 12))
+    assert not publicado(date(2025, 1, 1), date(2025, 2, 11))
+    # mês anterior ao calendário: provado por um mês posterior já divulgado (DD-39)
+    assert publicado(date(2024, 12, 1), date(2025, 2, 12))
+    assert not publicado(date(2024, 12, 1), date(2025, 2, 11))
+    # mês posterior ao calendário, antes da coleta: sem prova (a regra M+2 saiu)
+    assert not publicado(date(2025, 3, 1), date(2025, 12, 31))
+    # mês de referência depois do as_of: nunca
+    assert not mpd.ipca_publicado(
+        date(2025, 3, 1), date(2025, 2, 1), date(2025, 2, 1), publicacoes
+    )
+    # na data da coleta ou depois, o que está na série já saiu
+    assert mpd.ipca_publicado(date(2025, 3, 1), date(2026, 11, 10), coleta, publicacoes)
+    assert mpd.ipca_publicado(
+        date(2025, 3, 1), date(2025, 6, 1), date(2025, 6, 1), None
+    )
+
+
+def test_calendario_fora_de_ordem_abstem():
+    obs = tuple(mpd.Observacao(date(2024, mes, 1), 0.5) for mes in range(1, 13))
+    fora = {"202411": date(2024, 12, 10), "202412": date(2024, 12, 5)}
+    coleta = date(2026, 11, 10)
+    registro = mpd.ipca_12m(obs, date(2025, 6, 1), coleta, publicacoes=fora)
+    assert registro == {
+        "abstencao": "calendário de divulgação do IPCA ausente ou fora de ordem"
+    }
+    assert mpd.ipca_12m(obs, date(2025, 6, 1), coleta, publicacoes={}) == registro
+    assert mpd.ipca_12m(obs, date(2025, 6, 1), coleta) == registro
+    # na data da coleta, o calendário não é preciso
+    assert "valor" in mpd.ipca_12m(obs, coleta, coleta)
 
 
 def test_ipca_sem_doze_meses_disponiveis_abstem(sgs):
@@ -192,26 +250,6 @@ def test_ipca_sem_doze_meses_disponiveis_abstem(sgs):
     m = _macro(provedor, date(2024, 6, 1))
     assert m.ipca_12m is None
     assert "12 meses" in m.motivo("ipca_12m")
-
-
-def test_ipca_disponivel_nas_bordas():
-    # Mês de referência no próprio as_of: só conta se a coleta já aconteceu.
-    assert mpd.ipca_disponivel(
-        date(2026, 9, 1), date(2026, 9, 1), coleta=date(2026, 9, 1)
-    )
-    assert not mpd.ipca_disponivel(
-        date(2026, 9, 1), date(2026, 9, 1), coleta=date(2026, 9, 2)
-    )
-    # as_of igual à coleta: tudo o que está na série já saiu.
-    assert mpd.ipca_disponivel(
-        date(2026, 9, 1), date(2026, 10, 1), coleta=date(2026, 10, 1)
-    )
-    assert not mpd.ipca_disponivel(
-        date(2026, 9, 1), date(2026, 10, 31), coleta=date(2026, 11, 10)
-    )
-    assert mpd.ipca_disponivel(
-        date(2026, 9, 1), date(2026, 11, 1), coleta=date(2026, 11, 10)
-    )
 
 
 def test_ipca_com_mes_faltando_abstem():
@@ -441,7 +479,11 @@ def test_sgs_oficial_ate_o_motor_do_fii(sgs, monkeypatch):
         return _macro(provedor, as_of)
 
     monkeypatch.setattr(fii_engine, "MacroContext", contexto)
-    monkeypatch.setattr(fii_engine, "get_selic_atual", lambda: pytest.fail("getter corrente não é o elo temporal"))
+    monkeypatch.setattr(
+        fii_engine,
+        "get_selic_atual",
+        lambda: pytest.fail("getter corrente não é o elo temporal"),
+    )
     dados = enriquecer_fii(
         {"ticker": "TSTI11", "preco_atual": 100.0, "dy": 0.09, "pvp": 1.0}, ntnb=0.07
     )
