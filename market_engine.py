@@ -640,15 +640,20 @@ class MarketEngine:
             hist = tk.history(period="1y", timeout=10)
             if hist is not None and not hist.empty:
                 dados['historico'] = hist
-                dados['preco_atual'] = hist['Close'].iloc[-1]
-                dados['fonte_preco'] = 'yfinance'
-                # F3-A-F3 (BUG-3-16): a data do fechamento usado acompanha o preço.
-                data_preco = _data_do_fechamento(hist.index[-1])
-                if data_preco:
-                    dados['data_preco'] = data_preco
-                else:
-                    dados['motivo_data_preco'] = MOTIVO_SEM_DATA['yfinance_historico']
-                self._record_field_sources(dados, ('preco_atual',), 'yfinance')
+                # F3-A-F5 (BUG-3-17): só um último fechamento finito e positivo vira o preço,
+                # com fonte e data; senão o `currentPrice` ou a brapi preenchem, com a fonte certa.
+                # `_as_float` já devolve `None` para ausente, `NaN` e `inf`.
+                fechamento = _as_float(hist['Close'].iloc[-1])
+                if fechamento is not None and fechamento > 0:
+                    dados['preco_atual'] = hist['Close'].iloc[-1]
+                    dados['fonte_preco'] = 'yfinance'
+                    # F3-A-F3 (BUG-3-16): a data do fechamento usado acompanha o preço.
+                    data_preco = _data_do_fechamento(hist.index[-1])
+                    if data_preco:
+                        dados['data_preco'] = data_preco
+                    else:
+                        dados['motivo_data_preco'] = MOTIVO_SEM_DATA['yfinance_historico']
+                    self._record_field_sources(dados, ('preco_atual',), 'yfinance')
                 # F2B-54 (BUG-2B-33): o DY da B3 usa o fechamento bruto (ficha Bazin, §2); o
                 # `historico` ajustado fica para retorno e técnico (armadilha 11).
                 # Leitura à parte: a falha dela não pode derrubar os fundamentos do `info`.

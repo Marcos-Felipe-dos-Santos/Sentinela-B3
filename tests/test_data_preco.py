@@ -192,3 +192,30 @@ def test_brapi_guarda_o_que_entregou_e_a_proveniencia_do_roe(caplog):
     assert dados["proveniencia"]["roe"] == normalizacao.proveniencia_roe("brapi")
     assert dados["preco_atual"] == 30.0 and dados["fonte_preco"] == "brapi"
     assert "[TSTA3] Brapi definiu 2 fundamentos" in caplog.messages
+
+
+@pytest.mark.parametrize("fechamento", [0.0, -5.0, float("inf"), float("nan")])
+def test_ultimo_fechamento_invalido_nao_vira_preco_do_historico(
+    monkeypatch, fechamento
+):
+    """F3-A-F5 (BUG-3-17): só fechamento finito e positivo; o `currentPrice` preenche."""
+    historico = pd.DataFrame(
+        {"Close": [20.0, fechamento]},
+        index=pd.to_datetime(["2026-11-09", "2026-11-10"]),
+    )
+    dados = _yfinance(monkeypatch, info={"currentPrice": 25.0}, historico=historico)
+    assert dados["preco_atual"] == 25.0
+    assert dados["fonte_preco"] == "yfinance"
+    assert "data_preco" not in dados
+    assert dados["motivo_data_preco"] == MOTIVO_SEM_DATA["yfinance_info"]
+    assert "historico" in dados  # a série segue para retorno e técnico (armadilha 11)
+
+
+def test_fechamento_positivo_abaixo_de_um_vira_preco(monkeypatch):
+    """Fronteira do F3-A-F5: qualquer fechamento finito e positivo vale, mesmo abaixo de R$ 1."""
+    historico = pd.DataFrame(
+        {"Close": [0.6, 0.5]}, index=pd.to_datetime(["2026-11-09", "2026-11-10"])
+    )
+    dados = _yfinance(monkeypatch, historico=historico)
+    assert dados["preco_atual"] == 0.5
+    assert dados["data_preco"] == "2026-11-10"

@@ -7,7 +7,6 @@ data desse fechamento, e o `currentPrice` do mesmo provedor é ignorado. Corrige
 """
 
 import pandas as pd
-import pytest
 
 from tests.test_market_engine import FakeBrapi, _engine
 
@@ -19,11 +18,6 @@ def _historico():
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="BUG-3-17 · fonte do preço fica yfinance · corrige: F3-A-F5",
-)
 def test_preco_da_brapi_tem_fonte_brapi(monkeypatch):
     engine = _engine(
         monkeypatch,
@@ -36,11 +30,6 @@ def test_preco_da_brapi_tem_fonte_brapi(monkeypatch):
     assert dados["fonte_preco"] == "brapi"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="BUG-3-17 · preço NaN com data, currentPrice ignorado · corrige: F3-A-F5",
-)
 def test_fechamento_nan_cede_ao_current_price_sem_data(monkeypatch):
     engine = _engine(monkeypatch, info={"currentPrice": 25.0}, historico=_historico())
     dados = engine.buscar_dados_ticker("PETR4")
