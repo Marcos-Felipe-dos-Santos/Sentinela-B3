@@ -560,3 +560,12 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Resíduos:** `outputs/f3-a-f5-*`; `mutants/` (fora do git).
 - **Decisões delegadas novas:** nenhuma.
 - **Revisão rodada 1:** PODE COMMITAR. Menores: o valor gravado é o `Close` bruto do pandas (o conferido é o convertido; igual para `float64`, e mantém o golden; gravar o convertido fica para a Fase 3 com o golden autorizado); a escolha de não recuar ao último fechamento válido vai ao checkpoint junto da DD-33; o caso sem nenhuma outra fonte (cascata sem preço) não tem teste de ponta a ponta.
+
+### Checkpoint da 3-a — fechamento
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** checkpoint `[x]` com a anotação da DD-31; a 3-b segue.
+- **O que foi feito:** com os itens de fechamento F3-A-F1 (`fa26766`), F3-A-F2 (`b34bb82`), F3-A-F3 (`a821324`), F3-A-F4 (`5f947db`) e F3-A-F5 (`7403a6e`) commitados, mais o registro do BUG-3-17 (`b8673fd`), a linha do `[DECISÃO] Checkpoint da 3-a` recebe a anotação do passo 6 do `/goal` (auditoria feita pelo executor; 3-b liberada por esse passo; ratificação em lote) e fica `[x]`.
+- **Pendente com o Marcos:** perguntas da auditoria da 3-a em `docs/loop/pendencias.md`, a pergunta 1 (corte da CVM) antes do F3-3c; ratificação em lote das DD-01 a DD-33; revisão do Codex das DD-23 (revertida), DD-26 (conferida pelo Codex na auditoria), DD-32.
+- **Testes:** 4231 passed, 1 skipped, 4 xfailed (sem mudança neste commit). Golden SHA igual.
+- **Resíduos:** nenhum novo.
+- **Decisões delegadas novas:** nenhuma.

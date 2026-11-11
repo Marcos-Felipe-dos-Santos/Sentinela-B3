@@ -200,7 +200,7 @@ As da 2C, mais duas novas.
 
 - [x] **F3-A-F5** · fix · `fix: accept only a valid last close as the yfinance price` — BUG-3-17 (revisão do F3-A-F3). Arquivos: `market_engine.py` (só `_buscar_yfinance` e o ramo de preço da `_buscar_brapi`), regressão `test_bug_3_17_*` (só a marca), testes, registro. **Aceite:** D27; o yfinance só grava preço, `fonte_preco` e `data_preco` quando o último `Close` é finito e positivo; senão, nada de preço dele (a brapi ou o `currentPrice` podem preencher, com a fonte certa); BUG-3-17 em PASS sem mudar asserção; golden SHA igual. G.
 
-- [ ] **[DECISÃO] Checkpoint da 3-a.** Codex audita os commits `Executor: claude-code` da 3-a; Claude (chat) audita os `Executor: codex`. Bugs confirmados viram teste no mesmo dia. O Marcos libera a 3-b por escrito nesta linha.
+- [x] **[DECISÃO] Checkpoint da 3-a.** Codex audita os commits `Executor: claude-code` da 3-a; Claude (chat) audita os `Executor: codex`. Bugs confirmados viram teste no mesmo dia. O Marcos libera a 3-b por escrito nesta linha. **Anotação (11/11/2026, DD-31):** auditoria cruzada feita pelo executor pelo passo 6 do `/goal` (`docs/loop/auditorias/3-a-claude-code.md` e `3-a-codex.md`); achados tratados em F3-A-F1 a F3-A-F5, BUG-3-15 (→ F3-3d) e nas perguntas de `docs/loop/pendencias.md`; 3-b liberada por esse passo do `/goal`, que substitui a liberação escrita nesta linha; ratificação em lote pelo Marcos.
 
 ### 3-b — Histórico ponto-no-tempo
 
