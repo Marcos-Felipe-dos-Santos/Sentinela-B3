@@ -252,7 +252,11 @@ class MacroProvider:
         )
 
     def inflacao(
-        self, inicio: date, fim: date, instante: datetime, coleta: datetime | None = None
+        self,
+        inicio: date,
+        fim: date,
+        instante: datetime,
+        coleta: datetime | None = None,
     ) -> dict:
         """IPCA da janela contábil divulgado até `instante`; baixa com `coleta` (F3-1c-a)."""
         dia = _local(instante)
@@ -469,8 +473,7 @@ class MacroProvider:
             dia = _local(instante)
             ano_inicial = cesta.data_base.year if cesta.data_base else dia.year
             calendarios = [
-                self.calendario(ano, coleta)
-                for ano in range(ano_inicial, dia.year + 1)
+                self.calendario(ano, coleta) for ano in range(ano_inicial, dia.year + 1)
             ]
             calendario = Calendario(
                 date(ano_inicial, 1, 1),
@@ -519,3 +522,407 @@ class MacroProvider:
         except ERROS_DO_CODIGO as erro:
             resultado["pib"] = _erro_do_codigo(erro)
         return resultado
+
+
+# --- Insumos por data no banco único (F3-1c, tabela series_macro) ----------------------
+
+AGENDA_FOCUS = (
+    "https://www.bcb.gov.br/api/servico/sitebcb/calendario?inicioAgenda=%27{ano}-01-01%27"
+    "&fimAgenda=%27{ano}-12-31%27&lista=Focus"
+)
+SEM_NTNB_NO_BANCO = "series_macro sem NTN-B até a data"
+
+
+def edicoes_focus(conteudo: str) -> dict[date, datetime]:
+    """Pesquisa (sexta anterior) → instante de publicação, pela agenda do BCB.
+
+    Mesma leitura de `MacroProvider.pib`, para a gravação por data.
+    """
+    edicoes = {}
+    for evento in json.loads(conteudo)["conteudo"]:
+        if evento.get("evento") == "Relatório Focus":
+            publicacao = datetime.fromisoformat(evento["dataEvento"])
+            dia_edicao = publicacao.astimezone(FUSO).date()
+            pesquisa = dia_edicao - timedelta(days=(dia_edicao.weekday() - 4) % 7 or 7)
+            edicoes[pesquisa] = publicacao
+    return edicoes
+
+
+def _inserir(conn, linhas: list[tuple]) -> int:
+    conn.executemany(
+        "INSERT INTO series_macro (serie, data, valor, divulgacao, detalhe_json, fonte, "
+        "coleta, hash_sha256) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        linhas,
+    )
+    return len(linhas)
+
+
+def _detalhe(dados: dict) -> str:
+    return json.dumps(dados, ensure_ascii=False, sort_keys=True)
+
+
+def gravar_series(
+    conn,
+    provedor: MacroProvider,
+    *,
+    coleta: datetime,
+    datas: list[date],
+    janela: tuple[date, date] | None = None,
+) -> dict:
+    """Grava em `series_macro` os insumos da taxa real das datas pedidas (F3-1c).
+
+    Uma linha por observação, com a linha original da fonte, a fonte, a coleta e o hash do
+    conteúdo baixado: NTN-B (todas as linhas do CSV histórico do Tesouro), feriados ANBIMA
+    dos anos das datas e do anterior, edições do Focus e a pesquisa devida em cada data, o
+    calendário do IBGE e o IPCA da SIDRA na janela, e a Selic (SGS 432). Cada família que
+    falha fica no resumo com o motivo; as outras são gravadas.
+    """
+    from sentinela.data.proveniencia import hash_sha256 as proveniencia_hash
+    from sentinela.data.providers import tesouro
+
+    coleta_iso = coleta.astimezone(UTC).isoformat()
+    resumo: dict = {}
+    anos = sorted({ano for d in datas for ano in (d.year - 1, d.year)})
+
+    def familia(nome, gravar):
+        try:
+            with conn:
+                resumo[nome] = gravar()
+        except FALHAS_DA_FONTE as erro:
+            resumo[nome] = _falha_da_fonte(erro)
+        except ERROS_DO_CODIGO as erro:
+            resumo[nome] = _erro_do_codigo(erro)
+
+    def _tesouro():
+        arquivo = tesouro.TesouroProvider(provedor.cache_dir / "tesouro").baixar(coleta)
+        if arquivo.proveniencia is None:
+            raise ValueError("proveniência ausente")
+        if proveniencia_hash(arquivo.caminho) != arquivo.proveniencia.hash_sha256:
+            raise ValueError("conteúdo diverge da proveniência")
+        texto = arquivo.caminho.read_text(encoding="utf-8-sig")
+        cabecalho, *corpo = texto.splitlines()
+        colunas = cabecalho.split(";")
+        linhas = []
+        for linha in corpo:
+            campos = dict(zip(colunas, linha.split(";"), strict=False))
+            dia, mes, ano = campos["Data Base"].split("/")
+            linhas.append(
+                (
+                    f"tesouro|{campos['Tipo Titulo']}|{campos['Data Vencimento']}",
+                    f"{ano}-{mes}-{dia}",
+                    None,
+                    None,
+                    _detalhe({"cabecalho": cabecalho, "linha": linha}),
+                    tesouro.URL,
+                    coleta_iso,
+                    arquivo.proveniencia.hash_sha256,
+                )
+            )
+        return _inserir(conn, linhas)
+
+    def _anbima():
+        """Ano a ano: um ano sem calendário fica no resumo, os outros são gravados."""
+        total = 0
+        for ano in anos:
+            try:
+                calendario = provedor.calendario(ano, coleta)
+            except FALHAS_DA_FONTE as erro:
+                resumo[f"anbima_{ano}"] = _falha_da_fonte(erro)
+                continue
+            prov = calendario.proveniencia
+            fonte = prov.get("fonte", ANBIMA.format(ano=ano))
+            hash_ = prov.get("hash_sha256", "")
+            linhas = [
+                (
+                    "anbima_ano",
+                    f"{ano}-01-01",
+                    None,
+                    None,
+                    _detalhe({"proveniencia": prov}),
+                    fonte,
+                    coleta_iso,
+                    hash_,
+                )
+            ]
+            linhas += [
+                (
+                    "anbima_feriado",
+                    f.isoformat(),
+                    None,
+                    None,
+                    _detalhe({"ano": ano}),
+                    fonte,
+                    coleta_iso,
+                    hash_,
+                )
+                for f in sorted(calendario.feriados)
+            ]
+            total += _inserir(conn, linhas)
+        return total
+
+    def _focus():
+        linhas, pesquisas = [], set()
+        for ano in sorted({d.year for d in datas}):
+            agenda = provedor.baixar(AGENDA_FOCUS.format(ano=ano), coleta)
+            edicoes = edicoes_focus(agenda.conteudo)
+            linhas += [
+                (
+                    "focus_edicao",
+                    p.isoformat(),
+                    None,
+                    publicacao.isoformat(),
+                    _detalhe({}),
+                    agenda.fonte,
+                    coleta_iso,
+                    agenda.hash_sha256,
+                )
+                for p, publicacao in sorted(edicoes.items())
+            ]
+            for d in datas:
+                # a edição devida no começo e no fim do dia: qualquer instante de D tem a sua
+                for limite in (datetime.min.time(), datetime.max.time()):
+                    corte = datetime.combine(d, limite, FUSO)
+                    devidas = [
+                        p
+                        for p, pub in edicoes.items()
+                        if d.year == ano and pub <= corte
+                    ]
+                    if devidas:
+                        pesquisas.add(max(devidas))
+        for pesquisa in sorted(pesquisas):
+            url = (
+                FOCUS
+                + f"?$format=json&$filter=Indicador%20eq%20%27PIB%20Total%27%20and%20Data%20eq%20%27{pesquisa}%27"
+            )
+            serie = provedor.baixar(url, coleta)
+            linhas += [
+                (
+                    f"focus_pib|{i}",
+                    pesquisa.isoformat(),
+                    linha.get("Mediana"),
+                    None,
+                    _detalhe(linha),
+                    serie.fonte,
+                    coleta_iso,
+                    serie.hash_sha256,
+                )
+                for i, linha in enumerate(json.loads(serie.conteudo)["value"])
+            ]
+        return _inserir(conn, linhas)
+
+    def _ipca():
+        agenda = provedor.publicacoes_ipca(coleta)
+        if "abstencao" in agenda:
+            raise ValueError(agenda["abstencao"])
+        prov = agenda["proveniencia"]
+        linhas = [
+            (
+                "ipca_divulgacao",
+                f"{mes[:4]}-{mes[4:]}-01",
+                None,
+                dia.isoformat(),
+                _detalhe({}),
+                prov["fonte"],
+                coleta_iso,
+                prov["hash_sha256"],
+            )
+            for mes, dia in sorted(agenda["publicacoes"].items())
+        ]
+        if janela is not None:
+            publicados = [
+                m
+                for m, dia in agenda["publicacoes"].items()
+                if dia < coleta.astimezone(FUSO).date()
+            ]
+            url = f"https://apisidra.ibge.gov.br/values/t/1737/n1/all/v/63/p/{janela[0]:%Y%m}-{max(publicados)}?formato=json"
+            serie = provedor.baixar(url, coleta)
+            linhas += [
+                (
+                    "ipca_sidra",
+                    f"{l['D3C'][:4]}-{l['D3C'][4:]}-01",
+                    _numero(l.get("V"), "IPCA"),
+                    None,
+                    _detalhe(l),
+                    serie.fonte,
+                    coleta_iso,
+                    serie.hash_sha256,
+                )
+                for l in json.loads(serie.conteudo)
+                if l.get("D1C") == "1" and l.get("D2C") == "63"
+            ]
+        return _inserir(conn, linhas)
+
+    def _selic():
+        dados = provedor.serie_sgs(macro_por_data.SELIC_META, max(datas), coleta)
+        if "abstencao" in dados:
+            raise ValueError(dados["abstencao"])
+        prov = dados["proveniencia"][0] if dados["proveniencia"] else {}
+        return _inserir(
+            conn,
+            [
+                (
+                    "sgs_432",
+                    o.data.isoformat(),
+                    o.valor,
+                    None,
+                    _detalhe({}),
+                    prov.get("fonte", SGS),
+                    coleta_iso,
+                    prov.get("hash_sha256", ""),
+                )
+                for o in dados["observacoes"]
+            ],
+        )
+
+    familia("tesouro", _tesouro)
+    familia("anbima", _anbima)
+    familia("focus", _focus)
+    familia("ipca", _ipca)
+    familia("selic", _selic)
+    return resumo
+
+
+def _ultimas(conn, condicao: str, parametros: tuple) -> list[tuple]:
+    """Linhas de cada (série, data) na coleta mais recente; `condicao` vem só deste módulo."""
+    return conn.execute(
+        "SELECT s.serie, s.data, s.valor, s.divulgacao, s.detalhe_json, s.fonte, s.coleta, "
+        "s.hash_sha256 FROM series_macro s WHERE " + condicao + " AND s.coleta = ("
+        "SELECT MAX(t.coleta) FROM series_macro t WHERE t.serie = s.serie AND t.data = s.data"
+        ") ORDER BY s.serie, s.data",
+        parametros,
+    ).fetchall()
+
+
+def registro_do_banco(
+    conn, instante: datetime, janela: tuple[date, date] | None = None
+) -> dict:
+    """Registro da taxa real em `instante` só com o que está em `series_macro` (F3-1c).
+
+    Os mesmos cálculos do caminho histórico (F3-1c-a): linhas do Tesouro com data-base
+    anterior ao dia, calendário ANBIMA dos anos, edição Focus devida e IPCA divulgado até o
+    instante. Sem linha no banco, abstém sem contingência numérica.
+    """
+    from sentinela.data import taxas
+    from sentinela.data.providers.tesouro import (
+        AVISO_HISTORICO,
+        URL,
+        ler_csv,
+        selecionar_ofertas,
+    )
+
+    dia = _local(instante)
+    try:
+        tesouro_linhas = _ultimas(
+            conn, "s.serie LIKE 'tesouro|%' AND s.data < ?", (dia.isoformat(),)
+        )
+        if not tesouro_linhas:
+            return {"abstencao": SEM_NTNB_NO_BANCO}
+        detalhes = [json.loads(linha[4]) for linha in tesouro_linhas]
+        texto = (
+            "\n".join([detalhes[0]["cabecalho"], *(d["linha"] for d in detalhes)])
+            + "\n"
+        )
+        cesta = selecionar_ofertas(ler_csv(texto, as_of=dia, validar_aplicacao=False))
+        ano_inicial = cesta.data_base.year if cesta.data_base else dia.year
+        anos = _ultimas(
+            conn,
+            "s.serie = 'anbima_ano' AND s.data >= ? AND s.data <= ?",
+            (f"{ano_inicial}-01-01", f"{dia.year}-01-01"),
+        )
+        if len(anos) != dia.year - ano_inicial + 1:
+            return {"abstencao": "calendário ANBIMA ausente no banco"}
+        feriados = _ultimas(
+            conn,
+            "s.serie = 'anbima_feriado' AND s.data >= ? AND s.data <= ?",
+            (f"{ano_inicial}-01-01", f"{dia.year}-12-31"),
+        )
+        calendario = Calendario(
+            date(ano_inicial, 1, 1),
+            date(dia.year, 12, 31),
+            frozenset(date.fromisoformat(f[1]) for f in feriados),
+            {"anos": [json.loads(a[4])["proveniencia"] for a in anos]},
+        )
+        mais_recente = max(tesouro_linhas, key=lambda linha: linha[6])
+        coleta = mais_recente[6]
+        resultado = taxas.calcular(
+            cesta,
+            as_of=instante,
+            calendario=calendario,
+            proveniencia={
+                "fonte": URL,
+                "data_coleta": coleta,
+                "hash_sha256": mais_recente[7],
+                "banco": "series_macro",
+            },
+        )
+        if isinstance(resultado, taxas.Abstencao):
+            return {"abstencao": resultado.motivo}
+    except FALHAS_DA_FONTE as erro:
+        return _falha_da_fonte(erro)
+    except ERROS_DO_CODIGO as erro:
+        return _erro_do_codigo(erro)
+    resultado["coleta"] = coleta
+    resultado["avisos"] = [AVISO_HISTORICO]
+    resultado["inflacao"] = (
+        {"abstencao": "janela contábil anual não demonstrada"}
+        if janela is None
+        else _inflacao_do_banco(conn, janela, instante)
+    )
+    resultado["pib"] = _pib_do_banco(conn, instante)
+    return resultado
+
+
+def _inflacao_do_banco(conn, janela: tuple[date, date], instante: datetime) -> dict:
+    try:
+        publicacoes = {
+            linha[1][:4] + linha[1][5:7]: date.fromisoformat(linha[3])
+            for linha in _ultimas(
+                conn, "s.serie = 'ipca_divulgacao' AND s.divulgacao IS NOT NULL", ()
+            )
+        }
+        linhas = [
+            json.loads(linha[4])
+            for linha in _ultimas(conn, "s.serie = 'ipca_sidra'", ())
+        ]
+        if not publicacoes or not linhas:
+            return {"abstencao": "IPCA ausente no banco"}
+        return ipca_da_janela(
+            linhas, publicacoes, inicio=janela[0], fim=janela[1], as_of=instante
+        )
+    except FALHAS_DA_FONTE as erro:
+        return _falha_da_fonte(erro)
+    except ERROS_DO_CODIGO as erro:
+        return _erro_do_codigo(erro)
+
+
+def _pib_do_banco(conn, instante: datetime) -> dict:
+    try:
+        dia = _local(instante)
+        edicoes = {
+            date.fromisoformat(linha[1]): datetime.fromisoformat(linha[3])
+            for linha in _ultimas(
+                conn,
+                "s.serie = 'focus_edicao' AND s.data >= ? AND s.data <= ?",
+                (f"{dia.year - 1}-12-25", f"{dia.year}-12-31"),
+            )
+            if datetime.fromisoformat(linha[3]).astimezone(FUSO).year == dia.year
+        }
+        devidas = [p for p, pub in edicoes.items() if pub <= instante]
+        if not devidas:
+            return {"abstencao": "edição Focus devida ausente no banco"}
+        linhas = [
+            json.loads(linha[4])
+            for linha in _ultimas(
+                conn,
+                "s.serie LIKE 'focus_pib|%' AND s.data = ?",
+                (max(devidas).isoformat(),),
+            )
+        ]
+        resultado = pib_focus(linhas, edicoes, as_of=instante)
+    except FALHAS_DA_FONTE as erro:
+        return _falha_da_fonte(erro)
+    except ERROS_DO_CODIGO as erro:
+        return _erro_do_codigo(erro)
+    proxima = resultado["proxima_publicacao"]
+    resultado["proxima_publicacao"] = proxima.isoformat() if proxima else None
+    return resultado

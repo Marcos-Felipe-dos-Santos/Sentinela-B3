@@ -128,6 +128,37 @@ def _carregar_taxa_real(
     return MacroProvider().registro(instante, janela, coleta=coleta)
 
 
+def _conexao_series_macro():
+    """Conexão com o banco único (F3-1c), com as migrações aplicadas (o `caminho_padrao`
+    cria o banco vazio se não houver nenhum); `None` se ele não abrir ou recusar a
+    migração (versão desconhecida, migração alterada)."""
+    import sqlite3
+
+    from sentinela.data.store import unico
+
+    try:
+        return sqlite3.connect(unico.caminho_padrao())
+    except (RuntimeError, OSError, ValueError, sqlite3.Error):
+        return None
+
+
+def _taxa_real_do_banco(instante: datetime, janela: tuple[date, date] | None) -> dict:
+    """Registro de uma data passada pelo `series_macro`; sem banco ou tabela, abstém."""
+    import sqlite3
+    from contextlib import closing
+
+    from sentinela.data.providers.macro import registro_do_banco
+
+    conn = _conexao_series_macro()
+    if conn is None:
+        return {"abstencao": "banco único indisponível para a data passada"}
+    with closing(conn):
+        try:
+            return registro_do_banco(conn, instante, janela)
+        except sqlite3.Error as erro:
+            return {"abstencao": f"series_macro indisponível: {erro}"}
+
+
 def _dia_sp(instante: datetime) -> date:
     return instante.astimezone(ZoneInfo("America/Sao_Paulo")).date()
 
@@ -149,11 +180,12 @@ def get_taxa_real(
         edicao_devida = proxima is not None and datetime.fromisoformat(proxima) <= instante
         if 0 <= idade < _TAXA_REAL_TTL and not edicao_devida:
             return registro
-    # F3-1c-a: numa data de dia anterior ao de hoje, a coleta é o instante real e o
-    # corte é as_of (DD-18); no mesmo dia, o corte é a própria coleta, como na 2B.
+    # F3-1c: numa data de dia anterior ao de hoje, o registro sai só do que está em
+    # `series_macro` (insumos gravados por data, com coleta e hash); no mesmo dia, o corte é
+    # a própria coleta, como na 2B.
     passado = _dia_sp(instante) < _dia_sp(agora)
     registro = (
-        _carregar_taxa_real(instante, janela, agora)
+        _taxa_real_do_banco(instante, janela)
         if passado
         else _carregar_taxa_real(instante, janela)
     )

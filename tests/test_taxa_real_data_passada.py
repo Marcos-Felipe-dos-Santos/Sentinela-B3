@@ -133,7 +133,8 @@ class _Agora(datetime):
         return COLETA.astimezone(tz) if tz else COLETA.replace(tzinfo=None)
 
 
-def test_get_taxa_real_passa_a_coleta_real_so_para_dia_anterior(monkeypatch):
+def test_get_taxa_real_le_do_banco_so_para_dia_anterior(monkeypatch):
+    """F3-1c: data de dia anterior pelo `series_macro`; o mesmo dia pelo caminho de hoje."""
     chamadas = []
     monkeypatch.setattr(config, "datetime", _Agora)
     monkeypatch.setattr(config, "_taxa_real_cache", {})
@@ -141,15 +142,20 @@ def test_get_taxa_real_passa_a_coleta_real_so_para_dia_anterior(monkeypatch):
         config,
         "_carregar_taxa_real",
         lambda instante, janela, coleta=None: (
-            chamadas.append((instante, coleta)) or {"x": 1}
+            chamadas.append(("hoje", instante)) or {"x": 1}
         ),
+    )
+    monkeypatch.setattr(
+        config,
+        "_taxa_real_do_banco",
+        lambda instante, janela: chamadas.append(("banco", instante)) or {"x": 1},
     )
     config.get_taxa_real(as_of=D)
     hoje = datetime(2026, 11, 11, 10, tzinfo=UTC)
     config.get_taxa_real(as_of=hoje)
     config._taxa_real_cache.clear()  # mesmo dia de `hoje`: sem o cache, chama de novo
     config.get_taxa_real()
-    assert chamadas == [(D, COLETA), (hoje, None), (COLETA, None)]
+    assert chamadas == [("banco", D), ("hoje", hoje), ("hoje", COLETA)]
 
 
 def test_ponta_a_ponta_ate_gordon_e_fii(tmp_path, monkeypatch):
@@ -167,12 +173,11 @@ def test_ponta_a_ponta_ate_gordon_e_fii(tmp_path, monkeypatch):
     provedor, _ = _provedor(tmp_path, monkeypatch, COLETA)
     monkeypatch.setattr(config, "datetime", _Agora)
     monkeypatch.setattr(config, "_taxa_real_cache", {})
+    # o caminho histórico do provedor (F3-1c-a); a leitura pelo banco é do test_series_macro
     monkeypatch.setattr(
         config,
-        "_carregar_taxa_real",
-        lambda instante, janela, coleta=None: provedor.registro(
-            instante, janela, coleta=coleta
-        ),
+        "_taxa_real_do_banco",
+        lambda instante, janela: provedor.registro(instante, janela, coleta=COLETA),
     )
     registro = config.get_taxa_real(as_of=AS_OF_GORDON, janela=JANELA)
     assert registro["coleta"] == COLETA.isoformat()
@@ -319,6 +324,11 @@ def test_get_taxa_real_leva_a_janela_nos_dois_caminhos(monkeypatch):
         config,
         "_carregar_taxa_real",
         lambda instante, janela, coleta=None: janelas.append(janela) or {"x": 1},
+    )
+    monkeypatch.setattr(
+        config,
+        "_taxa_real_do_banco",
+        lambda instante, janela: janelas.append(janela) or {"x": 1},
     )
     config.get_taxa_real(as_of=D, janela=JANELA)
     config.get_taxa_real(as_of=datetime(2026, 11, 11, 10, tzinfo=UTC), janela=JANELA)

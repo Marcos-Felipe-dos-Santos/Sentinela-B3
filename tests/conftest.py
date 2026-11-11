@@ -35,7 +35,15 @@ TAXA_REAL_SEMENTE = {
     "pib": {"valor": 0.02, "ano": 2030},
     "proveniencia": {"fonte": "semente de teste"},
 }
-config._carregar_taxa_real = lambda instante, janela, coleta=None: dict(TAXA_REAL_SEMENTE)
+config._carregar_taxa_real = lambda instante, janela, coleta=None: dict(
+    TAXA_REAL_SEMENTE
+)
+# F3-1c: a suíte nunca abre o banco único real; teste que lê `series_macro` injeta a conexão.
+# A função real fica guardada uma vez só (o conftest pode ser importado de novo, no mutmut).
+if not hasattr(config, "_conexao_series_macro_real"):
+    config._conexao_series_macro_real = config._conexao_series_macro
+CONEXAO_SERIES_MACRO_REAL = config._conexao_series_macro_real
+config._conexao_series_macro = lambda: None
 
 
 @pytest.fixture(autouse=True, scope="session")
