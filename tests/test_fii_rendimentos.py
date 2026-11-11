@@ -291,7 +291,110 @@ def test_provedor_sem_o_fundo_devolve_lista_vazia(tmp_path, monkeypatch):
         "composicoes": [],
         "isin": None,
         "proveniencia": None,
+        "lacunas": [
+            "2025 sem linhas do fundo",
+            "2024 sem linhas do fundo",
+        ],
     }
+
+
+def _provedor_por_ano(tmp_path, monkeypatch, por_ano):
+    """`por_ano`: ano → linhas do fundo no complemento, ou `None` para o ano ilegível."""
+    import cvm_fii_provider
+    from cvm_fii_provider import CVMFIIProvider
+
+    provedor = CVMFIIProvider(cache_dir=str(tmp_path / "cache"))
+    monkeypatch.setattr(cvm_fii_provider, "date", _Hoje)
+
+    def baixar(ano):
+        linhas = por_ano.get(ano)
+        if linhas is None:
+            raise OSError("ilegível")
+        return _zip(
+            tmp_path / f"{ano}.zip", ano, linhas or [{"CNPJ_Fundo_Classe": "x"}]
+        )
+
+    monkeypatch.setattr(provedor, "baixar_informe", baixar)
+    return provedor
+
+
+def _do_fundo(ano):
+    return [
+        {
+            "CNPJ_Fundo_Classe": INFORME["cnpj_fundo"],
+            "Data_Referencia": f"{ano}-06-01",
+            "Versao": "1",
+        }
+    ]
+
+
+def test_provedor_sem_lacunas_com_o_ano_corrente_e_o_anterior(tmp_path, monkeypatch):
+    provedor = _provedor_por_ano(
+        tmp_path, monkeypatch, {2026: _do_fundo(2026), 2025: _do_fundo(2025)}
+    )
+    assert provedor.obter_rendimentos_fii(INFORME["cnpj_fundo"])["lacunas"] == []
+
+
+def test_ano_corrente_vazio_que_manda_ler_dois_anos_atras_nao_e_lacuna(
+    tmp_path, monkeypatch
+):
+    provedor = _provedor_por_ano(
+        tmp_path, monkeypatch, {2026: [], 2025: _do_fundo(2025), 2024: _do_fundo(2024)}
+    )
+    assert provedor.obter_rendimentos_fii(INFORME["cnpj_fundo"])["lacunas"] == []
+
+
+def test_ano_corrente_ainda_nao_publicado_nao_e_lacuna(tmp_path, monkeypatch):
+    """Janeiro: o ZIP do ano corrente ainda não existe; os dois anteriores cobrem a janela."""
+    provedor = _provedor_por_ano(
+        tmp_path,
+        monkeypatch,
+        {2026: None, 2025: _do_fundo(2025), 2024: _do_fundo(2024)},
+    )
+    lido = provedor.obter_rendimentos_fii(INFORME["cnpj_fundo"])
+    assert lido["lacunas"] == [] and len(lido["registros"]) == 2
+
+
+def test_ano_anterior_parcial_e_dois_anos_atras_ilegivel_e_lacuna(
+    tmp_path, monkeypatch
+):
+    """Borda vizinha da revisão do F3-P04: ano −1 com linhas e ano −2 ilegível."""
+    provedor = _provedor_por_ano(
+        tmp_path, monkeypatch, {2026: [], 2025: _do_fundo(2025), 2024: None}
+    )
+    lido = provedor.obter_rendimentos_fii(INFORME["cnpj_fundo"])
+    assert lido["lacunas"] == ["2024 ilegível ou indisponível"]
+    assert len(lido["registros"]) == 1
+
+
+def test_cascata_registra_as_lacunas_nos_riscos(monkeypatch):
+    from market_engine import MarketEngine
+
+    class Provedor:
+        def obter_rendimentos_fii(self, cnpj):
+            return {
+                "registros": [],
+                "composicoes": [],
+                "isin": None,
+                "proveniencia": None,
+                "lacunas": [
+                    "2024 ilegível ou indisponível",
+                    "2025 sem linhas do fundo",
+                ],
+            }
+
+    motor = object.__new__(MarketEngine)
+    motor._is_fii_ticker = lambda *args: True
+    motor.cvm_fii = Provedor()
+    dados = {"cnpj": "11.111.111/0001-11", "classe_ativo": "FII"}
+    motor._buscar_rendimento_fii("TSTF11", dados)
+    assert dados["riscos_dados"] == [
+        "Informe Mensal incompleto: 2024 ilegível ou indisponível; 2025 sem linhas do fundo (rendimento do FII)"
+    ]
+    sem = {"cnpj": "11.111.111/0001-11", "classe_ativo": "FII"}
+    Provedor.obter_rendimentos_fii = lambda self, cnpj: {"registros": [], "lacunas": []}
+    motor._buscar_rendimento_fii("TSTF11", sem)
+    assert "riscos_dados" not in sem
 
 
 # ── cascata ──────────────────────────────────────────────────────────────────

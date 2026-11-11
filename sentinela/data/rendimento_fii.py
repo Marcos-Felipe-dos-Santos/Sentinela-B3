@@ -105,7 +105,9 @@ def _por_mes(
     Duas linhas da maior versão do mês com DY, valor da cota, cotas ou amortização diferentes
     são conflito (F2B-54 e F2B-57, BUG-2B-37): nenhuma vence pela ordem do arquivo. Duplicata
     nessas colunas não é conflito, nem com célula vazia (as duas vazias); vazio contra
-    inválido é conflito (`fii_elegibilidade.forma`).
+    inválido é conflito (`fii_elegibilidade.forma`). No empate entre versão ilegível e linha
+    sem versão (as duas sem número), fica a ilegível, que abstém: o resultado não depende da
+    ordem do arquivo (BUG-3-05).
     """
     escolhidos: dict[tuple[int, int], Mapping] = {}
     conflitos: set[tuple[int, int]] = set()
@@ -117,12 +119,15 @@ def _por_mes(
         if atual is None or _versao(registro) > _versao(atual):
             escolhidos[mes] = registro
             conflitos.discard(mes)
-        elif _versao(registro) == _versao(atual) and any(
-            fii_elegibilidade.forma(registro.get(c))
-            != fii_elegibilidade.forma(atual.get(c))
-            for c in _COLUNAS_DA_CONTA
-        ):
-            conflitos.add(mes)
+        elif _versao(registro) == _versao(atual):
+            if any(
+                fii_elegibilidade.forma(registro.get(c))
+                != fii_elegibilidade.forma(atual.get(c))
+                for c in _COLUNAS_DA_CONTA
+            ):
+                conflitos.add(mes)
+            if versao_ilegivel(registro) and not versao_ilegivel(atual):
+                escolhidos[mes] = registro
     return escolhidos, conflitos
 
 
@@ -238,6 +243,10 @@ def avaliar(
             return Abstencao(MOTIVO_MESES_INCOMPLETOS)
         if mes in conflitos:
             return Abstencao(f"{MOTIVO_CONFLITO}: {_rotulo(mes)}")
+        # F3-P08 e BUG-3-04 (ficha FII 1.3, §3): mês da janela só com versões
+        # explicitamente ilegíveis (a válida venceria na seleção) não demonstra a versão.
+        if versao_ilegivel(linha):
+            return Abstencao(f"{MOTIVO_VERSAO_ILEGIVEL}: {_rotulo(mes)}")
         # F2B-60 (BUG-2B-48): os 13 VPs da janela, inclusive o do mês final.
         vp = _numero(linha.get("Valor_Patrimonial_Cotas"))
         if vp is None or vp <= 0:
@@ -270,10 +279,8 @@ def avaliar(
         return medida
     # F2B-59 (BUG-2B-47; ficha 1.3, §3c): só a composição da versão do complemento
     # selecionado no mês final; de outra versão não classifica o fundo.
-    # F3-P08 (BUG-2C-27): o mês final só com versões explicitamente ilegíveis (a válida
-    # venceria na seleção) não demonstra a versão; e composição ilegível não casa por -inf.
-    if versao_ilegivel(meses[final]):
-        return Abstencao(f"{MOTIVO_VERSAO_ILEGIVEL}: {_rotulo(final)}")
+    # F3-P08 (BUG-2C-27): composição ilegível não casa por -inf (a versão de cada mês da
+    # janela já foi conferida acima).
     selecionada = _versao(meses[final])
     composicao = [
         c

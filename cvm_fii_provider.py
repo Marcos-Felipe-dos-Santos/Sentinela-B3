@@ -276,7 +276,10 @@ class CVMFIIProvider:
         com a entrega e o ISIN do `geral`, as do `ativo_passivo` (F2B-2), o ISIN da linha
         mais recente e a proveniência dela. Ano que falha fica de fora, com aviso no log; se
         todos os anos lidos falham, a fonte está indisponível e sai `OSError` (F3-P04,
-        BUG-3-02), que a cascata registra em `riscos_dados`.
+        BUG-3-02), que a cascata registra em `riscos_dados`. Se só parte falha, ou um ano
+        necessário vem sem linhas do fundo, `lacunas` diz quais (BUG-3-03), e a cascata
+        também as registra; o ano corrente sem linhas ou sem arquivo (em janeiro a CVM ainda
+        não o publicou), que só manda ler o de dois anos atrás, não é lacuna.
         """
         cnpj = cnpj_fundo.strip()
         if as_of is not None and as_of.utcoffset() is None:
@@ -288,14 +291,19 @@ class CVMFIIProvider:
         mais_recente = None
         anos = [ano_atual, ano_atual - 1]
         falhas = []
+        lacunas = []
         for ano in anos:
             lido = self._linhas_do_fundo(cnpj, ano)
             if ano == ano_atual and not (lido and lido[1]):
                 anos.append(ano_atual - 2)
             if lido is None:
                 falhas.append(ano)
+                if ano != ano_atual:  # o do ano corrente pode não ter sido publicado ainda
+                    lacunas.append(f"{ano} ilegível ou indisponível")
                 continue
             zip_path, linhas, do_ano = lido
+            if not linhas and ano != ano_atual:
+                lacunas.append(f"{ano} sem linhas do fundo")
             registros.extend(linhas)
             composicoes.extend(do_ano)
             for linha in linhas:
@@ -324,4 +332,5 @@ class CVMFIIProvider:
             "composicoes": composicoes,
             "isin": isin if isinstance(isin, str) and isin.strip() else None,
             "proveniencia": proveniencia_recente,
+            "lacunas": lacunas,
         }

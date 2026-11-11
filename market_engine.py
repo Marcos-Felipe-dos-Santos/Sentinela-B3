@@ -820,6 +820,12 @@ class MarketEngine:
             dados['informe_fii'] = {'abstencao': motivo}
             dados.setdefault('riscos_dados', []).append(f"{motivo} (rendimento do FII)")
             return
+        lacunas = dados['informe_fii'].get('lacunas') if isinstance(dados['informe_fii'], dict) else None
+        if lacunas:
+            # BUG-3-03: ano da janela ilegível ou sem linhas do fundo não sai com cara de sucesso.
+            dados.setdefault('riscos_dados', []).append(
+                f"Informe Mensal incompleto: {'; '.join(lacunas)} (rendimento do FII)"
+            )
         provedor = getattr(self, 'b3_fundos', None)
         if provedor is None:
             return

@@ -8,13 +8,10 @@ registrada na revisão do F3-P04 (10/11/2026); decisão do Marcos de 10/11/2026:
 
 from pathlib import Path
 
-import pytest
-
 from cvm_fii_provider import CVMFIIProvider
 from market_engine import MarketEngine
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-3-03, corrige F3-3c-fix")
 def test_anos_da_janela_ilegiveis_entram_nos_riscos(monkeypatch):
     provedor = CVMFIIProvider.__new__(CVMFIIProvider)
     lidos = []
