@@ -218,11 +218,14 @@ def test_dominios_recusados(conn, inserir):
 
 def test_aplicada_sobre_o_banco_do_f3_2c_sem_perda(tmp_path):
     """Banco com as migrações 001 a 003 e dados: a 004 não muda nenhuma tabela existente."""
-    ate_003 = tmp_path / "ate_003"
+    ate_003, ate_004 = tmp_path / "ate_003", tmp_path / "ate_004"
     ate_003.mkdir()
+    ate_004.mkdir()
     for _, arquivo in migracoes.listar():
         if arquivo.name < "004":
             shutil.copy(arquivo, ate_003 / arquivo.name)
+        if arquivo.name < "005":
+            shutil.copy(arquivo, ate_004 / arquivo.name)
     banco = tmp_path / "f3_2c.db"
     with closing(sqlite3.connect(banco)) as c:
         assert migracoes.aplicar(c, ate_003) == [1, 2, 3]
@@ -244,7 +247,7 @@ def test_aplicada_sobre_o_banco_do_f3_2c_sem_perda(tmp_path):
             if t != "schema_version"
         }
     with closing(sqlite3.connect(banco)) as c:
-        assert migracoes.aplicar(c) == [4]
+        assert migracoes.aplicar(c, ate_004) == [4]
         depois = {t: c.execute(f'SELECT * FROM "{t}"').fetchall() for t in antes}
         versoes = [
             v for (v,) in c.execute("SELECT versao FROM schema_version ORDER BY versao")
