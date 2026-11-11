@@ -591,3 +591,13 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
   - 2026-11-11 · claude-code · decisão delegada DD-34: F3-L1, cobertura do modo estrito com só a última versão nos arquivos abertos → o documento entra em D se a última versão foi entregue até D; se foi depois, abstém (a versão vigente em D existiu, mas os números não estão na fonte aberta), como o adendo de 09/11 prevê (classe 2, desempate 1; alternativas: usar a primeira `DT_RECEB` com os números da última, que anteciparia valores reapresentados)
 - **Para o Marcos revisar:** a opção para os proventos das deslistadas (seção 7 do documento) é do `[DECISÃO]` seguinte.
 - **Revisão rodada 1 (`/review-diff-leve`):** NÃO PODE COMMITAR: o caso IRB, a leitura das demonstrações e os intervalos entre entregas vinham de análise avulsa (o filtro do IRB não casava os zeros à esquerda). Corrigido: tudo sai do script (`amostras_reapresentacao`, `demonstracoes`, `intervalo_primeira_ultima_entrega_dias`), nova execução de 14:26:55 a 14:28:28 UTC; projeção protegida por `medir`; anos a partir de 2010; Focus gravado com os dois hashes; disco livre e cobertura do modo estrito corrigidos no documento.
+
+### [DECISÃO] após o L1 — registro do executor
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** `[x]` pelo passo 7 do `/goal`: a projeção fica abaixo do limite (1,26 GB de brutos contra 100 GB da decisão 39; 938 GiB livres) e nenhuma decisão de dados ficou incumprível. Os números estão registrados na linha e as decisões já tomadas foram aplicadas como decisões delegadas.
+- **O que mudou de leitura:** parei antes nesta linha, lendo os proventos das deslistadas como decisão incumprível. A decisão 33(d) (falha de conferência é abstenção com motivo) e a decisão 10 (lacunas medidas) já cobrem o caso: abstenção nas lentes de proventos para deslistadas (DD-35). Corrigido por indicação da verificação do `/goal`.
+- **Decisões delegadas novas:**
+  - 2026-11-11 · claude-code · decisão delegada DD-35: proventos de deslistadas → abstenção com motivo pelas decisões 33(d) e 10; o F3-7 mede o alcance; fonte da CVM como estudo para o checkpoint da 3-b (classe 1, desempate 1 e 3)
+  - 2026-11-11 · claude-code · decisão delegada DD-36: alinhamento Ibovespa e CDI no último pregão da B3 do mês, CDI acumulado até esse dia (classe 2, desempate 6)
+- **Testes:** 4231 passed, 1 skipped, 4 xfailed (sem mudança). Golden SHA igual.
+- **Resíduos:** nenhum.
