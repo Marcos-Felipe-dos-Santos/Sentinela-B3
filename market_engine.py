@@ -1102,13 +1102,19 @@ class MarketEngine:
             extra = {} if modelo == 'empresa' else {'modelo': modelo}
             if as_of is not None:
                 extra['as_of'] = as_of
-            ano_final = self._serie_cvm(ticker, dados, cvm, cd_cvm, modelo)
+            ano_final = (
+                self._serie_cvm(ticker, dados, cvm, cd_cvm, modelo)
+                if as_of is None
+                else self._serie_cvm(ticker, dados, cvm, cd_cvm, modelo, as_of=as_of)
+            )
             selecionar_exercicio = getattr(cvm, "exercicio_anual_mais_recente", None)
             if callable(selecionar_exercicio):
                 if ano_final is None:
                     dados["cvm_disponivel"] = False
                     return False
                 extra["ano_final"] = ano_final
+                # O corte já foi resolvido; a API antiga do snapshot recebe só o ano.
+                extra.pop("as_of", None)
             historico = cvm.calcular_indicadores(cd_cvm, anos=1, **extra)
             if not historico:
                 dados['cvm_disponivel'] = False
@@ -1311,7 +1317,8 @@ class MarketEngine:
             riscos.append(f"{RISCO_LIMITACAO_BANCO} ({campo}): {motivo}")
 
     def _serie_cvm(
-        self, ticker: str, dados: dict[str, Any], cvm: Any, cd_cvm: int, modelo: str
+        self, ticker: str, dados: dict[str, Any], cvm: Any, cd_cvm: int, modelo: str,
+        *, as_of: datetime | None = None
     ) -> int | None:
         """Série de cinco exercícios e TTM da CVM (F2A-7), em `dados['serie_cvm']` e `dados['ttm_cvm']`.
 
@@ -1324,7 +1331,12 @@ class MarketEngine:
         selecionar_exercicio = getattr(cvm, 'exercicio_anual_mais_recente', None)
         if indicadores_da_serie is None and acumulados_ttm is None and selecionar_exercicio is None:
             return None
-        hoje = date.today()
+        if as_of is not None and as_of.utcoffset() is None:
+            raise ValueError("as_of exige fuso horário")
+        hoje = (
+            date.today() if as_of is None
+            else as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+        )
         exercicios = []
         ano_final = None
         try:
