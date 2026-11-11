@@ -787,3 +787,15 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 ### Registro — BUG-3-23 (revisão do F3-A-F7)
 - **Executor:** claude-code (Claude Opus 5.5).
 - **Achado, confirmado:** `_ultimas` escolhe a coleta mais recente por (série, data); a série `tesouro|…|2` gravada por uma coleta com conflito continua a mais recente da série dela depois que a coleta seguinte traz o arquivo corrigido. Regressão `tests/regressao/test_bug_3_23_conflito_fantasma_entre_coletas.py`: sem a marca, o caminho histórico da segunda coleta dá número e o banco abstém com `linhas conflitantes no par de aplicação`; com a marca, xfail estrito. Item F3-A-F7b logo depois do F3-A-F7.
+
+### F3-A-F7b — fix: read the Treasury history from its latest collection
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso.
+- **O que foi feito:** `sentinela/data/providers/macro.py`, só a leitura do Tesouro em `registro_do_banco`: as linhas do Tesouro são as da coleta mais recente da família inteira (cada coleta traz o CSV histórico completo), não a mais recente por série e data. Uma coleta corrigida apaga o conflito da anterior, e uma coleta com conflito o traz. As outras famílias continuam pela mais recente por série e data.
+- **D27:** `tests/regressao/test_bug_3_23_conflito_fantasma_entre_coletas.py` sem a marca falhou no código anterior (o banco abstinha com `linhas conflitantes no par de aplicação` e o histórico dava número) e passa agora, sem mudar asserção.
+- **Teste existente ajustado:** `test_nova_coleta_prevalece_na_leitura` simulava uma coleta nova com uma linha só do Tesouro e dependia da regra antiga (por série e data), que o BUG-3-23 mostrou errada; passou a simular uma coleta completa com a mesma taxa mudada. A intenção e o valor esperado são os mesmos.
+- **Testes:** `tests/test_series_macro.py` +1: depois de uma coleta limpa, a seguinte com linha conflitante traz o conflito.
+- **Mutação:** `registro_do_banco` (`--max-children 2`): 138 mortos e 32 sobreviventes (81,2%). Nas linhas novas, só equivalentes: caixa no SQL (o `LIKE` do SQLite não distingue caixa em ASCII) e a escolha da linha mais recente por coleta, que ficou sem efeito porque todas as linhas lidas do Tesouro são da mesma coleta. Os outros são dos trechos anteriores.
+- **Suíte:** 4471 passed, 1 skipped, 6 xfailed → 4473 passed, 1 skipped, 6 xfailed (+1 teste e a regressão em PASS; o xfailed não mudou porque o registro cc29cd2 o tinha somado). Golden SHA igual. Banco real não aberto.
+- **Desvio registrado:** o registro do BUG-3-23 (cc29cd2) foi commitado sem `/review-diff`; a revisão deste item confere também esse commit.
+- **Resíduos:** `outputs/f3-a-f7b-mutmut.log`.

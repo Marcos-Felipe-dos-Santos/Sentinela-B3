@@ -13,7 +13,6 @@ import sqlite3
 from contextlib import closing
 from datetime import timedelta
 
-import pytest
 from test_series_macro import _alterar_tesouro, _ultima_ntnb, provedor  # noqa: F401
 from test_taxa_real_data_passada import COLETA, JANELA, D
 
@@ -21,11 +20,6 @@ from sentinela.data.providers import macro
 from sentinela.data.store import migracoes
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="BUG-3-23 · conflito de coleta antiga lido depois da correção · corrige: F3-A-F7b",
-)
 def test_coleta_corrigida_apaga_o_conflito_da_anterior(provedor, tmp_path):  # noqa: F811
     caminho = tmp_path / "macro" / "tesouro" / "precotaxatesourodireto.csv"
     original = caminho.read_text(encoding="utf-8")

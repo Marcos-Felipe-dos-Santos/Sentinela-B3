@@ -853,8 +853,14 @@ def registro_do_banco(
 
     dia = _local(instante)
     try:
+        # BUG-3-23: cada coleta traz o CSV histórico inteiro; vale a coleta mais recente da
+        # família, não a mais recente por série e data (uma linha conflitante de uma coleta
+        # antiga, com sufixo na série, não pode sobreviver ao arquivo corrigido).
         tesouro_linhas = _ultimas(
-            conn, "s.serie LIKE 'tesouro|%' AND s.data < ?", (dia.isoformat(),)
+            conn,
+            "s.serie LIKE 'tesouro|%' AND s.data < ? AND s.coleta = ("
+            "SELECT MAX(t.coleta) FROM series_macro t WHERE t.serie LIKE 'tesouro|%')",
+            (dia.isoformat(),),
         )
         if not tesouro_linhas:
             return {"abstencao": SEM_NTNB_NO_BANCO}

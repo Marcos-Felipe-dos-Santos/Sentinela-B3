@@ -120,14 +120,18 @@ def test_series_macro_e_so_de_insercao(conn, provedor):
 def test_nova_coleta_prevalece_na_leitura(conn, provedor, tmp_path):
     _gravar(conn, provedor)
     depois = datetime(2026, 11, 12, 14, tzinfo=UTC)
-    linha = conn.execute(
-        "SELECT serie, data, detalhe_json, fonte, hash_sha256 FROM series_macro WHERE serie LIKE 'tesouro|Tesouro IPCA+|%'"
-    ).fetchone()
-    detalhe = linha[2].replace("6,73", "6,99")
-    conn.execute(
-        "INSERT INTO series_macro VALUES (?, ?, NULL, NULL, ?, ?, ?, ?)",
-        (linha[0], linha[1], detalhe, linha[3], depois.isoformat(), "c" * 64),
-    )
+    # uma coleta nova traz o CSV histórico inteiro (F3-A-F7b), com uma taxa mudada
+    linhas = conn.execute(
+        "SELECT serie, data, detalhe_json, fonte FROM series_macro WHERE serie LIKE 'tesouro|%'"
+    ).fetchall()
+    alvo = next(l for l in linhas if l[0].startswith("tesouro|Tesouro IPCA+|"))
+    for serie, data, detalhe, fonte in linhas:
+        if (serie, data) == alvo[:2]:
+            detalhe = detalhe.replace("6,73", "6,99")
+        conn.execute(
+            "INSERT INTO series_macro VALUES (?, ?, NULL, NULL, ?, ?, ?, ?)",
+            (serie, data, detalhe, fonte, depois.isoformat(), "c" * 64),
+        )
     registro = macro.registro_do_banco(conn, D, JANELA)
     assert registro["ntnb"] == pytest.approx((0.0682 + 0.0699) / 2)
     assert registro["coleta"] == depois.isoformat()
@@ -681,3 +685,28 @@ def test_titulo_fora_da_cesta_nao_e_gravado(conn, provedor, tmp_path):
     }
     assert "Tesouro Selic" not in series
     assert series and series <= set(tesouro._TIPOS)
+
+
+def test_coleta_nova_com_conflito_traz_o_conflito(provedor, tmp_path):
+    """F3-A-F7b: depois de uma coleta limpa, a seguinte com linha conflitante vale inteira."""
+    import os
+
+    caminho = tmp_path / "macro" / "tesouro" / "precotaxatesourodireto.csv"
+    with closing(sqlite3.connect(":memory:")) as conexao:
+        migracoes.aplicar(conexao)
+        macro.gravar_series(
+            conexao, provedor, coleta=COLETA, datas=[D.date()], janela=JANELA
+        )
+        assert "abstencao" not in macro.registro_do_banco(conexao, D, JANELA)
+        segunda = datetime(2026, 11, 12, 14, tzinfo=UTC)
+        campos = _ultima_ntnb(caminho.read_text(encoding="utf-8")).split(";")
+        campos[3] = "9,99"
+        _alterar_tesouro(
+            tmp_path, lambda t: t.rstrip("\n") + "\n" + ";".join(campos) + "\n"
+        )
+        os.utime(caminho, (segunda.timestamp(), segunda.timestamp()))
+        macro.gravar_series(
+            conexao, provedor, coleta=segunda, datas=[D.date()], janela=JANELA
+        )
+        registro = macro.registro_do_banco(conexao, D, JANELA)
+    assert "linhas conflitantes no par de aplicação" in registro["abstencao"]
