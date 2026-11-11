@@ -198,6 +198,8 @@ As da 2C, mais duas novas.
 
 - [ ] **F3-A-F4** · test · `test: exercise the FII Selic production path with as_of today` — ressalva da auditoria Claude ao F3-6c, pré-requisito do F3-3d. Arquivos: teste novo do `fii_engine` com `MacroProvider` sobre as fixtures SGS. **Aceite:** sem a semente `autouse` do `conftest` (desligada só nesse teste), `MacroContext(as_of=hoje).selic` pelo caminho de produção dá o mesmo valor da última observação da fixture, e a falha da fonte cai no fallback de 14,75% com o motivo; sem rede. G.
 
+- [ ] **F3-A-F5** · fix · `fix: accept only a valid last close as the yfinance price` — BUG-3-17 (revisão do F3-A-F3). Arquivos: `market_engine.py` (só `_buscar_yfinance` e o ramo de preço da `_buscar_brapi`), regressão `test_bug_3_17_*` (só a marca), testes, registro. **Aceite:** D27; o yfinance só grava preço, `fonte_preco` e `data_preco` quando o último `Close` é finito e positivo; senão, nada de preço dele (a brapi ou o `currentPrice` podem preencher, com a fonte certa); BUG-3-17 em PASS sem mudar asserção; golden SHA igual. G.
+
 - [ ] **[DECISÃO] Checkpoint da 3-a.** Codex audita os commits `Executor: claude-code` da 3-a; Claude (chat) audita os `Executor: codex`. Bugs confirmados viram teste no mesmo dia. O Marcos libera a 3-b por escrito nesta linha.
 
 ### 3-b — Histórico ponto-no-tempo
