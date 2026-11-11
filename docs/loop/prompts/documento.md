@@ -15,7 +15,9 @@ O QUE CONFERIR, nesta ordem:
    - um rito por item (fix:, test:, refactor:, docs:, chore:); golden regenerado só em item [golden]; refactor e mudança de comportamento nunca no mesmo item;
    - a ordem respeita as dependências: nenhum item antes da [DECISÃO] ou da ficha de que depende;
    - todo BUG aberto de tests/regressao/README.md com destino nesta fase tem o item que o corrige, e todo item fix: diz qual teste de regressão retira a marca;
-   - nenhum item repete o que já foi feito (confira no código e em docs/loop/historico/).
+   - nenhum item repete o que já foi feito (confira no código e em docs/loop/historico/);
+   - todo item produtor (dado, função ou módulo que outro item consome) aponta o item consumidor e o teste [e2e] pelo produtor real; produtor sem consumidor nem pendência com destino é achado;
+   - toda decisão aberta está no pacote de decisões, com opções, recomendação e padrão provisório do lado da abstenção; decisão aberta fora do pacote é achado.
 5. Contradições internas e números que não batem.
 
 FORMATO: o de docs/loop/auditoria-externa.md. Uma seção por item ou seção do documento (os sem achado em uma linha só), cada achado com severidade, evidência arquivo:linha e o que fecharia; depois "Não verificado", "Perguntas para o Marcos" e o veredito em uma linha.

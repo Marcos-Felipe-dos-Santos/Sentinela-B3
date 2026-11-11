@@ -485,6 +485,7 @@ O ciclo completo, com os comandos, está em `docs/loop/ciclo-de-fase.md` (desde 
 
 - **Orquestrador do loop e junior-dev:** Sonnet.
 - **senior-reviewer:** Opus, por item. Se o limite semanal apertar, Sonnet por item e um Opus por fase, sobre o diff inteiro.
+- **revisor-leve:** Sonnet, somente leitura, no `/review-diff-leve` dos itens `docs` e `levantamento` (F3-0g).
 - **fable-architect:** só no item de planejamento de cada fase.
 - **scout:** Haiku.
 - **Expectativa no Pro:** esperas de limite fazem parte. O loop retoma sozinho até duas vezes seguidas; confira uma vez por dia.

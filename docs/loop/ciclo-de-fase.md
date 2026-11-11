@@ -23,14 +23,17 @@ Nos comandos, `N` é a fase em minúsculas (`2b`, `2c`, `3`...). Todos rodam na 
 ### Etapa 1. Proposta
 Já vem pronta: o penúltimo item de cada fila é o `levantamento` que propõe a próxima.
 
+Todo item **produtor** (dado, função ou módulo que outro item vai consumir) aponta, na própria linha, o item **consumidor** e o teste `[e2e]` que liga os dois pelo produtor real (F3-0g, P8). Produtor sem consumidor na fase entra como pendência explícita, com o item de destino, e não como item solto.
+
 ### Etapa 2. Revisão da proposta
 ```bash
 python scripts/auditar.py codex documento --fase N --arquivo docs/loop/fila-faseN-proposta.md
 ```
 1. Mande o `...-relatorio.md` e a proposta ao Claude no chat. Ele confere cada achado e traz cada `[DECISÃO]` com as opções, os dados e a opção que ele escolheria, com o motivo.
 2. Você decide. A proposta corrigida entra por commit seu, na `main`.
-3. Decisão de método (taxa, janela, limiar, fórmula) nunca fica no texto da proposta: vira `[DECISÃO]` sua ou vai para uma ficha.
+3. Decisão de método (taxa, janela, limiar, fórmula) nunca fica no texto da proposta: vira `[DECISÃO]` sua ou vai para uma ficha. Ficha de método continua com a auditoria FICHA (etapa 5).
 4. Se a proposta mudou muito, rode o Codex de novo com `--foco "o que mudou desde a rodada anterior: ..."`.
+5. **Pacote de decisões antes da ativação** (F3-0g, P8, como foi feito na Fase 3): a proposta só ativa com o pacote de decisões junto, com toda decisão aberta listada com as opções, a recomendação e o padrão provisório, sempre do lado da abstenção (sem a decisão, o item abstém em vez de assumir um número). Decisão aberta fora do pacote é achado da auditoria DOCUMENTO.
 
 ### Etapa 3. Ativação
 ```bash
