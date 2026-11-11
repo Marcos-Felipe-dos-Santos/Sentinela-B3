@@ -572,7 +572,7 @@ def gravar_series(
     """Grava em `series_macro` os insumos da taxa real das datas pedidas (F3-1c).
 
     Uma linha por observação, com a linha original da fonte, a fonte, a coleta e o hash do
-    conteúdo baixado: NTN-B (todas as linhas do CSV histórico do Tesouro), feriados ANBIMA
+    conteúdo baixado: NTN-B (as linhas dos títulos da cesta do CSV histórico do Tesouro, uma vez cada; linha diferente do mesmo título e data-base com sufixo na série, BUG-3-19), feriados ANBIMA
     dos anos das datas e do anterior, edições do Focus e a pesquisa devida em cada data, o
     calendário do IBGE e o IPCA da SIDRA na janela, e a Selic (SGS 432). Cada família que
     falha fica no resumo com o motivo; as outras são gravadas.
@@ -603,12 +603,28 @@ def gravar_series(
         cabecalho, *corpo = texto.splitlines()
         colunas = cabecalho.split(";")
         linhas = []
+        vistas: dict[tuple, list[str]] = {}
         for linha in corpo:
             campos = dict(zip(colunas, linha.split(";"), strict=False))
+            if campos.get("Tipo Titulo") not in tesouro._TIPOS:
+                continue  # fora da cesta, como em `tesouro.ler_csv` (BUG-3-19)
             dia, mes, ano = campos["Data Base"].split("/")
+            par = (
+                campos["Tipo Titulo"],
+                campos["Data Vencimento"],
+                f"{ano}-{mes}-{dia}",
+            )
+            anteriores = vistas.setdefault(par, [])
+            if linha in anteriores:
+                continue  # repetida idêntica: uma vez
+            anteriores.append(linha)
+            # BUG-3-19: linha diferente do mesmo título e data-base fica como o arquivo a traz,
+            # com sufixo na série; a leitura pelo banco a vê, e o `ler_csv` marca o conflito
+            # da data-base como no caminho histórico, sem abortar a gravação.
+            sufixo = f"|{len(anteriores)}" if len(anteriores) > 1 else ""
             linhas.append(
                 (
-                    f"tesouro|{campos['Tipo Titulo']}|{campos['Data Vencimento']}",
+                    f"tesouro|{campos['Tipo Titulo']}|{campos['Data Vencimento']}{sufixo}",
                     f"{ano}-{mes}-{dia}",
                     None,
                     None,

@@ -10,7 +10,6 @@ da cesta (que `tesouro.ler_csv` ignora) também derruba a família. Corrige: F3-
 import sqlite3
 from contextlib import closing
 
-import pytest
 from test_macro_por_data import _sgs_oficial
 from test_taxa_real_data_passada import COLETA, JANELA, D, _provedor
 
@@ -43,11 +42,6 @@ def _gravar_com(tmp_path, monkeypatch, alterar):
         )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=sqlite3.IntegrityError,
-    reason="BUG-3-19 · linha duplicada do Tesouro derruba o gravar_series · corrige: F3-A-F7",
-)
 def test_linha_duplicada_nao_derruba_as_outras_familias(tmp_path, monkeypatch):
     def duplicar(texto):
         linhas = texto.splitlines(keepends=True)
@@ -61,11 +55,6 @@ def test_linha_duplicada_nao_derruba_as_outras_familias(tmp_path, monkeypatch):
         assert isinstance(resumo[familia], int), familia
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="BUG-3-19 · título fora da cesta malformado derruba o Tesouro · corrige: F3-A-F7",
-)
 def test_titulo_fora_da_cesta_malformado_nao_derruba_o_tesouro(tmp_path, monkeypatch):
     def fora_da_cesta(texto):
         cabecalho = texto.splitlines()[0]

@@ -5,6 +5,7 @@ IBGE, SIDRA, SGS) → provedor → `gravar_series` → `series_macro` → `regis
 `get_taxa_real(as_of)` → Gordon e FII. O resultado é o mesmo do caminho histórico do F3-1c-a.
 """
 
+import re
 import sqlite3
 from contextlib import closing
 from datetime import UTC, date, datetime
@@ -14,7 +15,7 @@ from test_macro_por_data import _sgs_oficial
 from test_taxa_real_data_passada import COLETA, JANELA, D, _Agora, _provedor
 
 import config
-from sentinela.data.providers import macro
+from sentinela.data.providers import macro, tesouro
 from sentinela.data.store import migracoes
 
 NUMEROS = (
@@ -581,3 +582,102 @@ def test_selic_com_janela_ilegivel_na_url_abstem(conn, provedor, monkeypatch, ur
         "abstencao": f"Selic: janela ilegível na fonte {url}"
     }
     assert _linhas(conn, "sgs_432") == []
+
+
+# --- F3-A-F7 (BUG-3-19): linhas do Tesouro repetidas e conflitantes ------------------------
+
+
+def _alterar_tesouro(tmp_path, alterar):
+    caminho = tmp_path / "macro" / "tesouro" / "precotaxatesourodireto.csv"
+    caminho.write_text(alterar(caminho.read_text(encoding="utf-8")), encoding="utf-8")
+
+
+def _ultima_ntnb(texto):
+    """A linha de NTN-B com a data-base mais recente antes de D (a que entra na cesta)."""
+    linhas = [
+        l
+        for l in texto.splitlines()
+        if l.startswith("Tesouro IPCA+ com Juros Semestrais;")
+    ]
+
+    def data_base(linha):
+        dia, mes, ano = linha.split(";")[2].split("/")
+        return f"{ano}-{mes}-{dia}"
+
+    return max(
+        (l for l in linhas if data_base(l) < D.date().isoformat()), key=data_base
+    )
+
+
+def test_linha_conflitante_do_tesouro_da_o_mesmo_resultado_pelo_banco(
+    conn, provedor, tmp_path
+):
+    def conflitante(texto):
+        linha = _ultima_ntnb(texto)
+        campos = linha.split(";")
+        campos[3] = "9,99"  # outra taxa de compra no mesmo título e data-base
+        return texto.rstrip("\n") + "\n" + ";".join(campos) + "\n"
+
+    _alterar_tesouro(tmp_path, conflitante)
+    resumo = _gravar(conn, provedor)
+    assert isinstance(resumo["tesouro"], int)
+    do_banco = macro.registro_do_banco(conn, D, JANELA)
+    historico = provedor.registro(D, JANELA, coleta=COLETA)
+    assert "linhas conflitantes no par de aplicação" in historico["abstencao"]
+    assert do_banco.get("abstencao") == historico["abstencao"]
+    sufixos = conn.execute(
+        "SELECT COUNT(*) FROM series_macro WHERE serie LIKE 'tesouro|Tesouro IPCA+ com Juros Semestrais|%|2'"
+    ).fetchone()
+    assert sufixos == (1,)
+    series = [
+        s
+        for (s,) in conn.execute(
+            "SELECT DISTINCT serie FROM series_macro WHERE serie LIKE 'tesouro|%'"
+        )
+    ]
+    com_sufixo = [s for s in series if s.count("|") == 3]
+    assert len(com_sufixo) == 1 and com_sufixo[0].endswith("|2")
+    assert all(
+        re.fullmatch(r"tesouro\|[^|]+\|\d{2}/\d{2}/\d{4}", s)
+        for s in series
+        if s not in com_sufixo
+    )
+
+
+def test_linha_repetida_identica_do_tesouro_entra_uma_vez(conn, provedor, tmp_path):
+    _gravar(conn, provedor)
+    sem_repeticao = conn.execute(
+        "SELECT COUNT(*) FROM series_macro WHERE serie LIKE 'tesouro|%'"
+    ).fetchone()
+    with closing(sqlite3.connect(":memory:")) as outro:
+        migracoes.aplicar(outro)
+        _alterar_tesouro(
+            tmp_path, lambda t: t.rstrip("\n") + "\n" + _ultima_ntnb(t) + "\n"
+        )
+        resumo = _gravar(outro, provedor)
+        assert resumo["tesouro"] == sem_repeticao[0]
+        assert (
+            outro.execute(
+                "SELECT COUNT(*) FROM series_macro WHERE serie LIKE 'tesouro|%'"
+            ).fetchone()
+            == sem_repeticao
+        )
+
+
+def test_titulo_fora_da_cesta_nao_e_gravado(conn, provedor, tmp_path):
+    def com_selic(texto):
+        linha = _ultima_ntnb(texto).replace(
+            "Tesouro IPCA+ com Juros Semestrais;", "Tesouro Selic;"
+        )
+        return texto.rstrip("\n") + "\n" + linha + "\n"
+
+    _alterar_tesouro(tmp_path, com_selic)
+    _gravar(conn, provedor)
+    series = {
+        s.split("|")[1]
+        for (s,) in conn.execute(
+            "SELECT DISTINCT serie FROM series_macro WHERE serie LIKE 'tesouro|%'"
+        )
+    }
+    assert "Tesouro Selic" not in series
+    assert series and series <= set(tesouro._TIPOS)
