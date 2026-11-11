@@ -25,6 +25,11 @@ Uma linha por decisão provisória ou `[!]` (pacote F3-0, P3).
 - 2026-11-11 · checkpoint 3-a · pergunta 5 da auditoria Claude (`data_preco`) resolvida no aceite do F3-A-F3: a data do fechamento quando a fonte a traz; motivo explícito só quando não traz; pergunta 2 do Codex (alcance da decisão 33) é a mesma nota da DD-06 já levada ao Marcos
 - 2026-11-11 · F3-1c · desvio (política §3, caso 3): um teste aplicou a migração 003 ao `sentinela_store.db` real (tabela `series_macro` vazia); conferido sem perda contra o backup de 10/11 (`outputs/f3-1c-conferencia-banco-real.txt`), backup verificado novo em `outputs/f3-1c-backup/`, e o `conftest` passa a desligar a conexão real; a migração 003 fica congelada pelo banco real (editar o SQL faria o banco recusar a abertura); para o Marcos ratificar
 
+## Auditoria externa do Gemini sobre 284165f..419f010 (11/11/2026)
+
+- **Relatório não encontrado.** A mensagem do Marcos aponta `/mnt/c/Users/marcos/Downloads/auditoria-fase-3-gemini-relatorio.md`; o arquivo não existe (procurado em `Downloads`, nas pastas `*gemini*` e até quatro níveis abaixo de `C:\Users\marcos`). Sem ele, os achados 2 a 5 não podem ser conferidos e o registro em `docs/loop/auditorias/3-a-gemini.md` não pode ser copiado. O achado 1 está descrito na própria mensagem e foi conferido: BUG-3-18, item F3-A-F6.
+- **Leitura do `sgs_432` pelo `MacroContext`:** nenhum código lê a Selic gravada em `series_macro`; o `MacroContext(as_of)` baixa a série pelo `serie_sgs` a cada uso (`config.py`). A ligação não está no escopo da 3-a (o F3-1c gravou a Selic, sem leitor); fica para o F3-3d ou o F3-7, a decidir no checkpoint da 3-b.
+
 ## Para ratificar
 
 Decisões delegadas (`docs/loop/politica-decisao-autonoma.md`, §1). O Marcos ratifica ou reverte em lote no checkpoint; as das classes 2 e 3 passam pela revisão da outra família (§2).
