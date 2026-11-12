@@ -1015,3 +1015,12 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Testes:** não se aplica (só documento). Suíte inalterada.
 - **Resíduos:** `data/fontes/l1/cvm/fre/fre_cia_aberta_2025.zip` (fora do git).
 - **Decisões delegadas novas:** nenhuma.
+
+### F3-P10 — docs: study scope of health and benefit operators
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso (independente do F3-3d, terceiro de três).
+- **O que foi feito:** `docs/decisoes/escopo-saude-beneficios-3.md`: o critério vigente (`modelo_do_documento`) reproduzido sobre o BPP consolidado de cada DFP de 2010 a 2025 no banco único (só leitura): nove companhias listadas hoje passam por "seguradora" em algum ano, com a data de entrega de cada mudança (HAPV3 2017, SAUD3 2020, RDOR3 2023, PEAB 2024; MGLU3 de 2010 a 2012), e mais 11 fora do índice atual; materialidade pelo peso das contas que disparam o critério no passivo total da DFP de 2025 (IRBR3 59,1% a HAPV3 2,7%; BBSE3 e QUAL3 só pelo rótulo); quatro caminhos, nenhum limiar escolhido.
+- **Testes:** não se aplica (só documento). Suíte inalterada.
+- **Resíduos:** `~/.cache/sentinela-testes-claude/p10.py` e `p10b.py` (fora do repositório).
+- **Decisões delegadas novas:** nenhuma.
+- **Depois:** esgotados os três independentes do F3-3d (F3-P07, F3-P09 e F3-P10), o loop para pela regra "Item bloqueado" do protocolo (política §3: `[!]` aberto) até a resposta do Marcos à pergunta 1 da auditoria da 3-a.
