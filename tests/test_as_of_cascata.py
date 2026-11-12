@@ -239,3 +239,23 @@ def test_informe_recusa_corte_sem_fuso(tmp_path, api):
     with pytest.raises(ValueError, match="fuso"):
         getattr(p, api)("00.000.000/0001-00", as_of=datetime(2024, 1, 1))  # noqa: DTZ001
     p.baixar_informe.assert_not_called()
+
+
+@pytest.mark.parametrize(("as_of", "esperado"), [(None, AGORA), (AS_OF, AS_OF)])
+def test_taxa_real_pela_referencia_da_cascata(monkeypatch, as_of, esperado):
+    """F3-A-F10 (BUG-3-22): sem as_of, o instante atual; com ele, o as_of, e a janela contábil."""
+    monkeypatch.setattr(market_engine, "datetime", Relogio)
+    pedidos = []
+    monkeypatch.setattr(
+        market_engine,
+        "get_taxa_real",
+        lambda *, as_of, janela=None: pedidos.append((as_of, janela)) or {"r": 1},
+    )
+    m = market_engine.MarketEngine.__new__(market_engine.MarketEngine)
+    dados = {"janela_contabil_cvm": ("2024-01-01", "2024-12-31")}
+    if as_of is None:
+        m._buscar_taxa_real(dados)
+    else:
+        m._buscar_taxa_real(dados, as_of=as_of)
+    assert pedidos == [(esperado, ("2024-01-01", "2024-12-31"))]
+    assert dados["taxa_real"] == {"r": 1}

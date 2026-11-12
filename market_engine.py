@@ -568,7 +568,7 @@ class MarketEngine:
         else:
             self._buscar_proventos_b3(ticker, dados, as_of=as_of)
         self._buscar_liquidez(ticker, dados)
-        self._buscar_taxa_real(dados)
+        self._buscar_taxa_real(dados, as_of=as_of)
         if as_of is None:
             self._contexto_janelas(dados, datetime.now(UTC))
         else:
@@ -860,15 +860,16 @@ class MarketEngine:
                 dados["ipca_serie"] = _erro_do_codigo(erro)
         dados["janelas_fundamentais"] = entradas(dados, instante)
 
-    def _buscar_taxa_real(self, dados: dict[str, Any]) -> None:
+    def _buscar_taxa_real(self, dados: dict[str, Any], *, as_of: datetime | None = None) -> None:
         """Registro aditivo, fora dos métodos e do prompt (F2B-30).
 
         Sem início/fim comprovados, IPCA se abstém; não inferir janeiro pela
-        data final de um balanço nem usar a janela do TTM como DFP anual.
+        data final de um balanço nem usar a janela do TTM como DFP anual. A referência é
+        o `as_of` da cascata, ou o instante atual sem ele (BUG-3-22).
         """
         janela = dados.get('janela_contabil_cvm')
         dados['taxa_real'] = get_taxa_real(
-            as_of=datetime.now(UTC), janela=janela
+            as_of=datetime.now(UTC) if as_of is None else as_of, janela=janela
         )
 
     def _buscar_proventos_b3(self, ticker: str, dados: dict[str, Any], *, as_of: datetime | None = None) -> None:

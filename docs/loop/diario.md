@@ -821,3 +821,13 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Suíte:** 4479 passed, 1 skipped, 4 xfailed → 4485 passed, 1 skipped, 2 xfailed (+4 testes e as duas regressões em PASS). Golden SHA igual. Banco real não aberto.
 - **Resíduos:** `outputs/f3-a-f9-mutmut-*.log`, `outputs/mutmut-stats-f3-a-f9.json`.
 - **Revisão rodada 1:** NÃO PODE COMMITAR, por código: o piso da consulta do banco (25/12 do ano anterior) cortava a pesquisa da última edição de dezembro quando ela cai de 22 a 24/12 (jan/2022, jan/2023, jan/2028). Corrigido com o piso em 1º de janeiro e um teste que falha com o antigo. Médios: os dois mutantes de `<` que o diário chamava de equivalentes não eram; os testes do instante agora os matam (calendário e pedidos no `pib`; série nova gravada no banco). Declarados: a passagem da URL e da leitura da agenda do `pib` para `AGENDA_FOCUS` e `edicoes_focus` é refactor mínimo dentro do fix, equivalente (mesmo fuso, mesma regra da sexta anterior), feito para juntar as duas agendas com uma regra só; o `_focus` baixa sempre a agenda do ano anterior (escolha: a gravação guarda o histórico das edições; a falha dela fica na família `focus`), e o `pib` só quando precisa (consulta pontual). Detalhes dos testes corrigidos (import duplicado, comentário errado).
+
+### F3-A-F10 — fix: pass the cascade as_of to the real rate
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso.
+- **O que foi feito:** `market_engine.py`, só `buscar_dados_ticker` e `_buscar_taxa_real`: a cascata passa o `as_of` a `_buscar_taxa_real`, que o repassa a `get_taxa_real` (sem `as_of`, o instante atual, como antes).
+- **D27:** `tests/regressao/test_bug_3_22_cascata_taxa_real_sem_as_of.py` sem a marca falhou no código anterior (`get_taxa_real` recebia o relógio de 10/11/2026 com `as_of` de 2024) e passa agora, sem mudar asserção.
+- **Testes:** `tests/test_as_of_cascata.py` +2 (parametrizado): sem `as_of`, o instante atual; com ele, o `as_of`; nos dois, a janela contábil repassada e o registro gravado em `dados['taxa_real']`.
+- **Mutação:** `_buscar_taxa_real` (`--max-children 2`): 14 mortos e 1 sobrevivente: `datetime.now(None)` no lugar de `datetime.now(UTC)`, que o relógio falso dos testes não distingue (ele devolve sempre o mesmo instante com fuso); limitação do relógio falso, a mesma dos testes de cascata existentes.
+- **Suíte:** 4485 passed, 1 skipped, 2 xfailed → 4488 passed, 1 skipped, 1 xfailed (+2 testes e a regressão em PASS). Golden SHA igual. Banco real não aberto.
+- **Resíduos:** `outputs/f3-a-f10-mutmut.log`.

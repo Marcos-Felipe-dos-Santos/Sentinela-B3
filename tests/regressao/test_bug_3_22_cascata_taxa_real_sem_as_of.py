@@ -10,18 +10,12 @@ dois diferem. O teste do F3-6c trocava `_buscar_taxa_real` por um `Mock`. Corrig
 from types import SimpleNamespace
 from unittest.mock import Mock
 
-import pytest
 from test_as_of_cascata import AGORA, AS_OF, Relogio
 
 import market_engine
 from sentinela.domain.enums import AssetType
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="BUG-3-22 · taxa real da cascata pelo relógio, não pelo as_of · corrige: F3-A-F10",
-)
 def test_taxa_real_recebe_o_as_of_da_cascata(monkeypatch):
     monkeypatch.setattr(market_engine, "datetime", Relogio)
     pedidos = []
