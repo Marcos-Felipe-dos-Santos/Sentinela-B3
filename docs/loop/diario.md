@@ -1007,3 +1007,11 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Executor:** claude-code (Claude Opus 5.5).
 - **Revisão cruzada:** DD-12 a DD-17 e DD-19 a DD-22 (família codex) marcadas "confere" em `docs/loop/pendencias.md`; nenhuma contestada.
 - **DD-60:** o achado do F3-P07 (FCA sem código antes de 2018) segue pela decisão delegada, não por parada; a fila continua pelos independentes do F3-3d (F3-P09 e F3-P10).
+
+### F3-P09 — docs: study ON/PN attribution of distinct rights
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso (independente do F3-3d, segundo de três).
+- **O que foi feito:** `docs/decisoes/direitos-on-pn-3.md`: a regra atual por componente (LPA divulgado por classe e proventos da B3 por espécie respeitam direitos distintos; VPA e D0 do Gordon e dos bancos dividem o total por todas as ações); medida na DFP de 2025 (54 de 121 companhias com LPA de ON e PN divulgam LPA diferente, mediana PN/ON 1,10 em 46; três razões acima de 10 sem conferência); o FRE aberto de 2025 (baixado da CVM, SHA-256 `cf207389…`) só traz quantidade por classe, e os direitos ficam no item 18.1 e no estatuto, em PDF; ficha proposta para o checkpoint da 3-b, sem mudança automática.
+- **Testes:** não se aplica (só documento). Suíte inalterada.
+- **Resíduos:** `data/fontes/l1/cvm/fre/fre_cia_aberta_2025.zip` (fora do git).
+- **Decisões delegadas novas:** nenhuma.

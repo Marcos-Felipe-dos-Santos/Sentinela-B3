@@ -264,7 +264,7 @@ As da 2C, mais duas novas.
 
 - [x] **F3-P07** · levantamento · `docs: study preferred share identity without FCA symbol` — F2C-54. Arquivos: `docs/decisoes/`. **Aceite:** conforme a tabela F3-P07; fonte oficial por identidade/documento/versão; sem prova, abstém; correção só como item proposto para decisão no checkpoint da 3-b.
 
-- [ ] **F3-P09** · levantamento · `docs: study ON/PN attribution of distinct rights` — F2C-38. Arquivos: `docs/decisoes/`. **Aceite:** conforme a tabela F3-P09; ficha proposta com estatuto/FRE, fonte e data; nenhuma mudança automática.
+- [x] **F3-P09** · levantamento · `docs: study ON/PN attribution of distinct rights` — F2C-38. Arquivos: `docs/decisoes/`. **Aceite:** conforme a tabela F3-P09; ficha proposta com estatuto/FRE, fonte e data; nenhuma mudança automática.
 
 - [ ] **F3-P10** · levantamento · `docs: study scope of health and benefit operators` — F2C-45(i). Arquivos: `docs/decisoes/`. **Aceite:** conforme a tabela F3-P10, agora também com o histórico PIT (quando cada ticker teria mudado de escopo); nenhum limiar escolhido.
 
