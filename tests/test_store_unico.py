@@ -98,6 +98,7 @@ def test_migracao_sem_perda_e_leitura_pelas_classes(tmp_path):
             7,
             8,
             9,
+            10,
         ]
     # os bancos antigos ficam no disco, intactos
     assert all(p.is_file() for p in origens.values())
@@ -254,6 +255,7 @@ def test_caminho_padrao_sem_banco_nenhum_cria_pelo_esquema(tmp_path, monkeypatch
             7,
             8,
             9,
+            10,
         ]
 
 

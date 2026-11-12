@@ -14,7 +14,10 @@ Regras:
 
 - **Idempotência pelo hash:** um arquivo já carregado (mesmo SHA-256) não é lido de novo.
 - **Só inserção:** linha cuja chave já existe não é regravada. Com os mesmos dados, conta
-  como repetida; com dados diferentes, fica a gravada e o caso entra em `conflitos`.
+  como repetida; com dados diferentes, fica a gravada e o caso entra em `conflitos` (no
+  resumo, até 100) e em `conflitos_carga` (todos, para o leitor; BUG-3-26, DD-57).
+- **Informe de 2016 a 2020:** a coluna do fundo é `CNPJ_Fundo` (leiaute anterior à
+  Resolução 175); a chave usa o CNPJ das duas, e `linha_do_informe` lê com os nomes atuais.
 - **Vazio não é zero:** valor ou quantidade vazios são gravados como nulos.
 - **Linha ilegível** (versão, escala, ordem do exercício ou número inválidos, chave vazia,
   colunas a mais ou a menos) é recusada com o motivo, sem derrubar a carga.
@@ -54,6 +57,11 @@ TIPOS = ("DFP", "ITR", "FCA", "FII_INFORME")
 ORDENS = ("ÚLTIMO", "PENÚLTIMO")
 PARTES_FII = ("geral", "complemento", "ativo_passivo")
 LIMITE_REGISTROS = 100
+# Informe de FII de 2016 a 2020: a CVM manteve o leiaute anterior à Resolução 175 (BUG-3-25).
+LEIAUTE_ANTERIOR_175 = {
+    "CNPJ_Fundo": "CNPJ_Fundo_Classe",
+    "Nome_Fundo": "Nome_Fundo_Classe",
+}
 _A_MAIS = "__colunas_a_mais__"
 
 _DEMONSTRACAO = r"(?P<dem>(?:BPA|BPP|DRE|DRA|DMPL|DFC_MD|DFC_MI|DVA)_(?:con|ind))"
@@ -82,6 +90,7 @@ class Resumo:
     hash_sha256: str
     tipo: str
     ja_carregado: bool = False
+    relido: bool = False
     so_ultima_versao: bool | None = None
     inseridas: dict[str, int] = field(default_factory=lambda: defaultdict(int))
     repetidas: dict[str, int] = field(default_factory=lambda: defaultdict(int))
@@ -156,8 +165,25 @@ class _Tabela:
         agora = tuple(dados[i] for i in comparar)
         if antes == agora:
             resumo.repetidas[self.nome] += 1
-        else:
-            resumo._conflito(self.nome, dict(zip(self.chave, chave)), antes, agora)
+            return
+        campos = dict(zip(self.chave, chave))
+        resumo._conflito(self.nome, campos, antes, agora)
+        conn.execute(
+            "INSERT OR IGNORE INTO conflitos_carga (tabela, cnpj, documento, dt_refer, versao, "
+            "chave_json, gravado_json, arquivo_json, fonte, coleta, hash_sha256) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                self.nome,
+                campos["cnpj"],
+                campos.get("documento", "FCA"),
+                campos["dt_refer"],
+                campos["versao"],
+                json.dumps(campos, ensure_ascii=False, sort_keys=True),
+                json.dumps(antes, ensure_ascii=False),
+                json.dumps(agora, ensure_ascii=False),
+                *prov,
+            ),
+        )
 
 
 _ENTREGAS = _Tabela(
@@ -414,6 +440,24 @@ def _carregar_fca(conn, zf, prov: tuple, resumo: Resumo) -> bool:
     return _so_ultima(conteudo, indice)
 
 
+def linha_do_informe(texto: str) -> dict:
+    """Linha guardada do Informe com os nomes de coluna do leiaute atual (Resolução 175).
+
+    A linha fica guardada como o arquivo a traz (DD-43); a leitura troca `CNPJ_Fundo` e
+    `Nome_Fundo`, do leiaute de 2016 a 2020, pelos nomes atuais.
+    """
+    linha = json.loads(texto)
+    return {LEIAUTE_ANTERIOR_175.get(coluna, coluna): v for coluna, v in linha.items()}
+
+
+def _cnpj_do_fundo(linha: dict) -> str:
+    """CNPJ do fundo no leiaute atual ou no anterior; os dois juntos na mesma linha recusam."""
+    if "CNPJ_Fundo_Classe" in linha and "CNPJ_Fundo" in linha:
+        raise LinhaRecusada("CNPJ_Fundo e CNPJ_Fundo_Classe na mesma linha")
+    coluna = "CNPJ_Fundo" if "CNPJ_Fundo" in linha else "CNPJ_Fundo_Classe"
+    return _texto(linha, coluna, obrigatorio=True)
+
+
 def _carregar_fii(conn, zf, prov: tuple, resumo: Resumo) -> bool:
     _unico(zf, r"inf_mensal_fii_geral_\d{4}\.csv")
     parte = re.compile(
@@ -429,7 +473,7 @@ def _carregar_fii(conn, zf, prov: tuple, resumo: Resumo) -> bool:
             try:
                 _sem_colunas_a_mais(linha)
                 chave_doc = (
-                    _texto(linha, "CNPJ_Fundo_Classe", obrigatorio=True),
+                    _cnpj_do_fundo(linha),
                     _texto(linha, "Data_Referencia", obrigatorio=True),
                 )
             except LinhaRecusada as motivo:
@@ -448,12 +492,20 @@ def _carregar_fii(conn, zf, prov: tuple, resumo: Resumo) -> bool:
 
 
 def carregar(
-    conn: sqlite3.Connection, arquivo: Path | str, *, tipo: str, fonte: str, coleta: str
+    conn: sqlite3.Connection,
+    arquivo: Path | str,
+    *,
+    tipo: str,
+    fonte: str,
+    coleta: str,
+    reler: bool = False,
 ) -> Resumo:
-    """Carrega o ZIP oficial no banco (migrações 004 e 005 aplicadas), num `SAVEPOINT`.
+    """Carrega o ZIP oficial no banco (migrações 004, 005 e 010 aplicadas), num `SAVEPOINT`.
 
     `fonte` é a URL de origem e `coleta` o instante do download (ISO 8601), gravados em cada
-    linha com o hash do arquivo. Arquivo já carregado devolve `ja_carregado`, sem ler o ZIP.
+    linha com o hash do arquivo. Arquivo já carregado devolve `ja_carregado`, sem ler o ZIP;
+    com `reler`, é lido de novo pelas mesmas regras (o que faltava é inserido, o gravado conta
+    como repetido ou conflito) e o registro em `cargas_arquivo` fica como estava (`relido`).
     """
     if tipo not in TIPOS:
         raise ValueError(f"tipo desconhecido: {tipo!r}")
@@ -464,8 +516,10 @@ def carregar(
     if conn.execute(
         "SELECT 1 FROM cargas_arquivo WHERE hash_sha256 = ?", (resumo.hash_sha256,)
     ).fetchone():
-        resumo.ja_carregado = True
-        return resumo
+        if not reler:
+            resumo.ja_carregado = True
+            return resumo
+        resumo.relido = True
     conn.execute("SAVEPOINT carga_cvm")
     try:
         _carregar_arquivo(conn, arquivo, tipo, fonte, coleta, resumo)
@@ -490,6 +544,8 @@ def _carregar_arquivo(
         else:
             so_ultima = _carregar_fii(conn, zf, prov, resumo)
         resumo.so_ultima_versao = so_ultima
+        if resumo.relido:
+            return
         conn.execute(
             "INSERT INTO cargas_arquivo (hash_sha256, tipo, arquivo, fonte, coleta, "
             "so_ultima_versao, resumo_json) VALUES (?, ?, ?, ?, ?, ?, ?)",

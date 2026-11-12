@@ -17,8 +17,6 @@ import sqlite3
 from contextlib import closing
 from pathlib import Path
 
-import pytest
-
 from sentinela.data.pit import carga_cvm
 from sentinela.data.store import migracoes
 
@@ -27,7 +25,6 @@ INFORME_2017 = (
 )
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-3-25: corrigido no F3-3b-fix")
 def test_bug_3_25_informe_de_2017_grava_as_linhas_do_fundo():
     with closing(sqlite3.connect(":memory:")) as conn:
         migracoes.aplicar(conn)

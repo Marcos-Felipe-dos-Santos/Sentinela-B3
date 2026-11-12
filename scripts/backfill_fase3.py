@@ -156,6 +156,7 @@ class Backfill:
     fontes: Fontes
     de: int = ANO_INICIAL
     ate: int | None = None
+    reler: bool = False
     estado: dict = field(default_factory=dict)
     relatorio: list[dict] = field(default_factory=list)
 
@@ -216,21 +217,30 @@ class Backfill:
         self._guardar()
         self._volume()
 
-    def _zip(self, familia: str, ano: int) -> dict:
+    def _zip(self, familia: str, ano: int, *, reler: bool = False) -> dict:
+        """Baixa e carrega o ZIP do ano; `reler` relê o já baixado, sem novo download."""
         url = URLS[familia].format(ano=ano)
         destino = self.brutos / familia.lower() / url.rsplit("/", 1)[1]
-        caminho = self.fontes.arquivo(url, destino)
+        if reler and not destino.is_file():
+            raise FileNotFoundError(f"releitura sem o arquivo baixado: {destino}")
+        caminho = destino if reler else self.fontes.arquivo(url, destino)
         info = {
             "arquivo": caminho.name,
             "bytes": caminho.stat().st_size,
             "sha256": _sha256(caminho),
         }
         coleta = self.agora.isoformat()
+        if reler:  # a coleta é o instante do download, guardado no registro do arquivo
+            registro = self.conn.execute(
+                "SELECT coleta FROM cargas_arquivo WHERE hash_sha256 = ?",
+                (info["sha256"],),
+            ).fetchone()
+            coleta = registro[0] if registro else coleta
         if familia == "COTAHIST":
             resumo = b3_cotahist.carregar(self.conn, caminho, fonte=url, coleta=coleta)
         else:
             resumo = carga_cvm.carregar(
-                self.conn, caminho, tipo=familia, fonte=url, coleta=coleta
+                self.conn, caminho, tipo=familia, fonte=url, coleta=coleta, reler=reler
             )
             if (
                 not resumo.ja_carregado
@@ -245,6 +255,7 @@ class Backfill:
             resumo = {
                 "tipo": resumo.tipo,
                 "ja_carregado": resumo.ja_carregado,
+                "relido": resumo.relido,
                 "so_ultima_versao": resumo.so_ultima_versao,
                 **resumo.para_dict(),
             }
@@ -277,6 +288,13 @@ class Backfill:
                 if ano >= PRIMEIRO_ANO.get(familia, self.de):
                     self.etapa(
                         f"{familia}:{ano}", lambda f=familia, a=ano: self._zip(f, a)
+                    )
+        for familia in ("FCA", "DFP", "ITR", "FII_INFORME") if self.reler else ():
+            for ano in anos:
+                if ano >= PRIMEIRO_ANO.get(familia, self.de):
+                    self.etapa(
+                        f"releitura:{familia}:{ano}",
+                        lambda f=familia, a=ano: self._zip(f, a, reler=True),
                     )
         if self.fontes.macro is not None:
             datas = _datas_mensais(self.de, self.agora.date())
@@ -390,12 +408,17 @@ def main(argv: list[str] | None = None) -> int:
     args.add_argument("--de", type=int, default=ANO_INICIAL)
     args.add_argument("--ate", type=int)
     args.add_argument("--pausa", type=float, default=2.0)
+    args.add_argument(
+        "--reler",
+        action="store_true",
+        help="relê os ZIPs da CVM já baixados (F3-3b-fix: Informe antigo e conflitos)",
+    )
     a = args.parse_args(argv)
     conferir_backup(a.banco, a.backup)
     fontes = Fontes(macro=macro.MacroProvider(a.brutos / "macro"), pausa=a.pausa)
     with closing(sqlite3.connect(a.banco)) as conn:
         migracoes.aplicar(conn)
-        Backfill(conn, a.brutos, a.saida, fontes, a.de, a.ate).executar(
+        Backfill(conn, a.brutos, a.saida, fontes, a.de, a.ate, a.reler).executar(
             companhias_do_indice(a.indice)
         )
     return 0

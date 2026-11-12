@@ -29,6 +29,7 @@ from datetime import date, datetime
 import pandas as pd
 
 from sentinela.data import liquidez
+from sentinela.data.pit.carga_cvm import linha_do_informe
 from sentinela.data.providers import b3_cotahist
 from sentinela.data.referencia import montagem
 from sentinela.data.referencia.registro import Excecao, Indice
@@ -151,6 +152,24 @@ def tickers_em(conn, dia: date) -> list[dict]:
     return listados
 
 
+def _fca_entregue_depois(conn, texto: str) -> set[tuple[str, str, int]]:
+    """Versões do FCA que o índice da CVM lista com outra data de entrega, em D ou depois.
+
+    O conflito da carga no índice (`conflitos_carga`, DD-57) é a mesma versão com duas
+    entregas; só o conteúdo decide a versão, e a entrega vale pela data mais tardia (DD-58):
+    a versão só conta como entregue antes de D se todas as datas observadas forem.
+    """
+    em_duvida = set()
+    for cnpj, dt_refer, versao, arquivo in conn.execute(
+        "SELECT cnpj, dt_refer, versao, arquivo_json FROM conflitos_carga "
+        "WHERE documento = 'FCA' AND tabela = 'fca_entregas'"
+    ):
+        receb = json.loads(arquivo)[4]
+        if not (isinstance(receb, str) and receb and receb < texto):
+            em_duvida.add((cnpj, dt_refer, versao))
+    return em_duvida
+
+
 def _fca_por_referencia(conn, texto: str) -> dict[tuple[str, str], list[dict] | None]:
     """(CNPJ, referência) com versão entregue antes de D → linhas `valor_mobiliario`.
 
@@ -158,10 +177,12 @@ def _fca_por_referencia(conn, texto: str) -> dict[tuple[str, str], list[dict] | 
     aberta só guarda as da última versão, DD-34); sem nenhuma, `None`.
     """
     entregues: dict[tuple, set[int]] = {}
+    em_duvida = _fca_entregue_depois(conn, texto)
     for cnpj, dt_refer, versao in conn.execute(
         "SELECT cnpj, dt_refer, versao FROM fca_entregas WHERE dt_receb < ?", (texto,)
     ):
-        entregues.setdefault((cnpj, dt_refer), set()).add(versao)
+        if (cnpj, dt_refer, versao) not in em_duvida:
+            entregues.setdefault((cnpj, dt_refer), set()).add(versao)
     linhas: dict[tuple, list[dict]] = {}
     for cnpj, dt_refer, versao, texto_linha in conn.execute(
         "SELECT cnpj, dt_refer, versao, linha_json FROM fca_linhas "
@@ -256,7 +277,7 @@ def _fca_em(
 def _informe_em(conn, texto: str) -> pd.DataFrame:
     """Linhas do geral do Informe mensal entregues antes de D, como o CSV oficial."""
     linhas = [
-        json.loads(t)
+        linha_do_informe(t)
         for (t,) in conn.execute(
             "SELECT linha_json FROM fii_informe_linhas WHERE parte = 'geral' "
             "AND data_entrega != '' AND data_entrega < ? ORDER BY dt_refer, versao, linha_sha256",
@@ -276,10 +297,13 @@ def _entregas_vigentes(conn, texto: str) -> dict[tuple[str, str], bool]:
     """(CNPJ, referência) → a versão vigente em D (a maior entregue antes de D) tinha conteúdo
     no arquivo que a registrou (`valores_na_fonte`, DD-34)."""
     vigentes: dict[tuple[str, str], tuple[int, bool]] = {}
+    em_duvida = _fca_entregue_depois(conn, texto)
     for cnpj, dt_refer, versao, na_fonte in conn.execute(
         "SELECT cnpj, dt_refer, versao, valores_na_fonte FROM fca_entregas WHERE dt_receb < ?",
         (texto,),
     ):
+        if (cnpj, dt_refer, versao) in em_duvida:
+            continue
         if versao > vigentes.get((cnpj, dt_refer), (0, False))[0]:
             vigentes[(cnpj, dt_refer)] = (versao, bool(na_fonte))
     return {chave: na_fonte for chave, (_, na_fonte) in vigentes.items()}

@@ -180,3 +180,21 @@ python scripts/backfill_fase3.py --banco sentinela_store.db --backup outputs/<pa
 ```
 
 Com o banco já carregado, o backup é obrigatório. A execução só refaz as etapas fora do `estado.json`.
+
+## 7. Releitura do F3-3b-fix (12/11/2026)
+
+Correção dos dois defeitos da seção 3 (BUG-3-25 e BUG-3-26) e nova execução com `--reler` (DD-59), das 20:45 às 21:01 UTC, depois do backup verificado `outputs/f3-3b-fix-backup/20261112T202154801357Z/backup.json` (cópia e restauração iguais). A migração 010 (`conflitos_carga`) foi aplicada; os 61 ZIPs da CVM já baixados foram relidos sem download, e `cargas_arquivo` continuou com 61 registros. O relatório desta execução está em `outputs/backfill/relatorio.json`; o da primeira, em `outputs/backfill/relatorio-f3-7b.json`.
+
+| Informe de FII | Linhas gravadas na releitura | Fundos no geral |
+|---|---:|---:|
+| 2016 | 1.104 | 150 |
+| 2017 | 11.148 | 345 |
+| 2018 | 12.861 | 401 |
+| 2019 | 14.874 | 483 |
+| 2020 | 18.237 | 579 |
+
+Nenhuma linha recusada; de 2021 a 2026 nada novo. FIIs no universo em D: 46 em 31/12/2016, 118 em 30/06/2018, 213 em 31/12/2020 e 298 em 30/06/2022 (antes da correção, nenhum antes de 2021).
+
+Conflitos: as 1.360 ocorrências da seção 3 são 1.099 casos distintos em `conflitos_carga` (a mesma chave com o mesmo valor divergente repetido no arquivo conta uma vez): 471 em demonstrações da DFP (20 documentos), 604 do ITR (25 documentos), 4 no índice da DFP, 3 no do ITR e 17 no do FCA (15 referências). No leitor, o documento em conflito fica fora com o motivo `MOTIVO_CONFLITO_NA_FONTE` (DD-57); no universo, a entrega do FCA em conflito vale pela data mais tardia (DD-58). As outras etapas desta execução repetiram as 19 falhas de proventos (cadastro da B3 sem nome de pregão ou código). Banco depois: 32.538.501.120 bytes. Nenhum conflito em `composicao_capital`.
+
+Duas marcas desta releitura ficam no banco (só inserção): as linhas novas do Informe de 2016 a 2020 e os registros de `conflitos_carga` têm `coleta` = 12/11/2026 20:45 UTC, a hora da releitura, não a do download (feito na primeira execução), e o mesmo `hash_sha256` aparece com as duas coletas; os leitores da CVM cortam por `DT_RECEB` e `Data_Entrega`, não por `coleta`, e os números não mudam. Depois da revisão, `--reler` passou a usar a `coleta` de `cargas_arquivo`. E o `resumo_json` e o `so_ultima_versao` dos cinco Informes em `cargas_arquivo` continuam os da carga recusada (zero linhas): a cobertura do Informe se mede em `fii_informe_linhas`, não ali.

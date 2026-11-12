@@ -262,9 +262,13 @@ def test_cobertura_separa_coleta_e_identidade_conferida(tmp_path, conn, monkeypa
 
 
 def test_informe_sem_linha_gravada_falha_e_desfaz_o_registro(tmp_path, conn):
-    informe = (
-        FIXTURES / "inf_mensal_fii_2017.zip"
-    )  # leiaute antigo: tudo recusado (BUG-3-25)
+    informe = tmp_path / "sem_cnpj.zip"  # o recorte de 2017 com o CNPJ do fundo apagado
+    with (
+        zipfile.ZipFile(FIXTURES / "inf_mensal_fii_2017.zip") as zi,
+        zipfile.ZipFile(informe, "w") as zo,
+    ):
+        for nome in zi.namelist():
+            zo.writestr(nome, zi.read(nome).replace(b"00.332.266/0001-31", b""))
 
     class _RedeInforme(_Rede):
         def baixar(self, url, destino):
@@ -277,7 +281,7 @@ def test_informe_sem_linha_gravada_falha_e_desfaz_o_registro(tmp_path, conn):
     (registro,) = executor.relatorio
     assert registro["falha"] == (
         "ArquivoRecusado: inf_mensal_fii_2017.zip: nenhuma linha gravada, 36 recusadas "
-        "(CNPJ_Fundo_Classe vazio)"
+        "(CNPJ_Fundo vazio)"
     )
     assert "FII_INFORME:2017" not in executor.estado
     assert conn.execute("SELECT COUNT(*) FROM cargas_arquivo").fetchone() == (0,)
@@ -357,3 +361,30 @@ def test_informe_republicado_so_com_repetidas_e_uma_recusa_fica_ok(tmp_path, con
         segundo["resumo"]["inseridas"] == {}
         and segundo["resumo"]["total_recusadas"] == 1
     )
+
+
+def test_releitura_carrega_o_informe_antigo_sem_novo_download(tmp_path, conn):
+    informe = FIXTURES / "inf_mensal_fii_2017.zip"
+    destino = tmp_path / "brutos" / "fii_informe" / "inf_mensal_fii_2017.zip"
+    destino.parent.mkdir(parents=True)
+    shutil.copy(informe, destino)
+    conn.execute(
+        "INSERT INTO cargas_arquivo VALUES (?, 'FII_INFORME', 'a', 'f', 'c', 1, '{}')",
+        (bf._sha256(informe),),
+    )  # registrado sem linhas, como na execução de 12/11/2026 (BUG-3-25)
+    conn.commit()
+    rede = _Rede(tmp_path)
+    executor, _ = _backfill(tmp_path, rede, conn, de=2017, ate=2017, reler=True)
+    executor.estado.update(
+        {f"{f}:2017": "ok" for f in ("FCA", "DFP", "ITR", "FII_INFORME", "COTAHIST")}
+    )
+    executor.executar([])
+    relatorio = _por_etapa(executor.relatorio)
+    resumo = relatorio["releitura:FII_INFORME:2017"]["resumo"]
+    assert resumo["relido"] and resumo["inseridas"] == {"fii_informe_linhas": 36}
+    assert not any("inf_mensal_fii" in u for u in rede.pedidos)  # sem novo download
+    assert relatorio["releitura:FCA:2017"]["falha"].startswith("FileNotFoundError")
+    assert conn.execute(
+        "SELECT DISTINCT coleta FROM fii_informe_linhas"
+    ).fetchall() == [("c",)]  # a coleta do registro, não a hora da releitura
+    assert conn.execute("SELECT COUNT(*) FROM cargas_arquivo").fetchone() == (1,)

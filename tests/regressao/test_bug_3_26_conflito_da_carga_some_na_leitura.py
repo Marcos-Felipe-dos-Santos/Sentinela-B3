@@ -14,7 +14,6 @@ import sqlite3
 from contextlib import closing
 from datetime import UTC, datetime
 
-import pytest
 from test_carga_cvm import CIA, DFP, _copia
 
 from sentinela.data.pit import carga_cvm, leitura
@@ -31,7 +30,6 @@ def _com_receita_contraditoria(texto):
     return "".join(linhas) + receita.replace("6767982.0000000000", "6767983.0000000000")
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-3-26: corrigido no F3-3b-fix")
 def test_bug_3_26_documento_com_conflito_fica_fora_com_motivo(tmp_path):
     arquivo = _copia(DFP, tmp_path / "dfp.zip", {DRE: _com_receita_contraditoria})
     with closing(sqlite3.connect(":memory:")) as conn:

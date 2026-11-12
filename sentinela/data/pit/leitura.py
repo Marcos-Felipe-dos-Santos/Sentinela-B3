@@ -22,7 +22,6 @@ cascata nem o serviço: o consumidor de produção é o F3-3d.
 
 from __future__ import annotations
 
-import json
 import sqlite3
 from collections import defaultdict
 from collections.abc import Iterable
@@ -32,6 +31,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
+from sentinela.data.pit.carga_cvm import linha_do_informe
 from sentinela.domain.units import Escala
 
 ESTRITO = "estrito"
@@ -45,6 +45,9 @@ MOTIVO_SEM_NUMEROS = "números da versão vigente em D não carregados"
 MOTIVO_ENTREGA_ILEGIVEL = "versão posterior com data de entrega ilegível"
 MOTIVO_VERSAO_NAO_VISTA = (
     "versão intermediária não observada: a vigente em D não é demonstrável"
+)
+MOTIVO_CONFLITO_NA_FONTE = (
+    "a fonte traz a mesma linha do documento com valores diferentes (conflito na carga)"
 )
 MOTIVO_SEM_GERAL = "complemento sem documento geral de mesma referência e versão"
 MOTIVO_GERAL_EM_CONFLITO = "documento geral com entregas diferentes na mesma versão"
@@ -185,7 +188,28 @@ def _escolha_cia(conn, tabela: str, documento: str, cnpj, dia, modo, extra=("", 
         ).fetchall()
     )
     escolhidos, motivos = _escolher(_versoes(entregas), com_numeros, dia, modo)
+    _sem_conflito(conn, documento, cnpj, escolhidos, motivos)
     return entregas, escolhidos, motivos
+
+
+def _sem_conflito(conn, documento: str, cnpj, escolhidos: dict, motivos: dict) -> None:
+    """Tira o documento com conflito da carga (DD-57), nos dois modos, com o motivo.
+
+    Conta o conflito no índice de entregas em qualquer versão (a data de entrega em dúvida
+    pode mudar a versão vigente) e o das contas e da composição na versão escolhida.
+    """
+    filtro, parametros = _filtro_cnpj(cnpj)
+    for c, dt_refer, tabela, versao in conn.execute(
+        "SELECT DISTINCT cnpj, dt_refer, tabela, versao FROM conflitos_carga "
+        "WHERE documento = ?" + filtro,
+        (documento, *parametros),
+    ):
+        chave = (c, dt_refer)
+        if chave not in escolhidos and chave not in motivos:
+            continue  # o documento ainda não existia em D
+        if tabela == "entregas" or escolhidos.get(chave) == versao:
+            escolhidos.pop(chave, None)
+            motivos[chave] = MOTIVO_CONFLITO_NA_FONTE
 
 
 def _ordem_da_conta(conta: str) -> tuple:
@@ -441,7 +465,7 @@ def informe_fii(
         "FROM fii_informe_linhas WHERE cnpj = ? ORDER BY dt_refer, versao, parte, linha_sha256",
         (cnpj,),
     ):
-        linha = json.loads(texto)
+        linha = linha_do_informe(texto)
         partes[parte].append((dt_refer, versao, linha, (fonte, coleta, hash_)))
         if parte == "geral":
             geral[dt_refer][versao].add((entrega, linha.get("Codigo_ISIN")))
