@@ -81,4 +81,4 @@ Caminhos possíveis, todos para decisão do Marcos:
 - **(b)** identificar o código antes de 2018 pela raiz do emissor no ISIN do COTAHIST (`BRPETRACNPR6` → `PETR`), ligada ao CNPJ pelo primeiro FCA com código e pelo cadastro (registro ativo em D). Esse caminho é exploratório: há o risco de raiz reaproveitada e ele não tem prova documental em D;
 - **(c)** buscar outra fonte oficial datada que ligue o código ao CNPJ antes de 2018, como os formulários de referência (FRE), que ainda não foram medidos.
 
-Este achado é uma condição de parada do `/goal`, passo 7: "o L1 mostrar que alguma decisão de dados (2011, universo, ...) não é cumprível".
+Aplicado pela DD-60 (`docs/loop/pendencias.md`): o universo em D do F3-5 fica como está, a ação sem código no FCA fica em `sem_identificacao` com o motivo, o backtest de ações começa na primeira entrega do FCA com código, e (b) e (c) ficam para o checkpoint da 3-b. Mudar a decisão 4 é do Marcos.

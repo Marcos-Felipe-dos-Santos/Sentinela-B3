@@ -998,8 +998,12 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Executor:** claude-code (Claude Opus 5.5).
 - **Status:** sucesso (independente do F3-3d, primeiro de três).
 - **O que foi feito:** `docs/decisoes/identidade-preferenciais-3.md`, com leitura do banco único (só leitura) e dos ZIPs do FCA já baixados, sem rede: o caso do F2C-54 (DRE com classe com sigla, FCA sem sigla) aparece em um a dois códigos por ano de 2017 a 2025; CGAS5 tem prova oficial da classe no COTAHIST (especificação `PNA` e ISIN `BRCGASACNPA3` de 2010 a 2026), EKTR4 não (COTAHIST `PN`, ISIN `ACNPR`, DRE `PNA` e `PNB`); proposta de `fix:` pelo COTAHIST para o checkpoint da 3-b, sem implementação.
-- **Achado fora do escopo:** o FCA aberto não tem código de negociação antes da referência de 2018, e o universo em D não identifica nenhuma ação até o primeiro semestre de 2018 (tabela no §4 do estudo). A conclusão do L1 de que o FCA "traz o código" vinha só da amostra de 2015. É condição de parada do `/goal` (passo 7: decisão de dados não cumprível); pendência para o Marcos com três caminhos.
+- **Achado fora do escopo:** o FCA aberto não tem código de negociação antes da referência de 2018, e o universo em D não identifica nenhuma ação até o primeiro semestre de 2018 (tabela no §4 do estudo). A conclusão do L1 de que o FCA "traz o código" vinha só da amostra de 2015. Na primeira redação, tratado como parada do `/goal` (passo 7); corrigido na mesma sessão: o achado veio depois do L1 e virou a DD-60 (caminho (a), sem mudança de código; (b) e (c) para o checkpoint da 3-b).
 - **Testes:** não se aplica (só documento). Suíte inalterada: 4730 passed, 1 skipped, 1 xfailed.
 - **Resíduos:** `~/.cache/sentinela-testes-claude/p07.py` (consulta de medição, fora do repositório).
-- **Decisões delegadas novas:** nenhuma.
-- **Parada:** depois deste item o loop para pelo passo 7 do `/goal`, sem seguir para F3-P09 e F3-P10.
+- **Decisões delegadas novas:** DD-60 (ver a entrada de sessão a seguir).
+
+### Entrada de sessão — revisão cruzada (política §2) e DD-60
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Revisão cruzada:** DD-12 a DD-17 e DD-19 a DD-22 (família codex) marcadas "confere" em `docs/loop/pendencias.md`; nenhuma contestada.
+- **DD-60:** o achado do F3-P07 (FCA sem código antes de 2018) segue pela decisão delegada, não por parada; a fila continua pelos independentes do F3-3d (F3-P09 e F3-P10).
