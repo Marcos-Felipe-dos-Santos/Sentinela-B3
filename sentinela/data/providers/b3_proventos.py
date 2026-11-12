@@ -351,3 +351,189 @@ def eventos_ate(conn, emissor: str, dia: date) -> dict:
             }
         )
     return {"eventos": vistos, "sem_prova": sem_prova}
+
+
+# --- Proventos em dinheiro no banco único (F3-7a) ---------------------------------------------
+
+MOTIVO_PROVENTO_IDENTIDADE = "identidade do emissor não comprovada na coleta"
+MOTIVO_PROVENTO_INCOMPLETA = "relação de proventos incompleta na coleta"
+MOTIVO_PROVENTO_SEM_COLETA = "sem coleta da relação de proventos do emissor"
+MOTIVO_PROVENTO_SEM_DATAS = "data com ou aprovação ilegível"
+
+
+def _pagina_do_registro(relacao: Relacao, indice: int) -> dict:
+    """Fonte da página da relação que devolveu o registro `indice` (120 por página)."""
+    fonte = relacao.fontes[1 + indice // POR_PAGINA]
+    if "GetListedCashDividends" not in str(fonte.get("url")):
+        raise ValueError("as fontes da coleta não seguem as páginas da relação")
+    return fonte
+
+
+def gravar_proventos(conn, relacao: Relacao, cd_cvm: int | str) -> dict:
+    """Grava a coleta e os registros da relação em `proventos`, num `SAVEPOINT`.
+
+    A coleta (total declarado, registros lidos, identidade do emissor) vai sempre para
+    `proventos_coletas`, e cada registro que ela trouxe para `proventos_vistos`; o registro é
+    identificado pelo hash do seu JSON e, já gravado, conta como repetido (fica a primeira
+    coleta que o viu), com a fonte da sua página. JSON idêntico repetido na mesma relação conta
+    uma vez (`duplicados_na_coleta`). Coleta sem fuso é recusada.
+    """
+    if datetime.fromisoformat(relacao.coleta).utcoffset() is None:
+        raise ValueError("coleta exige fuso horário")
+    detalhe = relacao.fontes[0]
+    resumo = {"inseridos": 0, "repetidos": 0, "duplicados_na_coleta": 0}
+    conn.execute("SAVEPOINT proventos_b3")
+    try:
+        conn.execute(
+            "INSERT INTO proventos_coletas (emissor, coleta, cd_cvm, nome_pregao, total, "
+            "registros, identidade, isins_json, fonte, hash_sha256) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                relacao.emissor,
+                relacao.coleta,
+                str(cd_cvm),
+                relacao.nome_pregao,
+                relacao.total if type(relacao.total) is int else None,
+                len(relacao.registros),
+                relacao.identidade,
+                json.dumps(list(relacao.isins)),
+                detalhe["url"],
+                detalhe["sha256"],
+            ),
+        )
+        for indice, registro in enumerate(relacao.registros):
+            texto = json.dumps(registro, ensure_ascii=False, sort_keys=True)
+            linha = hashlib.sha256(texto.encode("utf-8")).hexdigest()
+            if conn.execute(
+                "SELECT 1 FROM proventos_vistos WHERE emissor = ? AND coleta = ? "
+                "AND linha_sha256 = ?",
+                (relacao.emissor, relacao.coleta, linha),
+            ).fetchone():
+                resumo["duplicados_na_coleta"] += 1  # JSON idêntico na mesma relação
+                continue
+            conn.execute(
+                "INSERT INTO proventos_vistos (emissor, coleta, linha_sha256) VALUES (?, ?, ?)",
+                (relacao.emissor, relacao.coleta, linha),
+            )
+            if conn.execute(
+                "SELECT 1 FROM proventos WHERE emissor = ? AND linha_sha256 = ?",
+                (relacao.emissor, linha),
+            ).fetchone():
+                resumo["repetidos"] += 1
+                continue
+            pagina = _pagina_do_registro(relacao, indice)
+            datas = [
+                proventos_b3.ler_data(registro.get(c))
+                for c in ("lastDatePriorEx", "dateApproval")
+            ]
+            conn.execute(
+                "INSERT INTO proventos (emissor, linha_sha256, cd_cvm, especie, natureza, "
+                "data_com, aprovacao, valor_bruto, cotado_por, linha_json, fonte, coleta, "
+                "hash_sha256) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    relacao.emissor,
+                    linha,
+                    str(cd_cvm),
+                    registro.get("typeStock"),
+                    registro.get("corporateAction"),
+                    *(d.isoformat() if d else None for d in datas),
+                    registro.get("valueCash"),
+                    registro.get("quotedPerShares"),
+                    texto,
+                    pagina["url"],
+                    relacao.coleta,
+                    pagina["sha256"],
+                ),
+            )
+            resumo["inseridos"] += 1
+    except BaseException:
+        if conn.in_transaction:
+            conn.execute("ROLLBACK TO proventos_b3")
+            conn.execute("RELEASE proventos_b3")
+        raise
+    conn.execute("RELEASE proventos_b3")
+    return resumo
+
+
+def proventos_ate(conn, emissor: str, dia: date) -> dict:
+    """Proventos em dinheiro conhecidos antes do dia local de D, com a data ex demonstrada.
+
+    Vale a relação da coleta mais recente do emissor feita antes do dia de D em São Paulo
+    (só os registros que ela trouxe, `proventos_vistos`); sem coleta, ou com identidade não
+    comprovada ou relação incompleta nela, abstém com o motivo (`abstencao`). Registro com
+    aprovação ou data com em D ou depois ainda não era conhecido ou efetivado em D e fica de
+    fora; data ilegível ou data ex sem calendário vão para `sem_prova`, com o motivo.
+    """
+    if isinstance(dia, datetime) or not isinstance(dia, date):
+        raise TypeError("proventos_ate recebe o dia local de D (date), não um instante")
+    texto = dia.isoformat()
+    anteriores = [
+        linha
+        for linha in conn.execute(
+            "SELECT coleta, total, registros, identidade FROM proventos_coletas "
+            "WHERE emissor = ?",
+            (emissor,),
+        )
+        if datetime.fromisoformat(linha[0]).astimezone(proventos_b3.FUSO).date() < dia
+    ]
+    coleta = (
+        max(anteriores, key=lambda linha: datetime.fromisoformat(linha[0]))
+        if anteriores
+        else None
+    )
+    if coleta is None:
+        return {"abstencao": MOTIVO_PROVENTO_SEM_COLETA}
+    instante, total, registros, identidade = coleta
+    if identidade is not None:
+        return {"abstencao": f"{MOTIVO_PROVENTO_IDENTIDADE}: {identidade}"}
+    if total != registros:
+        return {"abstencao": MOTIVO_PROVENTO_INCOMPLETA}
+    da_coleta = {
+        chave
+        for (chave,) in conn.execute(
+            "SELECT linha_sha256 FROM proventos_vistos WHERE emissor = ? AND coleta = ?",
+            (emissor, instante),
+        )
+    }
+    proventos, sem_prova = [], []
+    for linha in conn.execute(
+        "SELECT especie, natureza, data_com, aprovacao, valor_bruto, cotado_por, fonte, "
+        "hash_sha256, linha_sha256 FROM proventos WHERE emissor = ? "
+        "ORDER BY data_com, linha_sha256",
+        (emissor,),
+    ):
+        (
+            especie,
+            natureza,
+            data_com,
+            aprovacao,
+            valor,
+            cotado,
+            fonte,
+            hash_,
+            chave,
+        ) = linha
+        if chave not in da_coleta:  # fora da relação da coleta escolhida
+            continue
+        item = {
+            "especie": especie,
+            "natureza": natureza,
+            "data_com": data_com,
+            "aprovacao": aprovacao,
+            "valor_bruto": valor,
+            "cotado_por": cotado,
+            "fonte": fonte,
+            "hash_sha256": hash_,
+            "linha_sha256": chave,
+        }
+        if data_com is None or aprovacao is None:
+            sem_prova.append(item | {"motivo": MOTIVO_PROVENTO_SEM_DATAS})
+            continue
+        if aprovacao >= texto or data_com >= texto:
+            continue
+        data_ex = _data_ex(conn, data_com, dia)
+        if data_ex is None:
+            sem_prova.append(item | {"motivo": MOTIVO_SEM_CALENDARIO})
+            continue
+        proventos.append(item | {"data_ex": data_ex})
+    return {"proventos": proventos, "sem_prova": sem_prova, "coleta": instante}

@@ -1002,3 +1002,81 @@ def _pib_do_banco(conn, instante: datetime) -> dict:
             [linha for linha in agenda if linha[1] == max(devidas).isoformat()]
         ),
     }
+
+
+# --- CDI (SGS 12) em `benchmarks` (F3-7a, decisão 7) ------------------------------------------
+
+
+def _janelas_da_coleta(
+    dados: dict, rotulo: str
+) -> list[tuple[dict, date | None, date | None]]:
+    """Janela de cada proveniência pela própria URL (`dataInicial`, `dataFinal`), BUG-3-18."""
+    janelas = []
+    for prov in dados["proveniencia"]:
+        casado = re.search(r"[?&]dataInicial=([^&]+)&dataFinal=([^&]+)", prov["fonte"])
+        if casado is None:
+            if "dataInicial" in prov["fonte"] or "dataFinal" in prov["fonte"]:
+                raise ValueError(f"{rotulo}: janela ilegível na fonte {prov['fonte']}")
+            janelas.append((prov, None, None))
+        else:
+            de, ate = (macro_por_data.data_sgs(t) for t in casado.groups())
+            janelas.append((prov, de, ate))
+    return janelas
+
+
+def gravar_cdi(conn, provedor, fim: date, coleta: datetime) -> dict:
+    """Grava a taxa diária do CDI (SGS 12, % ao dia) até `fim` em `benchmarks`.
+
+    Cada observação leva a URL e o hash da janela do SGS que a devolveu (como a Selic,
+    BUG-3-18); observação fora de toda janela ou em mais de uma recusa a carga inteira. Já
+    gravada pela mesma janela (mesmo hash), conta como repetida. `valor_texto` é o número lido.
+    """
+    if coleta.utcoffset() is None:
+        raise ValueError("coleta exige fuso horário")
+    dados = provedor.serie_sgs(macro_por_data.CDI, fim, coleta)
+    if "abstencao" in dados:
+        raise ValueError(dados["abstencao"])
+    if not dados["proveniencia"]:
+        raise ValueError("CDI sem proveniência da coleta")
+    janelas = _janelas_da_coleta(dados, "CDI")
+    linhas = []
+    for o in dados["observacoes"]:
+        donos = [p for p, de, ate in janelas if de is None or de <= o.data <= ate]
+        if len(donos) != 1:
+            raise ValueError(
+                f"CDI: observação de {o.data.isoformat()} sem janela única da coleta"
+            )
+        linhas.append(
+            (
+                "CDI",
+                o.data.isoformat(),
+                o.valor,
+                repr(o.valor),
+                donos[0]["fonte"],
+                coleta.isoformat(),
+                donos[0]["hash_sha256"],
+            )
+        )
+    resumo = {"inseridos": 0, "repetidos": 0}
+    conn.execute("SAVEPOINT cdi")
+    try:
+        for linha in linhas:
+            if conn.execute(
+                "SELECT 1 FROM benchmarks WHERE serie = ? AND data = ? AND hash_sha256 = ?",
+                (linha[0], linha[1], linha[6]),
+            ).fetchone():
+                resumo["repetidos"] += 1
+                continue
+            conn.execute(
+                "INSERT INTO benchmarks (serie, data, valor, valor_texto, fonte, coleta, "
+                "hash_sha256) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                linha,
+            )
+            resumo["inseridos"] += 1
+    except BaseException:
+        if conn.in_transaction:
+            conn.execute("ROLLBACK TO cdi")
+            conn.execute("RELEASE cdi")
+        raise
+    conn.execute("RELEASE cdi")
+    return resumo
