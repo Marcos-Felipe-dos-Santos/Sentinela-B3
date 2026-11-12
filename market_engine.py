@@ -1,5 +1,6 @@
 import logging
 import math
+import sqlite3
 import zipfile
 from datetime import UTC, date, datetime
 from typing import Any
@@ -9,6 +10,7 @@ import pandas as pd
 import yfinance as yf
 from yfinance.exceptions import YFException
 
+import config
 from brapi_provider import BrapiProvider
 from config import _normalizar_dy, get_taxa_real
 from cvm_fii_provider import CVMFIIProvider
@@ -948,6 +950,42 @@ class MarketEngine:
                 'arquivos': list(relacao.fontes),
             },
         }
+        self._calendario_proventos_b3(ticker, dados)
+
+    @staticmethod
+    def _calendario_proventos_b3(ticker: str, dados: dict[str, Any]) -> None:
+        """Calendário anual de pregões para a regularidade de proventos (F3-P14b).
+
+        Contrato em `docs/decisoes/calendario-proventos-3.md`: dos exercícios da série CVM, do
+        início do primeiro menos 7 dias ao fim do último mais 7 dias, pelo COTAHIST anual
+        guardado no banco único (`proventos_b3.calendario_do_banco`). Sem série, sem banco ou
+        sem cobertura, a chave fica ausente e a lente de qualidade mostra o motivo; o motivo
+        do produtor fica em `calendario_proventos_b3_motivo`.
+        """
+        serie = dados.get('serie_cvm')
+        exercicios = serie.get('exercicios') if isinstance(serie, dict) else None
+        try:
+            inicio = min(date.fromisoformat(e['inicio']) for e in exercicios)
+            fim = max(date.fromisoformat(e['fim']) for e in exercicios)
+        except (TypeError, KeyError, ValueError):
+            return
+        conn = config._conexao_series_macro()
+        try:
+            calendario = proventos_b3.calendario_do_banco(
+                conn,
+                inicio - proventos_b3.FOLGA_SEM_PREGAO,
+                fim + proventos_b3.FOLGA_SEM_PREGAO,
+            )
+        except sqlite3.Error as exc:
+            logger.warning(f"[{ticker}] calendário anual da B3 indisponível: {exc}")
+            calendario = proventos_b3.Abstencao(f"calendário anual B3 indisponível: {exc}")
+        finally:
+            if conn is not None:
+                conn.close()
+        if isinstance(calendario, proventos_b3.Abstencao):
+            dados['calendario_proventos_b3_motivo'] = calendario.motivo
+        else:
+            dados['calendario_proventos_b3'] = calendario
 
     @staticmethod
     def _pregoes_da_data_ex(registros, referencia: date, agora: datetime) -> list | None:

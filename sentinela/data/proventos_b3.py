@@ -564,3 +564,93 @@ def entradas(dados: Mapping, instante: datetime) -> dict | Abstencao:
         "serie": serie,
         "avisos": conferencia_yfinance(serie, relacao.get("conferencia_yfinance")),
     }
+
+
+# --- Calendário anual de pregões para a lente de qualidade (F3-P14b) -----------------------
+# Contrato: `docs/decisoes/calendario-proventos-3.md`. Pregão = data com negócio no mercado à
+# vista do COTAHIST guardado (F3-4a); o ano Y só está coberto pela carga do arquivo anual
+# `COTAHIST_A{Y}` gerado em ou depois de 31/12/Y, ou, no ano ainda aberto, até a data de
+# geração (inclusive: o arquivo gerado em D traz o pregão de D). Carga sem data de geração não
+# cobre; o ano vem do nome do arquivo guardado (`cargas_cotahist.arquivo`).
+
+MOTIVO_CALENDARIO_SEM_ANO = "calendário anual B3 sem a carga do COTAHIST anual de {ano}"
+MOTIVO_CALENDARIO_GERACAO = (
+    "calendário anual B3: COTAHIST anual de {ano} gerado em {geracao}, antes de {fim}"
+)
+MOTIVO_CALENDARIO_VAZIO = "calendário anual B3 sem pregões no intervalo"
+MOTIVO_CALENDARIO_BANCO = "calendário anual B3: banco único indisponível"
+MERCADO_A_VISTA = "010"  # o de `b3_cotahist`, sem importar o provedor (rede) aqui
+
+
+def _ano_do_arquivo(arquivo: object) -> int | None:
+    nome = str(arquivo or "").upper()
+    if not (nome.startswith("COTAHIST_A") and nome.endswith(".ZIP")):
+        return None
+    ano = nome[len("COTAHIST_A") : -len(".ZIP")]
+    return int(ano) if len(ano) == 4 and ano.isdigit() else None
+
+
+def calendario_anual(
+    pregoes: Iterable[date], cargas: Iterable[Mapping], inicio: date, fim: date
+) -> dict | Abstencao:
+    """Calendário de `inicio` a `fim` (inclusive) para `calendario_proventos_b3`, ou o motivo.
+
+    `cargas`: as do COTAHIST (`arquivo`, `data_geracao` ISO, `coleta`, `hash_sha256`). Cada ano
+    do intervalo precisa de uma carga do arquivo anual cuja geração alcance `fim` naquele ano
+    (o ano todo, se gerado em ou depois de 31/12); vale a carga de geração mais nova, e no empate
+    a primeira na ordem recebida. Os pregões são
+    os de `pregoes` dentro do intervalo.
+    """
+    melhores: dict[int, Mapping] = {}
+    for carga in cargas:
+        ano = _ano_do_arquivo(carga.get("arquivo"))
+        geracao = str(carga.get("data_geracao") or "")
+        if ano is not None and geracao > str(
+            melhores.get(ano, {}).get("data_geracao") or ""
+        ):
+            melhores[ano] = carga
+    usadas = []
+    for ano in range(inicio.year, fim.year + 1):
+        carga = melhores.get(ano)
+        if carga is None:
+            return Abstencao(MOTIVO_CALENDARIO_SEM_ANO.format(ano=ano))
+        necessario = min(fim, date(ano, 12, 31))
+        if str(carga["data_geracao"]) < necessario.isoformat():
+            return Abstencao(
+                MOTIVO_CALENDARIO_GERACAO.format(
+                    ano=ano, geracao=carga["data_geracao"], fim=necessario.isoformat()
+                )
+            )
+        usadas.append(carga)
+    dentro = sorted({p for p in pregoes if inicio <= p <= fim})
+    if not dentro:
+        return Abstencao(MOTIVO_CALENDARIO_VAZIO)
+    return {
+        "fonte": "B3, COTAHIST anual: "
+        + "; ".join(f"{c['arquivo']} (sha256 {c['hash_sha256']})" for c in usadas),
+        "coleta": max(str(c["coleta"]) for c in usadas),
+        "inicio": inicio.isoformat(),
+        "fim": fim.isoformat(),
+        "pregoes": [p.isoformat() for p in dentro],
+    }
+
+
+def calendario_do_banco(conn, inicio: date, fim: date) -> dict | Abstencao:
+    """`calendario_anual` com os pregões e as cargas do COTAHIST do banco único."""
+    if conn is None:
+        return Abstencao(MOTIVO_CALENDARIO_BANCO)
+    pregoes = [
+        date.fromisoformat(d)
+        for (d,) in conn.execute(
+            "SELECT DISTINCT data FROM precos WHERE tipo_mercado = ? AND data BETWEEN ? AND ?",
+            (MERCADO_A_VISTA, inicio.isoformat(), fim.isoformat()),
+        )
+    ]
+    cargas = [
+        {"arquivo": a, "data_geracao": g, "coleta": c, "hash_sha256": h}
+        for a, g, c, h in conn.execute(
+            "SELECT arquivo, data_geracao, coleta, hash_sha256 FROM cargas_cotahist "
+            "ORDER BY arquivo, data_geracao, hash_sha256"
+        )
+    ]
+    return calendario_anual(pregoes, cargas, inicio, fim)
