@@ -744,12 +744,14 @@ def gravar_series(
             )
             for mes, dia in sorted(agenda["publicacoes"].items())
         ]
-        if janela is not None:
-            publicados = [
-                m
-                for m, dia in agenda["publicacoes"].items()
-                if dia < coleta.astimezone(FUSO).date()
-            ]
+        publicados = {
+            m
+            for m, dia in agenda["publicacoes"].items()
+            if dia < coleta.astimezone(FUSO).date()
+        }
+        # BUG-3-20: sem mês publicado, a agenda é gravada assim mesmo; e só meses publicados
+        # têm o valor convertido (o SIDRA traz o mês ainda não divulgado com `V = "..."`).
+        if janela is not None and publicados:
             url = f"https://apisidra.ibge.gov.br/values/t/1737/n1/all/v/63/p/{janela[0]:%Y%m}-{max(publicados)}?formato=json"
             serie = provedor.baixar(url, coleta)
             linhas += [
@@ -764,7 +766,9 @@ def gravar_series(
                     serie.hash_sha256,
                 )
                 for l in json.loads(serie.conteudo)
-                if l.get("D1C") == "1" and l.get("D2C") == "63"
+                if l.get("D1C") == "1"
+                and l.get("D2C") == "63"
+                and str(l.get("D3C")) in publicados
             ]
         return _inserir(conn, linhas)
 
@@ -919,23 +923,37 @@ def registro_do_banco(
     return resultado
 
 
+def _proveniencia_das_linhas(linhas: list[tuple]) -> dict:
+    """Proveniência no formato do `SnapshotMacro` (BUG-3-20): a da coleta mais recente lida."""
+    linha = max(linhas, key=lambda l: l[6])
+    return {
+        "fonte": linha[5],
+        "data_coleta": linha[6],
+        "hash_sha256": linha[7],
+        "aviso": None,
+    }
+
+
 def _inflacao_do_banco(conn, janela: tuple[date, date], instante: datetime) -> dict:
     try:
+        agenda = _ultimas(
+            conn, "s.serie = 'ipca_divulgacao' AND s.divulgacao IS NOT NULL", ()
+        )
         publicacoes = {
             linha[1][:4] + linha[1][5:7]: date.fromisoformat(linha[3])
-            for linha in _ultimas(
-                conn, "s.serie = 'ipca_divulgacao' AND s.divulgacao IS NOT NULL", ()
-            )
+            for linha in agenda
         }
-        linhas = [
-            json.loads(linha[4])
-            for linha in _ultimas(conn, "s.serie = 'ipca_sidra'", ())
-        ]
+        sidra = _ultimas(conn, "s.serie = 'ipca_sidra'", ())
+        linhas = [json.loads(linha[4]) for linha in sidra]
         if not publicacoes or not linhas:
             return {"abstencao": "IPCA ausente no banco"}
-        return ipca_da_janela(
+        resultado = ipca_da_janela(
             linhas, publicacoes, inicio=janela[0], fim=janela[1], as_of=instante
         )
+        return resultado | {
+            "proveniencia": _proveniencia_das_linhas(sidra),
+            "calendario": _proveniencia_das_linhas(agenda),
+        }
     except FALHAS_DA_FONTE as erro:
         return _falha_da_fonte(erro)
     except ERROS_DO_CODIGO as erro:
@@ -945,31 +963,38 @@ def _inflacao_do_banco(conn, janela: tuple[date, date], instante: datetime) -> d
 def _pib_do_banco(conn, instante: datetime) -> dict:
     try:
         dia = _local(instante)
-        edicoes = {
-            date.fromisoformat(linha[1]): datetime.fromisoformat(linha[3])
+        agenda = [
+            linha
             for linha in _ultimas(
                 conn,
                 "s.serie = 'focus_edicao' AND s.data >= ? AND s.data <= ?",
                 (f"{dia.year - 1}-12-25", f"{dia.year}-12-31"),
             )
             if datetime.fromisoformat(linha[3]).astimezone(FUSO).year == dia.year
+        ]
+        edicoes = {
+            date.fromisoformat(linha[1]): datetime.fromisoformat(linha[3])
+            for linha in agenda
         }
         devidas = [p for p, pub in edicoes.items() if pub <= instante]
         if not devidas:
             return {"abstencao": "edição Focus devida ausente no banco"}
-        linhas = [
-            json.loads(linha[4])
-            for linha in _ultimas(
-                conn,
-                "s.serie LIKE 'focus_pib|%' AND s.data = ?",
-                (max(devidas).isoformat(),),
-            )
-        ]
-        resultado = pib_focus(linhas, edicoes, as_of=instante)
+        serie = _ultimas(
+            conn,
+            "s.serie LIKE 'focus_pib|%' AND s.data = ?",
+            (max(devidas).isoformat(),),
+        )
+        resultado = pib_focus(
+            [json.loads(linha[4]) for linha in serie], edicoes, as_of=instante
+        )
     except FALHAS_DA_FONTE as erro:
         return _falha_da_fonte(erro)
     except ERROS_DO_CODIGO as erro:
         return _erro_do_codigo(erro)
     proxima = resultado["proxima_publicacao"]
     resultado["proxima_publicacao"] = proxima.isoformat() if proxima else None
-    return resultado
+    # BUG-3-20: o mesmo formato do caminho histórico (`MacroProvider.pib`).
+    return resultado | {
+        "proveniencia": _proveniencia_das_linhas(serie),
+        "calendario": _proveniencia_das_linhas(agenda),
+    }

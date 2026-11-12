@@ -27,11 +27,6 @@ def conn():
         yield conexao
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="BUG-3-20 · mês do SIDRA não divulgado derruba a família IPCA · corrige: F3-A-F8",
-)
 def test_mes_nao_divulgado_no_sidra_nao_derruba_a_familia(conn, provedor, monkeypatch):  # noqa: F811
     original = provedor.baixar
 
@@ -51,11 +46,6 @@ def test_mes_nao_divulgado_no_sidra_nao_derruba_a_familia(conn, provedor, monkey
     assert isinstance(resumo["ipca"], int), resumo["ipca"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="BUG-3-20 · registro do banco sem proveniência e calendário · corrige: F3-A-F8",
-)
 def test_registro_do_banco_tem_as_chaves_do_caminho_historico(conn, provedor):  # noqa: F811
     _gravar(conn, provedor)
     do_banco = macro.registro_do_banco(conn, D, JANELA)

@@ -710,3 +710,69 @@ def test_coleta_nova_com_conflito_traz_o_conflito(provedor, tmp_path):
         )
         registro = macro.registro_do_banco(conexao, D, JANELA)
     assert "linhas conflitantes no par de aplicação" in registro["abstencao"]
+
+
+# --- F3-A-F8 (BUG-3-20): IPCA não divulgado e formato do registro do banco -----------------
+
+
+def test_sem_mes_publicado_grava_a_agenda_do_ibge(conn, provedor, monkeypatch):
+    original = provedor.publicacoes_ipca
+
+    def sem_publicados(instante):
+        agenda = original(instante)
+        futuro = {m: date(2099, 1, 1) for m in agenda["publicacoes"]}
+        return {**agenda, "publicacoes": futuro}
+
+    monkeypatch.setattr(provedor, "publicacoes_ipca", sem_publicados)
+    baixados = []
+    baixar = provedor.baixar
+    monkeypatch.setattr(
+        provedor, "baixar", lambda url, i: baixados.append(url) or baixar(url, i)
+    )
+    resumo = _gravar(conn, provedor)
+    assert resumo["ipca"] == len(_linhas(conn, "ipca_divulgacao")) > 0
+    assert _linhas(conn, "ipca_sidra") == []
+    assert not any("/1737/" in url for url in baixados)  # o SIDRA não é baixado
+
+
+@pytest.mark.parametrize("bloco", ["inflacao", "pib"])
+def test_proveniencia_e_calendario_do_banco_iguais_aos_do_historico(
+    conn, provedor, bloco
+):
+    _gravar(conn, provedor)
+    do_banco = macro.registro_do_banco(conn, D, JANELA)[bloco]
+    historico = provedor.registro(D, JANELA, coleta=COLETA)[bloco]
+    for chave in ("proveniencia", "calendario"):
+        assert set(do_banco[chave]) == set(historico[chave])
+        for campo in ("fonte", "hash_sha256"):
+            assert do_banco[chave][campo] == historico[chave][campo], (chave, campo)
+        assert do_banco[chave]["data_coleta"] == COLETA.isoformat()
+
+
+def test_proveniencia_das_linhas_e_a_da_coleta_mais_recente():
+    antiga = (
+        "s",
+        "2025-01-01",
+        None,
+        None,
+        "{}",
+        "fonte-z-antiga",
+        "2026-11-12T00:00:00+00:00",
+        "z" * 64,
+    )
+    nova = (
+        "s",
+        "2025-01-01",
+        None,
+        None,
+        "{}",
+        "fonte-a-nova",
+        "2026-11-13T00:00:00+00:00",
+        "a" * 64,
+    )
+    assert macro._proveniencia_das_linhas([antiga, nova]) == {
+        "fonte": "fonte-a-nova",
+        "data_coleta": "2026-11-13T00:00:00+00:00",
+        "hash_sha256": "a" * 64,
+        "aviso": None,
+    }
