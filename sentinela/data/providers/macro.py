@@ -355,19 +355,14 @@ class MacroProvider:
         """Edição Focus devida até `instante`; baixa com `coleta` (F3-1c-a)."""
         dia = _local(instante)
         coleta = instante if coleta is None else coleta
-        url_agenda = f"https://www.bcb.gov.br/api/servico/sitebcb/calendario?inicioAgenda=%27{dia.year}-01-01%27&fimAgenda=%27{dia.year}-12-31%27&lista=Focus"
-        agenda = self.baixar(url_agenda, coleta)
-        edicoes = {}
-        for evento in json.loads(agenda.conteudo)["conteudo"]:
-            if evento.get("evento") == "Relatório Focus":
-                publicacao = datetime.fromisoformat(evento["dataEvento"])
-                dia_edicao = publicacao.astimezone(ZoneInfo("America/Sao_Paulo")).date()
-                # BCB: estatísticas até a sexta anterior. O instante de divulgação
-                # vem da agenda, inclusive edições deslocadas por feriado.
-                pesquisa = dia_edicao - timedelta(
-                    days=(dia_edicao.weekday() - 4) % 7 or 7
-                )
-                edicoes[pesquisa] = publicacao
+        agenda = self.baixar(AGENDA_FOCUS.format(ano=dia.year), coleta)
+        edicoes = edicoes_focus(agenda.conteudo)
+        devidas = [d for d, p in edicoes.items() if p <= instante]
+        if not devidas:
+            # BUG-3-21: antes do primeiro Focus do ano, a edição devida é a de dezembro, e o
+            # calendário informado é o da agenda que a traz.
+            agenda = self.baixar(AGENDA_FOCUS.format(ano=dia.year - 1), coleta)
+            edicoes = edicoes_focus(agenda.conteudo) | edicoes
         devidas = [d for d, p in edicoes.items() if p <= instante]
         if not devidas:
             raise ValueError("edição Focus devida ausente no calendário")
@@ -677,10 +672,19 @@ def gravar_series(
         return total
 
     def _focus():
-        linhas, pesquisas = [], set()
-        for ano in sorted({d.year for d in datas}):
+        linhas, pesquisas, todas = [], set(), {}
+        # BUG-3-21: a agenda do ano anterior também, porque antes do primeiro Focus do ano a
+        # edição devida é a de dezembro; cada pesquisa entra uma vez.
+        for ano in sorted(
+            {a for d in datas for a in (d.year - 1, d.year)}, reverse=True
+        ):
             agenda = provedor.baixar(AGENDA_FOCUS.format(ano=ano), coleta)
-            edicoes = edicoes_focus(agenda.conteudo)
+            novas = {
+                p: pub
+                for p, pub in edicoes_focus(agenda.conteudo).items()
+                if p not in todas
+            }
+            todas |= novas
             linhas += [
                 (
                     "focus_edicao",
@@ -692,19 +696,15 @@ def gravar_series(
                     coleta_iso,
                     agenda.hash_sha256,
                 )
-                for p, publicacao in sorted(edicoes.items())
+                for p, publicacao in sorted(novas.items())
             ]
-            for d in datas:
-                # a edição devida no começo e no fim do dia: qualquer instante de D tem a sua
-                for limite in (datetime.min.time(), datetime.max.time()):
-                    corte = datetime.combine(d, limite, FUSO)
-                    devidas = [
-                        p
-                        for p, pub in edicoes.items()
-                        if d.year == ano and pub <= corte
-                    ]
-                    if devidas:
-                        pesquisas.add(max(devidas))
+        for d in datas:
+            # a edição devida no começo e no fim do dia: qualquer instante de D tem a sua
+            for limite in (datetime.min.time(), datetime.max.time()):
+                corte = datetime.combine(d, limite, FUSO)
+                devidas = [p for p, pub in todas.items() if pub <= corte]
+                if devidas:
+                    pesquisas.add(max(devidas))
         for pesquisa in sorted(pesquisas):
             url = (
                 FOCUS
@@ -968,9 +968,10 @@ def _pib_do_banco(conn, instante: datetime) -> dict:
             for linha in _ultimas(
                 conn,
                 "s.serie = 'focus_edicao' AND s.data >= ? AND s.data <= ?",
-                (f"{dia.year - 1}-12-25", f"{dia.year}-12-31"),
+                # o ano anterior inteiro: a pesquisa da última edição de dezembro pode cair
+                # antes do dia 25 (edição de 27/12/2027, pesquisa de 24/12; BUG-3-21)
+                (f"{dia.year - 1}-01-01", f"{dia.year}-12-31"),
             )
-            if datetime.fromisoformat(linha[3]).astimezone(FUSO).year == dia.year
         ]
         edicoes = {
             date.fromisoformat(linha[1]): datetime.fromisoformat(linha[3])
@@ -993,8 +994,11 @@ def _pib_do_banco(conn, instante: datetime) -> dict:
         return _erro_do_codigo(erro)
     proxima = resultado["proxima_publicacao"]
     resultado["proxima_publicacao"] = proxima.isoformat() if proxima else None
-    # BUG-3-20: o mesmo formato do caminho histórico (`MacroProvider.pib`).
+    # BUG-3-20: o mesmo formato do caminho histórico (`MacroProvider.pib`); o calendário é o
+    # da agenda que traz a edição devida (BUG-3-21).
     return resultado | {
         "proveniencia": _proveniencia_das_linhas(serie),
-        "calendario": _proveniencia_das_linhas(agenda),
+        "calendario": _proveniencia_das_linhas(
+            [linha for linha in agenda if linha[1] == max(devidas).isoformat()]
+        ),
     }

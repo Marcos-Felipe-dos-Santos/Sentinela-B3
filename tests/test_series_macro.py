@@ -5,6 +5,7 @@ IBGE, SIDRA, SGS) → provedor → `gravar_series` → `series_macro` → `regis
 `get_taxa_real(as_of)` → Gordon e FII. O resultado é o mesmo do caminho histórico do F3-1c-a.
 """
 
+import json
 import re
 import sqlite3
 from contextlib import closing
@@ -776,3 +777,158 @@ def test_proveniencia_das_linhas_e_a_da_coleta_mais_recente():
         "hash_sha256": "a" * 64,
         "aviso": None,
     }
+
+
+# --- F3-A-F9 (BUG-3-21): edição Focus de dezembro no começo de janeiro ----------------------
+
+_JANEIRO = datetime(2026, 1, 2, 15, tzinfo=UTC)
+_AGENDAS_FOCUS = {
+    "2025": "2025-12-29T08:25:00-03:00",
+    "2026": "2026-01-05T08:25:00-03:00",
+}
+_SERIE_DEZEMBRO = {
+    "value": [
+        {
+            "Indicador": "PIB Total",
+            "Data": "2025-12-26",
+            "DataReferencia": "2026",
+            "Mediana": 1.8,
+            "baseCalculo": 0,
+        },
+        {
+            "Indicador": "PIB Total",
+            "Data": "2025-12-26",
+            "DataReferencia": "2027",
+            "Mediana": 2.0,
+            "baseCalculo": 0,
+        },
+    ]
+}
+
+
+def _serie(pesquisa, medianas=(1.8, 2.0)):
+    """Série Focus do PIB da pesquisa, nos dois horizontes."""
+    return {
+        "value": [
+            {**linha, "Data": pesquisa, "Mediana": mediana}
+            for linha, mediana in zip(_SERIE_DEZEMBRO["value"], medianas, strict=True)
+        ]
+    }
+
+
+def _provedor_de_janeiro(tmp_path, monkeypatch):
+    provedor = macro.MacroProvider(cache_dir=tmp_path / "jan")
+    pedidos = []
+
+    def baixar(url, instante):
+        pedidos.append(url)
+        if "sitebcb/calendario" in url:
+            ano = next(a for a in _AGENDAS_FOCUS if f"{a}-01-01" in url)
+            conteudo = {
+                "conteudo": [
+                    {"evento": "Relatório Focus", "dataEvento": _AGENDAS_FOCUS[ano]}
+                ]
+            }
+            return macro.SnapshotMacro(
+                json.dumps(conteudo), url, instante.isoformat(), ano * 16
+            )
+        if "ExpectativasMercadoAnuais" not in url:
+            raise OSError(
+                "fora deste teste"
+            )  # ANBIMA, IBGE, SGS: as outras famílias abstêm
+        pesquisa = next(p for p in ("2025-12-26", "2026-01-02") if p in url)
+        return macro.SnapshotMacro(
+            json.dumps(_serie(pesquisa)), url, instante.isoformat(), "f" * 64
+        )
+
+    def sem_tesouro(self, instante):
+        raise OSError("fora deste teste")
+
+    monkeypatch.setattr(provedor, "baixar", baixar)
+    monkeypatch.setattr(tesouro.TesouroProvider, "baixar", sem_tesouro)
+    return provedor, pedidos
+
+
+def test_gravacao_em_janeiro_guarda_a_edicao_de_dezembro_e_o_banco_da_o_mesmo_pib(
+    conn, tmp_path, monkeypatch
+):
+    provedor, pedidos = _provedor_de_janeiro(tmp_path, monkeypatch)
+    resumo = macro.gravar_series(
+        conn, provedor, coleta=_JANEIRO, datas=[_JANEIRO.date()]
+    )
+    assert isinstance(resumo["focus"], int)
+    assert any("2025-12-26" in url for url in pedidos)
+    edicoes = [l[1] for l in _linhas(conn, "focus_edicao")]
+    assert edicoes == ["2025-12-26", "2026-01-02"]
+    do_banco = macro._pib_do_banco(conn, _JANEIRO)
+    historico = provedor.pib(_JANEIRO)
+    assert "abstencao" not in do_banco, do_banco
+    assert (
+        do_banco["valor"] == historico["valor"]
+        and do_banco["pesquisa"] == historico["pesquisa"]
+    )
+    assert do_banco["calendario"]["fonte"] == historico["calendario"]["fonte"]
+    assert (
+        "2025-01-01" in historico["calendario"]["fonte"]
+    )  # a agenda que traz a edição devida
+
+
+def test_em_outubro_o_pib_nao_baixa_a_agenda_do_ano_anterior(tmp_path, monkeypatch):
+    provedor, pedidos = _provedor_de_janeiro(tmp_path, monkeypatch)
+    resultado = provedor.pib(datetime(2026, 10, 20, 15, tzinfo=UTC))
+    assert (
+        resultado["pesquisa"] == "2026-01-02"
+    )  # a única edição de 2026 na agenda falsa
+    assert not any("2025-01-01" in url for url in pedidos)
+
+
+def _gravar_edicoes(conn, *edicoes):
+    """`edicoes`: (pesquisa, publicação, série ou None)."""
+    for pesquisa, publicacao, serie in edicoes:
+        conn.execute(
+            "INSERT INTO series_macro VALUES ('focus_edicao', ?, NULL, ?, '{}', 'f', ?, 'h')",
+            (pesquisa, publicacao, _JANEIRO.isoformat()),
+        )
+        for i, linha in enumerate((serie or {"value": []})["value"]):
+            conn.execute(
+                "INSERT INTO series_macro VALUES (?, ?, ?, NULL, ?, 'f', ?, 'h')",
+                (
+                    f"focus_pib|{i}",
+                    pesquisa,
+                    linha["Mediana"],
+                    json.dumps(linha),
+                    _JANEIRO.isoformat(),
+                ),
+            )
+
+
+def test_edicao_divulgada_no_proprio_instante_ja_vale(conn, tmp_path, monkeypatch):
+    """No instante da divulgação de 05/01/2026, a edição de 05/01 (pesquisa 02/01) já conta."""
+    provedor, pedidos = _provedor_de_janeiro(tmp_path, monkeypatch)
+    instante = datetime.fromisoformat(_AGENDAS_FOCUS["2026"])
+    historico = provedor.pib(instante)
+    assert historico["pesquisa"] == "2026-01-02"
+    assert (
+        "2026-01-01" in historico["calendario"]["fonte"]
+    )  # a agenda de 2026, a da edição
+    assert not any("2025-01-01" in url for url in pedidos)
+    _gravar_edicoes(
+        conn,
+        ("2025-12-26", _AGENDAS_FOCUS["2025"], _serie("2025-12-26")),
+        ("2026-01-02", _AGENDAS_FOCUS["2026"], _serie("2026-01-02")),
+    )
+    do_banco = macro._pib_do_banco(conn, instante)
+    assert (
+        do_banco["pesquisa"] == "2026-01-02" and do_banco["valor"] == historico["valor"]
+    )
+
+
+def test_banco_com_pesquisa_de_dezembro_antes_do_dia_25(conn):
+    """Edição de 27/12/2027 (pesquisa 24/12) e a primeira de 2028 em 03/01: em 02/01 vale a de dezembro."""
+    _gravar_edicoes(
+        conn,
+        ("2027-12-24", "2027-12-27T08:25:00-03:00", _serie("2027-12-24")),
+        ("2027-12-31", "2028-01-03T08:25:00-03:00", None),
+    )
+    resultado = macro._pib_do_banco(conn, datetime(2028, 1, 2, 15, tzinfo=UTC))
+    assert resultado.get("pesquisa") == "2027-12-24", resultado

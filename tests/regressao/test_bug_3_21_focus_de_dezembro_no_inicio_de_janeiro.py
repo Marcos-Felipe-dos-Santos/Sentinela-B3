@@ -30,11 +30,6 @@ class _PedidoDaSerie(Exception):
     pass
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=ValueError,
-    reason="BUG-3-21 · agenda do Focus do ano anterior ignorada · corrige: F3-A-F9",
-)
 def test_pib_no_comeco_de_janeiro_usa_a_edicao_de_dezembro(tmp_path, monkeypatch):
     provedor = macro.MacroProvider(cache_dir=tmp_path)
 
@@ -55,11 +50,6 @@ def test_pib_no_comeco_de_janeiro_usa_a_edicao_de_dezembro(tmp_path, monkeypatch
     assert "2025-12-26" in str(pedido.value)  # a sexta anterior à edição de 29/12
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="BUG-3-21 · edição de dezembro recusada pelo banco em janeiro · corrige: F3-A-F9",
-)
 def test_banco_no_comeco_de_janeiro_aceita_a_edicao_de_dezembro():
     with closing(sqlite3.connect(":memory:")) as conn:
         migracoes.aplicar(conn)
