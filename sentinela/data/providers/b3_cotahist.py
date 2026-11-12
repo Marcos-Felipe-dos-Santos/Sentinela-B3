@@ -15,6 +15,7 @@ O parser não lê relógio nem rede; o download recebe o instante atual como par
 
 from __future__ import annotations
 
+import json
 import logging
 import threading
 import zipfile
@@ -27,6 +28,7 @@ from zoneinfo import ZoneInfo
 import requests
 
 from cvm_download import baixar_arquivo
+from sentinela.data import proveniencia
 
 logger = logging.getLogger(__name__)
 
@@ -281,3 +283,195 @@ class HistoricoRecente:
             with _trava_leitura:
                 _falhas.pop(chave, None)
         return Coleta(cotacoes, tuple(ausentes))
+
+
+# --- Histórico longo no banco único (F3-4a) ---------------------------------------------------
+
+# Campos numéricos do registro 01 como o arquivo os declara (posições 0-indexadas do layout).
+_NUMEROS = (
+    ("abertura_centavos", 56, 69),
+    ("maxima_centavos", 69, 82),
+    ("minima_centavos", 82, 95),
+    ("media_centavos", 95, 108),
+    ("fechamento_centavos", 108, 121),
+    ("negocios", 147, 152),
+    ("quantidade", 152, 170),
+    ("volume_centavos", 170, 188),
+    ("fator_cotacao", 210, 217),
+)
+_CHAVE = ("data", "codigo_negociacao", "tipo_mercado", "codbdi", "prazo")
+_DADOS = ("especificacao", "isin", *(nome for nome, _, _ in _NUMEROS))
+LIMITE_REGISTROS = 100
+
+
+class LinhaRecusada(ValueError):
+    """Registro 01 ilegível: recusado com o motivo, sem derrubar a carga."""
+
+
+def registro_bruto(linha: str) -> dict | None:
+    """Campos do registro 01 como o arquivo declara, para a tabela `precos`; outro registro, `None`."""
+    if linha[:2] != _TIPREG_COTACAO:
+        return None
+    if len(linha) < 242:
+        raise LinhaRecusada(f"registro 01 truncado: {len(linha)} caracteres")
+    for nome, inicio, fim in (("DATA", 2, 10), *_NUMEROS):
+        campo = linha[inicio:fim]
+        if not (campo.isascii() and campo.isdigit()):  # sem sinal, espaço ou `_`
+            raise LinhaRecusada(f"campo ilegível: {nome} {campo!r}")
+    try:
+        dia = date(int(linha[2:6]), int(linha[6:8]), int(linha[8:10]))
+    except ValueError as erro:
+        raise LinhaRecusada(f"campo ilegível: {erro}") from None
+    numeros = {nome: int(linha[inicio:fim]) for nome, inicio, fim in _NUMEROS}
+    if numeros["fator_cotacao"] <= 0:
+        raise LinhaRecusada(f"fator de cotação inválido: {linha[210:217]!r}")
+    return {
+        "data": dia.isoformat(),
+        "codigo_negociacao": linha[12:24].strip(),
+        "tipo_mercado": linha[24:27],
+        "codbdi": linha[10:12],
+        "prazo": linha[49:52].strip(),
+        "especificacao": linha[39:49].strip() or None,
+        "isin": linha[230:242].strip() or None,
+        **numeros,
+    }
+
+
+def _gravar(conn, registro: dict, prov: tuple, resumo: dict) -> None:
+    chave = tuple(registro[c] for c in _CHAVE)
+    dados = tuple(registro[c] for c in _DADOS)
+    onde = " AND ".join(f"{c} = ?" for c in _CHAVE)
+    gravado = conn.execute(
+        f"SELECT {', '.join(_DADOS)} FROM precos WHERE {onde}", chave
+    ).fetchone()
+    if gravado is None:
+        colunas = (*_CHAVE, *_DADOS, "fonte", "coleta", "hash_sha256")
+        conn.execute(
+            f"INSERT INTO precos ({', '.join(colunas)}) VALUES ({', '.join('?' * len(colunas))})",
+            (*chave, *dados, *prov),
+        )
+        resumo["inseridas"] += 1
+    elif tuple(gravado) == dados:
+        resumo["repetidas"] += 1
+    else:
+        resumo["total_conflitos"] += 1
+        if len(resumo["conflitos"]) < LIMITE_REGISTROS:
+            resumo["conflitos"].append(dict(zip(_CHAVE, chave, strict=True)))
+
+
+def carregar(
+    conn,
+    arquivo: Path | str,
+    *,
+    fonte: str,
+    coleta: str,
+    mercados: tuple[str, ...] = (MERCADO_A_VISTA,),
+) -> dict:
+    """Grava em `precos` o COTAHIST (anual ou mensal, layout oficial), num `SAVEPOINT`.
+
+    Idempotente pelo hash do arquivo (`cargas_cotahist`): o mesmo arquivo não é lido de
+    novo. Só inserção: linha já gravada com os mesmos números é repetida; com números
+    diferentes, fica a gravada e o caso vai a `conflitos`. Registro ilegível é recusado com
+    o motivo, sem derrubar a carga. Só os mercados pedidos (por padrão, o à vista, 010).
+    """
+    if not fonte or not coleta:
+        raise ValueError("fonte e coleta são obrigatórias")
+    arquivo = Path(arquivo)
+    hash_ = proveniencia.hash_sha256(arquivo)
+    if conn.execute(
+        "SELECT 1 FROM cargas_cotahist WHERE hash_sha256 = ?", (hash_,)
+    ).fetchone():
+        return {"hash_sha256": hash_, "ja_carregado": True}
+    resumo = {
+        "hash_sha256": hash_, "ja_carregado": False, "inseridas": 0, "repetidas": 0,
+        "total_conflitos": 0, "conflitos": [], "total_recusadas": 0, "recusadas": [],
+    }  # fmt: skip
+    conn.execute("SAVEPOINT carga_cotahist")
+    try:
+        with zipfile.ZipFile(arquivo) as zf:
+            nomes = zf.namelist()
+            if not nomes:
+                raise zipfile.BadZipFile(f"{arquivo}: ZIP sem arquivo")
+            with zf.open(nomes[0]) as f:
+                for numero, bruta in enumerate(f, start=1):
+                    try:
+                        registro = registro_bruto(
+                            bruta.decode("latin-1").rstrip("\r\n")
+                        )
+                    except LinhaRecusada as motivo:
+                        resumo["total_recusadas"] += 1
+                        if len(resumo["recusadas"]) < LIMITE_REGISTROS:
+                            resumo["recusadas"].append(
+                                {"linha": numero, "motivo": str(motivo)}
+                            )
+                        continue
+                    if registro is not None and registro["tipo_mercado"] in mercados:
+                        _gravar(conn, registro, (fonte, coleta, hash_), resumo)
+        conn.execute(
+            "INSERT INTO cargas_cotahist (hash_sha256, arquivo, data_geracao, fonte, coleta, "
+            "resumo_json) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                hash_,
+                arquivo.name,
+                data_de_geracao(arquivo),
+                fonte,
+                coleta,
+                json.dumps(resumo),
+            ),
+        )
+    except BaseException:
+        if conn.in_transaction:  # o SQLite pode já ter desfeito tudo (disco cheio, E/S)
+            conn.execute("ROLLBACK TO carga_cotahist")
+            conn.execute("RELEASE carga_cotahist")
+        raise
+    conn.execute("RELEASE carga_cotahist")
+    return resumo
+
+
+def cotacoes_ate(conn, dia: date, pregoes: int = 63) -> list[Cotacao]:
+    """Cotações do mercado à vista nos últimos `pregoes` pregões anteriores ao dia (F3-4a).
+
+    O pregão do próprio dia fica fora (só se completa depois do fechamento): nada de depois
+    de D entra. Mesmo formato do `ler_zip`, para `liquidez.metricas` e as regras da 2B. Recebe o
+    dia local de D (`date`), não um instante: com `datetime`, o texto ISO deixaria o próprio dia
+    passar pela comparação.
+    """
+    if isinstance(dia, datetime) or not isinstance(dia, date):
+        raise TypeError("cotacoes_ate recebe o dia local de D (date), não um instante")
+    if pregoes < 1:
+        raise ValueError(f"pregoes deve ser positivo: {pregoes}")
+    datas = [
+        d
+        for (d,) in conn.execute(
+            "SELECT DISTINCT data FROM precos WHERE tipo_mercado = ? AND data < ? "
+            "ORDER BY data DESC LIMIT ?",
+            (MERCADO_A_VISTA, dia.isoformat(), pregoes),
+        )
+    ]
+    if not datas:
+        return []
+    return [
+        Cotacao(
+            data=date.fromisoformat(d),
+            codigo_negociacao=codigo,
+            codbdi=codbdi,
+            tipo_mercado=mercado,
+            especificacao=especificacao or "",
+            isin=isin or "",
+            fechamento=fechamento / 100 / fator,
+            volume_financeiro=volume / 100,
+            quantidade=quantidade,
+            negocios=negocios,
+            fator_cotacao=fator,
+        )
+        for (
+            d, codigo, codbdi, mercado, especificacao, isin, fechamento, volume, quantidade,
+            negocios, fator,
+        ) in conn.execute(
+            "SELECT data, codigo_negociacao, codbdi, tipo_mercado, especificacao, isin, "
+            "fechamento_centavos, volume_centavos, quantidade, negocios, fator_cotacao "
+            "FROM precos WHERE tipo_mercado = ? AND data >= ? AND data < ? "
+            "ORDER BY data, codigo_negociacao, codbdi, prazo",
+            (MERCADO_A_VISTA, min(datas), dia.isoformat()),
+        )
+    ]  # fmt: skip

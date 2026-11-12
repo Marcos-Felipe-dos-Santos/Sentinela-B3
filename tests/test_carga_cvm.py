@@ -535,11 +535,14 @@ def test_zip_de_outro_tipo_e_recusado_sem_gravar(conn, arquivo, tipo):
 def test_migracao_005_aplicada_sobre_o_banco_da_004_sem_perda(tmp_path):
     import shutil
 
-    ate_004 = tmp_path / "ate_004"
+    ate_004, ate_005 = tmp_path / "ate_004", tmp_path / "ate_005"
     ate_004.mkdir()
+    ate_005.mkdir()
     for _, arquivo in migracoes.listar():
         if arquivo.name < "005":
             shutil.copy(arquivo, ate_004 / arquivo.name)
+        if arquivo.name < "006":
+            shutil.copy(arquivo, ate_005 / arquivo.name)
     banco = tmp_path / "banco.db"
     with closing(sqlite3.connect(banco)) as c:
         assert migracoes.aplicar(c, ate_004) == [1, 2, 3, 4]
@@ -549,7 +552,7 @@ def test_migracao_005_aplicada_sobre_o_banco_da_004_sem_perda(tmp_path):
             for t in ("entregas", "demonstracoes", "carteira_real")
         }
     with closing(sqlite3.connect(banco)) as c:
-        assert migracoes.aplicar(c) == [5]
+        assert migracoes.aplicar(c, ate_005) == [5]
         assert {t: c.execute(f'SELECT * FROM "{t}"').fetchall() for t in antes} == antes
 
 
