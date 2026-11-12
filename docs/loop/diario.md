@@ -831,3 +831,7 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Mutação:** `_buscar_taxa_real` (`--max-children 2`): 14 mortos e 1 sobrevivente: `datetime.now(None)` no lugar de `datetime.now(UTC)`, que o relógio falso dos testes não distingue (ele devolve sempre o mesmo instante com fuso); limitação do relógio falso, a mesma dos testes de cascata existentes.
 - **Suíte:** 4485 passed, 1 skipped, 2 xfailed → 4488 passed, 1 skipped, 1 xfailed (+2 testes e a regressão em PASS). Golden SHA igual. Banco real não aberto.
 - **Resíduos:** `outputs/f3-a-f10-mutmut.log`.
+
+### Registro — pendências das revisões do F3-A-F9 e do F3-A-F10
+- **Executor:** claude-code (Claude Opus 5.5).
+- **O que foi feito:** os médios não bloqueantes das revisões do F3-A-F9 (`proxima_publicacao` do banco com edição de janeiro de D+1; dependência da agenda anterior no `_focus`; comentário da regra da sexta anterior) e do F3-A-F10 (limitação do relógio falso) foram para `docs/loop/pendencias.md`. Com o F3-A-F10, os achados 2 a 5 da auditoria do Gemini e o BUG-3-23 estão corrigidos.
