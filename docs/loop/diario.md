@@ -993,3 +993,13 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Status:** bloqueado (`[!]`, caso (f) do protocolo; política §3, item 2).
 - **Motivo:** o aceite fecha o BUG-3-15 (a DFP entregue depois do corte não entra na série da cascata) "com a conciliação do `test_bug_3_12` pela resposta do Marcos à pergunta 1 da auditoria da 3-a"; o `test_bug_3_12` (em `tests/regressao/`) e o `test_cvm_corte_explicito` afirmam hoje o corte por período, e mudá-los é teste protegido, que só muda com a decisão dele. A pergunta segue aberta em `docs/loop/pendencias.md` (checkpoint 3-a). Também ficam para a mesma resposta: o uso da coleta de proventos de hoje para datas passadas (pendência do F3-7a) e a cobertura de proventos medida no F3-7b.
 - **O que segue:** os independentes de `python scripts/fila.py independentes F3-3d`, na ordem e no máximo três: F3-P07, F3-P09 e F3-P10. Nenhuma alteração de código neste registro.
+
+### F3-P07 — docs: study preferred share identity without FCA symbol
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso (independente do F3-3d, primeiro de três).
+- **O que foi feito:** `docs/decisoes/identidade-preferenciais-3.md`, com leitura do banco único (só leitura) e dos ZIPs do FCA já baixados, sem rede: o caso do F2C-54 (DRE com classe com sigla, FCA sem sigla) aparece em um a dois códigos por ano de 2017 a 2025; CGAS5 tem prova oficial da classe no COTAHIST (especificação `PNA` e ISIN `BRCGASACNPA3` de 2010 a 2026), EKTR4 não (COTAHIST `PN`, ISIN `ACNPR`, DRE `PNA` e `PNB`); proposta de `fix:` pelo COTAHIST para o checkpoint da 3-b, sem implementação.
+- **Achado fora do escopo:** o FCA aberto não tem código de negociação antes da referência de 2018, e o universo em D não identifica nenhuma ação até o primeiro semestre de 2018 (tabela no §4 do estudo). A conclusão do L1 de que o FCA "traz o código" vinha só da amostra de 2015. É condição de parada do `/goal` (passo 7: decisão de dados não cumprível); pendência para o Marcos com três caminhos.
+- **Testes:** não se aplica (só documento). Suíte inalterada: 4730 passed, 1 skipped, 1 xfailed.
+- **Resíduos:** `~/.cache/sentinela-testes-claude/p07.py` (consulta de medição, fora do repositório).
+- **Decisões delegadas novas:** nenhuma.
+- **Parada:** depois deste item o loop para pelo passo 7 do `/goal`, sem seguir para F3-P09 e F3-P10.
