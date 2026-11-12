@@ -37,12 +37,12 @@ import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 import requests
 
-from sentinela.data import proventos_b3
+from sentinela.data import fatores_acoes_b3, proventos_b3
 from sentinela.data.cache_leitura import CacheCopia, IdentidadeLeitor
 
 URL_BASE = "https://sistemaswebb3-listados.b3.com.br/listedCompaniesProxy/CompanyCall"
@@ -195,3 +195,159 @@ def _coletar_sem_cache(
             registros, complemento[0]["cashDividends"], isins
         ),
     )
+
+
+# --- Eventos em ações no banco único (F3-4b) --------------------------------------------------
+
+
+def _fator_ou_motivo(evento: dict) -> tuple[float | None, str | None]:
+    """Fator multiplicativo oficial (`fatores_acoes_b3._fator`) ou o motivo da falta."""
+    try:
+        return fatores_acoes_b3._fator(evento), None
+    except (ValueError, TypeError) as erro:
+        return None, str(erro)
+
+
+def gravar_eventos(conn, relacao: Relacao, cd_cvm: int | str) -> dict:
+    """Grava os eventos em ações do complemento em `eventos_societarios`, num `SAVEPOINT`.
+
+    Cada evento é identificado pelo hash do seu JSON; já gravado, conta como repetido e fica
+    a primeira coleta que o viu. A fonte e o hash são os da resposta do complemento (a última
+    da coleta). Evento sem conversão documentada entra sem fator, com o motivo.
+    """
+    complemento = relacao.fontes[-1]
+    if "GetListedSupplementCompany" not in str(complemento.get("url")):
+        raise ValueError("a última fonte da coleta não é a resposta do complemento")
+    prov = (complemento["url"], relacao.coleta, complemento["sha256"])
+    resumo = {"inseridos": 0, "repetidos": 0, "sem_fator": 0}
+    conn.execute("SAVEPOINT eventos_b3")
+    try:
+        for evento in relacao.eventos_acoes:
+            texto = json.dumps(evento, ensure_ascii=False, sort_keys=True)
+            linha = hashlib.sha256(texto.encode("utf-8")).hexdigest()
+            if conn.execute(
+                "SELECT 1 FROM eventos_societarios WHERE emissor = ? AND linha_sha256 = ?",
+                (relacao.emissor, linha),
+            ).fetchone():
+                resumo["repetidos"] += 1
+                continue
+            fator, motivo = _fator_ou_motivo(evento)
+            datas = [
+                proventos_b3.ler_data(evento.get(c))
+                for c in ("lastDatePrior", "approvedOn")
+            ]
+            conn.execute(
+                "INSERT INTO eventos_societarios (emissor, linha_sha256, cd_cvm, rotulo, isin, "
+                "ativo_emitido, data_com, aprovacao, fator_declarado, fator, motivo_sem_fator, "
+                "linha_json, fonte, coleta, hash_sha256) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    relacao.emissor,
+                    linha,
+                    str(cd_cvm),
+                    str(evento.get("label") or ""),
+                    evento.get("isinCode"),
+                    evento.get("assetIssued"),
+                    *(d.isoformat() if d else None for d in datas),
+                    evento.get("factor"),
+                    fator,
+                    motivo,
+                    texto,
+                    *prov,
+                ),
+            )
+            resumo["inseridos"] += 1
+            resumo["sem_fator"] += fator is None
+    except BaseException:
+        if conn.in_transaction:
+            conn.execute("ROLLBACK TO eventos_b3")
+            conn.execute("RELEASE eventos_b3")
+        raise
+    conn.execute("RELEASE eventos_b3")
+    return resumo
+
+
+CALENDARIO_MAXIMO_DIAS = 10
+MOTIVO_SEM_CALENDARIO = (
+    "pregões guardados não cobrem a data com (data ex não demonstrada)"
+)
+MOTIVO_SEM_DATAS = "aprovação ou data com ilegível"
+MOTIVO_CONFLITO = "eventos em ações conflitantes na mesma data com"
+MOTIVO_NAO_EFETIVADO = "data com em D ou depois: evento aprovado e ainda não efetivado"
+
+
+def _data_ex(conn, data_com: str, dia: date) -> str | None:
+    """Primeiro pregão depois da data com, só com prova de calendário (DD-48).
+
+    Exige um pregão guardado até a data com e o seguinte, os dois a até
+    `CALENDARIO_MAXIMO_DIAS` dela, e o seguinte antes do dia de D: sem pregões guardados em
+    volta da data com, o primeiro pregão guardado depois dela não é a data ex.
+    """
+    anterior, posterior = conn.execute(
+        "SELECT (SELECT MAX(data) FROM precos WHERE tipo_mercado = '010' AND data <= ?), "
+        "(SELECT MIN(data) FROM precos WHERE tipo_mercado = '010' AND data > ? AND data < ?)",
+        (data_com, data_com, dia.isoformat()),
+    ).fetchone()
+    com = date.fromisoformat(data_com)
+    if anterior is None or posterior is None:
+        return None
+    if (com - date.fromisoformat(anterior)).days > CALENDARIO_MAXIMO_DIAS:
+        return None
+    if (date.fromisoformat(posterior) - com).days > CALENDARIO_MAXIMO_DIAS:
+        return None
+    return posterior
+
+
+def eventos_ate(conn, emissor: str, dia: date) -> dict:
+    """Eventos em ações do emissor conhecidos antes do dia local de D (F3-4b, DD-48).
+
+    Vale o evento aprovado antes do dia de D. Vão para `sem_prova`, com o motivo, os de
+    aprovação ou data com ilegível e os conflitantes (mesmo rótulo, ISIN, ativo e data com
+    com fatores diferentes); o mesmo evento em outra forma conta uma vez. A data ex é o
+    primeiro pregão do mercado à vista depois da data com, só com prova de calendário
+    (`_data_ex`); sem ela, fica nula com `motivo_data_ex`, e evento com data com em D ou depois
+    sai com o motivo de não efetivado. O mesmo evento com aprovação legível numa forma e
+    ilegível noutra aparece nas duas listas. Recebe o dia (`date`).
+    """
+    if isinstance(dia, datetime) or not isinstance(dia, date):
+        raise TypeError("eventos_ate recebe o dia local de D (date), não um instante")
+    por_evento: dict[tuple, list[dict]] = {}
+    sem_prova = []
+    for (
+        rotulo, isin, emitido, data_com, aprovacao, declarado, fator, motivo, fonte, coleta,
+        hash_,
+    ) in conn.execute(
+        "SELECT rotulo, isin, ativo_emitido, data_com, aprovacao, fator_declarado, fator, "
+        "motivo_sem_fator, fonte, coleta, hash_sha256 FROM eventos_societarios "
+        "WHERE emissor = ? ORDER BY data_com, rotulo, isin, coleta, linha_sha256",
+        (emissor,),
+    ):  # fmt: skip
+        evento = {
+            "rotulo": rotulo, "isin": isin, "ativo_emitido": emitido, "data_com": data_com,
+            "aprovacao": aprovacao, "fator_declarado": declarado, "fator": fator,
+            "motivo_sem_fator": motivo,
+            "proveniencia": {"fonte": fonte, "coleta": coleta, "hash_sha256": hash_},
+        }  # fmt: skip
+        if aprovacao is None or data_com is None:
+            sem_prova.append(evento | {"motivo": MOTIVO_SEM_DATAS})
+        elif aprovacao < dia.isoformat():
+            por_evento.setdefault((rotulo, isin, emitido, data_com), []).append(evento)
+    vistos = []
+    for (_, _, _, data_com), mesmos in por_evento.items():
+        if len({(e["fator"], e["motivo_sem_fator"]) for e in mesmos}) > 1:
+            sem_prova.extend(e | {"motivo": MOTIVO_CONFLITO} for e in mesmos)
+            continue
+        if data_com >= dia.isoformat():
+            vistos.append(
+                mesmos[0] | {"data_ex": None, "motivo_data_ex": MOTIVO_NAO_EFETIVADO}
+            )
+            continue
+        data_ex = _data_ex(conn, data_com, dia)
+        vistos.append(
+            mesmos[0]
+            | {
+                "data_ex": data_ex,
+                "motivo_data_ex": None if data_ex else MOTIVO_SEM_CALENDARIO,
+            }
+        )
+    return {"eventos": vistos, "sem_prova": sem_prova}
