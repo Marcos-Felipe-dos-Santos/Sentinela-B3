@@ -10,12 +10,14 @@ from sentinela.data.referencia import carregar_indice, salvar_indice
 from sentinela.data.referencia.cobertura import cobertura
 from sentinela.data.referencia.montagem import (
     MOTIVO_COMPANHIA,
+    MOTIVO_FCA_RECENTE_SEM_VALORES,
     MOTIVO_REPETIDO,
     MOTIVO_RESERVA,
     cd_cvm_por_cnpj,
     fca_mais_recente,
     montar_indice,
     parsear_acoes_por_unit,
+    sem_valores_no_fca_recente,
 )
 
 FONTES = {
@@ -667,3 +669,95 @@ def test_fundo_que_nao_informa_ha_mais_de_seis_meses_sai():
     )
     indice = _indice(informe=informe, fca=_fca().iloc[0:0])
     assert sorted(indice.registros) == ["AAAA11", "BBBB11"]
+
+
+# ── BUG-3-24: a referência mais recente entregue do FCA decide (F3-5-fix) ──────
+
+
+def _entregas(*pares):
+    return pd.DataFrame(list(pares), columns=["CNPJ_CIA", "DT_REFER"])
+
+
+def test_fca_recente_entregue_sem_valores_tira_os_codigos_da_referencia_anterior():
+    anterior = _fca(
+        {"Data_Referencia": "2025-01-01", "Codigo_Negociacao": "TSTA3"},
+        {"Data_Referencia": "2025-01-01", "Codigo_Negociacao": None},
+        {"CNPJ_Companhia": CNPJ_B, "Data_Referencia": "2025-01-01", "Codigo_Negociacao": "TSTB3"},
+    )  # fmt: skip
+    entregas = _entregas(
+        (CNPJ_A, "2025-01-01"), (CNPJ_A, "2026-01-01"), (CNPJ_B, "2025-01-01")
+    )
+    fcas, excecoes = sem_valores_no_fca_recente([(2025, anterior)], entregas)
+    ((ano, df),) = fcas
+    assert ano == 2025 and list(df["Codigo_Negociacao"]) == ["TSTB3"]
+    assert [e.para_dict() for e in excecoes] == [
+        {"codigo": "TSTA3", "motivo": MOTIVO_FCA_RECENTE_SEM_VALORES, "cnpj": CNPJ_A,
+         "nome": "EMPRESA A S.A."}
+    ]  # fmt: skip
+
+
+def test_fca_recente_com_valores_ou_sem_entregas_nao_muda():
+    anterior = _fca({"Data_Referencia": "2025-01-01", "Codigo_Negociacao": "VELH3"})
+    recente = _fca({"Codigo_Negociacao": "NOVA3"})
+    fcas = [(2025, anterior), (2026, recente), (2024, _fca().iloc[0:0])]
+    entregas = _entregas((CNPJ_A, "2025-01-01"), (CNPJ_A, "2026-01-01"))
+    mantidos, excecoes = sem_valores_no_fca_recente(fcas, entregas)
+    assert excecoes == []  # a recente tem linhas: `fca_mais_recente` escolhe
+    assert [list(df["Codigo_Negociacao"]) for _, df in mantidos] == [
+        ["VELH3"],
+        ["NOVA3"],
+        [],
+    ]
+    for vazio in (None, _entregas()):
+        assert sem_valores_no_fca_recente(fcas, vazio) == (fcas, [])
+
+
+def test_indice_com_entregas_aplica_a_referencia_mais_recente():
+    anterior = _fca({"Data_Referencia": "2025-01-01", "Codigo_Negociacao": "VELH3"})
+    fcas = [(2025, anterior), (2026, _fca().iloc[0:0])]
+    entregas = _entregas((CNPJ_A, "2025-01-01"), (CNPJ_A, "2026-01-01"))
+    sem = montar_indice(fcas, _cadastro(), _sem_fii(), [], FONTES, "2026-10-08")
+    com = montar_indice(
+        fcas, _cadastro(), _sem_fii(), [], FONTES, "2026-10-08", entregas_fca=entregas
+    )
+    assert "VELH3" in sem.registros and "VELH3" not in com.registros
+    assert [(e.codigo, e.motivo) for e in com.excecoes] == [
+        ("VELH3", MOTIVO_FCA_RECENTE_SEM_VALORES)
+    ]
+
+
+def test_excecao_uma_por_codigo_e_so_das_linhas_que_entrariam():
+    linhas = [
+        {"Data_Referencia": "2023-01-01", "Codigo_Negociacao": "VELH3"},
+        {"Data_Referencia": "2024-01-01", "Codigo_Negociacao": "VELH3"},
+        {"Data_Referencia": "2025-01-01", "Codigo_Negociacao": "VELH3"},
+        {"Data_Referencia": "2025-01-01", "Codigo_Negociacao": "ENCE3",
+         "Data_Fim_Negociacao": "2025-03-01"},
+        {"Data_Referencia": "2025-01-01", "Codigo_Negociacao": "DEBE11",
+         "Valor_Mobiliario": "Debêntures"},
+        {"Data_Referencia": "2025-01-01", "Codigo_Negociacao": "BALC3",
+         "Mercado": "Balcão Não Organizado"},
+        {"Data_Referencia": None, "Codigo_Negociacao": "SEMR3"},
+    ]  # fmt: skip
+    fcas = [(2025, _fca(*linhas))]
+    entregas = _entregas((CNPJ_A, "2025-01-01"), (CNPJ_A, "2026-01-01"))
+    mantidos, excecoes = sem_valores_no_fca_recente(fcas, entregas)
+    ((_, restantes),) = mantidos
+    assert restantes.empty  # todas as referências anteriores saem, inclusive a vazia
+    assert [(e.codigo, e.cnpj) for e in excecoes] == [("VELH3", CNPJ_A)]
+
+
+def test_linha_mais_nova_que_a_ultima_entrega_conhecida_conta_como_recente():
+    """Só o arquivo de entregas de 2024 lido (sem linhas); as linhas de 2025 decidem."""
+    fcas = [
+        (2023, _fca({"Data_Referencia": "2023-01-01", "Codigo_Negociacao": "VELH3"})),
+        (2025, _fca({"Data_Referencia": "2025-01-01", "Codigo_Negociacao": "NOVA3"})),
+    ]
+    mantidos, excecoes = sem_valores_no_fca_recente(
+        fcas, _entregas((CNPJ_A, "2024-01-01"))
+    )
+    assert excecoes == []
+    assert [list(df["Codigo_Negociacao"]) for _, df in mantidos] == [
+        ["VELH3"],
+        ["NOVA3"],
+    ]

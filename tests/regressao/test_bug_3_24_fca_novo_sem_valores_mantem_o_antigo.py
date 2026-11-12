@@ -26,7 +26,6 @@ def conn():
         yield conexao
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-3-24: corrigido em F3-5-fix")
 def test_bug_3_24_fca_novo_sem_valores_nao_volta_ao_antigo(conn, tmp_path):
     antiga = _valor(Data_Referencia="2025-01-01", Valor_Mobiliario="Ações Ordinárias",
                     Codigo_Negociacao="VELH3", Data_Inicio_Negociacao="2020-01-02")  # fmt: skip

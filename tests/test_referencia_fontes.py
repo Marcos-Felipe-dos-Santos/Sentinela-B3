@@ -13,7 +13,7 @@ import requests
 
 from sentinela.data.providers.b3_cotahist import Cotacao
 from sentinela.data.referencia import __main__ as principal
-from sentinela.data.referencia import carregar_indice, fontes, salvar_indice
+from sentinela.data.referencia import carregar_indice, fontes, montagem, salvar_indice
 from sentinela.data.referencia.montagem import montar_indice
 
 AGORA = datetime(2026, 10, 8, 12, 0, tzinfo=UTC)
@@ -580,7 +580,11 @@ def test_obter_indice_sem_rede_e_sem_salvo_levanta(tmp_path, monkeypatch):
 def test_linha_de_comando_grava_o_indice_e_mostra_a_cobertura(
     tmp_path, rede_simulada, capsys, monkeypatch
 ):
-    monkeypatch.setattr(principal, "datetime", type("Relogio", (), {"now": staticmethod(lambda tz: AGORA)}))
+    monkeypatch.setattr(
+        principal,
+        "datetime",
+        type("Relogio", (), {"now": staticmethod(lambda tz: AGORA)}),
+    )
     assert principal.main(["--pasta", str(tmp_path), "--cobertura"]) == 0
     saida = capsys.readouterr().out
     assert "índice: 2 registros, 0 exceções" in saida
@@ -593,7 +597,11 @@ def test_linha_de_comando_grava_o_indice_e_mostra_a_cobertura(
 def test_linha_de_comando_sem_cobertura_nao_imprime_o_json(
     tmp_path, rede_simulada, capsys, monkeypatch
 ):
-    monkeypatch.setattr(principal, "datetime", type("Relogio", (), {"now": staticmethod(lambda tz: AGORA)}))
+    monkeypatch.setattr(
+        principal,
+        "datetime",
+        type("Relogio", (), {"now": staticmethod(lambda tz: AGORA)}),
+    )
     principal.main(["--pasta", str(tmp_path)])
     assert "{" not in capsys.readouterr().out
 
@@ -630,3 +638,70 @@ def test_data_do_arquivo_e_a_do_download(tmp_path):
     arquivo.write_bytes(b"x")
     _baixado_em(arquivo, datetime(2026, 3, 4, 23, 59, tzinfo=UTC))
     assert fontes._data_do_arquivo(arquivo) == "2026-03-04"
+
+
+def test_entregas_do_fca_lidas_do_zip_ou_aviso_sem_elas(tmp_path, caplog):
+    """BUG-3-24 (F3-5-fix): o índice de entregas vem do mesmo zip do FCA."""
+    com = tmp_path / "com.zip"
+    with zipfile.ZipFile(com, "w") as zf:
+        zf.writestr(
+            "fca_cia_aberta_2026.csv",
+            "CNPJ_CIA;DT_REFER;VERSAO\n11.111.111/0001-11;2026-01-01;2\n",
+        )
+    (lido,) = fontes._entregas_do_fca(com, 2026)
+    assert lido.to_dict("records") == [
+        {"CNPJ_CIA": "11.111.111/0001-11", "DT_REFER": "2026-01-01", "VERSAO": "2"}
+    ]
+    sem = tmp_path / "sem.zip"
+    with zipfile.ZipFile(sem, "w") as zf:
+        zf.writestr("fca_cia_aberta_valor_mobiliario_2026.csv", "CNPJ_Companhia\n")
+    with caplog.at_level("WARNING"):
+        assert fontes._entregas_do_fca(sem, 2026) == []
+    assert "FCA 2026 sem o índice de entregas" in caplog.text
+
+
+@pytest.mark.parametrize("entregue_em_2026", [True, False])
+def test_construir_indice_aplica_o_fca_recente_entregue_sem_valores(
+    tmp_path, rede_simulada, monkeypatch, entregue_em_2026
+):
+    """BUG-3-24 pelo caminho do índice salvo: zip do FCA com o índice de entregas."""
+    original = fontes.baixar_zip
+    cnpj = FCA_CSV[1][0]
+
+    def baixar_zip(url, destino, agora):
+        if "fca" not in url:
+            return original(url, destino, agora)
+        ano = "2025" if "2025" in url else "2026"
+        linhas = [FCA_CSV[0]]
+        entregas = []
+        if ano == "2025":
+            linhas.append([cnpj, "2025-01-01", *FCA_CSV[1][2:]])
+            entregas.append(f"{cnpj};2025-01-01;1")
+        elif entregue_em_2026:
+            entregas.append(f"{cnpj};2026-01-01;1")  # entregue, sem valores mobiliários
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as zf:
+            zf.writestr(
+                f"fca_cia_aberta_valor_mobiliario_{ano}.csv",
+                "\n".join(";".join(linha) for linha in linhas).encode("latin-1"),
+            )
+            zf.writestr(
+                f"fca_cia_aberta_{ano}.csv",
+                "\n".join(["CNPJ_CIA;DT_REFER;VERSAO", *entregas]).encode("latin-1"),
+            )
+        destino.write_bytes(buffer.getvalue())
+        return destino
+
+    monkeypatch.setattr(fontes, "baixar_zip", baixar_zip)
+    f = fontes.carregar_fontes(AGORA, tmp_path)
+    assert sorted(f.entregas_fca["DT_REFER"]) == (
+        ["2025-01-01", "2026-01-01"] if entregue_em_2026 else ["2025-01-01"]
+    )
+    indice = fontes.construir_indice(AGORA, tmp_path)
+    excecoes = [(e.codigo, e.motivo) for e in indice.excecoes]
+    if entregue_em_2026:
+        assert "TSTA3" not in indice.registros
+        assert excecoes.count(("TSTA3", montagem.MOTIVO_FCA_RECENTE_SEM_VALORES)) == 1
+    else:
+        assert indice.registros["TSTA3"].cd_cvm == 100
+        assert ("TSTA3", montagem.MOTIVO_FCA_RECENTE_SEM_VALORES) not in excecoes

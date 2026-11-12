@@ -20,7 +20,7 @@ from test_cotahist import _linha
 import config
 from sentinela.data.pit import carga_cvm
 from sentinela.data.providers import b3_cotahist
-from sentinela.data.referencia import universo
+from sentinela.data.referencia import montagem, universo
 from sentinela.data.store import migracoes
 
 FIXTURES = Path(__file__).parent / "fixtures" / "pit_cvm"
@@ -474,8 +474,13 @@ def test_referencia_mais_recente_prevalece_e_sem_linhas_nao_volta_para_a_antiga(
         "companhias": [],
         "sem_prova": [{"cnpj": TSTE, "referencia_fca": "2026-01-01"}],
     }
-    # o índice em D segue o índice atual e volta à referência de 2025 (BUG-3-24)
-    assert set(universo.indice_em(conn, entre, CADASTRO_TSTE).registros) == {"VELH3"}
+    # a v1 de 2026, vigente em D, não tem os valores na fonte aberta (reapresentada na v2
+    # depois de D): sem prova, o VELH3 de 2025 não volta e fica como exceção
+    indice = universo.indice_em(conn, entre, CADASTRO_TSTE)
+    assert indice.registros == {}
+    assert [(e.codigo, e.motivo) for e in indice.excecoes] == [
+        ("VELH3", universo.MOTIVO_FCA_SEM_PROVA)
+    ]
     assert [
         c["codigo"]
         for c in universo.companhias_em(conn, date(2025, 6, 1))["companhias"]
@@ -607,3 +612,86 @@ def test_codigo_em_excecao_do_indice_leva_o_motivo_da_excecao(conn, tmp_path):
     assert [(t["ticker"], t["motivo"]) for t in lido["sem_identificacao"]] == [
         ("TST3B", "código fora do formato de ticker")
     ]
+
+
+def _entrega_direta(conn, cnpj, dt_refer, versao, dt_receb, na_fonte):
+    conn.execute(
+        "INSERT INTO fca_entregas (cnpj, dt_refer, versao, dt_receb, valores_na_fonte, fonte, "
+        "coleta, hash_sha256) VALUES (?, ?, ?, ?, ?, 'sintetico', 'c', 'h')",
+        (cnpj, dt_refer, versao, dt_receb, na_fonte),
+    )
+
+
+def test_fca_vigente_com_conteudo_e_sem_valores_aplica_o_bug_3_24(conn, tmp_path):
+    antiga = _valor(Data_Referencia="2025-01-01", Valor_Mobiliario="Ações Ordinárias",
+                    Codigo_Negociacao="VELH3", Data_Inicio_Negociacao="2020-01-02")  # fmt: skip
+    _fca_sintetico(
+        conn, tmp_path, [(TSTE, "2025-01-01", "1", "2025-02-01")], [antiga], ano=2025
+    )
+    _entrega_direta(
+        conn, TSTE, "2026-01-01", 1, "2026-02-01", 1
+    )  # conteúdo, sem valores
+    indice = universo.indice_em(conn, date(2026, 3, 1), CADASTRO_TSTE)
+    assert indice.registros == {}
+    assert [(e.codigo, e.motivo) for e in indice.excecoes] == [
+        ("VELH3", montagem.MOTIVO_FCA_RECENTE_SEM_VALORES)
+    ]
+    antes = universo.indice_em(
+        conn, date(2026, 2, 1), CADASTRO_TSTE
+    )  # 2026 ainda não entregue
+    assert set(antes.registros) == {"VELH3"} and antes.excecoes == []
+
+
+def test_sem_prova_chega_ao_universo_com_o_motivo(conn, tmp_path):
+    antiga = _valor(Data_Referencia="2025-01-01", Valor_Mobiliario="Ações Ordinárias",
+                    Codigo_Negociacao="VELH3", Data_Inicio_Negociacao="2020-01-02")  # fmt: skip
+    _fca_sintetico(
+        conn, tmp_path, [(TSTE, "2025-01-01", "1", "2025-02-01")], [antiga], ano=2025
+    )
+    _entrega_direta(
+        conn, TSTE, "2026-01-01", 1, "2026-02-01", 0
+    )  # reapresentada depois
+    _precos(conn, tmp_path, [_negocio(date(2026, 2, 27), "VELH3", "BRVELHACNOR1")])
+    lido = universo.universo_em(conn, date(2026, 3, 2), CADASTRO_TSTE)
+    assert lido["universo"] == []
+    assert [(t["ticker"], t["motivo"]) for t in lido["sem_identificacao"]] == [
+        ("VELH3", universo.MOTIVO_FCA_SEM_PROVA)
+    ]
+
+
+def test_sem_prova_e_bug_3_24_com_duas_companhias_e_duas_versoes(conn, tmp_path):
+    outra = "22.222.222/0001-22"
+    antigas = [
+        _valor(Data_Referencia="2025-01-01", Valor_Mobiliario="Ações Ordinárias",
+               Codigo_Negociacao="VELH3", Data_Inicio_Negociacao="2020-01-02"),
+        _valor(Data_Referencia="2025-01-01", Valor_Mobiliario="Ações Preferenciais",
+               Codigo_Negociacao="VELH4", Data_Inicio_Negociacao="2020-01-02",
+               Data_Fim_Negociacao="2025-06-30"),
+        _valor(CNPJ_Companhia=outra, Data_Referencia="2025-01-01",
+               Valor_Mobiliario="Ações Ordinárias", Codigo_Negociacao="OUTR3",
+               Data_Inicio_Negociacao="2020-01-02", Nome_Empresarial="OUTRA S.A."),
+    ]  # fmt: skip
+    _fca_sintetico(
+        conn, tmp_path,
+        [(TSTE, "2025-01-01", "1", "2025-02-01"), (outra, "2025-01-01", "1", "2025-02-01")],
+        antigas, ano=2025,
+    )  # fmt: skip
+    _entrega_direta(conn, TSTE, "2026-01-01", 1, "2026-02-01", 0)  # TSTE: sem prova
+    _entrega_direta(conn, outra, "2026-01-01", 1, "2026-02-01", 0)
+    _entrega_direta(conn, outra, "2026-01-01", 2, "2026-02-10", 1)  # vigente: conteúdo
+    _entrega_direta(conn, outra, "2026-01-01", 3, "2026-04-01", 0)  # depois de D
+    indice = universo.indice_em(conn, date(2026, 3, 1), CADASTRO_TSTE)
+    assert indice.registros == {}
+    assert sorted(e.codigo for e in indice.excecoes) == [
+        "OUTR3",
+        "VELH3",
+    ]  # VELH4 encerrada
+    por_codigo = {e.codigo: e.para_dict() for e in indice.excecoes}
+    assert por_codigo["VELH3"] == {
+        "codigo": "VELH3", "motivo": universo.MOTIVO_FCA_SEM_PROVA, "cnpj": TSTE,
+        "nome": "TESTE S.A.",
+    }  # fmt: skip
+    assert por_codigo["OUTR3"] == {
+        "codigo": "OUTR3", "motivo": montagem.MOTIVO_FCA_RECENTE_SEM_VALORES, "cnpj": outra,
+        "nome": "OUTRA S.A.",
+    }  # fmt: skip

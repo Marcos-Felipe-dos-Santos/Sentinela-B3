@@ -90,6 +90,18 @@ def _ler_do_zip(caminho: Path, nome: str) -> pd.DataFrame:
         return _ler_csv(io.BytesIO(zf.read(nome)))
 
 
+def _entregas_do_fca(caminho: Path, ano: int) -> list[pd.DataFrame]:
+    """Índice de entregas do zip do FCA (BUG-3-24); ausente, aviso e a regra não se aplica."""
+    try:
+        return [_ler_do_zip(caminho, f"fca_cia_aberta_{ano}.csv")]
+    except KeyError:
+        logger.warning(
+            "FCA %d sem o índice de entregas: referência sem valores não é conferida",
+            ano,
+        )
+        return []
+
+
 def _data_do_arquivo(caminho: Path) -> str:
     """Data em que o arquivo local foi baixado (mtime), em UTC."""
     return datetime.fromtimestamp(caminho.stat().st_mtime, tz=UTC).date().isoformat()
@@ -132,6 +144,7 @@ class Fontes:
     data: str
     correcoes: list[Correcao]
     proveniencia: list[dict] = field(default_factory=list)
+    entregas_fca: pd.DataFrame | None = None
 
     def meta_com_proveniencia(self) -> dict:
         """O `meta` com a proveniência de cada arquivo baixado, que vai para o índice salvo."""
@@ -167,7 +180,7 @@ def carregar_fontes(agora: datetime, pasta_dados: Path) -> Fontes:
         registros, cadastro_csv, URL_CADASTRO, "Cadastro", None,
         motivo=proveniencia.MOTIVO_SEM_ENTREGA_NA_FONTE,
     )  # fmt: skip
-    fcas, fonte_fca = [], {}
+    fcas, fonte_fca, entregas = [], {}, []
     for ano in (agora.year - 1, agora.year):
         lido = _zip_do_ano(
             URL_FCA, "fca_cia_aberta_valor_mobiliario_{ano}.csv", ano, cache, agora
@@ -177,6 +190,7 @@ def carregar_fontes(agora: datetime, pasta_dados: Path) -> Fontes:
         caminho, df = lido
         _registrar(registros, caminho, URL_FCA.format(ano=ano), "FCA", str(ano))
         fcas.append((ano, df))
+        entregas += _entregas_do_fca(caminho, ano)
         fonte_fca[str(ano)] = {
             "arquivo": caminho.name,
             "data": _data_do_arquivo(caminho),
@@ -233,7 +247,10 @@ def carregar_fontes(agora: datetime, pasta_dados: Path) -> Fontes:
             "data": max(datas_cotahist),
         },
     }
-    return Fontes(fcas, cadastro, informe, cotacoes, fontes, data, correcoes, registros)
+    return Fontes(
+        fcas, cadastro, informe, cotacoes, fontes, data, correcoes, registros,
+        pd.concat(entregas, ignore_index=True) if entregas else None,
+    )  # fmt: skip
 
 
 def construir_indice(agora: datetime, pasta_dados: Path) -> Indice:
@@ -259,6 +276,7 @@ def montar_das_fontes(f: Fontes) -> Indice:
         f.data,
         f.correcoes,
         identidades_fii=identidades,
+        entregas_fca=f.entregas_fca,
     )
 
 

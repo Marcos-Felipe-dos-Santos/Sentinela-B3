@@ -31,7 +31,7 @@ import pandas as pd
 from sentinela.data import liquidez
 from sentinela.data.providers import b3_cotahist
 from sentinela.data.referencia import montagem
-from sentinela.data.referencia.registro import Indice
+from sentinela.data.referencia.registro import Excecao, Indice
 
 CLASSES_DO_ISIN = {"ACN": "STOCK", "UNT": "UNIT", "CTF": "FUNDO", "BDR": "BDR"}
 JANELA = 63
@@ -224,16 +224,21 @@ def companhias_em(conn, dia: date) -> dict:
 CLASSES_DO_UNIVERSO = ("STOCK", "UNIT", "FII")
 
 
-def _fca_em(conn, texto: str) -> list[tuple[int, pd.DataFrame]]:
+def _fca_em(
+    conn, texto: str, excluir: frozenset[str] = frozenset()
+) -> list[tuple[int, pd.DataFrame]]:
     """Linhas do FCA entregue antes de D, por ano, para `montagem.fca_mais_recente`.
 
-    Como no índice atual, a montagem escolhe a referência mais recente com linhas; uma
-    referência mais nova entregue sem linhas não impede a anterior (BUG-3-24). A linha sem
+    A montagem recebe também as entregas anteriores a D: a referência mais recente entregue
+    decide, e uma mais nova sem linhas tira os códigos da anterior (BUG-3-24). A linha sem
     negociação em D recebe uma data de fim e a montagem a trata como encerrada; com negociação
-    em D, o fim (em D ou depois) é apagado, porque a montagem só aceita linha sem fim.
+    em D, o fim (em D ou depois) é apagado, porque a montagem só aceita linha sem fim. As
+    companhias em `excluir` ficam de fora (`_fca_sem_prova`).
     """
     por_ano: dict[int, list[dict]] = {}
-    for (_, dt_refer), linhas in _fca_por_referencia(conn, texto).items():
+    for (cnpj, dt_refer), linhas in _fca_por_referencia(conn, texto).items():
+        if cnpj in excluir:
+            continue
         for linha in linhas or ():
             fim = None
             if not _negociada_em(linha, texto):
@@ -262,6 +267,71 @@ def _informe_em(conn, texto: str) -> pd.DataFrame:
     return pd.DataFrame(linhas) if linhas else pd.DataFrame(columns=["Codigo_ISIN"])
 
 
+MOTIVO_FCA_SEM_PROVA = (
+    "FCA vigente em D sem os valores na fonte aberta (versão reapresentada depois de D)"
+)
+
+
+def _entregas_vigentes(conn, texto: str) -> dict[tuple[str, str], bool]:
+    """(CNPJ, referência) → a versão vigente em D (a maior entregue antes de D) tinha conteúdo
+    no arquivo que a registrou (`valores_na_fonte`, DD-34)."""
+    vigentes: dict[tuple[str, str], tuple[int, bool]] = {}
+    for cnpj, dt_refer, versao, na_fonte in conn.execute(
+        "SELECT cnpj, dt_refer, versao, valores_na_fonte FROM fca_entregas WHERE dt_receb < ?",
+        (texto,),
+    ):
+        if versao > vigentes.get((cnpj, dt_refer), (0, False))[0]:
+            vigentes[(cnpj, dt_refer)] = (versao, bool(na_fonte))
+    return {chave: na_fonte for chave, (_, na_fonte) in vigentes.items()}
+
+
+def _fca_sem_prova(
+    conn, texto: str
+) -> tuple[pd.DataFrame, frozenset[str], list[Excecao]]:
+    """Entregas para a montagem e as companhias sem prova do FCA em D, com as exceções.
+
+    Referência mais recente sem linhas guardadas: se a versão vigente em D tinha conteúdo na
+    fonte, foi entregue sem valores mobiliários (BUG-3-24, regra da montagem); se não tinha (a
+    versão foi reapresentada depois de D e a fonte aberta só guarda a última), não há prova: a
+    companhia fica de fora, sem voltar à referência anterior, e os códigos da referência
+    anterior mais recente com linhas negociadas em D viram exceção com `MOTIVO_FCA_SEM_PROVA`.
+    """
+    vigentes = _entregas_vigentes(conn, texto)
+    por_referencia = _fca_por_referencia(conn, texto)
+    recente: dict[str, str] = {}
+    for cnpj, dt_refer in vigentes:
+        if dt_refer > recente.get(cnpj, ""):
+            recente[cnpj] = dt_refer
+    sem_prova = {
+        cnpj
+        for cnpj, dt_refer in recente.items()
+        if por_referencia.get((cnpj, dt_refer)) is None
+        and not vigentes[(cnpj, dt_refer)]
+    }
+    excecoes: dict[tuple, Excecao] = {}
+    for cnpj in sorted(sem_prova):
+        anteriores = sorted(
+            r for (c, r), linhas in por_referencia.items() if c == cnpj and linhas
+        )
+        for linha in por_referencia[(cnpj, anteriores[-1])] if anteriores else ():
+            codigo = montagem.normalizar_codigo(linha.get("Codigo_Negociacao") or "")
+            if codigo and _negociada_em(linha, texto):
+                excecoes.setdefault(
+                    (codigo, cnpj),
+                    Excecao(
+                        codigo,
+                        MOTIVO_FCA_SEM_PROVA,
+                        cnpj,
+                        linha.get("Nome_Empresarial"),
+                    ),
+                )
+    entregas = pd.DataFrame(
+        [chave for chave in vigentes if chave[0] not in sem_prova],
+        columns=["CNPJ_CIA", "DT_REFER"],
+    )
+    return entregas, frozenset(sem_prova), list(excecoes.values())
+
+
 def indice_em(
     conn,
     dia: date,
@@ -272,19 +342,22 @@ def indice_em(
     """O índice de referência montado só com o que existia antes de D (F3-5).
 
     A mesma montagem do índice atual (`montagem.montar_indice`), com o FCA válido em D
-    (`_fca_em`), o Informe entregue antes de D e as cotações dos 63 pregões anteriores a D. O
+    (`_fca_em`) e as entregas do FCA anteriores a D (a referência mais recente entregue decide,
+    BUG-3-24; sem prova da versão vigente em D, a companhia fica de fora com exceção,
+    `_fca_sem_prova`), o Informe entregue antes de D e as cotações dos 63 pregões anteriores a D. O
     cadastro da CVM só existe na versão atual: dá o código CVM e os atributos, não decide quem
     entra (a montagem não o usa para isso).
     """
     texto = _dia(dia)
-    fcas = _fca_em(conn, texto)
+    entregas, sem_prova, excecoes = _fca_sem_prova(conn, texto)
+    fcas = _fca_em(conn, texto, sem_prova)
     fonte = {"arquivo": "banco único", "data": texto}
     fontes = {
         "fca": {str(ano): fonte for ano, _ in fcas},
         "informe_fii": fonte,
         "cotahist": fonte,
     }
-    return montagem.montar_indice(
+    indice = montagem.montar_indice(
         fcas,
         cadastro,
         _informe_em(conn, texto),
@@ -293,7 +366,10 @@ def indice_em(
         texto,
         correcoes,
         identidades_fii=identidades_fii,
+        entregas_fca=entregas,
     )
+    indice.excecoes.extend(excecoes)
+    return indice
 
 
 MOTIVO_SEM_IDENTIFICACAO = "ação negociada em D sem o código no FCA entregue antes de D"

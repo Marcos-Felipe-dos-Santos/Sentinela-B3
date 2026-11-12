@@ -78,6 +78,77 @@ def parsear_acoes_por_unit(texto) -> dict | None:
     return composicao
 
 
+MOTIVO_FCA_RECENTE_SEM_VALORES = "FCA mais recente entregue sem valores mobiliários; o código vem de referência anterior"
+
+
+def sem_valores_no_fca_recente(
+    fcas: Iterable[tuple[int, pd.DataFrame]], entregas: pd.DataFrame | None
+) -> tuple[list[tuple[int, pd.DataFrame]], list[Excecao]]:
+    """Tira as linhas de referência anterior à mais recente entregue da companhia (BUG-3-24).
+
+    `entregas`: o índice de entregas do FCA (`CNPJ_CIA`, `DT_REFER`), dos mesmos anos. A
+    referência mais recente entregue decide: se ela não trouxe linhas de valor mobiliário, os
+    códigos de uma referência anterior não entram, e cada um vira exceção com o motivo. Com
+    linhas na mais recente, nada muda aqui (`fca_mais_recente` escolhe). Sem `entregas`, nada
+    muda. Linha com referência mais nova que a última entrega conhecida (arquivo de entregas
+    de um ano ausente) conta como a mais recente. As referências são comparadas como texto,
+    no formato ISO `AAAA-MM-DD` da CVM, igual no índice de entregas e nas linhas; referência
+    vazia conta como a mais antiga.
+    """
+    fcas = list(fcas)
+    if entregas is None or entregas.empty:
+        return fcas, []
+    recente: dict[str, str] = {}
+    for cnpj, referencia in zip(entregas["CNPJ_CIA"], entregas["DT_REFER"].fillna("")):
+        if referencia > recente.get(cnpj, ""):
+            recente[cnpj] = referencia
+    com_linhas = {
+        (cnpj, referencia)
+        for _, df in fcas
+        if not df.empty
+        for cnpj, referencia in zip(
+            df["CNPJ_Companhia"], df["Data_Referencia"].fillna("")
+        )
+    }
+    for cnpj, referencia in com_linhas:  # linha mais nova que a entrega conhecida vale
+        if referencia > recente.get(cnpj, referencia):
+            recente[cnpj] = referencia
+    sem_linhas = {c for c, r in recente.items() if (c, r) not in com_linhas}
+    mantidos, tiradas = [], []
+    for ano, df in fcas:
+        if df.empty:
+            mantidos.append((ano, df))
+            continue
+        antiga = pd.Series(
+            [
+                cnpj in sem_linhas and referencia < recente[cnpj]
+                for cnpj, referencia in zip(
+                    df["CNPJ_Companhia"], df["Data_Referencia"].fillna("")
+                )
+            ],
+            index=df.index,
+            dtype=bool,
+        )
+        mantidos.append((ano, df[~antiga]))
+        tiradas.append((ano, df[antiga]))
+    # exceção só para o que a montagem teria registrado: as linhas ativas da referência
+    # anterior mais recente de cada companhia, um código por companhia
+    excecoes: dict[tuple, Excecao] = {}
+    for _, linha in linhas_ativas_do_fca(fca_mais_recente(tiradas)).iterrows():
+        codigo = normalizar_codigo(linha["Codigo_Negociacao"])
+        if codigo:
+            excecoes.setdefault(
+                (codigo, linha["CNPJ_Companhia"]),
+                Excecao(
+                    codigo=codigo,
+                    motivo=MOTIVO_FCA_RECENTE_SEM_VALORES,
+                    cnpj=linha["CNPJ_Companhia"],
+                    nome=_texto(linha["Nome_Empresarial"]),
+                ),
+            )
+    return mantidos, list(excecoes.values())
+
+
 def fca_mais_recente(fcas: Iterable[tuple[int, pd.DataFrame]]) -> pd.DataFrame:
     """Para cada CNPJ, as linhas do FCA mais recente entregue (ano, referência, versão)."""
     partes = [df.assign(_ano=ano) for ano, df in fcas if len(df)]
@@ -463,13 +534,16 @@ def montar_indice(
     gerado_em: str,
     correcoes: Iterable[Correcao] = (),
     identidades_fii: Iterable[dict[str, str]] = (),
+    entregas_fca: pd.DataFrame | None = None,
 ) -> Indice:
     """Junta companhias, FIIs e outros; em ticker repetido entre CNPJs, vale a fonte mais forte.
 
     A tabela de correções é validada aqui: linha sem evidência levanta `CorrecaoInvalida`.
+    Com `entregas_fca`, a referência mais recente entregue decide (`sem_valores_no_fca_recente`).
     """
     por_chave = validar_correcoes(correcoes)
     cotacoes = list(cotacoes)
+    fcas, exc_sem_valores = sem_valores_no_fca_recente(fcas, entregas_fca)
     fca = fca_mais_recente(fcas)
     companhias, exc_companhias = montar_companhias(
         fca, cadastro, fontes["fca"], por_chave
@@ -480,7 +554,7 @@ def montar_indice(
         gerado_em=gerado_em,
         fontes=fontes,
         registros=mantidos,
-        excecoes=[*exc_companhias, *exc_fiis, *exc_repetidos],
+        excecoes=[*exc_sem_valores, *exc_companhias, *exc_fiis, *exc_repetidos],
     )
     conhecidos = set(mantidos) | {e.codigo for e in exc_repetidos}
     isins_de_fii = frozenset(
