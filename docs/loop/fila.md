@@ -276,7 +276,7 @@ As da 2C, mais duas novas.
 
 - [x] **F3-B-R** · docs · `docs: summarize phase 3-b` — Arquivos: `docs/loop/resumo-3b.md`, diário, fila. **Aceite:** como o F3-A-R; inclui volume real, cobertura do histórico por fonte e ano, versões observáveis e as propostas dos estudos P07, P09–P11 e P15 para decisão.
 
-- [ ] **[DECISÃO] Checkpoint da 3-b.** Auditoria cruzada D30 como na 3-a. O Marcos decide o destino das propostas dos estudos e libera a 3-c por escrito nesta linha.
+- [x] **[DECISÃO] Checkpoint da 3-b.** Auditoria cruzada D30 como na 3-a. O Marcos decide o destino das propostas dos estudos e libera a 3-c por escrito nesta linha. **Anotação (13/11/2026, como a DD-31):** auditoria cruzada feita pelo executor pelo passo 6 do `/goal` (`docs/loop/auditorias/3-b-claude-code.md`: nenhum commit `Executor: codex` na 3-b; a auditoria dos commits claude-code fica para o Codex, com a ordem em `docs/loop/resumo-3b.md`); a 3-c fica liberada por esse passo do `/goal`, que substitui a liberação escrita nesta linha; o destino das propostas dos estudos P07, P09, P10, P11 e P15 (`resumo-3b.md`, "Propostas dos estudos para decisão") continua com o Marcos, sem implementação até a decisão dele; ratificação em lote pelo Marcos.
 
 ### 3-c — Backtest
 

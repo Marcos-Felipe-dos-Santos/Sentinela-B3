@@ -1200,3 +1200,7 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
   - pendências antes do F3-8, resíduos e a ordem de auditoria para o Codex.
 - **Testes:** não se aplica (só documento). Suíte inalterada: 4823 passed, 1 skipped.
 - **Decisões delegadas novas:** nenhuma.
+
+### Checkpoint da 3-b — anotação (passo 6 do `/goal`)
+- **Executor:** claude-code (Claude Opus 5.5).
+- A linha `[DECISÃO]` do checkpoint da 3-b foi marcada com a anotação, como a da 3-a (DD-31). A auditoria cruzada está em `docs/loop/auditorias/3-b-claude-code.md`. A 3-c fica liberada pelo passo 6 do `/goal`. O destino das propostas dos estudos continua com o Marcos, e nenhuma delas foi implementada. O próximo item é o F3-F1 (ficha do backtest), seguido da parada `[DECISÃO]` da ficha, que é sempre do Marcos.
