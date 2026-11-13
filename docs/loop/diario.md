@@ -1036,3 +1036,12 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Testes:** não se aplica (só documento). Suíte inalterada.
 - **Resíduos:** `~/.cache/sentinela-testes-claude/p10.py`, `modelos.pkl` e `p10.out` (fora do repositório).
 - **Decisões delegadas novas:** nenhuma.
+
+### F3-P15 — docs: specify detection of corporate reorganizations
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso (independente do F3-3d).
+- **O que foi feito:** `docs/decisoes/reorganizacoes-3.md`: fontes medidas (eventos da B3 guardados: 8 `INCORPORACAO`, 89 cisões com redução de capital, 6 restituições; cadastro da CVM: 66 cancelamentos por incorporação desde 2010, sem a incorporadora; FCA de 2018 a 2026: nenhum código de ação real com troca de CNPJ; comparativo reapresentado da DFP seguinte em lucro e PL: 3,9% a 7,0% dos pares por ano, de 2015 a 2024; IPE ainda não carregado, F5-1); casos públicos (Soma, Enauta, Natura &Co Holding, GOL e a incorporadora Azzas 2154, com o mesmo CNPJ, que só a variação da quantidade de ações detecta); regra proposta de ruptura e reconciliação (quatro critérios) para aprovação; o aviso fixo continua; pendência para o checkpoint da 3-b em `pendencias.md`.
+- **Testes:** não se aplica (só documento). Suíte inalterada.
+- **Resíduos:** `~/.cache/sentinela-testes-claude/p15.py` (fora do repositório).
+- **Decisões delegadas novas:** nenhuma.
+- **Depois:** o próximo item da fila é o F3-B-R (resumo da 3-b), que não roda com `[!]` aberto (protocolo, Item bloqueado); não há mais independentes do F3-3d: o loop para pela política §3 (`[!]` aberto, sem itens independentes restantes).
