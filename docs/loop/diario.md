@@ -1116,3 +1116,7 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
     - teste [e2e] com valor histórico de macro e de cadastro;
     - fonte do preço no registro por campo;
     - duas cotações do mesmo código no mesmo pregão.
+
+### F3-3e — texto da pergunta corrigido
+- **Executor:** claude-code (Claude Opus 5.5).
+- O item `[!]` dizia que o FII se abstém pela guarda do Informe; ele se abstém antes, por falta de DY no histórico (revisão rodada 3 do F3-3d). O texto agora separa o que o F3-3e resolve (as guardas de coleta) do que fica em pendência própria (DY, Lynch e montagem do Bazin). O F3-3e continua `[!]` com a pergunta ao Marcos.
