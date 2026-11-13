@@ -37,10 +37,6 @@ def _exercicios(dados):
     ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG-3-15 · DFP entregue depois do corte entra na série · corrige: F3-3d",
-)
 def test_dfp_recebida_depois_do_corte_nao_entra(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

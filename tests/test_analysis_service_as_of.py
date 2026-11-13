@@ -94,8 +94,9 @@ def test_original_e_recalculo_preservam_resultado_e_proveniencia(conn):
     }
 
 
-@pytest.mark.parametrize("dias,palavra", [(-1, "passada"), (1, "futura")])
+@pytest.mark.parametrize("dias,palavra", [(-1, "banco único"), (1, "futura")])
 def test_recusa_data_fora_de_hoje_sem_consultar_fontes(conn, dias, palavra):
+    """Futura: recusa. Passada (F3-3d): sem o banco único histórico, abstém com o motivo."""
     s, market, val, fii = servico(conn)
     instante = AGORA + timedelta(days=dias)
     r = s.analisar("TSTA3", instante)

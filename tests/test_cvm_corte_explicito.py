@@ -1,7 +1,10 @@
-"""F3-P13: um só corte local para a seleção anual, snapshot e TTM.
+"""F3-P13 e F3-3d: um só corte local para a seleção anual, snapshot e TTM.
 
-Arquivos sintéticos usam o layout CVM já documentado nos testes de produtor.
-O TTM esperado é 15 - 25 + 30 = 20, sem prova de perímetro injetada.
+Arquivos sintéticos usam o layout CVM já documentado nos testes de produtor, com o índice de
+entregas. Desde o F3-3d (DD-61), o corte é pela entrega: entra o documento com `DT_RECEB`
+anterior ao dia local de D (decisão 3 de 09/11). No corte de 30/06/2025, o ITR do segundo
+trimestre de 2025 (entregue em agosto) ainda não existe: o TTM vai até 31/03/2025,
+15 - 10 + 12 = 17 (até o F3-P13 era 30/06, 15 - 25 + 30 = 20, com o ITR entregue depois).
 """
 
 import io
@@ -16,7 +19,7 @@ from apoio_escopo import de_empresa
 
 from market_engine import MarketEngine
 from tests.regressao.test_bug_2c_61_ttm_produtor import arquivo
-from tests.regressao.test_bug_2c_62_qualidade_produtor import fonte_anual
+from tests.regressao.test_bug_2c_62_qualidade_produtor import CNPJ, fonte_anual
 from tests.test_cvm_series import _Hoje
 from valuation_engine import ValuationEngine
 
@@ -34,6 +37,10 @@ def test_dfp_itr_cascata_motor_compartilham_o_corte(
         )
         for ano, a, b, c in [(2024, 10, 25, 45), (2025, 12, 30, 50)]
     }
+    for ano, caminho in itr.items():  # trimestre entregue no mês e meio seguinte
+        _com_indice(caminho, "itr", ano, [(f"{ano}-03-31", f"{ano}-05-10"),
+                                          (f"{ano}-06-30", f"{ano}-08-10"),
+                                          (f"{ano}-09-30", f"{ano}-11-10")])  # fmt: skip
 
     def baixar(ano: int) -> Path:
         if ano not in itr:
@@ -65,16 +72,32 @@ def test_dfp_itr_cascata_motor_compartilham_o_corte(
     dados = m.buscar_dados_ticker_em("TSTA3", corte)
     assert dados["serie_cvm"]["exercicios"][-1]["exercicio"] == 2024
     assert dados["modelo_bpp_proveniencia"]["periodo_referencia"] == "2024-12-31"
-    assert dados["ttm_cvm"]["fim"] == "2025-06-30"
-    assert dados["ttm_cvm"]["valores"]["lucro_controladores"] == 20
+    assert dados["ttm_cvm"]["fim"] == "2025-03-31"
+    assert dados["ttm_cvm"]["valores"]["lucro_controladores"] == 17
     resultado = ValuationEngine().processar(dados, as_of=corte)
     assert resultado["qualidade"]["exercicios"][-1]["fim"] == "2024-12-31"
 
 
-@pytest.mark.parametrize("hora,minuto,esperado", [(2, 59, 2023), (3, 0, 2024)])
-def test_exercicio_nao_civil_entra_no_dia_local_do_encerramento(
+def _com_indice(
+    caminho: Path, doc: str, ano: int, entregas: list[tuple[str, str]]
+) -> None:
+    """Acrescenta ao ZIP sintético o índice de entregas (referência, `DT_RECEB`), versão 1."""
+    linhas = "".join(f"{CNPJ};{ref};1;{receb}\n" for ref, receb in entregas)
+    with zipfile.ZipFile(caminho, "a") as z:
+        z.writestr(
+            f"{doc}_cia_aberta_{ano}.csv",
+            "CNPJ_CIA;DT_REFER;VERSAO;DT_RECEB\n" + linhas,
+        )
+
+
+@pytest.mark.parametrize(
+    "dia,hora,minuto,esperado",
+    [(20, 15, 0, 2023), (21, 2, 59, 2023), (21, 3, 0, 2024)],
+)  # DFP do exercício não civil entregue em 20/05/2024; a de 2023, em 01/03/2024
+def test_exercicio_nao_civil_entra_no_dia_local_seguinte_a_entrega(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    dia: int,
     hora: int,
     minuto: int,
     esperado: int,
@@ -91,6 +114,7 @@ def test_exercicio_nao_civil_entra_no_dia_local_do_encerramento(
             )
             frame["DT_INI_EXERC"] = "2023-03-01"
             saida.writestr(nome, frame.to_csv(sep=";", index=False).encode("latin-1"))
+    _com_indice(destino, "dfp", 2024, [("2024-02-29", "2024-05-20")])
     baixar = p.baixar_dfp
     monkeypatch.setattr(
         p, "baixar_dfp", lambda ano: destino if ano == 2024 else baixar(ano)
@@ -102,7 +126,7 @@ def test_exercicio_nao_civil_entra_no_dia_local_do_encerramento(
         {"ticker": "TSTA3", "cd_cvm": 9999, "preco_atual": 100, "especie": "ON"}
     )
     assert m._buscar_cvm(
-        "TSTA3", dados, as_of=datetime(2024, 2, 29, hora, minuto, tzinfo=UTC)
+        "TSTA3", dados, as_of=datetime(2024, 5, dia, hora, minuto, tzinfo=UTC)
     )
     assert dados["serie_cvm"]["exercicios"][-1]["exercicio"] == esperado
     assert dados["modelo_bpp_proveniencia"]["periodo_referencia"] == (

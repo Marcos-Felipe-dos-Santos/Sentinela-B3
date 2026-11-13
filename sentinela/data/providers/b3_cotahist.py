@@ -428,7 +428,9 @@ def carregar(
     return resumo
 
 
-def cotacoes_ate(conn, dia: date, pregoes: int = 63) -> list[Cotacao]:
+def cotacoes_ate(
+    conn, dia: date, pregoes: int = 63, *, codigo: str | None = None
+) -> list[Cotacao]:
     """Cotações do mercado à vista nos últimos `pregoes` pregões anteriores ao dia (F3-4a).
 
     O pregão do próprio dia fica fora (só se completa depois do fechamento): nada de depois
@@ -450,6 +452,7 @@ def cotacoes_ate(conn, dia: date, pregoes: int = 63) -> list[Cotacao]:
     ]
     if not datas:
         return []
+    filtro, parametros = ("", ()) if codigo is None else (" AND codigo_negociacao = ?", (codigo,))
     return [
         Cotacao(
             data=date.fromisoformat(d),
@@ -470,8 +473,24 @@ def cotacoes_ate(conn, dia: date, pregoes: int = 63) -> list[Cotacao]:
         ) in conn.execute(
             "SELECT data, codigo_negociacao, codbdi, tipo_mercado, especificacao, isin, "
             "fechamento_centavos, volume_centavos, quantidade, negocios, fator_cotacao "
-            "FROM precos WHERE tipo_mercado = ? AND data >= ? AND data < ? "
-            "ORDER BY data, codigo_negociacao, codbdi, prazo",
-            (MERCADO_A_VISTA, min(datas), dia.isoformat()),
+            "FROM precos WHERE tipo_mercado = ? AND data >= ? AND data < ?" + filtro
+            + " ORDER BY data, codigo_negociacao, codbdi, prazo",
+            (MERCADO_A_VISTA, min(datas), dia.isoformat(), *parametros),
         )
     ]  # fmt: skip
+
+
+def cotacoes_do_codigo_ate(conn, codigo: str, dia: date, pregoes: int = 63) -> list[Cotacao]:
+    """`cotacoes_ate` de um só código: a mesma janela de pregões do mercado, filtrada no banco."""
+    return cotacoes_ate(conn, dia, pregoes, codigo=codigo)
+
+
+def ultimo_pregao_antes(conn, dia: date) -> date | None:
+    """O último pregão do mercado à vista guardado antes do dia local de D."""
+    if isinstance(dia, datetime) or not isinstance(dia, date):
+        raise TypeError("ultimo_pregao_antes recebe o dia local de D (date), não um instante")
+    (texto,) = conn.execute(
+        "SELECT MAX(data) FROM precos WHERE tipo_mercado = ? AND data < ?",
+        (MERCADO_A_VISTA, dia.isoformat()),
+    ).fetchone()
+    return date.fromisoformat(texto) if texto else None

@@ -1049,3 +1049,70 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 ### F3-3d — `[!]` retirado (DD-61)
 - **Executor:** claude-code (Claude Opus 5.5).
 - A pergunta 1 da auditoria da 3-a tem resposta nas decisões já escritas (decisão 3 de 09/11 e o prazo "até a 3-b" da opção (b)); a parada por ela não está entre as do passo 7 do `/goal`. O F3-3d volta a `[ ]` e é o próximo item. A auditoria cruzada da 3-a está em `docs/loop/auditorias/3-a-claude-code.md` (11/11) e o relatório mais recente de Downloads (Gemini, 11/11 19:45) já foi processado (F3-A-F6 a F3-A-F10).
+
+### F3-3d — feat: connect point-in-time readers to the analysis service
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso.
+- **O que foi feito:**
+  - `cvm_provider.py`: `CVMProvider.recorte_em(as_of)` e `_Recorte` (DD-61). O ZIP baixado é recortado no dia de D: o índice fica só com as entregas de `DT_RECEB` anterior ao dia local, os números só da maior versão entregue; sem índice, sem números. O recorte mantém o mtime do original (a coleta registrada é a do download), tem hash próprio, sem arquivo lateral copiado, e é reaproveitado do disco.
+  - `market_engine._buscar_cvm`: com `as_of` de um dia anterior a hoje, a cascata usa o provedor recortado. Sem `as_of`, ou com `as_of` de hoje (o caminho do app), nada muda.
+  - `sentinela/data/pit/remontagem.py` (DD-62): ZIPs oficiais de DFP, ITR e Informe remontados do banco como existiam em D, pelos leitores estritos do F3-3c. Documento fora da leitura fica no índice sem números, com o motivo.
+  - `sentinela/services/historico.py`: `MotorHistorico`, a cascata em D pelo banco único. Usa os provedores da CVM e do FII pela remontagem, o preço bruto do último pregão antes de D e o histórico pela série ajustada (`precos`), o índice em D (`universo.indice_em`), a liquidez pelos 63 pregões e a taxa real pelo `series_macro` do mesmo banco. Os proventos em dinheiro vêm pelo leitor ponto-no-tempo (`proventos_ate`, com o escopo do Bazin da cascata). Ficam sem fonte, com o motivo: yfinance, brapi, IF.data, o cache, o complemento de fundos e o IPCA do SIDRA (este só com os cinco exercícios, como na cascata). Com data passada, a IA fica desligada (DD-63). O modo exploratório só entra por parâmetro, com o aviso. `motor_do_banco` é a fábrica da produção.
+  - `sentinela/services/analyze_asset.py`: com dia anterior a hoje, o serviço usa o motor histórico (fábrica injetável `motor_historico`; o padrão abre o banco por `config._conexao_series_macro()` e, sem banco, abstém com `MOTIVO_SEM_BANCO`). Não chama `peers_engine` e devolve "comparação de pares indisponível para data passada" (decisão 15). A recusa de data passada do F3-6a sai; a de data futura fica. Os resultados são gravados pelo F3-2d.
+- **Regressões:** BUG-3-15 em PASS sem mudar asserção (só a marca; registro "corrigido").
+- **Testes alterados pela DD-61 (corte pela entrega):**
+  - `test_bug_3_12`: 2023 passou a 2022, o lucro de −2 a 12 e a referência para 31/12/2022. A asserção ficou mais estrita, porque a DFP de 2023 foi recebida depois do corte. O motivo está na docstring.
+  - `test_cvm_corte_explicito`: os sintéticos ganharam o índice com `DT_RECEB`. O TTM no corte de 30/06/2025 vai até 31/03 (15 − 10 + 12 = 17), e o exercício não civil entra no dia seguinte à entrega.
+  - `test_analysis_service_as_of`: a recusa de data passada virou abstenção por falta do banco histórico.
+- **Testes novos:**
+  - `test_servico_historico.py` (4, [e2e]): valor corrente diferente do histórico para preço (99,00 contra 20,50), demonstração (a versão 2 vista hoje contra a vista em D), cadastro (índice em D, com o índice atual como espião) e macro (a semente corrente de 7% contra a abstenção do banco em D). Espiões falham se yfinance, brapi, o índice atual, o cache ou os pares forem consultados.
+  - `test_recorte_cvm.py` (23): bordas da entrega no próprio dia, versões, entrega ilegível, ZIP sem índice, cache, proveniência e fuso.
+  - `test_remontagem_pit.py` (5): ida e volta pelas fixtures oficiais (em D = hoje, a cascata lê do remontado o mesmo que do original).
+  - `test_historico_unidades.py` (30).
+- **Teste vermelho antes:** com o código anterior, o serviço recusava a data passada (os quatro do [e2e] falhavam) e o BUG-3-15 estava em xfail estrito; `remontagem` e `historico` não existiam.
+- **Suíte:** 4730 passed, 1 skipped, 1 xfailed → 4794 passed, 1 skipped, 0 xfailed (+64 e o BUG-3-15 em PASS). Golden SHA igual (`500645a3263ad25e`).
+- **Mutação:** código novo e tocado, medido de novo depois da rodada 2 da revisão: recorte e auxiliares do `cvm_provider`, `market_engine._hoje_sp`, `b3_cotahist.cotacoes_ate`, `cotacoes_do_codigo_ate` e `ultimo_pregao_antes`, `remontagem`, `historico`, `analisar` e `_executar`. Deram 1356 mortos e 187 sobreviventes, 87,9%. Abaixo de 80% por função ficou só `_tem_composicao` (72,7%, SQL em maiúsculas, equivalente). Os sobreviventes de `_hoje_sp` (`datetime.now(None)` dá o mesmo instante) e de `ultimo_pregao_antes` (SQL em maiúsculas) são equivalentes. O `astimezone(None)` foi morto pelo teste com o relógio do sistema em UTC. O `_buscar_cvm` não foi mutado de novo: só ganhou o desvio para o recorte, coberto pelos testes do BUG-3-15, do corte e de `test_cascata_so_recorta_data_passada`.
+- **Desvios:**
+  - O commit `a34c8c1` (DD-61) saiu sem a revisão leve.
+  - Durante o desenvolvimento, uma execução de teste com a primeira versão do serviço abriu o banco real só para leitura e gravou `data/cache/historico/2026-11-09/` (resíduo, nada apagado; o banco não foi escrito). Está registrado em `pendencias.md` e foi corrigido antes do commit.
+  - O `ruff format` reformatou `cvm_provider.py` e `market_engine.py` inteiros. Os dois foram restaurados do HEAD e as mudanças reaplicadas sem reformatação; os 6 alertas antigos do ruff no `cvm_provider.py` continuam os mesmos.
+- **Resíduos:** `outputs/f3-3d-mutmut-*.log`, `outputs/f3-3d-results*.txt`, `outputs/mutmut-stats-antes-f3-3d.json`, `outputs/mutmut-stats-f3-3d-r0.json`, `data/cache/historico/2026-11-09/`; `~/.cache/sentinela-testes-claude/liq.py`.
+- **Desfecho atual das lentes numa data passada:** as de ação e unit se abstêm com "disponibilidade do BPP consolidado não demonstrada até o as_of". O FII se abstém antes, por falta de DY ("Dados insuficientes"): o DY só vem do yfinance e da brapi, desligados no histórico (pendência). As guardas de coleta dos motores exigem coleta anterior a D, e todo dado do banco foi coletado depois. Mudar isso é regra de método: o item F3-3e ficou em `[!]` com a pergunta ao Marcos. O [e2e] fixa esse desfecho.
+- **Pendências novas** (em `pendencias.md`):
+  - o IPCA das janelas pelo `series_macro`: sem ele, Graham e Lynch se abstêm em toda data passada;
+  - as fontes sem histórico no motor histórico.
+- **Decisões delegadas novas:** DD-61 (commit próprio) e DD-62 (remontagem).
+- **Revisão rodada 1:** NÃO PODE COMMITAR.
+  - Críticos:
+    - C1, abstenção geral pelas guardas de coleta: virou o item F3-3e `[!]`, com a pergunta ao Marcos, a pendência e a asserção no [e2e].
+    - C2, a cascata com `as_of` de hoje mudava (entrega do dia sumia, regravação diária dos ZIPs): o recorte passou a valer só para D anterior a hoje, com teste.
+  - Médios aplicados:
+    - linhas quebradas só em `\r` e `\n` (o byte 0x85 do latin-1 partia o `DS_CONTA`), com teste;
+    - o recorte não copia mais o registro do original: a coleta é a do download (mtime) e o hash é o dele próprio;
+    - escrita atômica com temporário único no recorte e na remontagem;
+    - o ZIP remontado é gerado uma vez por documento e ano em cada análise;
+    - a liquidez histórica marca `incompleta` e `meses_ausentes` como a corrente;
+    - o complemento de fundos sai com motivo;
+    - a asserção de macro passou a comparar o registro exato do banco em D;
+    - a docstring de `buscar_dados_ticker_em` foi atualizada.
+  - Para as pendências: Selic do FII pela rede, proveniência do ZIP remontado e `MOTIVO_SEM_BANCO` quase inalcançável.
+- **Revisão rodada 2:** NÃO PODE COMMITAR.
+  - Críticos:
+    - o "hoje" da cascata usava o fuso do sistema: virou `market_engine._hoje_sp()`, o dia de São Paulo, o mesmo relógio do serviço; há teste com as 22h de São Paulo num relógio em UTC;
+    - os proventos não estavam ligados: agora vêm do `proventos_ate` do banco, com o escopo do Bazin da cascata e testes.
+  - Médios aplicados:
+    - IA desligada em data passada (DD-63), com teste;
+    - preço lido só do código no banco (`b3_cotahist.cotacoes_do_codigo_ate`), com aviso quando o último negócio do papel é anterior ao último pregão (`ultimo_pregao_antes`);
+    - teste da cascata com a versão vigente sem números no arquivo (abstém, sem vazar a versão posterior nem voltar a 2022);
+    - `try/finally` no temporário do recorte;
+    - o IPCA das janelas abstém só com os cinco exercícios.
+  - Para as pendências: custo e disco da remontagem e do recorte no backtest.
+- **Revisão rodada 3:** PODE COMMITAR.
+  - Aplicado antes do commit, só texto: proveniência do recorte no diário; o FII se abstém por falta de DY; proventos fora da lista "sem fonte" (pendência de 12/11 e docstring do `historico`).
+  - Para as pendências:
+    - DY no histórico, sem o qual o FII e o Lynch não se aplicam;
+    - montagem do Bazin com o preço do COTAHIST, que é item próprio, não o F3-3e;
+    - modo exploratório gravado na proveniência do resultado;
+    - teste [e2e] com valor histórico de macro e de cadastro;
+    - fonte do preço no registro por campo;
+    - duas cotações do mesmo código no mesmo pregão.

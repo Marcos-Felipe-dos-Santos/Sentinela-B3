@@ -369,6 +369,11 @@ def _data_do_fechamento(indice: Any) -> str | None:
         return None
 
 
+def _hoje_sp(agora: datetime | None = None) -> date:
+    """O dia de hoje em São Paulo, o mesmo relógio do serviço (não o fuso do sistema)."""
+    return (agora or datetime.now(UTC)).astimezone(ZoneInfo("America/Sao_Paulo")).date()
+
+
 class MarketEngine:
     def __init__(self, asset_classifier: AssetClassifier | None = None) -> None:
         self.brapi = BrapiProvider()
@@ -495,9 +500,10 @@ class MarketEngine:
         dados.pop('_field_sources', None)
 
     def buscar_dados_ticker_em(self, ticker: str, as_of: datetime) -> dict[str, Any] | None:
-        """Referência explícita na cascata; não é ainda o leitor histórico estrito.
+        """Referência explícita na cascata (F3-6c).
 
-        O serviço recusa passado até F3-3d; fontes atuais conservam a coleta real.
+        Numa data passada, a CVM é lida pelo recorte da entrega (F3-3d, DD-61); a análise
+        histórica completa, sem fonte corrente, é a do `MotorHistorico` do serviço.
         """
         return self.buscar_dados_ticker(ticker, as_of=as_of)
 
@@ -1163,6 +1169,14 @@ class MarketEngine:
         cvm = getattr(self, 'cvm', None)
         if cvm is None:
             return False
+        recortar = getattr(cvm, 'recorte_em', None)
+        if (
+            as_of is not None and recortar is not None
+            and as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date() < _hoje_sp()
+        ):
+            # F3-3d (DD-61): numa data passada, só o que a CVM recebeu antes do dia de D;
+            # com as_of de hoje, a cascata lê os arquivos como antes.
+            cvm = recortar(as_of)
 
         # F2A-31: o CD_CVM vem só do índice oficial; os mapas manuais não são mais lidos.
         cd_cvm = dados.get('cd_cvm')

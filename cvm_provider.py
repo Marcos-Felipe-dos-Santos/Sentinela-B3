@@ -2,7 +2,9 @@ import calendar
 import io
 import logging
 import math
+import os
 import re
+import tempfile
 import threading
 import zipfile
 from collections import OrderedDict
@@ -297,6 +299,18 @@ class CVMProvider:
         caminho = baixar_arquivo(_ITR_URL.format(ano=ano), self._cache_path(f"itr_{ano}.zip"))
         proveniencia.registrar_sem_falhar(caminho, _ITR_URL.format(ano=ano), "ITR", str(ano))
         return caminho
+
+    def recorte_em(self, as_of: datetime) -> "CVMProvider":
+        """O mesmo provedor vendo só o que a CVM recebeu antes do dia de D (F3-3d, DD-61).
+
+        Corte estrito (decisão 3 de 09/11, D17): do índice de entregas, só as versões com
+        `DT_RECEB` anterior ao dia local de D; de cada documento, só os números da maior delas.
+        Se o arquivo traz só uma versão entregue depois (a fonte aberta guarda a última, DD-34),
+        o documento fica no índice sem números; sem o índice, sem números.
+        """
+        if as_of.utcoffset() is None:
+            raise ValueError("as_of exige fuso horário")
+        return _Recorte(self, as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date())
 
     def _entregas(self, zip_path: Path) -> list[dict]:
         """Linhas do índice de entregas do ZIP (`dfp_cia_aberta_<ano>.csv` ou o do ITR)."""
@@ -1410,3 +1424,94 @@ class CVMProvider:
                 )
         return acumulados
 
+
+class _Recorte(CVMProvider):
+    """`CVMProvider.recorte_em`: os ZIPs do provedor de base recortados no dia de D."""
+
+    def __init__(self, base: CVMProvider, dia: date):
+        self.cache_dir = base.cache_dir
+        self._base = base
+        self.dia = dia
+
+    def recorte_em(self, as_of: datetime) -> CVMProvider:
+        return self._base.recorte_em(as_of)
+
+    def baixar_dfp(self, ano: int) -> Path:
+        return self._recortar(self._base.baixar_dfp(ano), "dfp", ano)
+
+    def baixar_itr(self, ano: int) -> Path:
+        return self._recortar(self._base.baixar_itr(ano), "itr", ano)
+
+    def _recortar(self, original: Path, doc: str, ano: int) -> Path:
+        stat = Path(original).stat()
+        destino = (
+            self.cache_dir / "recorte" / self.dia.isoformat()
+            / f"{Path(original).stem}_{stat.st_size}_{stat.st_mtime_ns}.zip"
+        )
+        if destino.exists():
+            return destino
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        descritor, nome_temporario = tempfile.mkstemp(dir=destino.parent, suffix=".tmp")
+        os.close(descritor)
+        temporario = Path(nome_temporario)
+        try:
+            self._escrever(original, temporario, doc, ano)
+            # o mtime do baixado: a coleta registrada do recorte é a do download
+            os.utime(temporario, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+            temporario.replace(destino)
+        finally:
+            temporario.unlink(missing_ok=True)
+        return destino
+
+    def _escrever(self, original: Path, temporario: Path, doc: str, ano: int) -> None:
+        with zipfile.ZipFile(original) as zi, zipfile.ZipFile(temporario, "w", zipfile.ZIP_DEFLATED) as zo:
+            indice = f"{doc}_cia_aberta_{ano}.csv"
+            # sem o índice, nenhuma entrega é demonstrada: os documentos ficam sem números
+            linhas = _linhas(zi.read(indice)) if indice in zi.namelist() else []
+            colunas = linhas[0].rstrip("\r\n").split(";") if linhas else []
+            entregues, vigente = linhas[:1], {}
+            for linha in linhas[1:]:
+                campos = dict(zip(colunas, linha.rstrip("\r\n").split(";"), strict=False))
+                if _recebido_antes(campos.get("DT_RECEB"), self.dia):
+                    entregues.append(linha)
+                    chave = (campos["CNPJ_CIA"], campos["DT_REFER"])
+                    vigente[chave] = max(vigente.get(chave, 0), _inteiro(campos["VERSAO"]))
+            if linhas:
+                zo.writestr(indice, "".join(entregues).encode("latin-1"))
+            for nome in zi.namelist():
+                if nome != indice:
+                    zo.writestr(nome, _so_vigentes(zi.read(nome), vigente))
+
+
+def _linhas(conteudo: bytes) -> list[str]:
+    """Linhas do CSV quebradas só em `\\r` e `\\n` (o latin-1 tem 0x85 e outros separadores)."""
+    return [linha.decode("latin-1") for linha in conteudo.splitlines(keepends=True)]
+
+
+def _recebido_antes(texto: str | None, dia: date) -> bool:
+    try:
+        return date.fromisoformat(str(texto).strip()[:10]) < dia
+    except ValueError:
+        return False  # entrega ilegível não prova disponibilidade
+
+
+def _inteiro(texto: str) -> int:
+    texto = str(texto).strip()
+    return int(texto) if texto.isascii() and texto.isdigit() else -1
+
+
+def _so_vigentes(conteudo: bytes, vigente: dict) -> bytes:
+    """Linhas do CSV só da versão vigente de cada documento; o cabeçalho sempre."""
+    linhas = _linhas(conteudo)
+    if not linhas:
+        return conteudo
+    colunas = linhas[0].rstrip("\r\n").split(";")
+    if not {"CNPJ_CIA", "DT_REFER", "VERSAO"} <= set(colunas):
+        return conteudo
+    i, j, k = (colunas.index(c) for c in ("CNPJ_CIA", "DT_REFER", "VERSAO"))
+    mantidas = [linhas[0]]
+    for linha in linhas[1:]:
+        campos = linha.rstrip("\r\n").split(";")
+        if len(campos) > max(i, j, k) and vigente.get((campos[i], campos[j])) == _inteiro(campos[k]):
+            mantidas.append(linha)
+    return "".join(mantidas).encode("latin-1")
