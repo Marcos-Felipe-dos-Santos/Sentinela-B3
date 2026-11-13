@@ -1024,3 +1024,15 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Resíduos:** `~/.cache/sentinela-testes-claude/p10.py` e `p10b.py` (fora do repositório).
 - **Decisões delegadas novas:** nenhuma.
 - **Depois:** esgotados os três independentes do F3-3d (F3-P07, F3-P09 e F3-P10), o loop para pela regra "Item bloqueado" do protocolo (política §3: `[!]` aberto) até a resposta do Marcos à pergunta 1 da auditoria da 3-a.
+
+### Entrada — passos 1 a 3 do `/goal` conferidos
+- **Executor:** claude-code (Claude Opus 5.5).
+- Política presente em `docs/loop/politica-decisao-autonoma.md` e citada na regra 9 da fila; decisões 33 a 36 na fila (linhas 72 a 75); relatório de auditoria mais recente em Downloads (`auditoria-fase-3-gemini-relatorio.md`, 11/11 19:45) já processado (pendências "Auditoria externa do Gemini" e itens F3-A-F6 a F3-A-F10); auditoria cruzada da 3-a em `docs/loop/auditorias/3-a-claude-code.md`. Pela política §3 ("pular para os itens independentes e parar quando não houver mais nenhum"), seguem F3-P11 e F3-P15; o F3-B-R é resumo e não roda com `[!]` aberto.
+
+### F3-P11 — docs: study the reading model and undemonstrated sources
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso (independente do F3-3d).
+- **O que foi feito:** `docs/decisoes/modelo-de-leitura-3.md`: os sete tickers divergentes do F2C-45(ii) no histórico, com o modelo do BPP de cada DFP de 2010 a 2025 (reprodução de `modelo_do_documento` sobre o banco, só leitura); o "não demonstrado" é sempre a falta do BPP consolidado (229 a 309 DFPs por ano), e entre as com consolidado a regra sempre demonstra um modelo; três caminhos, nenhum escolhido; sem contingência padrão empresa.
+- **Testes:** não se aplica (só documento). Suíte inalterada.
+- **Resíduos:** `~/.cache/sentinela-testes-claude/p10.py`, `modelos.pkl` e `p10.out` (fora do repositório).
+- **Decisões delegadas novas:** nenhuma.

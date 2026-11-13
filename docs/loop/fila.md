@@ -268,7 +268,7 @@ As da 2C, mais duas novas.
 
 - [x] **F3-P10** · levantamento · `docs: study scope of health and benefit operators` — F2C-45(i). Arquivos: `docs/decisoes/`. **Aceite:** conforme a tabela F3-P10, agora também com o histórico PIT (quando cada ticker teria mudado de escopo); nenhum limiar escolhido.
 
-- [ ] **F3-P11** · levantamento · `docs: study the reading model and undemonstrated sources` — F2C-45(ii). Arquivos: `docs/decisoes/`. **Aceite:** conforme a tabela F3-P11, com os sete tickers divergentes e o modelo documental anterior à leitura no histórico; sem contingência padrão empresa.
+- [x] **F3-P11** · levantamento · `docs: study the reading model and undemonstrated sources` — F2C-45(ii). Arquivos: `docs/decisoes/`. **Aceite:** conforme a tabela F3-P11, com os sete tickers divergentes e o modelo documental anterior à leitura no histórico; sem contingência padrão empresa.
 
 - [ ] **F3-P15** · levantamento · `docs: specify detection of corporate reorganizations` — FC2C-61/62. Arquivos: `docs/decisoes/reorganizacoes-3.md`. **Aceite:** conforme a tabela F3-P15; fonte e documentos, regra explícita para rupturas e reconciliações, casos públicos no histórico PIT; o aviso fixo continua; a implementação entra só se o Marcos aprovar a regra no checkpoint da 3-b (vira item da 3-c ou da Fase 4).
 
