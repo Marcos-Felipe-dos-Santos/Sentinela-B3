@@ -1184,3 +1184,19 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
   - Aplicado antes do commit, só texto e asserção: o [e2e] fixa o motivo exato das janelas; o registro do BUG-3-27 cita `fatores_acoes_b3` e `proventos_ate`; a DD-65 tem a mesma linha no diário e no `pendencias.md`.
   - Para as pendências: duas fontes de "hoje", a injetada no serviço e o relógio da cascata. Se divergirem, a análise abstém de forma conservadora.
   - Para o checkpoint: a DD-65 ampliou a lista do item até `methods/qualidade.py`, só com a marca por parâmetro.
+
+### F3-B-R — docs: summarize phase 3-b
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso.
+- **O que foi feito:** `docs/loop/resumo-3b.md`, com:
+  - os 31 itens da 3-b e os 15 commits fora dos itens, com o executor de cada um (tabela gerada da fila e do `git log`, pela linha `Executor:`);
+  - os testes do começo ao fim da 3-b (4188/1/6 → 4823/1/0);
+  - o gate da 3-b (só o que existia em D chega ao motor; golden igual; banco real alterado só com backup verificado, mais o desvio de leitura do F3-3d);
+  - volume real contra a projeção do L1;
+  - cobertura do histórico por fonte e ano, e o universo em D;
+  - versões observáveis e conflitos;
+  - as propostas dos estudos P07, P09, P10, P11 e P15 para decisão;
+  - decisões do Marcos (37 a 40) e delegadas (DD-34 a DD-65);
+  - pendências antes do F3-8, resíduos e a ordem de auditoria para o Codex.
+- **Testes:** não se aplica (só documento). Suíte inalterada: 4823 passed, 1 skipped.
+- **Decisões delegadas novas:** nenhuma.

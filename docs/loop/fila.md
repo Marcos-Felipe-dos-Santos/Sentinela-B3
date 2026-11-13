@@ -274,7 +274,7 @@ As da 2C, mais duas novas.
 
 - [x] **F3-P15** · levantamento · `docs: specify detection of corporate reorganizations` — FC2C-61/62. Arquivos: `docs/decisoes/reorganizacoes-3.md`. **Aceite:** conforme a tabela F3-P15; fonte e documentos, regra explícita para rupturas e reconciliações, casos públicos no histórico PIT; o aviso fixo continua; a implementação entra só se o Marcos aprovar a regra no checkpoint da 3-b (vira item da 3-c ou da Fase 4).
 
-- [ ] **F3-B-R** · docs · `docs: summarize phase 3-b` — Arquivos: `docs/loop/resumo-3b.md`, diário, fila. **Aceite:** como o F3-A-R; inclui volume real, cobertura do histórico por fonte e ano, versões observáveis e as propostas dos estudos P07, P09–P11 e P15 para decisão.
+- [x] **F3-B-R** · docs · `docs: summarize phase 3-b` — Arquivos: `docs/loop/resumo-3b.md`, diário, fila. **Aceite:** como o F3-A-R; inclui volume real, cobertura do histórico por fonte e ano, versões observáveis e as propostas dos estudos P07, P09–P11 e P15 para decisão.
 
 - [ ] **[DECISÃO] Checkpoint da 3-b.** Auditoria cruzada D30 como na 3-a. O Marcos decide o destino das propostas dos estudos e libera a 3-c por escrito nesta linha.
 
