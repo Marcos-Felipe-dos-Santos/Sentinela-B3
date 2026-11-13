@@ -1,6 +1,6 @@
 # Ficha do backtest ponto-no-tempo (F3-F1)
 
-**Status:** proposta para aprovação do Marcos (`[DECISÃO] Ficha do backtest aprovada`, depois da auditoria FICHA pela família Codex). Nada desta ficha vira código antes da aprovação. As decisões 41 e 42 do Marcos (13/11/2026) estão incorporadas; a aprovação da decisão 41 continua condicionada à segunda auditoria FICHA restrita aos trechos corrigidos. A decisão 42 corrige a expressão para cumprir o retorno total bruto reinvestido na data ex já decidido, sem mudar método. Autor da ficha: claude-code; transcrição das decisões: codex. A ficha detalha o pacote §6 (`docs/decisoes/decisoes-fase3.md`) e as decisões 6, 7 e 17 de 09/11 sem mudá-las, e fixa os números (D21).
+**Status:** aprovada pelo Marcos em 13/11/2026 pela decisão 41, cuja condição foi cumprida na segunda auditoria FICHA Codex: “pode seguir”, FB-01 e FB-02 conferem, sem nova contestação de método (`docs/loop/auditorias/ficha-backtest-codex-2.md`, base29d14c9). As decisões 41/42 estão incorporadas: a42 corrige a expressão para cumprir retorno total bruto reinvestido na data ex, sem mudança de método. Autor metodológico: claude-code; transcrição das decisões: codex. A ficha detalha o pacote §6 (`docs/decisoes/decisoes-fase3.md`) e as decisões6/7/17 de09/11, com os números deD21. A aprovação não declara resolvidas as limitações do§11.
 
 ## 1. O que o backtest é e o que não é
 

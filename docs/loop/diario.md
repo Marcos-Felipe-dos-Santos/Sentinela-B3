@@ -1245,3 +1245,14 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Resíduos:** somente logs/retomada em outputs ignorado; nenhum arquivo removido. Sem push, PR, .env ou carteira.
 - **Decisões que ficaram para o Marcos:** nenhuma nova; se a segunda auditoria contestar método, [!] e parada conforme42. As lacunas do§11 continuam explícitas e não foram declaradas resolvidas.
 - **Para revisar:** só os trechos decididos41/42; auditoria FICHA Codex restrita após o commit documental, mesma família da primeira a pedido expresso porque a autoria metodológica permanece claude-code. Aplicar41 apenas se conferir, depois F3-8a em diante peloGOAL.
+
+### F3-F1-A2 — docs: approve the backtest specification after the focused audit
+- **Executor:** codex.
+- **Status:** sucesso. Decisão41 aplicada por autorização expressa após a condição cumprida; F3-8a liberado.
+- **O que foi feito:** segunda auditoria FICHA via scripts/auditar.py codex ficha, base29d14c9, restrita aos trechos41/42; relatório literal em docs/loop/auditorias/ficha-backtest-codex-2.md. Primeira rodada preservada. Parecer “pode seguir”: FB-01 eFB-02 conferem; sem nova contestação de método. Mesma família Codex da primeira por ordem expressa da42; autoria metodológica claude-code, transcrição de decisões peloCodex. Ficha e linha[DECISÃO] agora aprovadas peloMarcos13/11; pendências dos achados encerradas com histórico preservado.
+- **Conferência independente do auditor:** frações exatas mostram10% no split e no grupamento nas duas bases,30% no caso das fronteiras,20% no benchmark; deslistagem13×C/10−1 e suspensão com preço mantido conferidas. Sem implementação de método.
+- **Limites:** auditoria não certifica dados efetivos, implementação futura, toda a3-b nem trechos inalterados; lacunas do§11 continuam. Nenhuma escolha metodológica nova doexecutor, nem decisão delegada nova.
+- **Testes:** só documentos; suíte4823passed/1skipped/1warning nos gates anteriores (55,46s e57,22s), golden igual aoHEAD. Rodar gate do stage antes da revisão e safe-commit; mutação não se aplica.
+- **Desvio de processo:** corpo do commit29d14c9 contém sequências literais de quebra de linha antes de “Executor: codex”, portanto não tem a linha isolada reconhecida pelo seletor de autoria. Executor real codex está na seção F3-F1-D42 do diário e aqui; não houve amend. Listar29d14c9 como autoria codex na auditoria final, sem tratá-lo como autoria desconhecida substantiva. Demais commits terão corpo com newlines reais.
+- **Resíduos:** logs em outputs/auditorias/decisao42 ignorado; nenhum arquivo removido, banco aberto, segredo ou carteira lidos; sempush/PR.
+- **Para revisar:** parecer estritamente41/42 e a condição de liberação; seguir F3-8a e fila ativa, pelas regras doGOAL.
