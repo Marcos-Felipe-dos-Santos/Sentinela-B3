@@ -1204,3 +1204,21 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 ### Checkpoint da 3-b — anotação (passo 6 do `/goal`)
 - **Executor:** claude-code (Claude Opus 5.5).
 - A linha `[DECISÃO]` do checkpoint da 3-b foi marcada com a anotação, como a da 3-a (DD-31). A auditoria cruzada está em `docs/loop/auditorias/3-b-claude-code.md`. A 3-c fica liberada pelo passo 6 do `/goal`. O destino das propostas dos estudos continua com o Marcos, e nenhuma delas foi implementada. O próximo item é o F3-F1 (ficha do backtest), seguido da parada `[DECISÃO]` da ficha, que é sempre do Marcos.
+
+### F3-F1 — docs: write the point-in-time backtest specification
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso. A ficha é proposta para a parada `[DECISÃO] Ficha do backtest aprovada`.
+- **O que foi feito:** `docs/metodologia/backtest.md`. A ficha detalha o pacote §6 e as decisões 6, 7 e 17 sem mudá-las, e fixa os números:
+  - modo estrito como principal, com o exploratório separado e rotulado;
+  - período (ações a partir da primeira entrega do FCA com código, DD-60; FII a partir de 13 meses do Informe), com rebalanceamento no último pregão do mês;
+  - universo com deslistadas e liquidez da data; abstenção fora dos quintis, com a contagem por motivo;
+  - quintis por `ceil(5 × i / n)`, desempate pelo código e mínimo de 25 elegíveis, com pesos iguais;
+  - retorno total bruto com proventos reinvestidos na data ex, série ajustada do F3-4c, deslistagem pelo último preço e depois CDI, e o motivo da deslistagem só como contexto;
+  - Ibovespa e CDI alinhados no último pregão do mês, com o CDI pelo Fator DI (DD-55);
+  - o relatório: mediana, quartis, fração acima dos benchmarks, número de ativos, dispersão, efeito das deslistadas e abstenções; a diferença Q1 − Q5 só como descrição;
+  - a janela final, a calibração pela decisão 17 e nove casos de teste independentes para o F3-8a;
+  - o que ainda impede números (DY, Bazin, IPCA, taxa real).
+- **Testes:** não se aplica (só documento). Suíte inalterada: 4823 passed, 1 skipped.
+- **Decisões delegadas novas:** nenhuma. Os números da ficha são proposta para o Marcos aprovar.
+- **Depois:** a parada `[DECISÃO] Ficha do backtest aprovada` (passo 7 do `/goal`: "método, sempre para o Marcos"), com auditoria FICHA pela família Codex antes.
+- **Revisão leve:** PODE COMMITAR. Médios aplicados antes do commit: o preço do reinvestimento é o fechamento da série ajustada só por eventos em ações, sem contagem dupla; o início em 2018 virou ponto de decisão explícito na aprovação; o denominador da fração acima dos benchmarks está definido; a proibição de rótulos está repetida no §7; a fronteira da calibração ficou definida para número par de datas. As citações (DD-36, DD-55, DD-60, decisão 17, tabelas) ficam para a auditoria FICHA conferir.
