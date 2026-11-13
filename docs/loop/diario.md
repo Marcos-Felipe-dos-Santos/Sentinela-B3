@@ -1120,3 +1120,7 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 ### F3-3e — texto da pergunta corrigido
 - **Executor:** claude-code (Claude Opus 5.5).
 - O item `[!]` dizia que o FII se abstém pela guarda do Informe; ele se abstém antes, por falta de DY no histórico (revisão rodada 3 do F3-3d). O texto agora separa o que o F3-3e resolve (as guardas de coleta) do que fica em pendência própria (DY, Lynch e montagem do Bazin). O F3-3e continua `[!]` com a pergunta ao Marcos.
+
+### Checkpoint da 3-b — auditoria cruzada (passo 6 do `/goal`)
+- **Executor:** claude-code (Claude Opus 5.5).
+- `docs/loop/auditorias/3-b-claude-code.md`: nenhum commit `Executor: codex` no intervalo `1eb01f0..5f87185` (44 commits, todos claude-code), então não há item da outra família a auditar. A auditoria dos commits claude-code da 3-b fica para o Codex, com os pontos de maior risco listados no relatório. O F3-B-R e o `[DECISÃO]` do checkpoint esperam o F3-3e `[!]`.
