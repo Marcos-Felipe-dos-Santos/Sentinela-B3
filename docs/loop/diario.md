@@ -1045,3 +1045,7 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Resíduos:** `~/.cache/sentinela-testes-claude/p15.py` (fora do repositório).
 - **Decisões delegadas novas:** nenhuma.
 - **Depois:** o próximo item da fila é o F3-B-R (resumo da 3-b), que não roda com `[!]` aberto (protocolo, Item bloqueado); não há mais independentes do F3-3d: o loop para pela política §3 (`[!]` aberto, sem itens independentes restantes).
+
+### F3-3d — `[!]` retirado (DD-61)
+- **Executor:** claude-code (Claude Opus 5.5).
+- A pergunta 1 da auditoria da 3-a tem resposta nas decisões já escritas (decisão 3 de 09/11 e o prazo "até a 3-b" da opção (b)); a parada por ela não está entre as do passo 7 do `/goal`. O F3-3d volta a `[ ]` e é o próximo item. A auditoria cruzada da 3-a está em `docs/loop/auditorias/3-a-claude-code.md` (11/11) e o relatório mais recente de Downloads (Gemini, 11/11 19:45) já foi processado (F3-A-F6 a F3-A-F10).
