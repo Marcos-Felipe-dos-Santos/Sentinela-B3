@@ -57,6 +57,8 @@ def dia_local(as_of: datetime) -> date:
 class CVMProviderEm(CVMProvider):
     """`CVMProvider` lendo os ZIPs remontados do banco em D, sem rede."""
 
+    por_publicacao = True  # decisão 40: a entrega prova a disponibilidade, não a coleta
+
     def __init__(self, conn: sqlite3.Connection, as_of: datetime, diretorio: Path, modo: str):
         super().__init__(cache_dir=str(diretorio / "cache"))
         self._conn, self._as_of, self._dir, self._modo = conn, as_of, diretorio, modo
@@ -220,7 +222,9 @@ class MotorHistorico(MarketEngine):
                 else "modelo empresa não demonstrado no BPP consolidado"
             }
             return
-        lidos = b3_proventos.proventos_ate(self.conn, ticker[:4], self.dia)
+        lidos = b3_proventos.proventos_ate(
+            self.conn, ticker[:4], self.dia, por_publicacao=True
+        )
         dados["proventos_b3"] = (
             {"abstencao": lidos["abstencao"]}
             if "abstencao" in lidos

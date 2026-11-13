@@ -33,11 +33,17 @@ def _numero(valor: object) -> float:
     return float(valor)
 
 
-def _fonte(registro: Mapping, instante: datetime, campo: str = "coleta") -> None:
+def _fonte(
+    registro: Mapping, instante: datetime, campo: str = "coleta", por_publicacao: bool = False
+) -> None:
+    """Fonte demonstrada e coleta com fuso; até o as_of, salvo numa data passada (decisão 40),
+    em que a disponibilidade é a data de publicação, conferida por quem chama."""
     if not registro.get("fonte"):
         raise ValueError("fonte não demonstrada")
     coleta = datetime.fromisoformat(str(registro.get(campo)))
-    if coleta.tzinfo is None or coleta.utcoffset() is None or coleta > instante:
+    if coleta.tzinfo is None or coleta.utcoffset() is None:
+        raise ValueError("coleta sem fuso ou posterior ao as_of")
+    if not por_publicacao and coleta > instante:
         raise ValueError("coleta sem fuso ou posterior ao as_of")
 
 
@@ -91,6 +97,7 @@ def entradas(dados: Mapping, instante: datetime) -> dict:
     """Insumos de Graham/Lynch separados, sem reservar valores em múltiplos."""
     cobertura = {"esperados": 5, "disponiveis": 0}
     meta = {"avisos": ["reorganização societária no período não é detectada"]}
+    por_publicacao = dados.get("disponibilidade_por_publicacao") is True  # decisão 40
     try:
         if instante.tzinfo is None or instante.utcoffset() is None:
             raise ValueError("as_of exige fuso horário")
@@ -120,6 +127,7 @@ def entradas(dados: Mapping, instante: datetime) -> dict:
                 raise ValueError(
                     f"fator oficial B3 indisponível: {reconciliacao['abstencao']}"
                 )
+        # o fator da relação B3 (ou injetado) mantém a guarda de coleta (DD-65)
         fatores = fatores_da_base(registros, reconciliacao, instante)
         perimetros = set()
         lpas, meses = [], []
@@ -134,7 +142,7 @@ def entradas(dados: Mapping, instante: datetime) -> dict:
                 raise ValueError("identidade do exercício incompatível")
             anterior = fim
             prov = _mapa(e.get("proveniencia"))
-            _fonte(prov, instante, "data_coleta")
+            _fonte(prov, instante, "data_coleta", por_publicacao)
             if date.fromisoformat(prov["data_entrega"]) >= dia:
                 raise ValueError("documento não entregue até o corte")
             perimetros.add(e.get("perimetro") or "controladores")
@@ -180,7 +188,7 @@ def entradas(dados: Mapping, instante: datetime) -> dict:
         ipca = _mapa(dados.get("ipca_serie"))
         if ipca.get("abstencao"):
             raise ValueError(ipca["abstencao"])
-        _fonte(ipca, instante)
+        _fonte(ipca, instante, por_publicacao=por_publicacao)
         indices = _mapa(ipca.get("indices"))
         publicacoes = _mapa(ipca.get("publicacoes"))
         valores = []

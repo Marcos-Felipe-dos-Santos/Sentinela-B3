@@ -405,7 +405,10 @@ def entradas(dados: Mapping, instante: datetime) -> dict | Abstencao:
         )
     prov = informe.get("proveniencia")
     coleta = _instante(prov.get("data_coleta")) if isinstance(prov, Mapping) else None
-    if coleta is None or coleta > instante:
+    # decisão 40: numa data passada, a disponibilidade é a `Data_Entrega` de cada versão
+    # (conferida nos registros); a coleta continua na proveniência, sem ser critério
+    por_publicacao = dados.get("disponibilidade_por_publicacao") is True
+    if not por_publicacao and (coleta is None or coleta > instante):
         return Abstencao(MOTIVO_COLETA_INFORME)
     b3 = dados.get("b3_fundo")
     resposta = b3.get("resposta") if isinstance(b3, Mapping) else None

@@ -533,6 +533,9 @@ class MarketEngine:
             'cvm_disponivel': False,
             'riscos_dados': [],
         }
+        if as_of is not None and as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date() < _hoje_sp():
+            # decisão 40: numa data passada, a disponibilidade é a data de publicação da fonte
+            dados['disponibilidade_por_publicacao'] = True
 
         classifier = getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER)
 

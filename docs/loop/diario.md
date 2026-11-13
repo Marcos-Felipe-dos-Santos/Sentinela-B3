@@ -1124,3 +1124,63 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 ### Checkpoint da 3-b — auditoria cruzada (passo 6 do `/goal`)
 - **Executor:** claude-code (Claude Opus 5.5).
 - `docs/loop/auditorias/3-b-claude-code.md`: nenhum commit `Executor: codex` no intervalo `1eb01f0..5f87185` (44 commits, todos claude-code), então não há item da outra família a auditar. A auditoria dos commits claude-code da 3-b fica para o Codex, com os pontos de maior risco listados no relatório. O F3-B-R e o `[DECISÃO]` do checkpoint esperam o F3-3e `[!]`.
+
+### F3-3e — fix: prove historical availability by delivery in the engine guards
+- **Executor:** claude-code (Claude Opus 5.5).
+- **Status:** sucesso. Decisão 40 do Marcos (13/11/2026) retirou o `[!]`.
+- **O que foi feito:**
+  - `market_engine.buscar_dados_ticker` grava `disponibilidade_por_publicacao` em `dados` quando o dia de D é anterior a hoje (São Paulo, `_hoje_sp`). Com `as_of` de hoje, nada muda.
+  - `valuation_engine._bpp_disponivel` exige só a entrega antes do dia de D quando a marca está presente, e sem data de entrega legível abstém.
+  - `CVMProvider.gordon_do_documento` deixa de exigir a coleta no recorte (`_Recorte.por_publicacao`) e no provedor do motor histórico (`CVMProviderEm.por_publicacao`).
+  - `rendimento_fii.entradas` pula a guarda de coleta do Informe com a marca. A `Data_Entrega` de cada registro continua conferida (`_entregue`).
+  - `b3_proventos.proventos_ate(..., por_publicacao=True)` usa a coleta mais recente, e a disponibilidade de cada registro é a aprovação e a data com antes de D. O motor histórico usa essa forma.
+  - A coleta continua gravada na proveniência.
+- **DD-64:** o último item da decisão 40 (usar a última versão com o aviso) foi lido com o adendo de 09/11, que prevalece sobre o §2.3: a última versão só vale no modo exploratório, e o estrito continua abstendo (DD-34).
+- **Regressão:** BUG-3-27 (`tests/regressao/test_bug_3_27_*`), vermelho antes, com as fontes do HEAD restauradas por `git stash`: as lentes saíam com "disponibilidade do BPP consolidado não demonstrada até o as_of". PASS com a correção. O registro diz "corrigido".
+- **Testes:**
+  - `tests/test_disponibilidade_publicacao.py` (27):
+    - BPP pela entrega, com coleta posterior, entrega no dia de D ou depois, sem data e ilegível;
+    - Gordon com DFP entregue em 12/02 e coletada em 13/10: abstém sem a marca, passa com ela, e a entrega no dia de D continua fora;
+    - a marca nos dois provedores e não no `CVMProvider` de base;
+    - Informe sem guarda de coleta e com entrega depois de D;
+    - proventos pela aprovação na coleta mais recente;
+    - cascata marcando só a data passada;
+    - o dia de D pelo fuso de São Paulo com o relógio do sistema em UTC, a coleta no próprio instante e o padrão sem a marca.
+  - [e2e] `test_servico_historico`: a DFP de 2019 coletada hoje passa pelo escopo, e as lentes saem pelas regras dos métodos ("Empresa em situação especial/distressed"), não pela guarda de coleta. As versões entregues depois de D continuam fora (segundo teste).
+- **Suíte:** 4794 passed, 1 skipped → 4823 passed, 1 skipped (+29). Golden SHA igual (`500645a3263ad25e`): com `as_of` de hoje, nada muda.
+- **Mutação:** funções tocadas, medidas de novo depois da rodada 2: `_bpp_disponivel`, `gordon_do_documento`, `composicao_mais_recente`, `gordon_cvm.entradas`, `fatores_acoes_b3._coleta` e `fatores_da_relacao`, `janelas_fundamentais._fonte`, `fatores_da_base` e `entradas`, `qualidade._fonte`, `_linha` e `calcular`, `rendimento_fii.entradas`, `proventos_ate`. Deram 2475 mortos e 290 sobreviventes, 89,5%; todas acima de 80%, a menor `composicao_mais_recente`, com 82,4%. A marca em `buscar_dados_ticker` está coberta por `test_cascata_marca_so_a_data_passada`; a função não foi mutada.
+- **Ainda sem número na data passada, com pendência própria:**
+  - DY, que o FII e o Lynch exigem;
+  - montagem do Bazin pelo preço do COTAHIST;
+  - IPCA das janelas pelo `series_macro`, que Graham e Lynch exigem com cinco exercícios.
+- **Resíduos:** `outputs/f3-3e-mutmut-1.log`, `outputs/f3-3e-results.txt`, `outputs/mutmut-stats-antes-f3-3e.json`.
+- **Decisões delegadas novas:**
+  - 2026-11-13 · claude-code · decisão delegada DD-64: último item da decisão 40 (usar a última versão com o aviso) → lido com o adendo de 09/11, que prevalece sobre o §2.3: só no modo exploratório; o estrito continua abstendo (DD-34) (classe 1, desempate 1; alternativa: a última versão também no estrito).
+  - 2026-11-13 · claude-code · decisão delegada DD-65: alcance da decisão 40 → todas as guardas de coleta dos insumos com data de publicação (composição recente, fronteira do Gordon, janelas e o ramo documental do fator B3 em `fatores_acoes_b3.fatores_da_relacao`, quadro de qualidade); as fontes só correntes (relação B3: bloco do Bazin, ramo da relação do fator B3, reconciliação injetada em `fatores_da_base`, distribuição da qualidade; complemento de fundos; IF.data) mantêm a guarda; a lista de arquivos do item, escrita pelo executor antes da decisão, é ampliada por ela (classe 6, desempate 1 e 4; alternativas: `[!]` (b) por arquivo fora da lista; relaxar também as fontes correntes, que deixaria passar dados posteriores a D)
+- **Revisão rodada 1:** NÃO PODE COMMITAR.
+  - O crítico: a decisão 40 estava aplicada só pela metade.
+  - Aplicado (DD-65): a mesma marca entrou em:
+    - `composicao_mais_recente`, base acionária do Gordon e de Bancos;
+    - `gordon_cvm.entradas`, DFP e composição na fronteira;
+    - `janelas_fundamentais`, série e IPCA;
+    - `methods/qualidade._fonte`, com a marca por parâmetro, sem relógio.
+  - Ficam com a guarda de coleta as fontes que só existem como relação corrente: bloco do Bazin, fatores pela relação, complemento de fundos e IF.data.
+  - Testes novos para cada guarda: Gordon com coleta depois e entrega antes, e entrega no dia de D; janelas, inclusive coleta sem fuso; fator B3; qualidade com cobertura completa; composição recente.
+  - O BUG-3-27 ganhou um segundo caso (Gordon e janelas), vermelho com as fontes do HEAD.
+  - O registro do bug cita todos os locais.
+  - O [e2e] continua com a AMER3, que se abstém pela regra de empresa em situação especial; a passagem pelas guardas é provada caso a caso nos testes de unidade.
+  - A asserção do Informe: com a entrega depois de D, a abstenção já não é pela coleta. O motivo exato depende do `avaliar`.
+- **Revisão rodada 2:** NÃO PODE COMMITAR.
+  - Crítico C1: sem `reconciliacao_serie` (o caminho de produção), o ramo documental de `fatores_acoes_b3.fatores_da_relacao` conferia a coleta das DFPs, e as janelas continuavam se abstendo.
+    - Aplicado (adendo à DD-65): o ramo documental passou para a decisão 40, e a entrega de cada DFP continua conferida nas janelas.
+    - O ramo da relação B3 mantém a guarda.
+    - Testes sem a reconciliação injetada (`test_janelas_pelo_ramo_documental_quando_coletado_depois`) e caso do BUG-3-27 pelo mesmo caminho, vermelho com o HEAD.
+  - Médios:
+    - M1: a reconciliação injetada voltou a ter a guarda de coleta (`fatores_da_base` sem a marca), com teste.
+    - M2: a distribuição de proventos da qualidade (relação B3) mantém a guarda, com teste.
+    - M3: o [e2e] não alcança a guarda das janelas, porque o banco de teste tem só a DFP de 2019. Ele fixa o motivo exato que elas devolvem (sem Composição do Capital antes de 2020), e a prova da guarda está nos testes de unidade e no BUG-3-27.
+    - O diário traz as linhas da DD-64 e da DD-65 no formato da política.
+- **Revisão rodada 3:** PODE COMMITAR.
+  - Aplicado antes do commit, só texto e asserção: o [e2e] fixa o motivo exato das janelas; o registro do BUG-3-27 cita `fatores_acoes_b3` e `proventos_ate`; a DD-65 tem a mesma linha no diário e no `pendencias.md`.
+  - Para as pendências: duas fontes de "hoje", a injetada no serviço e o relógio da cascata. Se divergirem, a análise abstém de forma conservadora.
+  - Para o checkpoint: a DD-65 ampliou a lista do item até `methods/qualidade.py`, só com a marca por parâmetro.

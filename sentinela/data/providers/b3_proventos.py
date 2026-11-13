@@ -455,7 +455,7 @@ def gravar_proventos(conn, relacao: Relacao, cd_cvm: int | str) -> dict:
     return resumo
 
 
-def proventos_ate(conn, emissor: str, dia: date) -> dict:
+def proventos_ate(conn, emissor: str, dia: date, *, por_publicacao: bool = False) -> dict:
     """Proventos em dinheiro conhecidos antes do dia local de D, com a data ex demonstrada.
 
     Vale a relação da coleta mais recente do emissor feita antes do dia de D em São Paulo
@@ -463,6 +463,10 @@ def proventos_ate(conn, emissor: str, dia: date) -> dict:
     comprovada ou relação incompleta nela, abstém com o motivo (`abstencao`). Registro com
     aprovação ou data com em D ou depois ainda não era conhecido ou efetivado em D e fica de
     fora; data ilegível ou data ex sem calendário vão para `sem_prova`, com o motivo.
+
+    `por_publicacao` (decisão 40, data passada): a coleta deixa de ser critério; vale a coleta
+    mais recente do emissor, de qualquer data, e a disponibilidade em D é a da aprovação e da
+    data com de cada registro, anteriores a D (o filtro acima).
     """
     if isinstance(dia, datetime) or not isinstance(dia, date):
         raise TypeError("proventos_ate recebe o dia local de D (date), não um instante")
@@ -474,7 +478,8 @@ def proventos_ate(conn, emissor: str, dia: date) -> dict:
             "WHERE emissor = ?",
             (emissor,),
         )
-        if datetime.fromisoformat(linha[0]).astimezone(proventos_b3.FUSO).date() < dia
+        if por_publicacao
+        or datetime.fromisoformat(linha[0]).astimezone(proventos_b3.FUSO).date() < dia
     ]
     coleta = (
         max(anteriores, key=lambda linha: datetime.fromisoformat(linha[0]))

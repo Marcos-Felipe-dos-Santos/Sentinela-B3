@@ -751,7 +751,10 @@ class CVMProvider:
                     arquivo = proveniencia.registrar_arquivo(
                         caminho, url.format(ano=ano), documento, str(ano)
                     )
-                    if datetime.fromisoformat(arquivo.data_coleta) > as_of:
+                    if (
+                        not getattr(self, "por_publicacao", False)
+                        and datetime.fromisoformat(arquivo.data_coleta) > as_of
+                    ):  # decisão 40: numa data passada, a entrega decide, não a coleta
                         return {
                             "abstencao": "composição recente com coleta posterior ao as_of"
                         }
@@ -897,7 +900,11 @@ class CVMProvider:
                 prov is None
                 or prov.get("data_entrega") is None
                 or date.fromisoformat(prov["data_entrega"]) >= dia
-                or datetime.fromisoformat(prov["data_coleta"]) > as_of
+                # decisão 40: numa data passada, a entrega basta; a coleta não é critério
+                or (
+                    not getattr(self, "por_publicacao", False)
+                    and datetime.fromisoformat(prov["data_coleta"]) > as_of
+                )
             ):
                 return {"abstencao": "disponibilidade histórica da DFP não demonstrada"}
 
@@ -1427,6 +1434,8 @@ class CVMProvider:
 
 class _Recorte(CVMProvider):
     """`CVMProvider.recorte_em`: os ZIPs do provedor de base recortados no dia de D."""
+
+    por_publicacao = True  # decisão 40: numa data passada, a entrega prova a disponibilidade
 
     def __init__(self, base: CVMProvider, dia: date):
         self.cache_dir = base.cache_dir

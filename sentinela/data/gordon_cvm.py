@@ -105,6 +105,7 @@ def entradas(
         if instante.tzinfo is None or instante.utcoffset() is None:
             return Abstencao("as_of exige fuso horário")
         as_of = instante.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+    por_publicacao = dados.get("disponibilidade_por_publicacao") is True
     fonte = dados.get("gordon_cvm") or {}
     if not fonte:
         return Abstencao("DFP anual dos controladores ausente")
@@ -156,9 +157,11 @@ def entradas(
             if (
                 date.fromisoformat(prov["periodo_referencia"]) >= as_of
                 or date.fromisoformat(prov["data_entrega"]) >= as_of
-                or (instante is not None and coleta > instante)
+                # decisão 40: numa data passada, a entrega decide; a coleta não é critério
+                or (not por_publicacao and instante is not None and coleta > instante)
                 or (
-                    instante is None
+                    not por_publicacao
+                    and instante is None
                     and coleta.astimezone(ZoneInfo("America/Sao_Paulo")).date() > as_of
                 )
             ):

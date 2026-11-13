@@ -66,12 +66,20 @@ def _razao(numerador: float | None, denominador: float | None) -> float | None:
     return None if razao == 0 and numerador != 0 else razao
 
 
-def _fonte(prov: object, instante: datetime, *, coleta: str = "data_coleta") -> bool:
+def _fonte(
+    prov: object,
+    instante: datetime,
+    *,
+    coleta: str = "data_coleta",
+    por_publicacao: bool = False,
+) -> bool:
+    """Fonte, coleta com fuso e entrega antes do dia de D; a coleta até o as_of só conta fora
+    da data passada (decisão 40: no histórico, a disponibilidade é a data de publicação)."""
     if not isinstance(prov, Mapping) or not _texto(prov.get("fonte")):
         return False
     try:
         capturado = datetime.fromisoformat(str(prov.get(coleta)))
-        if capturado.utcoffset() is None or capturado > instante:
+        if capturado.utcoffset() is None or (not por_publicacao and capturado > instante):
             return False
         entrega = prov.get("data_entrega")
         return (
@@ -101,7 +109,9 @@ def _janela(e: Mapping, instante: datetime) -> bool:
         return False
 
 
-def _linha(e: Mapping, instante: datetime, modelo: str) -> dict:
+def _linha(
+    e: Mapping, instante: datetime, modelo: str, por_publicacao: bool = False
+) -> dict:
     nomes = (
         "lucro_controladores",
         "pl_inicial_controladores",
@@ -114,7 +124,7 @@ def _linha(e: Mapping, instante: datetime, modelo: str) -> dict:
     motivo = None
     if not _janela(e, instante):
         motivo = "janela anual/documento inválido, incompleto ou futuro"
-    elif not _fonte(e.get("proveniencia"), instante) or not (
+    elif not _fonte(e.get("proveniencia"), instante, por_publicacao=por_publicacao) or not (
         e.get("proveniencia") or {}
     ).get("data_entrega"):
         motivo = "fonte/disponibilidade da DFP não demonstrada até o as_of"
@@ -168,6 +178,7 @@ def _linha(e: Mapping, instante: datetime, modelo: str) -> dict:
             and distribuicao.get("cobertura_integral") is True
             and distribuicao.get("inicio") == e.get("inicio")
             and distribuicao.get("fim") == e.get("fim")
+            # a distribuição vem da relação corrente da B3: mantém a guarda de coleta (DD-65)
             and _fonte(distribuicao, instante, coleta="coleta")
             and total is not None
             and total >= 0
@@ -237,6 +248,7 @@ class Qualidade:
         as_of: datetime,
         classe: str,
         modelo: str | None,
+        por_publicacao: bool = False,
     ) -> dict:
         resultado = {
             "nome": self.nome,
@@ -263,7 +275,7 @@ class Qualidade:
                 resultado["motivo"] = "identidade dos exercícios inválida ou duplicada"
             else:
                 selecionados = sorted(exercicios, key=lambda e: e["exercicio"])[-5:]
-                linhas = [_linha(e, as_of, modelo) for e in selecionados]
+                linhas = [_linha(e, as_of, modelo, por_publicacao) for e in selecionados]
                 avisos = list(dict.fromkeys(
                     e["aviso_comparabilidade"] for e in selecionados
                     if _texto(e.get("aviso_comparabilidade"))
@@ -310,7 +322,7 @@ class Qualidade:
                         comparavel = False
                 validos = sum(
                     _janela(e, as_of)
-                    and _fonte(e.get("proveniencia"), as_of)
+                    and _fonte(e.get("proveniencia"), as_of, por_publicacao=por_publicacao)
                     and bool((e.get("proveniencia") or {}).get("data_entrega"))
                     for e in selecionados
                 )

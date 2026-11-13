@@ -40,9 +40,13 @@ def _positivo(valor: object) -> float:
     return float(valor)
 
 
-def _coleta(valor: object, instante: datetime) -> str:
+def _coleta(valor: object, instante: datetime, por_publicacao: bool = False) -> str:
+    """Coleta com fuso e até o as_of; numa data passada (decisão 40), a coleta dos documentos
+    da CVM não é critério (a entrega de cada um é conferida nas janelas)."""
     coleta = datetime.fromisoformat(str(valor))
-    if coleta.tzinfo is None or coleta.utcoffset() is None or coleta > instante:
+    if coleta.tzinfo is None or coleta.utcoffset() is None:
+        raise ValueError("coleta sem fuso ou posterior ao as_of")
+    if not por_publicacao and coleta > instante:
         raise ValueError("coleta sem fuso ou posterior ao as_of")
     return str(valor)
 
@@ -177,7 +181,9 @@ def fatores_da_relacao(dados: Mapping, registros: Sequence, instante: datetime) 
             ]
             if any(not p.get("fonte") for p in fontes):
                 raise ValueError("fonte documental não demonstrada")
-            coletas = [_coleta(p.get("data_coleta"), instante) for p in fontes]
+            # DD-65: o ramo documental cai na decisão 40; o da relação B3 (acima) mantém a guarda
+            por_publicacao = dados.get("disponibilidade_por_publicacao") is True
+            coletas = [_coleta(p.get("data_coleta"), instante, por_publicacao) for p in fontes]
             coleta = max(coletas, key=datetime.fromisoformat)
             fonte, proveniencia = "Composição do Capital de cada documento", fontes
         evidencias, fatores_pares = [], []

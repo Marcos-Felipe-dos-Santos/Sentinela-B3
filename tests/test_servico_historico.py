@@ -123,13 +123,20 @@ def test_data_passada_le_so_o_historico_do_banco(
     # registro do `series_macro` do banco em D, que não tem a série
     assert dados["taxa_real"] == {"abstencao": "series_macro sem NTN-B até a data"}
     assert resultados.buscar(resultados_conn, "AMER3", as_of=d)
-    # desfecho atual (pendência para o Marcos): a guarda de coleta dos motores exige coleta
-    # anterior a D, e todo dado do banco foi coletado depois; todas as lentes se abstêm
+    # decisão 40 (F3-3e): a DFP entregue antes de D vale, mesmo coletada hoje; as lentes
+    # passam pelo escopo e respondem às regras dos próprios métodos (aqui, empresa em
+    # situação especial), sem número
     lentes = dados["lentes"]
     assert set(lentes) == {"Graham", "Bazin", "Lynch", "Gordon", "Bancos"}
-    assert {lente["abstencao"] for lente in lentes.values()} == {
-        MOTIVO_BPP_INDISPONIVEL
-    }
+    motivos = {lente.get("abstencao") for lente in lentes.values()}
+    assert MOTIVO_BPP_INDISPONIVEL not in motivos
+    assert "Empresa em situação especial/distressed" in motivos
+    # as janelas: a DFP de 2019 só, sem a Composição do Capital (anterior a 2020) e sem os
+    # cinco exercícios; a passagem pela guarda de coleta é provada nos testes de unidade
+    # (`test_disponibilidade_publicacao`, BUG-3-27)
+    janelas = dados["janelas_fundamentais"]
+    motivo = "ações do exercício 2015: sem Composição do Capital no documento do lucro"
+    assert janelas["graham"]["abstencao"] == janelas["lynch"]["abstencao"] == motivo
 
 
 def test_versao_entregue_depois_de_d_fica_fora_com_motivo(
