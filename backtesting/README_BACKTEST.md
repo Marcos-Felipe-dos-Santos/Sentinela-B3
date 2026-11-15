@@ -1,33 +1,29 @@
-# Backtesting Sentinela-B3
+# Backtest do Sentinela B3
 
-## Dados Utilizados
-- **Periodo:** Janeiro 2024 - Maio 2026
-- **Tickers:** PETR4, ITUB4, VALE3
-- **Snapshots:** 87 (mensais)
-- **Fundamentos:** 15 point-in-time (coletados manualmente em 04/05/2026)
+## Backtest ponto-no-tempo (Fase 3)
 
-## Fonte dos Fundamentos
-- Data points coletados de: https://www.fundamentus.com.br/
-- Valores historicos estimados via comparacao com dados atuais
-- Sem lookahead bias: fundamentos limitados a data efetiva da analise
+- Código: `backtesting/backtest_pit.py` (`BacktestPIT.executar`), API nova e separada.
+- Regras: `docs/metodologia/backtest.md` (ficha aprovada pelas decisões 41 e 42).
+- Em cada data D, só o que foi publicado antes do dia de D chega às lentes, pelo
+  `AnalysisService.analisar(ticker, as_of=D)` com o motor histórico. As lentes são
+  ordenadas em quintis por distância ao preço; o retorno total vai do fechamento de D
+  ao de T, com proventos brutos reinvestidos e eventos em ações na mesma base.
+- O relatório descreve cada quintil e a diferença Q1 − Q5, sempre com a contagem de
+  observações. Não há score agregado nem regra de seleção de ativos.
+- **Metodologia ainda não validada:** não há resultado do backtest PIT que sirva de
+  evidência (ficha §11, "O que ainda impede números").
+- Limitações abertas: `docs/loop/pendencias.md` (ficha §11; FII, units e classes 5/6
+  ainda sem retorno).
 
-## Resultados
-- Resultados gerados em `backtesting/backtest_results_v1.csv`
-- Snapshots totais: 87
-- Casos avaliados: 15
-- Casos ignorados: 72
-- Taxa geral de acerto: 46.7%
-- COMPRA acuracia: 25.0% (4 casos)
-- VENDA acuracia: 16.7% (6 casos)
-- NEUTRO acuracia: 100.0% (5 casos)
-- Graham acuracia: 0.0% (4 casos)
-- Bazin acuracia: 25.0% (4 casos)
-- Gordon acuracia: 100.0% (5 casos)
-- Lynch acuracia: 50.0% (2 casos)
-- O backtest avalia apenas os meses com snapshot point-in-time disponivel.
-- Os demais snapshots mensais permanecem ignorados para evitar reutilizar fundamentos fora do mes de referencia.
+## Caminho legado
 
-## Proximos Passos
-- [ ] Expandir para 30+ data points (automatico via scraper)
-- [ ] Incluir mais tickers (20+)
-- [ ] Validar contra outros periodos (2020-2023)
+- `backtesting/backtest_engine.py` (`BacktestEngine.simular_analise_mensal`) devolve
+  `INDISPONIVEL` no caminho de análise elegível desde a Fase 2C. Fica como está.
+
+## Arquivos removidos (F3-8c)
+
+- `fundamentos_point_in_time.csv`: 15 linhas retro-estimadas de dados atuais
+  (auditoria de 9/9/2026, F-1). Não eram evidência.
+- `backtest_results_v1.csv`: gerado por versão anterior do motor, com texto que não
+  existe mais no código (F-29). Não era reprodutível.
+- Os dois continuam recuperáveis pelo histórico do git.
