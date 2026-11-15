@@ -1,0 +1,20 @@
+{
+  "metodo_referencia": "Fraction, direitos somados por ex; q*=1+D_ex/P_ex, sem importar o projeto; IBOV=T/D-1; CDI=produto(1+taxa/100) em[D,T). Fontes públicas e hashes em proveniencia.json.",
+  "D": "2022-03-31",
+  "T": "2023-03-31",
+  "preco_lente": 15.17,
+  "preco_entrada": 15.4,
+  "preco_fim": 14.33,
+  "proventos": [
+    {
+      "ex": "2022-12-20",
+      "valor_bruto": "7623/10000",
+      "preco_ex": "363/25"
+    }
+  ],
+  "retorno_total": -0.020628246753246753,
+  "retorno_fracao": "-12707/616000",
+  "retorno_ibov": -0.1509762187640704,
+  "retorno_cdi": 0.1327921782339686,
+  "dias_cdi": 252
+}

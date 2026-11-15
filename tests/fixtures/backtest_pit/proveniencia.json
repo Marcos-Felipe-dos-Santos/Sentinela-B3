@@ -1,0 +1,77 @@
+{
+  "observado_em": "2026-11-13T13:42:01.614187+00:00",
+  "recorte": "ABEV3, companhia da fixture Gordon pública; seleção pela disponibilidade documental, não por retorno. Sem valores inventados. Fixture expandida separada do contrato compartilhado de provedores.",
+  "arquivos": {
+    "dfp_cia_aberta_2021.zip": {
+      "fonte": "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2021.zip",
+      "sha256_original": "64b8693b709538a0357c5179ae02231cb380d0000956ee57a873a21d4efda2e4",
+      "sha256_recorte": "b78adacab3a4c7fef5b85b91d7d99474574f47373680dc913185658a8d827d3b",
+      "regra": "mesmas linhas e colunas, só CNPJ07.526.557/0001-00; membros sem esse CNPJ mantêm cabeçalho"
+    },
+    "fca_cia_aberta_2021.zip": {
+      "fonte": "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/FCA/DADOS/fca_cia_aberta_2021.zip",
+      "sha256_original": "65ba4b0225e9b2106901cdf348215933be8affba79925fc71361e2f6818c7999",
+      "sha256_recorte": "ccfeb2931aa725733c390d56ebe73a82c2d735353a466dc4ba536eda13f60bfe",
+      "regra": "mesmas linhas e colunas, só CNPJ07.526.557/0001-00; membros sem esse CNPJ mantêm cabeçalho"
+    },
+    "COTAHIST_A2021.ZIP": {
+      "fonte": "https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_A2021.ZIP",
+      "sha256_original": "b0d4aed17d609c7ba615a23320c2fd513b580a251ae7d884a5015ef8a3fe4705",
+      "sha256_recorte": "736cba012fe0128c8c6d3a7ad33fb1bebb7225cfb1db4d5ec5d168fcc76ec26a",
+      "regra": "cabeçalho original e registros01 do mercado010 deABEV3; rodapé de contagem do original fora do recorte",
+      "pregoes": 247,
+      "calendario_completo_do_original": true
+    },
+    "COTAHIST_A2022.ZIP": {
+      "fonte": "https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_A2022.ZIP",
+      "sha256_original": "a4f9015b755f797d9c08b0d13f19dbfab18a6c75f379c0271a1cf1b5f6323cd8",
+      "sha256_recorte": "ec0539ce760af65f8ee8e49fbc4617043fe088c684f37d3e5ad5eab2a787ec9e",
+      "regra": "cabeçalho original e registros01 do mercado010 deABEV3; rodapé de contagem do original fora do recorte",
+      "pregoes": 250,
+      "calendario_completo_do_original": true
+    },
+    "COTAHIST_A2023.ZIP": {
+      "fonte": "https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_A2023.ZIP",
+      "sha256_original": "ad1603788d78aaa1de806498572277f1d9443f88ae116452751b5800cb23523e",
+      "sha256_recorte": "5f0c61da02cbc0561a13cb3b9226eefcb298121068251bd418579be26f18c8ac",
+      "regra": "cabeçalho original e registros01 do mercado010 deABEV3; rodapé de contagem do original fora do recorte",
+      "pregoes": 248,
+      "calendario_completo_do_original": true
+    },
+    "macro_2022.zip": {
+      "sha256_recorte": "ea006a3e7bcc537a698472cf0fecef33a0fb60f08e3ab1885bd794e729b99648",
+      "regra": "fontes, coleta e hashes originais no catalogo.json; SIDRA integral e Tesouro recortado, nenhum valor modificado"
+    },
+    "cad_cia_aberta_abev.csv": {
+      "fonte": "https://dados.cvm.gov.br/dados/CIA_ABERTA/CAD/DADOS/cad_cia_aberta.csv",
+      "sha256_original": "839f87109b2d273b8a5a29f8f2fce40d6c5a05c0795ed97127b68e933c802a5e",
+      "sha256_recorte": "e343adbe96b82f080f095bbf2b477d0591e6a6fd788dd70a67ed6ead4683ae5b",
+      "regra": "somente identidade, situação, setor e datas da companhia da fixtureGordon pública; as duas linhas coincidentes nesses campos são mantidas"
+    },
+    "retorno_esperado.json": {
+      "fonte": "Ficha backtest§5 e números literais B3/SGS dos recortes públicos; conta Fraction independente",
+      "sha256_recorte": "9608b22839785e41c41fcc0dcfb9888ee8ec4436fff2bd635168883686a9660e",
+      "regra": "referência aritmética dos dados observados, nenhuma série inventada"
+    },
+    "b3_proventos_abev_2026.json": {
+      "fonte": [
+        {
+          "url": "https://sistemaswebb3-listados.b3.com.br/listedCompaniesProxy/CompanyCall/GetDetail/eyJjb2RlQ1ZNIjogIjIzMjY0IiwgImxhbmd1YWdlIjogInB0LWJyIn0=",
+          "bytes": 731,
+          "sha256": "8ea97e88f04e6ff05954e85f045456ebbecb593ca2a6b5aa0cdf16d1604bb06f"
+        },
+        {
+          "url": "https://sistemaswebb3-listados.b3.com.br/listedCompaniesProxy/CompanyCall/GetListedCashDividends/eyJsYW5ndWFnZSI6ICJwdC1iciIsICJwYWdlTnVtYmVyIjogMSwgInBhZ2VTaXplIjogMTIwLCAidHJhZGluZ05hbWUiOiAiQU1CRVYgU0EifQ==",
+          "bytes": 12880,
+          "sha256": "fd31601c74a13eec7f248b132486c796134b7fb057e9a3c467dce45fce6c5d71"
+        },
+        {
+          "url": "https://sistemaswebb3-listados.b3.com.br/listedCompaniesProxy/CompanyCall/GetListedSupplementCompany/eyJpc3N1aW5nQ29tcGFueSI6ICJBQkVWIiwgImxhbmd1YWdlIjogInB0LWJyIn0=",
+          "bytes": 1601,
+          "sha256": "0387bb19ba04630530bc1cc31cf9307e4d7cdd5e133dd078c5407ef9240d6188"
+        }
+      ],
+      "sha256_recorte": "b760268aef12de501c0b7e8d6c6ccc9bd411f0b79d9e95c4f117d17478ea3061"
+    }
+  }
+}

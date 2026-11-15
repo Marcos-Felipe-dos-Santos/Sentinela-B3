@@ -1,5 +1,5 @@
 [tool.mutmut]
-# Layout plano: os módulos ficam na raiz. Fora da mutação: tests/, venv/, backtesting/.
+# Layout plano: o backtest PIT é o único módulo mutado em backtesting/.
 source_paths = [
     "ai_core.py",
     "brapi_provider.py",
@@ -16,9 +16,10 @@ source_paths = [
     "peers_engine.py",
     "technical_engine.py",
     "valuation_engine.py",
+    "backtesting/backtest_pit.py",
     "sentinela/",
 ]
-also_copy = ["app.py", "auditoria.py", "auditar_recomendacoes.py", "limpar_banco.py", "backtesting/", "scripts/", "pytest.ini"]
+also_copy = ["app.py", "auditoria.py", "auditar_recomendacoes.py", "limpar_banco.py", "backtesting/__init__.py", "backtesting/backtest_engine.py", "scripts/", "pytest.ini"]
 # Com xfail_strict ligado, um XPASS acidental conta como mutante morto: só na mutação ele é desligado.
 # O código instrumentado do mutmut importa pathlib e urllib: o teste de import isolado do F1-10 não vale na mutação (a AST vale).
 pytest_add_cli_args = ["-o", "xfail_strict=False", "--deselect", "tests/test_contratos_import.py::test_import_isolado_nao_carrega_modulos_proibidos"]

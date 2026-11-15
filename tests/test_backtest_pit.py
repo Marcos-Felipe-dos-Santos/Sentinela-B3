@@ -14,11 +14,6 @@ from importlib import import_module
 
 import pytest
 
-pytestmark = pytest.mark.xfail(
-    strict=True,
-    reason="F3-8a — contrato aprovado; implementação da API PIT no F3-8b",
-)
-
 D = date(2020, 1, 31)
 EX = date(2020, 4, 30)
 COM = date(2020, 6, 30)
@@ -165,6 +160,7 @@ def test_deslistagem_no_terminal_inclui_ex_terminal_e_exclui_ex_d():
         pregoes=[D, T],
     )
     assert saida["retorno"] == pytest.approx(0.30)
+    assert saida["deslistada"] is True
 
 
 def test_suspensao_mantem_ultimo_preco_e_as_mesmas_fronteiras_ex():
@@ -172,6 +168,7 @@ def test_suspensao_mantem_ultimo_preco_e_as_mesmas_fronteiras_ex():
         {D: 10, EX: 12},
         [{"data_ex": D, "valor": 2}, {"data_ex": T, "valor": 1}],
         pregoes=[D, EX, T],
+        suspensao_confirmada=True,  # BUG-3-33: a suspensão precisa de prova (DD-68)
     )
     assert saida["retorno"] == pytest.approx(0.30)
     assert saida["suspensao"] is True
