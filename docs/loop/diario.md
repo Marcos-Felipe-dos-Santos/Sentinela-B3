@@ -1309,3 +1309,8 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Resíduos:** nenhum. Sem push/PR, `.env` ou carteira.
 - **Para revisar:** o texto novo do README e a prova de ausência de leitor.
 - **Revisão rodada 1:** PODE COMMITAR; médio 1 aplicado (linha "Metodologia ainda não validada" no README, como pedem F-1/F-29 da auditoria); médio 2 (armadilha 6 do `CLAUDE.md` e `AGENTS.md:64-65`) fica para a limpeza da fase, como registrado acima.
+
+### Ratificações do Marcos — 15/11/2026
+- **Executor:** claude-code (registro).
+- O Marcos ratificou: o desvio da D27 nos BUG-3-31/32/33 (sem vermelho guardado antes da correção), a DD-67, a DD-68 (dispensa a revisão cruzada pendente do codex) e a limitação de FII, units e classes 5/6 sem retorno no backtest PIT. Marcadas como "ratificado" em `docs/loop/pendencias.md`.
+- Instruções para o F3-8d: ler só as tabelas públicas do banco real (PIT e benchmarks), nada de carteira; saídas só em `outputs/`; lente bloqueada pelo §11 da ficha abstém com motivo e cobertura por lente e por ano, sem número fabricado e sem ligar lacuna dentro do item; lacuna do §11 que não couber vira item novo por decisão delegada.
