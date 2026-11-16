@@ -294,11 +294,11 @@ def test_ipca_das_janelas_abstem_sem_apagar_o_existente(conn, tmp_path, monkeypa
         historico.MarketEngine, "_contexto_janelas", lambda self, d, i, **k: None
     )
     motor = _motor(conn, tmp_path)
-    com_serie = {"serie_cvm": {"exercicios": [{}] * 5}}
+    exercicios = [{"fim": f"{ano}-12-31"} for ano in range(2015, 2020)]
+    com_serie = {"serie_cvm": {"exercicios": exercicios}}
     motor._contexto_janelas(com_serie, D)
-    assert com_serie["ipca_serie"] == {
-        "abstencao": f"IPCA do SIDRA: {historico.MOTIVO_FONTE_CORRENTE}"
-    }
+    # F3-8f: o IPCA vem do `series_macro` em D (vazio aqui), não mais do SIDRA desligado
+    assert com_serie["ipca_serie"] == {"abstencao": "IPCA ausente no banco"}
     for quantos in (0, 4, 6):  # a cascata só pede o IPCA com os cinco exercícios
         outro = {"serie_cvm": {"exercicios": [{}] * quantos}}
         motor._contexto_janelas(outro, D)

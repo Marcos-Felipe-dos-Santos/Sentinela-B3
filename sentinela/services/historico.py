@@ -9,11 +9,13 @@ ponto-no-tempo do banco, sem nenhuma consulta corrente:
 - preço: o fechamento bruto do último pregão antes do dia de D no COTAHIST guardado
   (`precos`, F3-4a); histórico pela série ajustada do banco (`serie_ajustada`, F3-4c);
 - liquidez: as cotações dos 63 pregões antes de D (`cotacoes_ate`);
-- taxa real: o `series_macro` deste banco em D (`macro.registro_do_banco`, F3-1c).
+- taxa real: o `series_macro` deste banco em D (`macro.registro_do_banco`, F3-1c);
+- IPCA de fim de exercício das janelas: o mesmo `series_macro`, pela data de divulgação do
+  IBGE (`macro.ipca_serie_do_banco`, F3-8f).
 
 Os proventos em dinheiro vêm do leitor ponto-no-tempo (`proventos_ate`). Ficam de fora, com o
 motivo, as fontes que só existem como consulta corrente: yfinance, brapi, IF.data, o cache de
-fundamentos, o complemento de fundos da B3 e o IPCA do SIDRA para as janelas. Nada muda nos métodos, fórmulas ou
+fundamentos e o complemento de fundos da B3. Nada muda nos métodos, fórmulas ou
 parâmetros (R2): o motor de valuation recebe os mesmos campos da cascata.
 """
 
@@ -306,7 +308,11 @@ class MotorHistorico(MarketEngine):
     def _contexto_janelas(self, dados, instante, *, coletado_em=None) -> None:
         exercicios = (dados.get("serie_cvm") or {}).get("exercicios") or []
         if len(exercicios) == 5 and not dados.get("ipca_serie"):  # a condição da cascata
-            dados["ipca_serie"] = {"abstencao": f"IPCA do SIDRA: {MOTIVO_FONTE_CORRENTE}"}
+            # F3-8f: o IPCA divulgado até D no `series_macro`, nunca o SIDRA corrente
+            try:
+                dados["ipca_serie"] = macro.ipca_serie_do_banco(self.conn, exercicios, instante)
+            except sqlite3.Error as erro:
+                dados["ipca_serie"] = {"abstencao": f"series_macro indisponível: {erro}"}
         super()._contexto_janelas(dados, instante, coletado_em=coletado_em)
 
     def _buscar_taxa_real(self, dados: dict[str, Any], *, as_of: datetime | None = None) -> None:

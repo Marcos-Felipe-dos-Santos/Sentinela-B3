@@ -980,6 +980,55 @@ def _inflacao_do_banco(conn, janela: tuple[date, date], instante: datetime) -> d
         return _erro_do_codigo(erro)
 
 
+def ipca_serie_do_banco(conn, exercicios: list[dict], instante: datetime) -> dict:
+    """Série do IPCA dos cinco encerramentos só com o que está em `series_macro` (F3-8f).
+
+    A mesma conta de `MacroProvider.ipca_serie` (`indices_ipca`), sobre a agenda do IBGE e os
+    meses do SIDRA gravados por `gravar_series`, cada linha da coleta mais recente: só entra o
+    mês com data de divulgação guardada e anterior ao dia de `instante` (decisão 31). Sem
+    linha no banco, abstém sem contingência numérica. Erro do SQLite sobe para quem chama.
+    """
+    try:
+        dia = _local(instante)
+        finais = _encerramentos(exercicios)
+        agenda = _ultimas(
+            conn, "s.serie = 'ipca_divulgacao' AND s.divulgacao IS NOT NULL", ()
+        )
+        sidra = _ultimas(
+            conn,
+            "s.serie = 'ipca_sidra' AND s.data >= ? AND s.data <= ?",
+            (f"{finais[0]:%Y-%m}-01", f"{finais[-1]:%Y-%m}-01"),
+        )
+        if not agenda or not sidra:
+            return {"abstencao": "IPCA ausente no banco"}
+        publicacoes = {
+            linha[1][:4] + linha[1][5:7]: date.fromisoformat(linha[3])
+            for linha in agenda
+        }
+        indices = indices_ipca(
+            [json.loads(linha[4]) for linha in sidra], publicacoes, finais, dia
+        )
+    except FALHAS_DA_FONTE as erro:
+        return _falha_da_fonte(erro)
+    except ERROS_DO_CODIGO as erro:
+        return _erro_do_codigo(erro)
+    proveniencia = _proveniencia_das_linhas(sidra)
+    return {
+        "fonte": proveniencia["fonte"],
+        "coleta": proveniencia["data_coleta"],
+        "indices": indices,
+        "publicacoes": {
+            d.strftime("%Y-%m"): publicacoes[d.strftime("%Y%m")].isoformat()
+            for d in finais
+        },
+        "proveniencia": proveniencia,
+        "calendario": _proveniencia_das_linhas(agenda),
+        "variavel": "63",
+        "tabela": "1737",
+        "banco": "series_macro",
+    }
+
+
 def _pib_do_banco(conn, instante: datetime) -> dict:
     try:
         dia = _local(instante)

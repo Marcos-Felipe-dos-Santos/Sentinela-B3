@@ -182,6 +182,8 @@ def entradas(
             ):
                 return Abstencao("contexto da taxa real posterior ao as_of")
         ipca, pib = macro.get("inflacao") or {}, macro.get("pib") or {}
+        if "abstencao" in ipca:  # BUG-3-38: a abstenção da inflação chega com o motivo
+            return Abstencao(f"inflação indisponível: {ipca['abstencao']}")
         if (
             ipca.get("inicio") != inicio.isoformat()
             or ipca.get("fim") != fim.isoformat()
