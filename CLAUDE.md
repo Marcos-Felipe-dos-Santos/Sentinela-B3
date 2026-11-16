@@ -22,6 +22,14 @@ A seção “Fase atual” do `AGENTS.md` é mantida exclusivamente pelo Marcos.
 
 ---
 
+## Idioma
+
+Responda sempre em português do Brasil (decisão do Marcos de 16/11/2026): nas mensagens,
+no diário, na passagem e depois de compactação de contexto. Mensagens de commit seguem em
+inglês (Conventional Commits, seção Git).
+
+---
+
 ## Ambiente
 
 - WSL2 (Ubuntu). Repositório em `~/projetos/Sentinela_B3`, nunca em `/mnt/*`.
