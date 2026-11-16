@@ -53,7 +53,7 @@ Cada item começa com `python scripts/fila.py proximo`, que imprime só a linha 
 - Refactor e mudança de comportamento nunca no mesmo commit.
 - Não tocar nos arquivos intocáveis do cabeçalho da fila. Se um item parecer exigir isso, marque `[!]` (caso (b)) e siga a seção "Item bloqueado".
 - Não remover, pular (`skip`) nem enfraquecer testes para a suíte passar.
-- Remoção só do que o git devolve: arquivo rastreado, com `git rm`. Arquivo não rastreado e branch nunca são apagados pelo loop — vão para a lista do Marcos no diário. Item *investigar* do inventário nunca sai sem decisão.
+- Remoção só do que o git devolve: arquivo rastreado, com `git rm`. Arquivo não rastreado e branch nunca são apagados pelo loop — vão para a lista do Marcos no diário. Exceção (Marcos, 16/11/2026; `docs/loop/politica-decisao-autonoma.md` §4): `mutants/`, o cache do mutmut ignorado pelo git, pode ser apagado pelo executor antes de uma mutação. Item *investigar* do inventário nunca sai sem decisão.
 - Mutação sempre com a configuração do `[tool.mutmut]`, que desliga o `xfail_strict` só nessas rodadas. `mutants/` nunca entra em commit.
 - Métodos de valuation não ganham rede, banco nem leitura de relógio.
 - O repositório é público: dados da carteira do Marcos (posições, pesos, lista de ativos) nunca entram em arquivo versionado — nem no diário. O que usar a carteira vai para `outputs/`.
