@@ -1,0 +1,68 @@
+# Banda neutra — proposta fora da amostra (F3-8d)
+
+**Situação em 15/11/2026: sem número.** Nenhuma lente teve valor em nenhuma data da sonda; nenhuma formou quintis; a banda não pode ser calibrada. Este documento registra a regra que será aplicada, a execução real, a cobertura por lente e por ano e o que falta. É **proposta** para o Marcos, sem efeito em código, ficha ou apresentação. Não é recomendação nem sugestão de carteira.
+
+Script: `scripts/banda_neutra_fase3.py` (decisão 29). Testes: `tests/test_banda_neutra_fase3.py`, com contas à mão. Saídas da execução, fora do git: `outputs/f3-8d/sonda/` (`observacoes.json`, `proposta.json`, `resultados.db`).
+
+## 1. Regra (ficha do backtest §9, decisão 17, DD-70)
+
+- Por lente e por horizonte (12, 24 e 36 meses, cada um separado), só no modo estrito. Nunca como rótulo agregado.
+- **Fronteira:** entre as datas D em que a lente formou quintis naquele horizonte (25 ou mais ativos com distância válida), a de posição `ceil(n/2)`, inclusiva. Cada horizonte tem a sua: pelo §8, o de 36 meses perde as datas finais e a fronteira dele cai antes (leitura de “cada um separadamente”, DD-70).
+- Só entram na calibração e na validação as observações das datas com quintis; uma data com menos de 25 ativos válidos fica fora das duas metades.
+- **Calibração:** observações com D até a fronteira **e** fim do horizonte até a fronteira. As que têm D na primeira metade e fim depois dela saem, e o número delas fica registrado por horizonte (`excluidas_pela_fronteira`). O script falha com erro se uma observação de calibração terminar depois da fronteira (`conferir_calibracao`).
+- **Validação:** observações com D depois da fronteira.
+- **Banda (DD-70):** simétrica em torno de zero; largura `b` = mediana de |distância ao preço| na calibração. A largura vem da dispersão das lentes, não do retorno (decisões da 2C §2; ficha §9: “o backtest descreve, não calibra”).
+- **Estados:** “sinal positivo” (d > b), “neutro” (|d| ≤ b), “sinal negativo” (d < −b). Para cada estado, nas duas metades: contagem, retorno total médio e excesso médio sobre o CDI, sempre com o número de observações. Os retornos só descrevem os estados; nenhum parâmetro é escolhido por eles.
+- Lente sem datas com quintis: abstenção, com o motivo “lente sem data com quintis formados” e a contagem das abstenções.
+
+## 2. Execução real (DD-69)
+
+- O banco real foi aberto só para leitura (`ATTACH ... mode=ro`). O código do backtest lê só as tabelas públicas (preços, proventos, índices, CVM PIT), nunca as da carteira. Os resultados das análises foram gravados num banco novo em `outputs/f3-8d/sonda/`.
+- **Custo medido:** um ativo numa data levou 1420 s com o cache frio (1365 s na remontagem dos ZIPs da CVM, `remontagem.zip_cia_em`). Cinco ativos em 30/06/2023 levaram 4147 s com o cache quente, cerca de 14 min por ativo e data. A sonda abaixo (24 ativo-datas) levou cerca de 5,5 h.
+- O universo completo teria 106 datas de fim de mês com mês fechado (31/01/2018 a 30/10/2026), com cerca de 315 elegíveis por data (30/06/2023: 167 STOCK, 142 FII, 6 UNIT). São milhares de horas, então a execução completa ficou para o F3-8j, depois do reaproveitamento da remontagem (F3-8e).
+- **Sonda declarada:** último pregão de junho de 2018 a 2025 (8 datas), com o primeiro elegível de cada classe na ordem do universo (sem olhar retorno nem lente). Resultado: 231 observações (lente × ativo × horizonte); sem análise falha (`sem_analise` vazio); horizontes incompletos pelo §8: 11 em 24 meses e 22 em 36 meses.
+
+## 3. Resultado por lente
+
+Nas três janelas, nenhuma lente tem observação com valor e nenhuma forma quintis. As exclusões pela fronteira ficam **sem aplicação** (0 nos três horizontes), porque não há fronteira sem datas com quintis.
+
+| Lente | Observações (12 / 24 / 36) | Com valor | Datas com quintis | Motivos (horizonte de 12 meses) |
+|---|---|---|---|---|
+| Graham | 16 / 14 / 12 | 0 | 0 | 10 sem Composição do Capital no documento do lucro (exercícios 2013 a 2019, primeiro ano da janela); 3 modelo banco fora do escopo; 2 modelo não demonstrado no BPP consolidado; 1 IPCA do SIDRA desligado na data passada (§11) |
+| Lynch | 16 / 14 / 12 | 0 | 0 | os mesmos 10 da Composição do Capital, 3 e 2 de escopo; 1 perfil não demonstrado: DY ausente (§11) |
+| Gordon | 16 / 14 / 12 | 0 | 0 | 6 base de ações incompatível ou sem evidência; 5 inflação incompatível com a janela da DFP (§11); 3 modelo banco fora do escopo; 2 modelo não demonstrado no BPP |
+| Bancos | 16 / 14 / 12 | 0 | 0 | 11 modelo empresa fora do escopo; 2 base de ações sem evidência; 2 modelo não demonstrado no BPP; 1 DVA sem atribuição aos controladores |
+| Bazin | 16 / 14 / 12 | 0 | 0 | 10 identidade do emissor não comprovada na coleta (6 UNT e 1 ON sem ISIN da companhia no GetDetail, 3 complemento sem proventos); 3 modelo banco; 2 modelo não demonstrado no BPP; 1 bloco pelo preço do COTAHIST não montado (§11) |
+| Rendimento do FII | 8 / 7 / 6 | 0 | 0 | 8 DY ausente ou inválido (§11) |
+
+**Retorno total (12 meses, todas as lentes):** 5 observações com retorno (ABEV3 em 30/06/2022) e 83 sem: identidade do emissor não comprovada (35 UNT e 20 ON sem ISIN da companhia no GetDetail; 20 complemento sem proventos para conferir), 8 sem coleta da relação de proventos do emissor. Mesmo uma lente com valor teria quase nenhum retorno para descrever os estados.
+
+## 4. Cobertura por lente e por ano
+
+Cada célula: observações de 12 meses na sonda / com valor. Os anos sem sonda (2026, e todos os outros meses) estão **não medidos**, pelo custo do §2.
+
+| Lente | 2018 | 2019 | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 |
+|---|---|---|---|---|---|---|---|---|
+| Graham | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 |
+| Lynch | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 |
+| Gordon | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 |
+| Bancos | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 |
+| Bazin | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 | 2 / 0 |
+| Rendimento do FII | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 | 1 / 0 |
+
+Os motivos por ano, lente e horizonte estão em `outputs/f3-8d/sonda/proposta.json`, chave `cobertura`.
+
+## 5. O que falta para haver número
+
+**Lacunas da ficha §11, que não cabem no F3-8d (DD-71, itens novos na fila):**
+- F3-8e: reaproveitar a remontagem da CVM do dia entre as análises, que é o custo do §2;
+- F3-8f: IPCA de fim de exercício pelo `series_macro`, para Graham, Lynch, Gordon e Bancos;
+- F3-8g: DY histórico pelos proventos da B3 e pelo COTAHIST, para o perfil, o Lynch e o FII;
+- F3-8h: bloco do Bazin pelo preço do COTAHIST;
+- F3-8i: taxa real histórica pelo `series_macro`;
+- F3-8j: a banda refeita sobre o universo e as datas completos.
+
+**Lacunas fora do §11, vistas na sonda (DD-72):**
+- Graham e Lynch abstêm em toda data até junho de 2024, porque o primeiro exercício da janela de cinco anos (2013 a 2019) não tem Composição do Capital no documento do lucro. Isso vira o levantamento F3-8k, sobre a fonte da quantidade de ações por exercício antes de 2020. A regra do F2A-3 continua: sem as ações do mesmo documento, abstém.
+- O retorno abstém na maior parte dos ativos pela conferência de identidade da decisão 33: units e ações ON sem ISIN da companhia no GetDetail, ou complemento sem proventos. Mudar a conferência é regra de identidade decidida pelo Marcos, então fica como pergunta em `docs/loop/pendencias.md`, sem item.
+- 2024 e 2025: “modelo da demonstração não demonstrado no BPP consolidado” (AALR3, ABCB4), também para o F3-8k.
