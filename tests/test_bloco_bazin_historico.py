@@ -23,6 +23,7 @@ from sentinela.data import proventos_b3
 from sentinela.data.providers import b3_cotahist, b3_proventos
 from sentinela.data.store import migracoes
 from sentinela.services import historico
+from valuation_engine import ValuationEngine
 
 AS_OF = datetime(2026, 11, 2, 15, tzinfo=UTC)
 DIA = date(2026, 11, 2)
@@ -381,3 +382,17 @@ def test_pregoes_na_virada_do_ano_com_a_geracao_real_abstem(conn, tmp_path):
     referencia = date(2027, 1, 3)
     cargas = [(2025, date(2025, 12, 30)), (2026, date(2026, 1, 3))]
     assert _so_cobertura(conn, tmp_path, cargas, referencia) is None
+
+
+def test_perfil_da_acao_no_motor_historico_e_o_do_bloco(conn, relacao, tmp_path):
+    """[e2e] DD-77 (F3-8g): sem yfinance nem brapi, o DY do perfil é o do bloco da B3."""
+    _gravar(conn, relacao)
+    _pregoes(conn, tmp_path, ["20261029", "20261030"])
+    motor = _motor(conn, tmp_path)
+    dados = {**_dados(), "ticker": "LREN4"}
+    assert motor._buscar_yfinance("LREN4", dados)
+    assert not motor._buscar_brapi("LREN4", dados)
+    motor._buscar_proventos_b3("LREN4", dados)
+    assert "dy" not in dados  # nenhuma fonte de DY da cascata na data passada
+    ValuationEngine().processar(dados, as_of=AS_OF)
+    assert dados["perfil_fonte"]["fonte"] == "relação de proventos da B3"

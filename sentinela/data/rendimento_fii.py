@@ -205,6 +205,34 @@ def _rotulo(mes: tuple[int, int]) -> str:
     return f"{mes[0]:04d}-{mes[1]:02d}"
 
 
+def dy_entregue_ate(
+    registros: Iterable[Mapping], preco: object, dia_as_of: date
+) -> dict | Abstencao:
+    """`rendimento_12_meses` só com as versões do Informe entregues antes do dia (F3-8g).
+
+    É o DY do campo `dy` da cascata numa data passada, para a guarda de entrada do motor de
+    FII. Da ficha FII 1.3 vale aqui a idade (mês final até 3 meses antes do as_of); a faixa de
+    0 a 25% é a do DY de 12 meses (o mês negativo e as demais guardas seguem em `avaliar`).
+    """
+    elegiveis = [r for r in registros if _entregue(r, dia_as_of)]
+    meses = [m for m in map(_mes, elegiveis) if m is not None]
+    if (
+        meses
+        and (dia_as_of.year * 12 + dia_as_of.month)
+        - (max(meses)[0] * 12 + max(meses)[1])
+        > IDADE_MAXIMA_MESES
+    ):
+        return Abstencao(MOTIVO_IDADE)
+    medida = rendimento_12_meses(elegiveis, preco)
+    if isinstance(medida, Abstencao):
+        return medida
+    if medida["dy"] < 0:
+        return Abstencao(MOTIVO_DY_NEGATIVO)
+    if medida["dy"] > DY_MAXIMO:
+        return Abstencao(MOTIVO_DY_NAO_CONFIAVEL)
+    return medida
+
+
 def avaliar(
     registros: Iterable[Mapping],
     composicoes: Iterable[Mapping],

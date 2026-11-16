@@ -14,7 +14,8 @@ ponto-no-tempo do banco, sem nenhuma consulta corrente:
   IBGE (`macro.ipca_serie_do_banco`, F3-8f).
 
 O bloco do Bazin é o da cascata, com a relação da coleta escolhida pelo leitor ponto-no-tempo
-(`b3_proventos.relacao_ate`) e o fechamento do COTAHIST antes de D (F3-8h). Ficam de fora, com o
+(`b3_proventos.relacao_ate`) e o fechamento do COTAHIST antes de D (F3-8h); o `dy` do FII é o
+do Informe guardado, com as versões entregues antes de D (F3-8g). Ficam de fora, com o
 motivo, as fontes que só existem como consulta corrente: yfinance, brapi, IF.data, o cache de
 fundamentos e o complemento de fundos da B3. Nada muda nos métodos, fórmulas ou
 parâmetros (R2): o motor de valuation recebe os mesmos campos da cascata.
@@ -36,7 +37,7 @@ import pandas as pd
 from cvm_fii_provider import CVMFIIProvider
 from cvm_provider import CVMProvider
 from market_engine import MarketEngine
-from sentinela.data import liquidez, proventos_b3
+from sentinela.data import liquidez, proventos_b3, rendimento_fii
 from sentinela.data.pit import leitura, remontagem, serie_ajustada
 from sentinela.data.providers import b3_cotahist, b3_proventos, macro
 from sentinela.data.referencia import universo
@@ -321,6 +322,32 @@ class MotorHistorico(MarketEngine):
             dados["b3_fundo"] = {
                 "abstencao": f"complemento da B3 do fundo: {MOTIVO_FONTE_CORRENTE}"
             }
+            self._dy_do_informe(dados)
+
+    def _dy_do_informe(self, dados: dict[str, Any]) -> None:
+        """O `dy` do FII pelo Informe guardado, no lugar do yfinance e da brapi (F3-8g).
+
+        A conta é a do `rendimento_fii.rendimento_12_meses` (ficha FII 1.3), com as versões
+        entregues antes do dia de D e o fechamento do COTAHIST antes de D; sem prova, o campo
+        fica de fora e o motivo vai a `riscos_dados`.
+        """
+        informe = dados.get("informe_fii")
+        if not isinstance(informe, dict) or "registros" not in informe:
+            return  # a abstenção do Informe já está no bloco e nos riscos
+        if dados.get("fonte_preco") != FONTE_PRECO:
+            medida = rendimento_fii.Abstencao(rendimento_fii.MOTIVO_PRECO)
+        else:
+            medida = rendimento_fii.dy_entregue_ate(
+                informe["registros"], dados.get("preco_atual"), self.dia
+            )
+        if isinstance(medida, rendimento_fii.Abstencao):
+            dados.setdefault("riscos_dados", []).append(
+                f"DY do FII pelo Informe: {medida.motivo}"
+            )
+            return
+        dados["dy"] = medida["dy"]
+        dados.setdefault("proveniencia", {})["dy"] = medida["conversao"]
+        self._record_field_sources(dados, ("dy",), "CVM")
 
     def _contexto_janelas(self, dados, instante, *, coletado_em=None) -> None:
         exercicios = (dados.get("serie_cvm") or {}).get("exercicios") or []
