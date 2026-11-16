@@ -130,6 +130,9 @@ def ipca_da_janela(
 
 def _encerramentos(exercicios: list[dict]) -> list[date]:
     """Os cinco encerramentos distintos, no fim do mês, em ordem."""
+    if any(not isinstance(e, dict) or not isinstance(e.get("fim"), str) for e in exercicios):
+        # BUG-3-39: exercício sem data de fim é dado ausente, não erro do código
+        raise ValueError("IPCA exige cinco encerramentos com data")
     finais = sorted(date.fromisoformat(e["fim"]) for e in exercicios)
     if len(finais) != 5 or len(set(finais)) != 5:
         raise ValueError("IPCA exige cinco encerramentos distintos")
