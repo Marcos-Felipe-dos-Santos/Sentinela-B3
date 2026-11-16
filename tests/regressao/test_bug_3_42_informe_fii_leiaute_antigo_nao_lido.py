@@ -17,7 +17,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
-import pytest
 
 from sentinela.data.pit import carga_cvm
 from sentinela.data.store import migracoes
@@ -30,7 +29,6 @@ CNPJ = "00.332.266/0001-31"
 AS_OF = datetime(2018, 2, 20, 15, tzinfo=UTC)  # o Informe de 2017 entregue até jan/2018
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-3-42, corrigido no F3-8j-fii")
 def test_bug_3_42_motor_le_o_fundo_no_informe_de_2017(tmp_path):
     with closing(sqlite3.connect(":memory:")) as conn:
         migracoes.aplicar(conn)

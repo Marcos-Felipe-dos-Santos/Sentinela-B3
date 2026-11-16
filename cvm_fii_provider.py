@@ -38,6 +38,19 @@ def _data_iso(value) -> bool:
     return True
 
 
+def _ler_informe(zip_path: Path, membro: str, *, literal: bool = False) -> pd.DataFrame:
+    """Um CSV do Informe, com o CNPJ do fundo em `CNPJ_Fundo_Classe` nos dois leiautes.
+
+    BUG-3-42: os anos de 2016 a 2020 vêm no leiaute anterior à Resolução 175, com a coluna
+    `CNPJ_Fundo` (a carga do BUG-3-25 os grava assim, e a remontagem devolve o cabeçalho
+    original). Só o nome da coluna muda; o arquivo do leiaute novo sai como está.
+    """
+    df = ler_csv_zip(zip_path, membro, literal=literal)
+    if "CNPJ_Fundo_Classe" not in df.columns and "CNPJ_Fundo" in df.columns:
+        return df.rename(columns={"CNPJ_Fundo": "CNPJ_Fundo_Classe"})
+    return df
+
+
 def _to_float(value) -> float | None:
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return None
@@ -95,7 +108,7 @@ class CVMFIIProvider:
             if csv_name is None:
                 logger.warning("Arquivo complemento não encontrado em %s", zip_path.name)
                 return pd.DataFrame()
-        return ler_csv_zip(zip_path, csv_name, literal=literal)
+        return _ler_informe(zip_path, csv_name, literal=literal)
 
     def _proveniencia(self, zip_path: Path, ano: int, row) -> dict | None:
         """Proveniência do informe usado (F2A-32): mês, versão e `Data_Entrega` do `geral`.
@@ -114,7 +127,7 @@ class CVMFIIProvider:
             "Versao": row.get("Versao"),
         }
         try:
-            geral = ler_csv_zip(zip_path, f"inf_mensal_fii_geral_{ano}.csv")
+            geral = _ler_informe(zip_path, f"inf_mensal_fii_geral_{ano}.csv")
             entrega = proveniencia.entrega_no_indice(
                 geral.to_dict("records"), documento, coluna="Data_Entrega"
             )
@@ -223,7 +236,7 @@ class CVMFIIProvider:
             )
             if nome is None:
                 return pd.DataFrame()
-        return ler_csv_zip(zip_path, nome, literal=literal)
+        return _ler_informe(zip_path, nome, literal=literal)
 
     def _linhas_do_fundo(
         self, cnpj: str, ano: int
