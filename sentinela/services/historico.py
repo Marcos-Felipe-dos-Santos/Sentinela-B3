@@ -20,6 +20,9 @@ parâmetros (R2): o motor de valuation recebe os mesmos campos da cascata.
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -48,6 +51,31 @@ RISCO_IFDATA = f"Basileia e inadimplência sem fonte histórica (IF.data: {MOTIV
 _FUSO = ZoneInfo("America/Sao_Paulo")
 
 
+_REMONTAGENS: ContextVar[dict | None] = ContextVar("remontagens", default=None)
+
+
+@contextmanager
+def remontagens_compartilhadas() -> Iterator[dict]:
+    """Dentro do bloco, os motores sem `remontagens` próprio dividem as remontagens (F3-8e).
+
+    O ZIP de (documento, ano) em D depende só do banco, de D, do modo e da pasta, que estão na
+    chave; quem abre o bloco garante que o banco não muda as tabelas da CVM dentro dele.
+    """
+    memoria: dict = {}
+    marca = _REMONTAGENS.set(memoria)
+    try:
+        yield memoria
+    finally:
+        _REMONTAGENS.reset(marca)
+
+
+def _memoria(remontagens: dict | None) -> dict:
+    if remontagens is not None:
+        return remontagens
+    compartilhada = _REMONTAGENS.get()
+    return {} if compartilhada is None else compartilhada
+
+
 def dia_local(as_of: datetime) -> date:
     if as_of.utcoffset() is None:
         raise ValueError("as_of exige fuso horário")
@@ -59,24 +87,32 @@ class CVMProviderEm(CVMProvider):
 
     por_publicacao = True  # decisão 40: a entrega prova a disponibilidade, não a coleta
 
-    def __init__(self, conn: sqlite3.Connection, as_of: datetime, diretorio: Path, modo: str):
+    def __init__(
+        self,
+        conn: sqlite3.Connection,
+        as_of: datetime,
+        diretorio: Path,
+        modo: str,
+        remontagens: dict | None = None,
+    ):
         super().__init__(cache_dir=str(diretorio / "cache"))
         self._conn, self._as_of, self._dir, self._modo = conn, as_of, diretorio, modo
         self.motivos: dict = {}
-        self._zips: dict[tuple[str, int], Path] = {}
+        # com `remontagens` compartilhado, análises do mesmo dia remontam uma vez (F3-8e)
+        self._zips = _memoria(remontagens)
 
     def recorte_em(self, as_of: datetime) -> CVMProvider:
         return self  # já é o que existia em D
 
     def _zip(self, documento: str, ano: int) -> Path:
-        if (documento, ano) in self._zips:  # um ZIP por documento e ano, por análise
-            return self._zips[(documento, ano)]
-        caminho, motivos = remontagem.zip_cia_em(
-            self._conn, documento, ano, self._as_of, self._dir / documento.lower(),
-            modo=self._modo,
-        )  # fmt: skip
+        chave = ("cia", documento, ano, self._as_of, self._modo, self._dir)
+        if chave not in self._zips:
+            self._zips[chave] = remontagem.zip_cia_em(
+                self._conn, documento, ano, self._as_of, self._dir / documento.lower(),
+                modo=self._modo,
+            )  # fmt: skip
+        caminho, motivos = self._zips[chave]
         self.motivos.update(motivos)
-        self._zips[(documento, ano)] = caminho
         return caminho
 
     def baixar_dfp(self, ano: int) -> Path:
@@ -89,14 +125,25 @@ class CVMProviderEm(CVMProvider):
 class CVMFIIProviderEm(CVMFIIProvider):
     """`CVMFIIProvider` lendo o Informe remontado do banco em D, sem rede."""
 
-    def __init__(self, conn: sqlite3.Connection, as_of: datetime, diretorio: Path, modo: str):
+    def __init__(
+        self,
+        conn: sqlite3.Connection,
+        as_of: datetime,
+        diretorio: Path,
+        modo: str,
+        remontagens: dict | None = None,
+    ):
         super().__init__(cache_dir=str(diretorio / "cache_fii"))
         self._conn, self._as_of, self._dir, self._modo = conn, as_of, diretorio, modo
+        self._zips = _memoria(remontagens)
 
     def baixar_informe(self, ano: int) -> Path:
-        return remontagem.zip_informe_em(
-            self._conn, ano, self._as_of, self._dir / "fii", modo=self._modo
-        )
+        chave = ("fii", "INFORME", ano, self._as_of, self._modo, self._dir)
+        if chave not in self._zips:
+            self._zips[chave] = remontagem.zip_informe_em(
+                self._conn, ano, self._as_of, self._dir / "fii", modo=self._modo
+            )
+        return self._zips[chave]
 
 
 class ReferenciaEm:
@@ -123,14 +170,15 @@ class MotorHistorico(MarketEngine):
         cadastro: pd.DataFrame,
         *,
         modo: str = leitura.ESTRITO,
+        remontagens: dict | None = None,
     ):
         # Sem `super().__init__`: ele cria os provedores correntes (rede, cache em disco).
         if modo not in leitura.MODOS:
             raise ValueError(f"modo desconhecido: {modo!r}")
         self.conn, self.as_of, self.modo = conn, as_of, modo
         self.dia = dia_local(as_of)
-        self.cvm = CVMProviderEm(conn, as_of, diretorio, modo)
-        self.cvm_fii = CVMFIIProviderEm(conn, as_of, diretorio, modo)
+        self.cvm = CVMProviderEm(conn, as_of, diretorio, modo, remontagens)
+        self.cvm_fii = CVMFIIProviderEm(conn, as_of, diretorio, modo, remontagens)
         self.referencia = ReferenciaEm(conn, self.dia, cadastro)
         self.asset_classifier = AssetClassifier()
         self.brapi = None

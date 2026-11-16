@@ -19,8 +19,9 @@ from test_carga_cvm import CIA, DFP
 from test_universo_pit import _fca_sintetico, _negocio, _precos, _pregoes, _valor
 
 import market_engine
+from backtesting.backtest_pit import BacktestPIT
 from fii_engine import FIIEngine
-from sentinela.data.pit import carga_cvm
+from sentinela.data.pit import carga_cvm, remontagem
 from sentinela.data.store import migracoes, resultados
 from sentinela.services import historico
 from sentinela.services.analyze_asset import MOTIVO_PARES, AnalysisService
@@ -175,3 +176,136 @@ def test_motor_historico_so_responde_pela_sua_data(banco, tmp_path):
     with pytest.raises(ValueError, match="modo desconhecido"):
         historico.MotorHistorico(banco, datetime(2020, 3, 2, 15, tzinfo=UTC), tmp_path,
                                  CADASTRO, modo="outro")  # fmt: skip
+
+
+# F3-8e: a remontagem da CVM de um dia é feita uma vez e reaproveitada; o resultado
+# é o mesmo da análise que remonta tudo, e outro D remonta o seu.
+D_F38E = datetime(2020, 3, 2, 15, tzinfo=UTC)
+
+
+@pytest.fixture
+def chamadas(monkeypatch):
+    feitas = []
+    original = remontagem.zip_cia_em
+
+    def espiao(conn, documento, ano, as_of, destino, **kw):
+        feitas.append((documento, ano, as_of))
+        return original(conn, documento, ano, as_of, destino, **kw)
+
+    monkeypatch.setattr(remontagem, "zip_cia_em", espiao)
+    return feitas
+
+
+def _analisar(banco, conn_resultados, diretorio, as_of, remontagens=None):
+    servico = AnalysisService(
+        None,
+        ValuationEngine(),
+        FIIEngine(),
+        TechnicalEngine(),
+        hoje=HOJE,
+        conexao_resultados=conn_resultados,
+        motor_historico=lambda instante: historico.MotorHistorico(
+            banco, instante, diretorio, CADASTRO, remontagens=remontagens
+        ),
+    )
+    raw = servico.analisar("AMER3", as_of, use_ai=False).raw
+    dados = dict(raw)
+    # o que `executar` leva ao hash dos insumos: o raw sem histórico e fontes e sem a
+    # proveniência instável (o instante da remontagem, `data_coleta`)
+    dados.pop("historico", None)
+    dados.pop("fontes", None)
+    return BacktestPIT._hash(BacktestPIT._sem_proveniencia_instavel(dados)), raw
+
+
+def test_compartilhada_da_o_mesmo_resultado_e_remonta_uma_vez(
+    banco, espioes, resultados_conn, tmp_path, chamadas
+):
+    sozinha, _ = _analisar(banco, resultados_conn, tmp_path / "a", D_F38E)
+    por_analise = len(chamadas)
+    assert por_analise > 0
+    assert len(set(chamadas)) == por_analise  # sem memória: um ZIP por documento e ano
+
+    memoria = {}
+    primeira, _ = _analisar(banco, resultados_conn, tmp_path / "b", D_F38E, memoria)
+    segunda, _ = _analisar(banco, resultados_conn, tmp_path / "b", D_F38E, memoria)
+    assert primeira == sozinha and segunda == sozinha
+    assert len(chamadas) == 2 * por_analise  # a segunda análise não remontou nada
+    espioes.assert_not_called()
+
+
+def test_outro_dia_com_a_mesma_memoria_remonta_o_seu(
+    banco, espioes, resultados_conn, tmp_path, chamadas
+):
+    memoria = {}
+    _analisar(banco, resultados_conn, tmp_path / "c", D_F38E, memoria)
+    antes = len(chamadas)
+    outro = datetime(2020, 2, 21, 15, tzinfo=UTC)
+    _, dados = _analisar(banco, resultados_conn, tmp_path / "c", outro, memoria)
+    assert len(chamadas) == 2 * antes
+    assert {as_of for _, _, as_of in chamadas[antes:]} == {outro}
+    # a versão 2 da DFP saiu em 21/02: a remontagem desse dia não a herda de 02/03
+    assert any(
+        "documento da CVM de 2019-12-31 fora da leitura" in risco
+        for risco in dados["riscos_dados"]
+    )
+
+
+def test_bloco_compartilhado_divide_as_remontagens_so_dentro_dele(
+    banco, espioes, resultados_conn, tmp_path, chamadas
+):
+    with historico.remontagens_compartilhadas():
+        _analisar(banco, resultados_conn, tmp_path / "d", D_F38E)
+        por_analise = len(chamadas)
+        _analisar(banco, resultados_conn, tmp_path / "d", D_F38E)
+        assert len(chamadas) == por_analise
+    _analisar(banco, resultados_conn, tmp_path / "d", D_F38E)
+    assert len(chamadas) == 2 * por_analise  # fora do bloco, cada análise remonta
+
+
+def test_executar_do_backtest_roda_dentro_do_bloco_compartilhado(monkeypatch):
+    vistas = []
+
+    def _executar(self, datas, *, horizontes, modo):
+        vistas.append(historico._REMONTAGENS.get())
+        return {"modo": modo, "horizontes": horizontes}
+
+    monkeypatch.setattr(BacktestPIT, "_executar", _executar)
+    executor = BacktestPIT(None, None, hoje=HOJE, cache_dir="c")
+    assert executor.executar([date(2020, 3, 2)]) == {
+        "modo": "estrito",
+        "horizontes": (12, 24, 36),
+    }
+    assert vistas == [{}]  # a memória do bloco, vazia no início
+    assert historico._REMONTAGENS.get() is None  # e só dentro dele
+
+
+def test_informe_e_dfp_compartilhados_por_ano_e_com_o_modo(monkeypatch, tmp_path):
+    feitas = []
+
+    def informe(conn, ano, as_of, destino, *, modo):
+        feitas.append(("fii", ano, modo))
+        return destino / f"inf_{ano}.zip"
+
+    def cia(conn, documento, ano, as_of, destino, *, modo):
+        feitas.append((documento, ano, modo))
+        return destino / f"{documento}_{ano}.zip", {}
+
+    monkeypatch.setattr(remontagem, "zip_informe_em", informe)
+    monkeypatch.setattr(remontagem, "zip_cia_em", cia)
+    memoria = {}
+    motores = [
+        historico.MotorHistorico(
+            None, D_F38E, tmp_path, CADASTRO, modo="exploratorio", remontagens=memoria
+        )
+        for _ in range(2)
+    ]
+    for motor in motores:
+        assert motor.cvm_fii.baixar_informe(2019).name == "inf_2019.zip"
+        assert motor.cvm_fii.baixar_informe(2020).name == "inf_2020.zip"
+        assert motor.cvm.baixar_dfp(2019).name == "DFP_2019.zip"
+    # uma remontagem por fonte e ano para os dois motores, sempre no modo do motor
+    assert feitas == [
+        ("fii", 2019, "exploratorio"),
+        ("fii", 2020, "exploratorio"),
+        ("DFP", 2019, "exploratorio"),
+    ]

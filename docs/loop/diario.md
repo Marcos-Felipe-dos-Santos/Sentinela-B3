@@ -1335,3 +1335,26 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Testes da suíte:** 4969 → 4980 passed, 1 skipped, 1 warning (57,7 s), `TMPDIR=$HOME/.cache/sentinela-testes-claude`; Ruff do CI e dos arquivos do item verdes; golden `500645a3…` igual. Mutação: script de processo, fora do gate (exceção da seção 3 de `docs/decisoes/decisoes-processo-f3-0.md`).
 - **Resíduos:** `outputs/f3-8d/` (ignorado; cache PIT e banco de resultados da sonda), `$HOME/.cache/sentinela-f38d-claude` e a pasta do scratchpad acima.
 - **Revisão rodada 1 (`/review-diff`): PODE COMMITAR.** Médios aplicados: (1) fronteira por horizonte escrita no documento e na DD-70; (2) só as datas com quintis entram na calibração e na validação, com teste novo; (3) validade como no backtest (`_finito` do módulo, abstenção pelo valor falso). Ficam sem teste a banda zero e o caminho `--executar` (script de processo; a leitura só leitura está provada pela sonda, `mode=ro`); as DD do diário são resumos das linhas de `docs/loop/pendencias.md`, que trazem as alternativas. Proposta da sonda recalculada pelo `--observacoes` depois das correções: idêntica.
+
+### F3-8e — perf: reuse the historical CVM reassembly across analyses of the same day
+- **Executor:** claude-code.
+- **Status:** sucesso.
+- **O que foi feito:**
+  - `sentinela/services/historico.py`: `CVMProviderEm` e `CVMFIIProviderEm` guardam a remontagem num dicionário. A chave é (fonte, documento, ano, instante `as_of`, modo, pasta), e no CVM o valor guarda o caminho e os motivos, que continuam indo para `motivos` de cada análise. O dicionário vem de `remontagens` (parâmetro novo de `MotorHistorico`) ou do bloco `remontagens_compartilhadas()` (`ContextVar`). Sem nenhum dos dois, cada motor tem o seu, como antes; a produção (`motor_do_banco`) não muda.
+  - `backtesting/backtest_pit.py`: `executar` abre o bloco e chama o corpo antigo, agora `_executar`, sem outra mudança. O banco não muda as tabelas da CVM durante a execução. Os testes do F3-8b conferem os argumentos exatos de `MotorHistorico` (`{"modo": ...}`); por isso o bloco compartilhado ficou no lugar de um argumento novo e as asserções seguem iguais.
+- **Testes novos** (em `tests/test_servico_historico.py`, que já tinha o banco do F3-3d):
+  - mesmo hash com e sem a memória, sobre o que `executar` leva ao hash dos insumos (raw sem `historico` e `fontes`, por `_sem_proveniencia_instavel`: o instante da remontagem é a proveniência instável), e a segunda análise do dia não remonta;
+  - outro D remonta o seu e não herda a versão 2 da DFP;
+  - o bloco só vale dentro dele;
+  - `executar` roda dentro do bloco;
+  - Informe e DFP compartilhados por ano, com o modo do motor.
+- **Medição no banco real (só leitura, `outputs/f3-8e/medida/`):** D = 30/06/2023, dois elegíveis por classe (6 ativos), 23,2 min no total. Os 9 ZIPs da CVM e os 2 do Informe foram remontados uma vez cada: cerca de 22 min, de 2 a 3 min por ZIP. Os ativos seguintes levaram cerca de 10 s cada; antes eram cerca de 14 min por ativo e data (F3-8d). As 33 observações de AAZQ11, ABCB4 e BRBI11 em comum com a sonda do F3-8d são idênticas.
+- **Projeção do backtest completo:** 106 datas × (cerca de 22 min + 315 × 10 s) ≈ 130 h. Isso passa das 48 h do F3-8j, que vai rodar uma amostra declarada. A remontagem é por D (o conteúdo muda com a data), então não há reaproveitamento entre datas.
+- **Mutação:**
+  - `sentinela/services/historico.py`: 476 mutantes, **451 mortos, 25 sobreviventes = 94,7%** (`outputs/f3-8e-mutmut-claude.log`, `-r2-claude.log`). Os 6 sobreviventes nas funções tocadas trocam só o texto das marcas da chave ("cia", "fii", "INFORME"), que continuam distintas, e são equivalentes. Os outros 19 estão em funções não tocadas.
+  - `executar` do backtest: 8 de 8 mortos (`outputs/f3-8e-mutmut-backtest-claude.log`).
+- **Desvio:** apaguei com `rm` o `tests/test_remontagem_compartilhada.py`, arquivo não rastreado que eu mesmo tinha criado neste item, ao mover os testes para `tests/test_servico_historico.py` (os imports de fixtures davam F811). Isso vai contra a proibição 4 da política; o conteúdo está inteiro no arquivo de destino. Fica registrado para o Marcos.
+- **Fora da linha original do item:** `backtesting/backtest_pit.py`, acrescentado à linha do F3-8e (classe 4: o consumidor que abre o bloco). Testes no arquivo existente, sem mudar asserção.
+- **Suíte:** 4980 → 4985 passed, 1 skipped, 1 warning (59,2 s), `TMPDIR=$HOME/.cache/sentinela-testes-claude`; Ruff do CI e dos arquivos verdes; golden `500645a3…` igual. Aviso do gate: `tests/test_servico_historico.py` (testes do item, classe 4).
+- **Resíduos:** `outputs/f3-8e/` (ignorado). Sem push/PR, `.env` ou carteira; banco real só leitura.
+- **Revisão rodada 1 (`/review-diff`): PODE COMMITAR.** Médio 1 aplicado: o teste compara o hash do raw inteiro, como `executar`, no lugar de cinco chaves; redação da chave corrigida (instante `as_of`). Médio 2 é o desvio do `rm` acima, para o Marcos.

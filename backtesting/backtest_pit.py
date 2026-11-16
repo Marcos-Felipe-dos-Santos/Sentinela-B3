@@ -268,6 +268,19 @@ class BacktestPIT:
         horizontes: Sequence[int] = HORIZONTES,
         modo: str = "estrito",
     ) -> dict:
+        """As análises do mesmo D dividem a remontagem da CVM (F3-8e); o banco não muda nelas."""
+        from sentinela.services import historico
+
+        with historico.remontagens_compartilhadas():
+            return self._executar(datas, horizontes=horizontes, modo=modo)
+
+    def _executar(
+        self,
+        datas: Sequence[date],
+        *,
+        horizontes: Sequence[int],
+        modo: str,
+    ) -> dict:
         from config import MACRO
         from fii_engine import FIIEngine
         from sentinela.data.pit import leitura
