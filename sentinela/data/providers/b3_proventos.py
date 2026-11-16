@@ -703,7 +703,11 @@ def pregoes_da_data_ex(conn, registros, referencia: date) -> list[str] | None:
 
     A regra de `MarketEngine._pregoes_da_data_ex`, com o COTAHIST do banco (mercado à vista)
     no lugar do download: os meses do limite e do início da janela. `None` quando nenhuma
-    data ex depende do calendário.
+    data ex depende do calendário, ou quando as cargas não cobrem do primeiro dia do mês do
+    limite até o início da janela pela regra de `proventos_b3.calendario_do_banco` (F3-P14b:
+    o arquivo anual de cada ano, gerado em ou depois do fim do trecho); a série então abstém,
+    como na cascata sem o COTAHIST (BUG-3-40). O pregão seguinte à data com só decide a janela
+    até o início dela; os dias depois dele só mostram que o calendário segue.
     """
     inicio = proventos_b3.inicio_da_janela(referencia)
     limite = inicio - proventos_b3.FOLGA_SEM_PREGAO
@@ -715,6 +719,10 @@ def pregoes_da_data_ex(conn, registros, referencia: date) -> list[str] | None:
     if not any(d is not None and limite < d < inicio for d in datas):
         return None
     primeiro = date(limite.year, limite.month, 1)
+    if isinstance(
+        proventos_b3.calendario_do_banco(conn, primeiro, inicio), proventos_b3.Abstencao
+    ):
+        return None
     ultimo = date(
         inicio.year, inicio.month, calendar.monthrange(inicio.year, inicio.month)[1]
     )

@@ -48,6 +48,7 @@ Num `[!]`, vale a regra "Item bloqueado": registrar, pular para os itens indepen
 - sem `.env`;
 - sem dados da carteira em arquivo versionado;
 - **sem apagar arquivo não rastreado ou branch: resíduo, mesmo criado pelo próprio executor, vai para a lista de resíduos**;
+  exceção (Marcos, 16/11/2026): `mutants/`, o cache do mutmut ignorado pelo git, pode ser apagado pelo executor antes de uma mutação;
 - nada de rede, banco ou relógio em `sentinela/methods/`;
 - nenhum vocabulário proibido em código novo;
 - refactor e mudança de comportamento nunca no mesmo commit.

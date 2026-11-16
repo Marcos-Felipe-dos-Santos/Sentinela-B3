@@ -15,6 +15,7 @@ from datetime import UTC, date, datetime, timedelta
 
 import pandas as pd
 import pytest
+from test_calendario_proventos import _cabecalho
 from test_cotahist import _linha
 from test_eventos_societarios import COLETA, _obter
 
@@ -48,6 +49,14 @@ def _pregoes(conn, tmp_path, dias, codigo="LREN4", isin=ISIN_PN, preco="00000000
             for d in dias
         ]
         zf.writestr("COTAHIST.TXT", "\n".join(linhas).encode("latin-1"))
+    b3_cotahist.carregar(conn, caminho, fonte="b3", coleta=COLETA.isoformat())
+
+
+def _cobertura(conn, tmp_path, ano, geracao):
+    """A carga anual do COTAHIST de `ano`, gerada em `geracao` (só o cabeçalho)."""
+    caminho = tmp_path / f"COTAHIST_A{ano}.ZIP"
+    with zipfile.ZipFile(caminho, "w") as zf:
+        zf.writestr(f"COTAHIST_A{ano}.TXT", _cabecalho(ano, geracao).encode("latin-1"))
     b3_cotahist.carregar(conn, caminho, fonte="b3", coleta=COLETA.isoformat())
 
 
@@ -207,6 +216,7 @@ def test_pregoes_do_banco_so_quando_a_data_ex_depende(conn, tmp_path):
     longe = {"lastDatePriorEx": "01/06/2026"}
     assert b3_proventos.pregoes_da_data_ex(conn, [longe], referencia) is None
     _pregoes(conn, tmp_path, [perto.strftime("%Y%m%d")])
+    _cobertura(conn, tmp_path, inicio.year, inicio)
     registro = {"lastDatePriorEx": perto.strftime("%d/%m/%Y")}
     assert b3_proventos.pregoes_da_data_ex(
         conn, [longe, registro, None], referencia
@@ -217,12 +227,17 @@ def test_pregoes_do_banco_nos_limites_dos_meses(conn, tmp_path):
     referencia = date(2026, 10, 30)
     inicio = proventos_b3.inicio_da_janela(referencia)
     limite = inicio - proventos_b3.FOLGA_SEM_PREGAO
-    no_limite = {"lastDatePriorEx": limite.strftime("%d/%m/%Y")}
-    assert b3_proventos.pregoes_da_data_ex(conn, [no_limite], referencia) is None
     primeiro = date(limite.year, limite.month, 1)
     ultimo = (pd.Timestamp(inicio) + pd.offsets.MonthEnd(0)).date()
     dias = [primeiro - timedelta(days=1), primeiro, ultimo, ultimo + timedelta(days=1)]
     _pregoes(conn, tmp_path, [d.strftime("%Y%m%d") for d in dias])
+    _cobertura(conn, tmp_path, inicio.year, date(inicio.year, 12, 31))
+    # com a cobertura carregada, só a data com decide: o limite e o início ficam de fora
+    for fora in (limite, inicio, None):
+        registro = {
+            "lastDatePriorEx": fora.strftime("%d/%m/%Y") if fora else "ilegível"
+        }
+        assert b3_proventos.pregoes_da_data_ex(conn, [registro], referencia) is None
     dentro = {"lastDatePriorEx": (limite + timedelta(days=1)).strftime("%d/%m/%Y")}
     assert b3_proventos.pregoes_da_data_ex(conn, [dentro], referencia) == [
         primeiro.isoformat(),
@@ -314,3 +329,55 @@ def test_relacao_corrente_mantem_a_guarda_de_coleta(relacao):
     assert proventos_b3.entradas(
         {**dados, "proventos_b3": marcado}, as_of
     ) == proventos_b3.Abstencao(proventos_b3.MOTIVO_COLETA)
+
+
+def _so_cobertura(conn, tmp_path, cargas, referencia):
+    """Pregões da data ex com as cargas anuais dadas e um pregão guardado em cada dia."""
+    inicio = proventos_b3.inicio_da_janela(referencia)
+    limite = inicio - proventos_b3.FOLGA_SEM_PREGAO
+    _pregoes(conn, tmp_path, [limite.strftime("%Y%m%d"), inicio.strftime("%Y%m%d")])
+    for ano, geracao in cargas:
+        _cobertura(conn, tmp_path, ano, geracao)
+    dentro = {"lastDatePriorEx": (limite + timedelta(days=1)).strftime("%d/%m/%Y")}
+    return b3_proventos.pregoes_da_data_ex(conn, [dentro], referencia)
+
+
+def test_pregoes_exigem_a_carga_gerada_ate_o_inicio_da_janela(conn, tmp_path):
+    """BUG-3-40: a geração precisa alcançar o início da janela, não o fim do mês."""
+    referencia = date(2026, 10, 30)
+    inicio = proventos_b3.inicio_da_janela(referencia)
+    na_borda = _so_cobertura(conn, tmp_path, [(2025, inicio)], referencia)
+    assert na_borda == [
+        (inicio - proventos_b3.FOLGA_SEM_PREGAO).isoformat(),
+        inicio.isoformat(),
+    ]
+
+
+def test_pregoes_abstem_com_a_carga_gerada_antes_do_inicio(conn, tmp_path):
+    referencia = date(2026, 10, 30)
+    inicio = proventos_b3.inicio_da_janela(referencia)
+    um_dia_antes = [(2025, inicio - timedelta(days=1))]
+    assert _so_cobertura(conn, tmp_path, um_dia_antes, referencia) is None
+
+
+def test_pregoes_na_virada_do_ano_exigem_os_dois_anos(conn, tmp_path):
+    referencia = date(2027, 1, 3)  # janela de 03/01/2026; limite em 27/12/2025
+    so_o_ano_do_inicio = [(2026, date(2026, 12, 31))]
+    assert _so_cobertura(conn, tmp_path, so_o_ano_do_inicio, referencia) is None
+
+
+def test_pregoes_na_virada_do_ano_com_os_dois_anos(conn, tmp_path):
+    referencia = date(2027, 1, 3)
+    cargas = [(2025, date(2025, 12, 31)), (2026, date(2026, 1, 3))]
+    assert _so_cobertura(conn, tmp_path, cargas, referencia) == [
+        "2025-12-27",
+        "2026-01-03",
+    ]
+
+
+def test_pregoes_na_virada_do_ano_com_a_geracao_real_abstem(conn, tmp_path):
+    """Limite aceito (DD-79): o arquivo anual real sai no último pregão (30/12), e a regra
+    do F3-P14b pede 31/12 para o ano do limite; a série abstém, sem número maior."""
+    referencia = date(2027, 1, 3)
+    cargas = [(2025, date(2025, 12, 30)), (2026, date(2026, 1, 3))]
+    assert _so_cobertura(conn, tmp_path, cargas, referencia) is None
