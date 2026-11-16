@@ -1358,3 +1358,11 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Suíte:** 4980 → 4985 passed, 1 skipped, 1 warning (59,2 s), `TMPDIR=$HOME/.cache/sentinela-testes-claude`; Ruff do CI e dos arquivos verdes; golden `500645a3…` igual. Aviso do gate: `tests/test_servico_historico.py` (testes do item, classe 4).
 - **Resíduos:** `outputs/f3-8e/` (ignorado). Sem push/PR, `.env` ou carteira; banco real só leitura.
 - **Revisão rodada 1 (`/review-diff`): PODE COMMITAR.** Médio 1 aplicado: o teste compara o hash do raw inteiro, como `executar`, no lugar de cinco chaves; redação da chave corrigida (instante `as_of`). Médio 2 é o desvio do `rm` acima, para o Marcos.
+
+### Decisões do Marcos — 15/11/2026 (F3-8d/F3-8e)
+- **Executor:** claude-code (registro).
+- Ratificadas: DD-69, DD-71 e os dois desvios (cache no /tmp, que o Marcos remove, e o `rm` do arquivo de teste próprio). DD-70 e DD-72 ficam provisórias até a revisão cruzada do codex.
+- Decisão 2: identidade da decisão 33 pelo ISIN do ticker no CODISI do COTAHIST do pregão, antes de qualquer afrouxamento → item F3-8d-fix, com D27, antes do F3-8f (DD-73).
+- Decisão 3: o F3-8k levanta o capital social do FRE (desde 2010) e depois a linha de LPA da DRE, com cobertura por ano e só fonte oficial.
+- Decisão 4: backtest da Fase 3 por amostra declarada; o gate é o backtest operacional, com cobertura por lente e por ano e abstenção com motivo. Registrado na ficha (§12, nova), no F3-8j e no aceite do F3-10b.
+- Achado para o F3-8d-fix: a coleta grava só o veredito da identidade (`proventos_coletas.identidade`), não o complemento em dinheiro do GetListedSupplementCompany com que a parte (b) foi conferida. Refazer a conferência na leitura exige o complemento guardado, ou a abstenção com motivo próprio (aceite do item).

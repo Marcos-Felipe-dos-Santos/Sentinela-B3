@@ -103,3 +103,9 @@ Antes do F3-8b dar números, precisam estar ligados no histórico:
 - a taxa real com as séries carregadas, para Gordon e Bancos.
 
 O backtest roda com as lentes que tiverem valor e informa a cobertura de cada uma. Uma lente sem valor em nenhuma data aparece como "sem observações", com os motivos.
+
+## 12. Escopo na Fase 3 (decisão do Marcos de 15/11/2026)
+
+- A varredura completa (106 datas de fim de mês desde 2018 × cerca de 315 elegíveis) custa cerca de 130 h mesmo com a remontagem da CVM reaproveitada por dia (F3-8e). Na Fase 3 o backtest roda por **amostra declarada**: datas e ativos escolhidos por regra escrita antes da execução, sem olhar retorno nem lente.
+- O gate da fase é o backtest **operacional**, com a cobertura medida por lente e por ano e a abstenção com motivo. Números de quintis e da banda só existem onde a amostra tiver datas com quintis.
+- Limitação registrada: a amostra não substitui a varredura; o resultado vale só para as datas e ativos declarados.
