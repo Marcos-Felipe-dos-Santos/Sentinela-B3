@@ -258,19 +258,24 @@ def test_proventos_com_o_escopo_da_cascata(conn, tmp_path, dados, esperado):
 
 
 def test_proventos_pelo_leitor_historico(conn, tmp_path, monkeypatch):
+    """F3-8h: a relação vem de `relacao_ate` em D, com o fechamento do COTAHIST antes de D."""
     sem_coleta = historico.b3_proventos.MOTIVO_PROVENTO_SEM_COLETA
     lido = Mock(return_value={"abstencao": sem_coleta})
-    monkeypatch.setattr(historico.b3_proventos, "proventos_ate", lido)
+    monkeypatch.setattr(historico.b3_proventos, "relacao_ate", lido)
     motor = _motor(conn, tmp_path)
-    dados = {"classe_ativo": "STOCK", "modelo_bpp": "empresa"}
+    dados = {
+        "classe_ativo": "STOCK", "modelo_bpp": "empresa", "fonte_preco": historico.FONTE_PRECO,
+        "fechamentos_brutos": {"2020-02-27": 9.0, "2020-02-28": 10.0},
+    }  # fmt: skip
     motor._buscar_proventos_b3("AMER3", dados)
     assert lido.call_args.args == (conn, "AMER", date(2020, 3, 2))
+    assert lido.call_args.kwargs == {"ticker": "AMER3"}
     assert dados["proventos_b3"] == {"abstencao": sem_coleta}
-    registros = {"proventos": [{"valor": 1.0}], "sem_prova": []}
-    lido.return_value = registros
+    lido.return_value = {"registros": [], "total": 0, "coleta": "c"}
     motor._buscar_proventos_b3("AMER3", dados)
     assert dados["proventos_b3"] == {
-        "abstencao": historico.MOTIVO_PROVENTOS_MONTAGEM, "historicos": registros
+        "registros": [], "total": 0, "coleta": "c", "fechamentos": dados["fechamentos_brutos"],
+        "pregoes": None, "conferencia_yfinance": None,
     }  # fmt: skip
 
 

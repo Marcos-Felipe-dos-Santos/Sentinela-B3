@@ -32,6 +32,7 @@ da mesma coleta explícita completa; outro instante volta à fonte, sem criar ob
 from __future__ import annotations
 
 import base64
+import calendar
 import hashlib
 import json
 import re
@@ -624,3 +625,104 @@ def proventos_ate(
             continue
         proventos.append(item | {"data_ex": data_ex})
     return {"proventos": proventos, "sem_prova": sem_prova, "coleta": instante}
+
+
+# --- Bloco do Bazin no motor histórico (F3-8h) ------------------------------------------------
+
+
+def relacao_ate(conn, emissor: str, dia: date, *, ticker: str | None = None) -> dict:
+    """A relação da B3 como a cascata a entrega ao Bazin, pela coleta do `proventos_ate`.
+
+    A coleta é a que `proventos_ate` escolhe numa data passada (decisão 40, com a identidade
+    refeita pelo ISIN do pregão, decisão 43); sem ela, ou abstida, devolve o motivo. Os
+    registros são os literais da coleta (`linha_json` dos `proventos_vistos`), com o total
+    declarado, sem os aprovados em D ou depois (a regra estrita do `proventos_ate`; o total
+    desconta os retirados); a data com de cada registro é conferida na série
+    (`proventos_b3.serie_12_meses`), como na cascata. O complemento em dinheiro é o da mesma
+    coleta (sem ele, abstém); os eventos em ações são todos os guardados do emissor.
+    """
+    lidos = proventos_ate(conn, emissor, dia, por_publicacao=True, ticker=ticker)
+    if "abstencao" in lidos:
+        return {"abstencao": lidos["abstencao"]}
+    coleta = lidos["coleta"]
+    complemento = conn.execute(
+        "SELECT dinheiro_json FROM proventos_complemento WHERE emissor = ? AND coleta = ?",
+        (emissor, coleta),
+    ).fetchone()
+    if complemento is None:
+        return {"abstencao": MOTIVO_COMPLEMENTO_NAO_GUARDADO}
+    nome, total, fonte, hash_ = conn.execute(
+        "SELECT nome_pregao, total, fonte, hash_sha256 FROM proventos_coletas "
+        "WHERE emissor = ? AND coleta = ?",
+        (emissor, coleta),
+    ).fetchone()
+    lidos_da_coleta = [
+        json.loads(texto)
+        for (texto,) in conn.execute(
+            "SELECT p.linha_json FROM proventos_vistos v JOIN proventos p "
+            "ON p.emissor = v.emissor AND p.linha_sha256 = v.linha_sha256 "
+            "WHERE v.emissor = ? AND v.coleta = ? ORDER BY p.linha_sha256",
+            (emissor, coleta),
+        )
+    ]
+    # decisão 40, como no `proventos_ate`: aprovação em D ou depois ainda não era conhecida
+    registros = [r for r in lidos_da_coleta if not _aprovado_em_d_ou_depois(r, dia)]
+    eventos = [
+        json.loads(texto)
+        for (texto,) in conn.execute(
+            "SELECT linha_json FROM eventos_societarios WHERE emissor = ? "
+            "ORDER BY linha_sha256",
+            (emissor,),
+        )
+    ]
+    return {
+        "registros": registros,
+        "total": total - (len(lidos_da_coleta) - len(registros)),  # conferido no leitor
+        "eventos_acoes": eventos,
+        "dinheiro_complemento": json.loads(complemento[0]),
+        "coleta": coleta,
+        "aprovacao_antes_de_d": True,  # a marca que `proventos_b3.entradas` exige (DD-65)
+        "proveniencia": {
+            "fonte": "B3, relação de proventos em dinheiro (CompanyCall)",
+            "nome_pregao": nome,
+            "coleta": coleta,
+            "detalhe": {"url": fonte, "sha256": hash_},
+            "banco": "proventos",
+        },
+    }
+
+
+def _aprovado_em_d_ou_depois(registro: dict, dia: date) -> bool:
+    """Aprovação legível em D ou depois; a ilegível fica para a série abster."""
+    aprovacao = proventos_b3.ler_data(registro.get("dateApproval"))
+    return aprovacao is not None and aprovacao >= dia
+
+
+def pregoes_da_data_ex(conn, registros, referencia: date) -> list[str] | None:
+    """Pregões guardados em torno do início da janela, se alguma data com cair nele.
+
+    A regra de `MarketEngine._pregoes_da_data_ex`, com o COTAHIST do banco (mercado à vista)
+    no lugar do download: os meses do limite e do início da janela. `None` quando nenhuma
+    data ex depende do calendário.
+    """
+    inicio = proventos_b3.inicio_da_janela(referencia)
+    limite = inicio - proventos_b3.FOLGA_SEM_PREGAO
+    datas = {
+        proventos_b3.ler_data(r.get("lastDatePriorEx"))
+        for r in registros
+        if isinstance(r, dict)
+    }
+    if not any(d is not None and limite < d < inicio for d in datas):
+        return None
+    primeiro = date(limite.year, limite.month, 1)
+    ultimo = date(
+        inicio.year, inicio.month, calendar.monthrange(inicio.year, inicio.month)[1]
+    )
+    return [
+        dia
+        for (dia,) in conn.execute(
+            "SELECT DISTINCT data FROM precos WHERE tipo_mercado = '010' "
+            "AND data >= ? AND data <= ? ORDER BY data",
+            (primeiro.isoformat(), ultimo.isoformat()),
+        )
+    ]

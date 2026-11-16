@@ -513,12 +513,24 @@ def entradas(dados: Mapping, instante: datetime) -> dict | Abstencao:
         return Abstencao(MOTIVO_SEM_RELACAO)
     if "abstencao" in relacao:
         return Abstencao(str(relacao["abstencao"]))
-    # Marcador da 2B, §2: uma coleta posterior não prova disponibilidade anterior.
+    # Marcador da 2B, §2: uma coleta posterior não prova disponibilidade anterior. Decisão 40
+    # (F3-8h): só o bloco montado do banco por `b3_proventos.relacao_ate`, que já retirou os
+    # registros aprovados em D ou depois, vale pela publicação numa data passada; a coleta
+    # continua exigida e datada, sem ser critério. A relação coletada agora pela cascata
+    # corrente mantém a guarda de coleta mesmo com a marca (DD-65).
     try:
         coleta = datetime.fromisoformat(str(relacao.get("coleta")))
     except ValueError:
         return Abstencao(MOTIVO_COLETA)
-    if coleta.tzinfo is None or coleta.utcoffset() is None or coleta > instante:
+    por_publicacao = (
+        dados.get("disponibilidade_por_publicacao") is True
+        and relacao.get("aprovacao_antes_de_d") is True
+    )
+    if (
+        coleta.tzinfo is None
+        or coleta.utcoffset() is None
+        or (coleta > instante and not por_publicacao)
+    ):
         return Abstencao(MOTIVO_COLETA)
     dia_as_of = instante.astimezone(FUSO).date()
     fechamentos = relacao.get("fechamentos")

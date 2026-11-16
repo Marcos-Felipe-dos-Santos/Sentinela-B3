@@ -158,10 +158,11 @@ def test_motor_historico_le_os_proventos_com_o_isin_do_pregao(conn, relacao, tmp
     as_of = datetime(2026, 11, 2, 15, tzinfo=UTC)
     motor = historico.MotorHistorico(conn, as_of, tmp_path / "pit", pd.DataFrame())
     dados = {"classe_ativo": "STOCK", "modelo_bpp": "empresa"}
+    assert motor._buscar_yfinance("LREN4", dados)  # o fechamento do COTAHIST (F3-8h)
     motor._buscar_proventos_b3("LREN4", dados)
-    assert dados["proventos_b3"]["abstencao"] == historico.MOTIVO_PROVENTOS_MONTAGEM
-    lidos = dados["proventos_b3"]["historicos"]
-    assert len(lidos["proventos"]) + len(lidos["sem_prova"]) == 99
+    assert "abstencao" not in dados["proventos_b3"], dados["proventos_b3"]
+    assert len(dados["proventos_b3"]["registros"]) == 99
     sem_pregao = {"classe_ativo": "STOCK", "modelo_bpp": "empresa"}
+    sem_pregao |= {"fonte_preco": historico.FONTE_PRECO, "fechamentos_brutos": {"2026-10-30": 1.0}}
     motor._buscar_proventos_b3("LREN3", sem_pregao)  # ISIN ON já conhecido
     assert sem_pregao["proventos_b3"] == {"abstencao": MOTIVO_PN}

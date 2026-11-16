@@ -13,7 +13,8 @@ ponto-no-tempo do banco, sem nenhuma consulta corrente:
 - IPCA de fim de exercício das janelas: o mesmo `series_macro`, pela data de divulgação do
   IBGE (`macro.ipca_serie_do_banco`, F3-8f).
 
-Os proventos em dinheiro vêm do leitor ponto-no-tempo (`proventos_ate`). Ficam de fora, com o
+O bloco do Bazin é o da cascata, com a relação da coleta escolhida pelo leitor ponto-no-tempo
+(`b3_proventos.relacao_ate`) e o fechamento do COTAHIST antes de D (F3-8h). Ficam de fora, com o
 motivo, as fontes que só existem como consulta corrente: yfinance, brapi, IF.data, o cache de
 fundamentos e o complemento de fundos da B3. Nada muda nos métodos, fórmulas ou
 parâmetros (R2): o motor de valuation recebe os mesmos campos da cascata.
@@ -35,7 +36,7 @@ import pandas as pd
 from cvm_fii_provider import CVMFIIProvider
 from cvm_provider import CVMProvider
 from market_engine import MarketEngine
-from sentinela.data import liquidez
+from sentinela.data import liquidez, proventos_b3
 from sentinela.data.pit import leitura, remontagem, serie_ajustada
 from sentinela.data.providers import b3_cotahist, b3_proventos, macro
 from sentinela.data.referencia import universo
@@ -45,10 +46,6 @@ FONTE_PRECO = "B3 COTAHIST (banco único)"
 PREGOES_DO_HISTORICO = 300
 MOTIVO_SEM_PRECO = "sem pregão do código antes da data no COTAHIST guardado"
 MOTIVO_FONTE_CORRENTE = "fonte só disponível como consulta corrente; desligada na data passada"
-MOTIVO_PROVENTOS_MONTAGEM = (
-    "proventos conhecidos antes de D lidos do banco; o bloco do Bazin pelo preço do COTAHIST "
-    "depende do F3-3e"
-)
 RISCO_IFDATA = f"Basileia e inadimplência sem fonte histórica (IF.data: {MOTIVO_FONTE_CORRENTE})"
 _FUSO = ZoneInfo("America/Sao_Paulo")
 
@@ -256,11 +253,12 @@ class MotorHistorico(MarketEngine):
             dados.setdefault("riscos_dados", []).append(RISCO_IFDATA)
 
     def _buscar_proventos_b3(self, ticker, dados, *, as_of=None) -> None:
-        """Proventos em dinheiro conhecidos antes de D (`b3_proventos.proventos_ate`, F3-7a).
+        """O bloco do Bazin da cascata pelo banco e pelo preço do COTAHIST de D (F3-8h).
 
-        O escopo é o da cascata corrente. O bloco do Bazin da cascata exige o preço de
-        referência do yfinance (2B); com proventos lidos do banco, eles ficam no bloco e a
-        abstenção diz que a montagem pelo preço do COTAHIST depende do F3-3e.
+        O escopo é o da cascata corrente. No lugar do yfinance, os fechamentos brutos do
+        COTAHIST guardado (`_buscar_yfinance` deste motor); no lugar da coleta corrente, a
+        relação da coleta escolhida pelo leitor ponto-no-tempo (`b3_proventos.relacao_ate`); os
+        pregões da data ex, do banco. A conta, com o as_of, é do motor (`proventos_b3.entradas`).
         """
         if dados.get("classe_ativo") not in ("STOCK", "UNIT"):
             return
@@ -272,14 +270,33 @@ class MotorHistorico(MarketEngine):
                 else "modelo empresa não demonstrado no BPP consolidado"
             }
             return
-        lidos = b3_proventos.proventos_ate(
-            self.conn, ticker[:4], self.dia, por_publicacao=True, ticker=ticker
+        fechamentos = dados.get("fechamentos_brutos")
+        if (
+            dados.get("fonte_preco") != FONTE_PRECO
+            or not isinstance(fechamentos, dict)
+            or not fechamentos
+        ):
+            dados["proventos_b3"] = {"abstencao": proventos_b3.MOTIVO_PRECO}
+            return
+        anteriores = [
+            date.fromisoformat(d) for d in fechamentos if date.fromisoformat(d) < self.dia
+        ]
+        if not anteriores:
+            dados["proventos_b3"] = {"abstencao": proventos_b3.MOTIVO_PRECO_NAO_ENCERRADO}
+            return
+        relacao = b3_proventos.relacao_ate(self.conn, ticker[:4], self.dia, ticker=ticker)
+        if "abstencao" in relacao:
+            dados["proventos_b3"] = {"abstencao": relacao["abstencao"]}
+            return
+        pregoes = b3_proventos.pregoes_da_data_ex(
+            self.conn, relacao["registros"], max(anteriores)
         )
-        dados["proventos_b3"] = (
-            {"abstencao": lidos["abstencao"]}
-            if "abstencao" in lidos
-            else {"abstencao": MOTIVO_PROVENTOS_MONTAGEM, "historicos": lidos}
-        )
+        dados["proventos_b3"] = {
+            **relacao,
+            "fechamentos": fechamentos,
+            "pregoes": pregoes,
+            "conferencia_yfinance": None,
+        }
 
     def _buscar_liquidez(self, ticker: str, dados: dict[str, Any]) -> None:
         """As regras da cascata corrente sobre os pregões guardados antes de D."""
