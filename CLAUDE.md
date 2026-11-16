@@ -77,7 +77,6 @@ A lista de exceções do vulture (`vulture_whitelist.py`) traz o motivo de cada 
 | `ai_core.py` | LLM: Groq → Gemini → Ollama |
 | `auditoria.py` | Invariantes e leitura das lentes vigentes; métodos duplicados aposentados |
 | `auditar_recomendacoes.py` | Validação contra tickers conhecidos |
-| `limpar_banco.py` | Manutenção do SQLite. Cobertura 0% |
 
 **Provedores:** `cvm_provider.py`, `cvm_fii_provider.py`, `brapi_provider.py`. O Fundamentus
 saiu no F2A-22. `cvm_ticker_map.py` e `cvm_fii_map.py` não são mais lidos pela cascata
@@ -205,7 +204,7 @@ O caminho elegível sem score agregado retorna `INDISPONIVEL` desde a 2C; o back
 ponto-no-tempo será reconstruído na Fase 3 (F3-8/F3-P16).
 
 **7. Suíte verde não é sinal**
-`app.py`, `auditoria.py`, `limpar_banco.py` em 0%. `adicionar_posicao` tem teste (`tests/test_database_posicoes.py`).
+`app.py` e `auditoria.py` em 0% (`limpar_banco.py` saiu no F3-9c). `adicionar_posicao` tem teste (`tests/test_database_posicoes.py`).
 `tests/conftest.py` semeia Selic e taxa real: a Selic (14,75%, igual ao fallback) vai direto para o cache de
 `config.get_selic_atual` (o import de `config` não faz rede desde o F3-1a) e bloqueia `socket.connect`, falhando o teste e a sessão
 que tentarem rede. A semente de taxa real substitui o carregador só nos testes; não existe contingência equivalente em produção. Também ajusta `sys.path` e `basetemp` no Windows.

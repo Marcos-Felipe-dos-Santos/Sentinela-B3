@@ -387,3 +387,11 @@ TTL de Selic/taxa-real, prêmio de ações, normalizaçãoDY, liquidez, constant
 Comandos: `python -m vulture . vulture_whitelist.py --min-confidence 60 --exclude 'venv,mutants,outputs,/home/marcos/projetos/Sentinela_B3/data/*'`; busca por palavra inteira nos `.py` de `git ls-files`, com verificação do próprio config. Logs antes/depois e lista em `/tmp/2c69-*`; fora do versionamento.
 
 Resultado global Vulture60%:30→18achados, exatamente as12declarações retiradas; sem achados novos. Ruff completo161→161; gates CI e data/methods verdes. Suíte3525PASS/1skip/8xfail, warning antigo. Nenhuma asserção removida ou enfraquecida para retirar constante.
+
+## F3-9c — scripts aposentados (16/11/2026)
+
+`limpar_banco.py` saiu (`git rm`): sem chamador nem import em código ou teste (busca por `limpar_banco` nos `.py`); as limpezas que fazia (análises com upside absurdo, classe por sufixo) são do esquema antigo, substituído pelas migrações e pelo banco único. Saíram as referências vigentes (`pyproject.toml` `also_copy`, comentário do `vulture_whitelist.py`, `CLAUDE.md` e a seção de critério de aceite do `AGENTS.md`); as citações em históricos, auditorias e diários ficam como registro. A citação na seção "Fase atual" do `AGENTS.md` é do Marcos.
+
+`auditar_recomendacoes.py` **fica**: é importado pelo teste de regressão protegido `tests/regressao/test_bug_2c_58_cli_lentes.py`, por `tests/test_auditar_recomendacoes.py` e por `tests/test_peers_referencia.py` (`tickers_oficiais`). Removê-lo exige apagar ou reescrever um teste de `tests/regressao/`, parada `[!]` da política (§3, item 2); decisão do Marcos no item F3-9c-aud.
+
+Inventário antes → depois, com os comandos da seção inicial (logs em `outputs/f3-9c-*`): vulture ≥ 80% **7 → 7** (variáveis de dublês em testes); deptry **1 → 1** (`pytest` declarado em `requirements.txt` sem import no código); Ruff completo **155 → 155**. Os bancos antigos (`sentinela_v6.db`, `sentinela.db`) não são rastreados: ficam na lista do Marcos, só depois do backup e da migração verificados (F3-2a/F3-2c).

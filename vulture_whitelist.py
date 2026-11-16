@@ -21,7 +21,7 @@ USADOS = [
     _.kwargs,  # tests/conftest.py, test_backtest_engine, test_cvm_provider, test_market_engine
     _.max_age_days,  # tests/test_market_engine.py: dublê de buscar_fundamentos_cache
     # ── sqlite3: atribuição a atributo da conexão, que o vulture não entende ──
-    _.row_factory,  # auditoria.py, limpar_banco.py, sentinela/repositories
+    _.row_factory,  # auditoria.py, sentinela/repositories
     # ── Camada sentinela/ (E-21, ainda desconectada; o F3-6 liga ao app) ──────
     _.fonte_preco,  # sentinela/domain/models.py: campo de dataclass lido na serialização
     _.fonte_fundamentos,  # idem

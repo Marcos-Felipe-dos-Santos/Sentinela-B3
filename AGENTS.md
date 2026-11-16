@@ -136,7 +136,7 @@ Toda tarefa traz critério explícito no ticket. Sem ele, **não comece** — pe
 4. O diff toca apenas os arquivos previstos
 5. **Para tarefas de teste: mutation score ≥ 80% no módulo alvo, medido com o mutmut 3**
 
-**Suíte verde não é suficiente.** `app.py`, `auditoria.py` e `limpar_banco.py`
+**Suíte verde não é suficiente.** `app.py` e `auditoria.py`
 têm 0% de cobertura. Se sua mudança toca código sem cobertura, escreva o teste —
 e confirme que ele falha quando você quebra o código de propósito.
 
