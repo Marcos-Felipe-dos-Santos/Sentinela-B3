@@ -1616,3 +1616,13 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Revisão rodada 1 (`/review-diff-leve`): PODE COMMITAR.** Médios corrigidos antes do commit: o filtro sem teste (extraído e testado), as classes não gravadas na saída e `--classes` vazio aceito em silêncio (agora `nargs="+"`); a linha longa do uso foi quebrada. O revisor não leu `outputs/`, então os números da §7 vêm só de `proposta.json`.
 - **Gate:** 5090 passed, 1 skipped, 1 warning (5085 + 5 novos); Ruff verde; golden `500645a3…` igual (`outputs/f3-8j-uni-gate.txt`). Aviso fora da linha do item (classe 4): `tests/test_banda_neutra_fase3.py`, os testes do filtro pedidos pela revisão.
 - **Resíduos:** `outputs/f3-8j-uni/` (log, PID, `sonda/` com `proposta.json`, `observacoes.json`, `resultados.db` e o cache PIT; ignorado). Sem push/PR, `.env` ou carteira; banco real só lido.
+
+### F3-8l — docs: survey the source of FII distributions for the historical total return
+- **Executor:** claude-code.
+- **Status:** sucesso (levantamento, sem código de produção). Documento: `docs/decisoes/rendimentos-fii-retorno-3.md`.
+- **Banco real (só leitura, tabelas públicas):** nenhum registro de proventos, coletas ou eventos da B3 para os emissores de FII da amostra nem para o HGLG (a relação da B3 guardada é de companhias). O Informe Mensal cobre de 09/2016 a 10/2026, 1.743 CNPJs, com todas as versões.
+- **Cobertura:** na amostra declarada, os 12 meses do horizonte de 12 meses têm o rendimento reconstruído (DY × VP do mês anterior) de 2018 a 2024; em 2025, 2 de 12 (o Informe do AAZQ11 termina em 08/2025). No universo de fundos negociados (ISIN `CTF`), de 93 de 125 (2018) a 241 de 502 (2025) têm os 12 meses, pela ligação ISIN → CNPJ do próprio Informe, não conferida com o índice oficial.
+- **Conferência:** no contrato da B3 do HGLG (21/10/2026), 10 de 12 meses iguais ao Informe a ±0,1%; novembro de 2025 (razão 0,870) e abril de 2026 (0,976) divergem, sem causa verificada. A data com dos 12 meses do ISIN da cota é o último pregão do mês de referência.
+- **Entrega do Informe:** mediana de 14 a 15 dias depois do fim do mês; de 95% a 99% em até 90 dias.
+- **Para o Marcos:** a proposta da §5 (fonte, data ex inferida ou contagem pelo mês, prazo de 90 dias, amortização fora), em `pendencias.md`.
+- **Resíduos:** `outputs/f3-8l/` (script e saída; ignorado). Sem push/PR, `.env` ou carteira; banco real só lido; sem rede.
