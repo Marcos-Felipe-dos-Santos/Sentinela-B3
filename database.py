@@ -2,7 +2,7 @@ import json
 import logging
 import sqlite3
 from contextlib import closing
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from sentinela.data.store import unico
 from sentinela.domain.apresentacao import adaptar_leitura
@@ -155,65 +155,6 @@ class DatabaseManager:
                     return adaptar_leitura(json.loads(row[0]))
                 except (json.JSONDecodeError, TypeError) as e:
                     logger.error(f"JSON corrompido para {ticker}: {e}")
-            return None
-
-    def salvar_fundamentos_cache(self, ticker: str, dados: dict, fonte: str) -> None:
-        """Salva os últimos fundamentos válidos de um ticker."""
-        ticker = ticker.upper().replace(".SA", "").strip()
-        if not ticker or not dados:
-            return
-
-        with closing(self._get_conn()) as conn:
-            with conn:
-                conn.execute(
-                    """
-                    INSERT OR REPLACE INTO fundamentals_cache
-                    (ticker, dados_json, fonte, atualizado_em)
-                    VALUES (?, ?, ?, ?)
-                    """,
-                    (
-                        ticker,
-                        json.dumps(dados, default=str),
-                        fonte,
-                        datetime.now().isoformat(timespec="seconds"),
-                    ),
-                )
-
-    def buscar_fundamentos_cache(self, ticker: str, max_age_days: int = 7):
-        """Busca fundamentos em cache quando ainda estão dentro do TTL."""
-        ticker = ticker.upper().replace(".SA", "").strip()
-        if not ticker:
-            return None
-
-        with closing(self._get_conn()) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT dados_json, atualizado_em
-                FROM fundamentals_cache
-                WHERE ticker = ?
-                """,
-                (ticker,),
-            )
-            row = cursor.fetchone()
-
-        if not row:
-            return None
-
-        try:
-            atualizado_em = datetime.fromisoformat(row["atualizado_em"])
-        except (TypeError, ValueError):
-            logger.warning(f"Cache de fundamentos com data inválida: {ticker}")
-            return None
-
-        if datetime.now() - atualizado_em > timedelta(days=max_age_days):
-            logger.info(f"Cache de fundamentos expirado: {ticker}")
-            return None
-
-        try:
-            return json.loads(row["dados_json"])
-        except (json.JSONDecodeError, TypeError) as e:
-            logger.error(f"Cache de fundamentos corrompido para {ticker}: {e}")
             return None
 
     def reset_db(self):

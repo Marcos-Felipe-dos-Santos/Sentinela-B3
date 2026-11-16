@@ -146,8 +146,9 @@ def test_construcao_sem_fonte_corrente(conn, tmp_path):
     assert motor.cvm.recorte_em(D) is motor.cvm and motor.cvm.motivos == {}
     assert motor.asset_classifier is not None
     assert motor._buscar_brapi("X", {}) is False
-    assert motor._aplicar_cache_fundamentos("X", {}) is False
-    assert motor._salvar_cache_se_valido("X", {}) is None
+    # F3-9b (DD-85): o cache de 7 dias saiu da cascata e do motor histórico.
+    assert not hasattr(motor, "_aplicar_cache_fundamentos")
+    assert not hasattr(motor, "_salvar_cache_se_valido")
 
 
 def test_provedores_lem_os_zips_remontados(conn, tmp_path):

@@ -71,23 +71,3 @@ def test_campo_obrigatorio_faltando_rebaixa_como_antes(monkeypatch):
     assert "Dados fundamentais obrigatórios ausentes" in analise["riscos"]
     completo = _processar({**dados, "fundamentos_incompletos": False})
     assert completo["confianca"] - analise["confianca"] >= 30
-
-
-def test_cache_que_completa_os_campos_nao_marca_incompletos(monkeypatch):
-    # A flag é calculada depois do cache: o que ele completa não conta como faltando.
-    from tests.test_market_engine import FakeCache
-
-    info = {"currentPrice": 10.0, "trailingPE": 3.0, "quoteType": "EQUITY"}
-    engine = _engine(
-        monkeypatch,
-        info=info,
-        historico=_historico(10.0),
-        cache=FakeCache({"pvp": 0.5, "roe": 0.17, "dy": 0.22}),
-    )
-    dados = engine.buscar_dados_ticker("TSTE3")
-    assert dados["dados_cache"] is True
-    assert dados["fundamentos_incompletos"] is False
-    sem_cache = _engine(
-        monkeypatch, info=info, historico=_historico(10.0), cache=FakeCache()
-    )
-    assert sem_cache.buscar_dados_ticker("TSTE3")["fundamentos_incompletos"] is True

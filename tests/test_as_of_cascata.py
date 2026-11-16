@@ -148,8 +148,6 @@ def test_cascata_passagem_de_referencia_sem_retroagir_a_coleta(monkeypatch):
     m._contexto_janelas = lambda d, instante, *, coletado_em=None: contextos.append(
         (instante, coletado_em)
     )
-    m._aplicar_cache_fundamentos = Mock()
-    m._salvar_cache_se_valido = Mock()
     assert m.buscar_dados_ticker_em("TSTA3", AS_OF)["ticker"] == "TSTA3"
     assert len(referencias) == 5
     assert all(t == AS_OF for _, t in referencias)

@@ -351,7 +351,7 @@ def test_brapi_overrides_yfinance_fundamentals_when_valid(monkeypatch):
     assert dados["dy"] == 0.06
     assert dados["fonte_fundamentos"] == "brapi"
     assert dados["dados_parciais"] is False
-    assert cache.saved
+    assert cache.saved == []  # F3-9b: a cascata não grava mais o cache de 7 dias
 
 
 def test_brapi_does_not_overwrite_valid_fields_with_missing_values(monkeypatch):
@@ -445,42 +445,61 @@ def test_no_cache_path_does_not_mark_cached_data(monkeypatch):
     assert dados.get("fonte_fundamentos") != "cache"
 
 
-def test_cache_is_used_when_providers_fail(monkeypatch):
+class EspiaoCache(FakeCache):
+    def __init__(self, resposta=None):
+        super().__init__(resposta)
+        self.lidos = []
+
+    def buscar_fundamentos_cache(self, ticker, max_age_days=7):
+        self.lidos.append(ticker)
+        return self.resposta
+
+
+def test_cascata_nao_le_o_cache_antigo_quando_as_fontes_falham(monkeypatch):
+    # F3-9b (DD-85): sem insumo das fontes, o campo falta e abstém; o cache de 7 dias saiu.
+    cache = EspiaoCache({"pl": 6.0, "pvp": 0.9, "roe": 0.14, "dy": 0.07})
     engine = _engine(
         monkeypatch,
         historico=_historico(12.0),
-        info={"currentPrice": 12.0, "trailingPE": 99.0},
+        info={"currentPrice": 12.0, "trailingPE": 8.0},
         brapi=FakeBrapi(disponivel=False),
-        cache=FakeCache({"pl": 6.0, "pvp": 0.9, "roe": 0.14, "dy": 0.07}),
+        cache=cache,
     )
 
     dados = engine.buscar_dados_ticker("CACH3")
 
-    assert dados["pl"] == 6.0
-    assert dados["pvp"] == 0.9
-    assert dados["roe"] == 0.14
-    assert dados["dy"] == 0.07
-    assert dados["dados_cache"] is True
-    assert dados["fonte_fundamentos"].endswith("cache")
-    assert "campos fundamentais preenchidos via cache" in dados["riscos_dados"]
-    assert dados["dados_parciais"] is False
+    assert cache.lidos == []
+    assert cache.saved == []
+    assert dados["pl"] == 8.0
+    for campo in ("pvp", "roe", "dy"):
+        assert campo not in dados or dados[campo] is None
+    assert dados["dados_cache"] is False
+    assert dados["fonte_fundamentos"] != "cache"
+    assert "campos fundamentais preenchidos via cache" not in dados["riscos_dados"]
+    assert dados["fundamentos_incompletos"] is True
+    assert dados["campos_faltantes"] == ["pvp", "roe", "dy"]
+    assert dados["dados_parciais"] is True
+    assert "pvp" not in dados.get("field_provenance", {}) or (
+        dados["field_provenance"]["pvp"]["provenance"]["source"] != "fundamentals_cache"
+    )
 
 
-def test_cache_provenance_marks_cached_fields(monkeypatch):
+def test_sem_fundamentos_em_fonte_alguma_a_fonte_fica_nula(monkeypatch):
     engine = _engine(
         monkeypatch,
         historico=_historico(12.0),
-        info={"currentPrice": 12.0, "trailingPE": 99.0},
+        info={"currentPrice": 12.0},
         brapi=FakeBrapi(disponivel=False),
-        cache=FakeCache({"pl": 6.0, "pvp": 0.9, "roe": 0.14, "dy": 0.07}),
+        cache=EspiaoCache({"pl": 6.0, "pvp": 0.9, "roe": 0.14, "dy": 0.07}),
     )
 
     dados = engine.buscar_dados_ticker("CACH3")
 
-    for field in ("dy", "pl", "pvp", "roe"):
-        provenance = dados["field_provenance"][field]["provenance"]
-        assert provenance["source"] == "fundamentals_cache"
-        assert provenance["cached"] is True
+    assert dados["fonte_fundamentos"] is None
+    assert engine.database.lidos == []
+    assert engine.database.saved == []
+    assert dados["fundamentos_incompletos"] is True
+    assert dados["campos_faltantes"] == ["pl", "pvp", "roe", "dy"]
 
 
 def test_fii_without_pl_roe_but_with_dy_pvp_is_not_partial(monkeypatch):
@@ -495,26 +514,6 @@ def test_fii_without_pl_roe_but_with_dy_pvp_is_not_partial(monkeypatch):
 
     assert dados["pvp"] == 0.98
     assert dados["dy"] == 0.10
-    assert dados["campos_faltantes"] == []
-    assert dados["dados_parciais"] is False
-
-
-def test_cache_fills_missing_required_stock_fields(monkeypatch):
-    engine = _engine(
-        monkeypatch,
-        historico=_historico(12.0),
-        info={"currentPrice": 12.0, "trailingPE": 8.0, "dividendYield": 4.0},
-        brapi=FakeBrapi(disponivel=False),
-        cache=FakeCache({"pvp": 1.1, "roe": 0.18, "dy": 0.06}),
-    )
-
-    dados = engine.buscar_dados_ticker("CACH3")
-
-    assert dados["pl"] == 8.0
-    assert dados["pvp"] == 1.1
-    assert dados["roe"] == 0.18
-    assert dados["dy"] == 0.04
-    assert dados["dados_cache"] is True
     assert dados["campos_faltantes"] == []
     assert dados["dados_parciais"] is False
 

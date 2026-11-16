@@ -11,7 +11,7 @@ import pytest
 
 from market_engine import RISCO_FORA_DA_CVM
 from tests.test_gordon_motor import Instante
-from tests.test_market_engine import FakeBrapi, FakeCache, FakeCVM, _engine
+from tests.test_market_engine import FakeBrapi, FakeCVM, _engine
 from tests.test_market_engine_acoes_cvm import CNPJ, _composicao, _ind, _motor
 
 
@@ -166,64 +166,6 @@ def test_provedor_cvm_ausente_nao_devolve_sucesso(monkeypatch):
     assert motor._buscar_cvm("TSTA3", {}) is False
 
 
-def test_cache_nao_guarda_serie_historico_nem_precos_e_preserva_prejuizo(monkeypatch):
-    cache = FakeCache()
-    motor = _engine(monkeypatch, info={}, cache=cache)
-    fundamentos = {
-        "pl": -10.0,
-        "pvp": 1.5,
-        "roe": -0.2,
-        "dy": 0.04,
-        "lpa": -2.0,
-        "vpa": 20.0,
-    }
-    dados = {
-        **fundamentos,
-        "fonte_fundamentos": "CVM",
-        "historico": object(),
-        "serie_cvm": {"exercicios": [2025]},
-        "preco_atual": 20.0,
-        "ticker": "TSTA3",
-    }
-    motor._salvar_cache_se_valido("TSTA3", dados)
-    assert len(cache.saved) == 1
-    ticker, payload, fonte = cache.saved[0]
-    assert (ticker, fonte) == ("TSTA3", "CVM")
-    assert payload == fundamentos
-
-
-@pytest.mark.parametrize("marcador", ["dados_cache", "dados_manual"])
-def test_observacao_reutilizada_nao_e_regravada_como_nova(monkeypatch, marcador):
-    cache = FakeCache()
-    motor = _engine(monkeypatch, info={}, cache=cache)
-    dados = {
-        "pl": 8.0,
-        "pvp": 1.2,
-        "roe": 0.1,
-        "dy": 0.04,
-        "fonte_fundamentos": "CVM",
-        marcador: True,
-    }
-    motor._salvar_cache_se_valido("TSTA3", dados)
-    assert cache.saved == []
-
-
-@pytest.mark.parametrize("campo", ["pl", "pvp", "roe", "dy"])
-def test_cache_nao_converte_fundamentos_incompletos_em_snapshot(monkeypatch, campo):
-    cache = FakeCache()
-    motor = _engine(monkeypatch, info={}, cache=cache)
-    dados = {
-        "pl": 8.0,
-        "pvp": 1.2,
-        "roe": 0.1,
-        "dy": 0.04,
-        "fonte_fundamentos": "CVM",
-        campo: None,
-    }
-    motor._salvar_cache_se_valido("TSTA3", dados)
-    assert cache.saved == []
-
-
 @pytest.mark.parametrize(
     "preco_inicial,fonte_inicial,preco_final,fonte_final",
     [(20.0, "yfinance", 20.0, "yfinance"), (None, None, 30.0, "brapi")],
@@ -363,27 +305,6 @@ def test_fato_da_unit_mantem_fator_e_abstem_direitos_nao_demonstrados(
     assert dados["gordon_cvm"]["vpa"] == 30.0
 
 
-def test_cache_respeita_classe_oficial_do_classificador_injetado(monkeypatch):
-    from sentinela.data.referencia.registro import Indice, Registro
-    from sentinela.services.asset_classifier import AssetClassifier
-
-    classificador = AssetClassifier(fiis_conhecidos=[], units_conhecidas=[])
-    classificador._indice_lido = True
-    classificador._indice = Indice(
-        "2026-10-26",
-        {},
-        registros={"TSTF11": Registro("TSTF11", "FII", "caso sintético", {})},
-    )
-    cache = FakeCache()
-    motor = _engine(monkeypatch, info={}, cache=cache)
-    motor.asset_classifier = classificador
-    motor._salvar_cache_se_valido(
-        "TSTF11",
-        {"ticker": "TSTF11", "pvp": 1.2, "dy": 0.06, "fonte_fundamentos": "CVM"},
-    )
-    assert cache.saved == [("TSTF11", {"pvp": 1.2, "dy": 0.06}, "CVM")]
-
-
 @pytest.mark.parametrize("falha_bruto", [False, True])
 def test_fechamento_bruto_fica_separado_e_falha_nao_apaga_fundamentos(
     monkeypatch, falha_bruto
@@ -486,60 +407,6 @@ def test_reservas_d20_e_origem_do_lpa_seguem_seus_campos(monkeypatch):
     # Múltiplos também usam preço de outra origem: não podem ganhar só a evidência da DFP.
     assert dados["proveniencia"].get("pl") != origem
     assert dados["proveniencia"].get("pvp") != origem
-
-
-def test_cache_complementa_so_o_ausente_sem_apagar_prejuizo_oficial(monkeypatch):
-    cache = FakeCache(
-        {"pl": 12.0, "pvp": 3.0, "roe": 0.2, "dy": 0.05, "lpa": 2.0, "vpa": 20.0}
-    )
-    motor = _engine(monkeypatch, info={}, cache=cache)
-    dados = {
-        "pl": -10.0,
-        "pvp": 1.5,
-        "roe": -0.2,
-        "lpa": -2.0,
-        "vpa": 10.0,
-        "fonte_fundamentos": "CVM",
-        "_field_sources": {"pl": "CVM", "pvp": "CVM", "roe": "CVM"},
-    }
-    assert motor._aplicar_cache_fundamentos("TSTA3", dados) is True
-    assert (dados["pl"], dados["pvp"], dados["roe"], dados["lpa"], dados["vpa"]) == (
-        -10.0,
-        1.5,
-        -0.2,
-        -2.0,
-        10.0,
-    )
-    assert dados["dy"] == 0.05
-    assert dados["dados_cache"] is True
-    assert dados["_field_sources"] == {
-        "pl": "CVM",
-        "pvp": "CVM",
-        "roe": "CVM",
-        "dy": "fundamentals_cache",
-    }
-
-
-@pytest.mark.parametrize("fonte", [None, "yfinance_partial"])
-def test_fonte_incompleta_nao_e_rotulada_como_observacao_nova(monkeypatch, fonte):
-    cache = FakeCache()
-    motor = _engine(monkeypatch, info={}, cache=cache)
-    motor._salvar_cache_se_valido(
-        "TSTA3",
-        {"pl": 8.0, "pvp": 1.2, "roe": 0.1, "dy": 0.04, "fonte_fundamentos": fonte},
-    )
-    assert cache.saved == []
-
-
-def test_erro_de_leitura_do_cache_preserva_campos_existentes(monkeypatch):
-    class CacheIndisponivel:
-        def buscar_fundamentos_cache(self, ticker):
-            raise OSError("cache indisponível")
-
-    motor = _engine(monkeypatch, info={}, cache=CacheIndisponivel())
-    dados = {"pl": -10.0, "lpa": -2.0}
-    assert motor._aplicar_cache_fundamentos("TSTA3", dados) is False
-    assert dados == {"pl": -10.0, "lpa": -2.0}
 
 
 @pytest.mark.parametrize(

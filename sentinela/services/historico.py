@@ -368,12 +368,6 @@ class MotorHistorico(MarketEngine):
         except sqlite3.Error as erro:
             dados["taxa_real"] = {"abstencao": f"series_macro indisponível: {erro}"}
 
-    def _aplicar_cache_fundamentos(self, ticker: str, dados: dict[str, Any]) -> bool:
-        return False
-
-    def _salvar_cache_se_valido(self, ticker: str, dados: dict[str, Any]) -> None:
-        return None
-
 
 CADASTRO = Path("data/fontes/cad_cia_aberta.csv")
 DIRETORIO = Path("data/cache/historico")

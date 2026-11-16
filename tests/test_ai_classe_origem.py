@@ -95,8 +95,6 @@ def test_cascata_classificador_servico_prompt_e_texto_nao_confiavel(
         "_buscar_liquidez",
         "_buscar_taxa_real",
         "_contexto_janelas",
-        "_aplicar_cache_fundamentos",
-        "_salvar_cache_se_valido",
     ):
         monkeypatch.setattr(mercado, nome, Mock())
     montar = Mock(wraps=contexto_classe_ia)

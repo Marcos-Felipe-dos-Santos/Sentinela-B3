@@ -3,9 +3,10 @@
 Banco em memória com a DFP oficial de 2019 (00.776.574/0001-56: versão 1 entregue em
 20/02/2020, versão 2 em 21/02/2020), um FCA sintético com o código de negociação entregue em
 01/02/2020 e o COTAHIST sintético dos pregões antes de D. As fontes correntes (yfinance,
-brapi, índice de referência atual, cache de fundamentos e pares) são espiões que falham se
-forem chamados. Valor corrente e histórico diferentes: o preço corrente do espião (99,00)
-contra o do COTAHIST em D (20,50); a DFP vista hoje (versão 2) contra a vista em D.
+brapi, índice de referência atual e pares) são espiões que falham se forem chamados; o
+cache de fundamentos saiu no F3-9b e o teste confere que não voltou. Valor corrente e
+histórico diferentes: o preço corrente do espião (99,00) contra o do COTAHIST em D (20,50);
+a DFP vista hoje (versão 2) contra a vista em D.
 """
 
 import sqlite3
@@ -65,12 +66,9 @@ def espioes(monkeypatch):
     monkeypatch.setattr(market_engine.yf, "Ticker", falha)
     monkeypatch.setattr(market_engine.BrapiProvider, "get_fundamentals", falha)
     monkeypatch.setattr(market_engine.REFERENCIA_OFICIAL, "indice", falha)
-    monkeypatch.setattr(
-        market_engine.DatabaseManager, "buscar_fundamentos_cache", falha
-    )
-    monkeypatch.setattr(
-        market_engine.DatabaseManager, "salvar_fundamentos_cache", falha
-    )
+    for nome in ("buscar_fundamentos_cache", "salvar_fundamentos_cache"):
+        # F3-9b (DD-85): o cache de 7 dias saiu; voltar a existir é fonte corrente.
+        assert not hasattr(market_engine.DatabaseManager, nome)
     return falha
 
 

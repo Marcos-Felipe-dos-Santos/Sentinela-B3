@@ -41,7 +41,5 @@ def test_taxa_real_recebe_o_as_of_da_cascata(monkeypatch):
     m._buscar_ifdata = lambda d, *, as_of: None
     m._buscar_liquidez = Mock()
     m._contexto_janelas = lambda d, instante, *, coletado_em=None: None
-    m._aplicar_cache_fundamentos = Mock()
-    m._salvar_cache_se_valido = Mock()
     m.buscar_dados_ticker_em("TSTA3", AS_OF)
     assert pedidos == [AS_OF], (pedidos, AGORA)

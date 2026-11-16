@@ -22,6 +22,16 @@ LEGADO = {
 }
 
 
+def _semear_cache_antigo(banco: Path, ticker: str, dados: dict, fonte: str) -> None:
+    """Linha da tabela antiga `fundamentals_cache`, como o método aposentado no F3-9b gravava."""
+    with closing(sqlite3.connect(banco)) as conn, conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO fundamentals_cache "
+            "(ticker, dados_json, fonte, atualizado_em) VALUES (?, ?, ?, ?)",
+            (ticker, json.dumps(dados, default=str), fonte, "2026-11-01T10:00:00"),
+        )
+
+
 def _bancos(pasta: Path) -> dict[str, Path]:
     """Dois bancos sintéticos com as tabelas reais, criados pelas próprias classes."""
     v6, s = pasta / "sentinela_v6.db", pasta / "sentinela.db"
@@ -29,7 +39,7 @@ def _bancos(pasta: Path) -> dict[str, Path]:
     db.adicionar_posicao("TSTA3", 100, 10.0)
     db.adicionar_posicao("TSTB4", 7, 33.333333333333336)
     db.adicionar_posicao("TSTA3", 50, 13.0)
-    db.salvar_fundamentos_cache("TSTA3", {"pl": 8.5}, "cvm")
+    _semear_cache_antigo(v6, "TSTA3", {"pl": 8.5}, "cvm")
     with closing(db._get_conn()) as conn, conn:
         conn.execute(
             "INSERT INTO analises VALUES (?, ?, ?, ?, ?)",
@@ -342,9 +352,7 @@ def test_hash_do_relatorio_e_das_linhas_da_origem(tmp_path):
     import hashlib
 
     origens = _bancos(tmp_path)
-    DatabaseManager(str(origens["sentinela_v6.db"])).salvar_fundamentos_cache(
-        "TSTB4", {"nota": "ação"}, "cvm"
-    )
+    _semear_cache_antigo(origens["sentinela_v6.db"], "TSTB4", {"nota": "ação"}, "cvm")
     destino = tmp_path / "unico.db"
     relatorio = unico.migrar(origens, destino, _backup(tmp_path, origens))
     with closing(sqlite3.connect(destino)) as conn:

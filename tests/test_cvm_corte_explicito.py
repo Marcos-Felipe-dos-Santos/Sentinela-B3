@@ -64,8 +64,6 @@ def test_dfp_itr_cascata_motor_compartilham_o_corte(
         "_buscar_liquidez",
         "_buscar_taxa_real",
         "_contexto_janelas",
-        "_aplicar_cache_fundamentos",
-        "_salvar_cache_se_valido",
     ):
         monkeypatch.setattr(m, nome, Mock())
     corte = datetime(2025, 7, 1, 2, tzinfo=UTC)  # 30/06 em São Paulo

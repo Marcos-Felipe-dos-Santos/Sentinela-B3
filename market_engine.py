@@ -344,13 +344,6 @@ def _definir_fonte_fundamentos(dados: dict[str, Any], fonte: str) -> None:
     dados['fonte_fundamentos'] = fonte
 
 
-def _fundamentos_validos_para_cache(
-    dados: dict[str, Any],
-    asset_classifier: AssetClassifier | None = None,
-) -> bool:
-    return not list_missing_required_fields(dados, asset_classifier)
-
-
 # F3-A-F3 (BUG-3-16): fonte de preço que não diz a data do fechamento grava o motivo.
 MOTIVO_SEM_DATA = {
     'yfinance_historico': 'yfinance: histórico sem data legível no último fechamento',
@@ -585,18 +578,14 @@ class MarketEngine:
         else:
             self._contexto_janelas(dados, as_of, coletado_em=datetime.now(UTC))
 
-        if list_missing_required_fields(dados, classifier):
-            self._aplicar_cache_fundamentos(ticker, dados)
-
         # F2A-23: estimativas manuais de FII não são aplicadas.
 
         # F2A-22: o Fundamentus saiu da cascata; a falta de campo obrigatório depois de
-        # todas as fontes (inclusive cache e fallback manual) vira `fundamentos_incompletos`.
+        # todas as fontes vira `fundamentos_incompletos` (o cache de 7 dias saiu no F3-9b, DD-85).
         obrigatorios_faltando = list_missing_required_fields(dados, classifier)
         dados['fundamentos_incompletos'] = bool(obrigatorios_faltando)
         dados['campos_faltantes'] = obrigatorios_faltando + list_missing_market_fields(dados)
         dados['dados_parciais'] = bool(dados['campos_faltantes'])
-        self._salvar_cache_se_valido(ticker, dados)
         dados.setdefault('ticker', ticker)
         self._attach_field_provenance(dados)
         dados['valores_coletados'] = _retrato(dados)
@@ -1627,73 +1616,3 @@ class MarketEngine:
                 riscos.append(f"{RISCO_SEM_LPA_CVM}: {lpa.motivo}")
         elif sem_lpa:
             riscos.append(f"{RISCO_SEM_LPA_CVM}: {lpa.motivo}")
-
-    def _aplicar_cache_fundamentos(
-        self,
-        ticker: str,
-        dados: dict[str, Any],
-    ) -> bool:
-        database = getattr(self, 'database', None)
-        if database is None:
-            return False
-
-        try:
-            cache = database.buscar_fundamentos_cache(ticker)
-        except Exception as e:
-            logger.warning(f"[{ticker}] Cache fundamentos indisponivel: {e}")
-            return False
-
-        if not cache:
-            return False
-
-        preenchidos = merge_if_valid(
-            dados,
-            cache,
-            allowed_keys=set(FUNDAMENTAL_KEYS),
-        )
-        self._record_field_sources(dados, preenchidos, 'fundamentals_cache')
-        if not preenchidos:
-            return False
-
-        dados['dados_cache'] = True
-        _registrar_fonte_fundamentos(dados, 'cache')
-        dados.setdefault('riscos_dados', []).append(
-            'campos fundamentais preenchidos via cache'
-        )
-        logger.info(f"[{ticker}] Usando cache de fundamentos ({len(preenchidos)} campos)")
-        return True
-
-    def _salvar_cache_se_valido(self, ticker: str, dados: dict[str, Any]) -> None:
-        if (
-            dados.get('dados_cache')
-            or dados.get('dados_manual')
-            or not _fundamentos_validos_para_cache(
-                dados,
-                getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER),
-            )
-        ):
-            return
-
-        fonte = dados.get('fonte_fundamentos')
-        if not fonte or fonte == 'yfinance_partial':
-            return
-
-        payload = {
-            chave: dados[chave]
-            for chave in FUNDAMENTAL_KEYS
-            if chave in dados and not _is_field_missing(chave, dados.get(chave), dados)
-        }
-        if not _fundamentos_validos_para_cache(
-            {'ticker': ticker, **payload},
-            getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER),
-        ):
-            return
-
-        database = getattr(self, 'database', None)
-        if database is None:
-            return
-
-        try:
-            database.salvar_fundamentos_cache(ticker, payload, fonte)
-        except Exception as e:
-            logger.warning(f"[{ticker}] Falha ao salvar cache de fundamentos: {e}")
