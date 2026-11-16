@@ -235,54 +235,6 @@ def buscar_dados_ticker_cached(ticker: str) -> Optional[Dict[str, Any]]:
     return market.buscar_dados_ticker(ticker)
 
 
-def _orquestrar_analise_legada(
-    ticker: str,
-) -> tuple[dict, bool, dict, dict, pd.DataFrame | None, dict, dict]:
-    # A. Dados Básicos
-    dados = market.buscar_dados_ticker(ticker)
-    if not dados or "erro" in dados:
-        st.error("Ativo não encontrado.")
-        st.stop()
-
-    # B. Detecção FII
-    # CORRIGIDO: Yahoo retorna quote_type='EQUITY' para FIIs BR (não MUTUALFUND)
-    # Usar whitelist como critério primário + fallback de sufixo 11
-    is_fii = asset_classifier.is_fii(ticker, dados)
-
-    # C. Motores Específicos
-    if is_fii:
-        analise = fii_engine.analisar(dados)
-        # CORRIGIDO: guard para None (fii_engine pode retornar None se sem dados)
-        if analise is None:
-            st.error("FII sem dados suficientes para análise.")
-            st.stop()
-        peers_data = {}
-    else:
-        analise = val_engine.processar(dados)
-        if analise is None:
-            st.error("Erro Valuation")
-            st.stop()
-        peers_data = peers_engine.comparar(ticker)
-
-    # D. Análise Técnica
-    hist = dados.get("historico", pd.DataFrame())
-    tech_data = tech_engine.calcular_indicadores(hist)
-
-    # E. IA e Persistência
-    from sentinela.domain.apresentacao import mesclar_analise
-
-    dados = mesclar_analise(dados, analise)
-    dados["tech"] = tech_data
-
-    ia_resp = ai_engine.analisar(ticker, dados)
-    dados["analise_ia"] = ia_resp["content"]
-
-    # CORREÇÃO: Não salvar histórico pesado no banco
-    dados_salvar = {k: v for k, v in dados.items() if k != "historico"}
-    db.salvar_analise(dados_salvar)
-    return dados, is_fii, analise, peers_data, hist, tech_data, ia_resp
-
-
 st.sidebar.title("🦅 Sentinela B3")
 modo = st.sidebar.radio("Menu", ["Terminal", "Carteira", "Config"])
 

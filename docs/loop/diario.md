@@ -1626,3 +1626,13 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Entrega do Informe:** mediana de 14 a 15 dias depois do fim do mês; de 95% a 99% em até 90 dias.
 - **Para o Marcos:** a proposta da §5 (fonte, data ex inferida ou contagem pelo mês, prazo de 90 dias, amortização fora), em `pendencias.md`.
 - **Resíduos:** `outputs/f3-8l/` (script e saída; ignorado). Sem push/PR, `.env` ou carteira; banco real só lido; sem rede.
+
+### F3-9a — refactor: remove duplicated orchestration from app.py
+- **Executor:** claude-code.
+- **Registro prévio, antes de editar `app.py` (HEAD 7b233e3):** saem as linhas 238–285: `_orquestrar_analise_legada` (238–283, o corpo retido pela DD-16 no F3-6b) e as duas linhas em branco seguintes (284–285). Nenhuma outra linha muda.
+- **Prova por busca, antes:** `grep -rn _orquestrar_analise_legada --include=*.py` (fora de `venv/` e `mutants/`) acha só a definição (`app.py:238`) e `tests/test_app_analysis_service.py:217` e `:234`, que conferem a retenção (no máximo uma definição, `len(legados) <= 1`) e a falta de chamador; nenhuma chamada. Os nomes usados no corpo (`market`, `asset_classifier`, `fii_engine`, `val_engine`, `peers_engine`, `tech_engine`, `ai_engine`, `db`, `pd`, `Optional`) seguem usados fora dele; `mesclar_analise` era importado dentro da função e sai com ela.
+- **Status:** sucesso. Removidas só as linhas registradas acima; prova por busca depois: só as duas referências do teste do F3-6b, que aceitam zero definições e nenhuma chamada.
+- **Testes:** nenhum teste mudou. `tests/test_app_analysis_service.py` (7) verde: as cinco comparações AppTest com o oráculo congelado nos testes, o hash AST do corpo anterior e o hash da renderização a partir do marcador seguem iguais. Sem mudança visual: a renderização não foi tocada.
+- **Ruff em `app.py`:** os mesmos 11 avisos antes e depois (dívida antiga, comparados linha a linha sem o número da linha); o Ruff do CI e o completo seguem verdes. Mutação: `app.py` fica fora do `source_paths` (só cola da apresentação), sem score declarado, como no F3-6b.
+- **Gate:** 5090 passed, 1 skipped, 1 warning (igual ao anterior); golden `500645a3…` igual (`outputs/f3-9a-gate.txt`).
+- **Resíduos:** `outputs/f3-9a-gate.txt` (ignorado). Sem push/PR, `.env` ou carteira.
