@@ -376,7 +376,9 @@ def gravar_proventos(conn, relacao: Relacao, cd_cvm: int | str) -> dict:
     `proventos_coletas`, e cada registro que ela trouxe para `proventos_vistos`; o registro é
     identificado pelo hash do seu JSON e, já gravado, conta como repetido (fica a primeira
     coleta que o viu), com a fonte da sua página. JSON idêntico repetido na mesma relação conta
-    uma vez (`duplicados_na_coleta`). Coleta sem fuso é recusada.
+    uma vez (`duplicados_na_coleta`). Coleta sem fuso é recusada. O complemento em dinheiro
+    do GetListedSupplementCompany vai para `proventos_complemento` (F3-8d-fix, decisão 43),
+    para a leitura refazer a decisão 33; coleta cuja última fonte não é ele é recusada.
     """
     if datetime.fromisoformat(relacao.coleta).utcoffset() is None:
         raise ValueError("coleta exige fuso horário")
@@ -399,6 +401,20 @@ def gravar_proventos(conn, relacao: Relacao, cd_cvm: int | str) -> dict:
                 json.dumps(list(relacao.isins)),
                 detalhe["url"],
                 detalhe["sha256"],
+            ),
+        )
+        complemento = relacao.fontes[-1]
+        if "GetListedSupplementCompany" not in str(complemento.get("url")):
+            raise ValueError("a última fonte da coleta não é o complemento da B3")
+        conn.execute(
+            "INSERT INTO proventos_complemento (emissor, coleta, dinheiro_json, fonte, "
+            "hash_sha256) VALUES (?, ?, ?, ?, ?)",
+            (
+                relacao.emissor,
+                relacao.coleta,
+                json.dumps(list(relacao.dinheiro_complemento), ensure_ascii=False),
+                complemento["url"],
+                complemento["sha256"],
             ),
         )
         for indice, registro in enumerate(relacao.registros):
@@ -455,7 +471,66 @@ def gravar_proventos(conn, relacao: Relacao, cd_cvm: int | str) -> dict:
     return resumo
 
 
-def proventos_ate(conn, emissor: str, dia: date, *, por_publicacao: bool = False) -> dict:
+MOTIVO_COMPLEMENTO_NAO_GUARDADO = (
+    "complemento da coleta não guardado para conferir o ISIN do ticker no pregão"
+)
+
+
+def isin_no_pregao(conn, ticker: str, dia: date) -> str | None:
+    """CODISI do último pregão à vista do código antes do dia (COTAHIST guardado)."""
+    linha = conn.execute(
+        "SELECT isin FROM precos WHERE codigo_negociacao = ? AND tipo_mercado = ? "
+        "AND data < ? AND isin IS NOT NULL AND isin != '' ORDER BY data DESC LIMIT 1",
+        (ticker, "010", dia.isoformat()),
+    ).fetchone()
+    return linha[0] if linha else None
+
+
+def _identidade_com_o_pregao(
+    conn, emissor: str, coleta: str, identidade: str, ticker: str | None, dia: date
+) -> str | None:
+    """Decisão 43 (DD-74): a decisão 33 inteira de novo, com o ISIN do ticker no pregão.
+
+    O ISIN do CODISI soma aos da companhia no GetDetail só se o código do emissor (posições
+    3 a 6) for o de um deles; as partes (a) a (d) são as de `conferir_emissor`, com a
+    relação e o complemento da própria coleta. Sem ISIN novo, fica o motivo gravado.
+    """
+    isin = isin_no_pregao(conn, ticker, dia) if ticker else None
+    (isins_json,) = conn.execute(
+        "SELECT isins_json FROM proventos_coletas WHERE emissor = ? AND coleta = ?",
+        (emissor, coleta),
+    ).fetchone()
+    isins = tuple(json.loads(isins_json))
+    if isin is None or isin in isins or isin[2:6] not in {i[2:6] for i in isins}:
+        return identidade
+    complemento = conn.execute(
+        "SELECT dinheiro_json FROM proventos_complemento WHERE emissor = ? AND coleta = ?",
+        (emissor, coleta),
+    ).fetchone()
+    if complemento is None:
+        return MOTIVO_COMPLEMENTO_NAO_GUARDADO
+    registros = [
+        json.loads(texto)
+        for (texto,) in conn.execute(
+            "SELECT p.linha_json FROM proventos_vistos v JOIN proventos p "
+            "ON p.emissor = v.emissor AND p.linha_sha256 = v.linha_sha256 "
+            "WHERE v.emissor = ? AND v.coleta = ? ORDER BY p.linha_sha256",
+            (emissor, coleta),
+        )
+    ]
+    return proventos_b3.conferir_emissor(
+        registros, json.loads(complemento[0]), (*isins, isin)
+    )
+
+
+def proventos_ate(
+    conn,
+    emissor: str,
+    dia: date,
+    *,
+    por_publicacao: bool = False,
+    ticker: str | None = None,
+) -> dict:
     """Proventos em dinheiro conhecidos antes do dia local de D, com a data ex demonstrada.
 
     Vale a relação da coleta mais recente do emissor feita antes do dia de D em São Paulo
@@ -467,6 +542,9 @@ def proventos_ate(conn, emissor: str, dia: date, *, por_publicacao: bool = False
     `por_publicacao` (decisão 40, data passada): a coleta deixa de ser critério; vale a coleta
     mais recente do emissor, de qualquer data, e a disponibilidade em D é a da aprovação e da
     data com de cada registro, anteriores a D (o filtro acima).
+
+    `ticker` (decisão 43): com identidade não comprovada na coleta, a conferência é refeita
+    com o ISIN do ticker no último pregão antes do dia (`_identidade_com_o_pregao`).
     """
     if isinstance(dia, datetime) or not isinstance(dia, date):
         raise TypeError("proventos_ate recebe o dia local de D (date), não um instante")
@@ -489,6 +567,10 @@ def proventos_ate(conn, emissor: str, dia: date, *, por_publicacao: bool = False
     if coleta is None:
         return {"abstencao": MOTIVO_PROVENTO_SEM_COLETA}
     instante, total, registros, identidade = coleta
+    if identidade is not None:
+        identidade = _identidade_com_o_pregao(
+            conn, emissor, instante, identidade, ticker, dia
+        )
     if identidade is not None:
         return {"abstencao": f"{MOTIVO_PROVENTO_IDENTIDADE}: {identidade}"}
     if total != registros:

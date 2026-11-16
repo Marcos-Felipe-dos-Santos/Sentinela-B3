@@ -518,6 +518,7 @@ class BacktestPIT:
             emissor,
             date.fromordinal(fim.toordinal() + 1),
             por_publicacao=True,
+            ticker=ticker,  # decisão 43: o ISIN do ticker no pregão na identidade
         )
         proventos = []
         motivo = relacao.get("abstencao")

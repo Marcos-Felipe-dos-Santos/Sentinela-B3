@@ -206,7 +206,9 @@ def test_fontes_de_proventos_e_eventos_sao_lidas_ate_t_inclusive(monkeypatch):
     fontes = _Fontes(monkeypatch)
     _executar(monkeypatch, BASE)
     (_, args_p, kwargs_p), (_, args_e, _) = fontes.chamadas
-    assert args_p[1:] == ("ABEV", DEPOIS) and kwargs_p == {"por_publicacao": True}
+    # decisão 43 (F3-8d-fix): o ticker vai junto, para o ISIN do pregão na identidade
+    assert args_p[1:] == ("ABEV", DEPOIS)
+    assert kwargs_p == {"por_publicacao": True, "ticker": "ABEV3"}
     assert args_e[1:] == ("ABEV", DEPOIS)
 
 

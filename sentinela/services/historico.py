@@ -271,7 +271,7 @@ class MotorHistorico(MarketEngine):
             }
             return
         lidos = b3_proventos.proventos_ate(
-            self.conn, ticker[:4], self.dia, por_publicacao=True
+            self.conn, ticker[:4], self.dia, por_publicacao=True, ticker=ticker
         )
         dados["proventos_b3"] = (
             {"abstencao": lidos["abstencao"]}
