@@ -705,7 +705,8 @@ def pregoes_da_data_ex(conn, registros, referencia: date) -> list[str] | None:
     no lugar do download: os meses do limite e do início da janela. `None` quando nenhuma
     data ex depende do calendário, ou quando as cargas não cobrem do primeiro dia do mês do
     limite até o início da janela pela regra de `proventos_b3.calendario_do_banco` (F3-P14b:
-    o arquivo anual de cada ano, gerado em ou depois do fim do trecho); a série então abstém,
+    o arquivo anual de cada ano, gerado em ou depois do fim do trecho, ou do último pregão
+    guardado do mês quando o fim é o último dia dele, decisão 44); a série então abstém,
     como na cascata sem o COTAHIST (BUG-3-40). O pregão seguinte à data com só decide a janela
     até o início dela; os dias depois dele só mostram que o calendário segue.
     """

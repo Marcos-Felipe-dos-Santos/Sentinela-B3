@@ -581,8 +581,9 @@ def entradas(dados: Mapping, instante: datetime) -> dict | Abstencao:
 # --- Calendário anual de pregões para a lente de qualidade (F3-P14b) -----------------------
 # Contrato: `docs/decisoes/calendario-proventos-3.md`. Pregão = data com negócio no mercado à
 # vista do COTAHIST guardado (F3-4a); o ano Y só está coberto pela carga do arquivo anual
-# `COTAHIST_A{Y}` gerado em ou depois de 31/12/Y, ou, no ano ainda aberto, até a data de
-# geração (inclusive: o arquivo gerado em D traz o pregão de D). Carga sem data de geração não
+# `COTAHIST_A{Y}` gerado em ou depois de 31/12/Y, ou do último pregão de dezembro guardado
+# (decisão 44, BUG-3-41), ou, no ano ainda aberto, até a data de geração (inclusive: o arquivo
+# gerado em D traz o pregão de D). Carga sem data de geração não
 # cobre; o ano vem do nome do arquivo guardado (`cargas_cotahist.arquivo`).
 
 MOTIVO_CALENDARIO_SEM_ANO = "calendário anual B3 sem a carga do COTAHIST anual de {ano}"
@@ -602,6 +603,23 @@ def _ano_do_arquivo(arquivo: object) -> int | None:
     return int(ano) if len(ano) == 4 and ano.isdigit() else None
 
 
+def _ate_o_ultimo_pregao(necessario: date, pregoes: set[date]) -> date:
+    """Decisão 44 (BUG-3-41): no último dia do mês, a cobertura vai até o último pregão do mês.
+
+    O último pregão é o maior guardado no mês até `necessario`, por qualquer carga do COTAHIST
+    (31/12 não tem pregão; o arquivo anual sai no último). Fora do fim do mês, ou sem pregão
+    guardado no mês, vale o próprio dia.
+    """
+    if (necessario + timedelta(days=1)).month == necessario.month:
+        return necessario
+    do_mes = [
+        p
+        for p in pregoes
+        if (p.year, p.month) == (necessario.year, necessario.month) and p <= necessario
+    ]
+    return max(do_mes, default=necessario)
+
+
 def calendario_anual(
     pregoes: Iterable[date], cargas: Iterable[Mapping], inicio: date, fim: date
 ) -> dict | Abstencao:
@@ -609,7 +627,8 @@ def calendario_anual(
 
     `cargas`: as do COTAHIST (`arquivo`, `data_geracao` ISO, `coleta`, `hash_sha256`). Cada ano
     do intervalo precisa de uma carga do arquivo anual cuja geração alcance `fim` naquele ano
-    (o ano todo, se gerado em ou depois de 31/12); vale a carga de geração mais nova, e no empate
+    (o ano todo, se gerado em ou depois de 31/12); quando o fim é o último dia de um mês, basta
+    a geração no último pregão guardado do mês (decisão 44); vale a carga de geração mais nova, e no empate
     a primeira na ordem recebida. Os pregões são
     os de `pregoes` dentro do intervalo.
     """
@@ -622,11 +641,12 @@ def calendario_anual(
         ):
             melhores[ano] = carga
     usadas = []
+    guardados = {p for p in pregoes if inicio <= p <= fim}
     for ano in range(inicio.year, fim.year + 1):
         carga = melhores.get(ano)
         if carga is None:
             return Abstencao(MOTIVO_CALENDARIO_SEM_ANO.format(ano=ano))
-        necessario = min(fim, date(ano, 12, 31))
+        necessario = _ate_o_ultimo_pregao(min(fim, date(ano, 12, 31)), guardados)
         if str(carga["data_geracao"]) < necessario.isoformat():
             return Abstencao(
                 MOTIVO_CALENDARIO_GERACAO.format(
@@ -634,7 +654,7 @@ def calendario_anual(
                 )
             )
         usadas.append(carga)
-    dentro = sorted({p for p in pregoes if inicio <= p <= fim})
+    dentro = sorted(guardados)
     if not dentro:
         return Abstencao(MOTIVO_CALENDARIO_VAZIO)
     return {

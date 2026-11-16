@@ -376,12 +376,15 @@ def test_pregoes_na_virada_do_ano_com_os_dois_anos(conn, tmp_path):
     ]
 
 
-def test_pregoes_na_virada_do_ano_com_a_geracao_real_abstem(conn, tmp_path):
-    """Limite aceito (DD-79): o arquivo anual real sai no último pregão (30/12), e a regra
-    do F3-P14b pede 31/12 para o ano do limite; a série abstém, sem número maior."""
+def test_pregoes_na_virada_do_ano_com_a_geracao_real(conn, tmp_path):
+    """Decisão 44 (BUG-3-41): o arquivo anual real sai no último pregão de dezembro guardado
+    (aqui 27/12/2025, o último do mês no banco), e isso cobre o ano do limite."""
     referencia = date(2027, 1, 3)
     cargas = [(2025, date(2025, 12, 30)), (2026, date(2026, 1, 3))]
-    assert _so_cobertura(conn, tmp_path, cargas, referencia) is None
+    assert _so_cobertura(conn, tmp_path, cargas, referencia) == [
+        "2025-12-27",
+        "2026-01-03",
+    ]
 
 
 def test_perfil_da_acao_no_motor_historico_e_o_do_bloco(conn, relacao, tmp_path):

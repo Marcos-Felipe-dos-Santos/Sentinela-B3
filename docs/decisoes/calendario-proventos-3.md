@@ -39,6 +39,13 @@ já guardado no banco único pelo F3-4a (`precos`, com fonte, coleta e hash por 
   usada; como o último exercício precisa de 7 dias depois de 31/12, ele só fica coberto em
   janeiro do ano seguinte, com o arquivo do ano novo. Sem essa prova, o calendário não é montado e o motivo diz qual ano falta. Não se
   infere pregão por dia da semana nem se completa lacuna.
+  **Decisão 44 do Marcos (16/11/2026, BUG-3-41):** a cobertura vai até o último pregão do mês,
+  pelo próprio COTAHIST armazenado, não até o último dia do calendário. O arquivo anual gerado no
+  último pregão de dezembro guardado (30/12, por exemplo; 31/12 não tem pregão) cobre o ano
+  inteiro. Pela leitura delegada DD-81 (`docs/loop/pendencias.md`), vale também para qualquer
+  trecho que termina no último dia de um mês. Limite: se só
+  há a carga que parou antes do último pregão real e nenhuma outra carga guarda pregão depois
+  dela no mês, o banco não distingue os dois casos.
 - **Cinco exercícios com as bordas:** do início do primeiro exercício menos 7 dias até o fim
   do último mais 7 dias (a exigência atual do consumidor), ou seja, seis anos civis de
   COTAHIST para cinco exercícios encerrados em 31/12. O L1 mostrou o COTAHIST anual de 2010 a

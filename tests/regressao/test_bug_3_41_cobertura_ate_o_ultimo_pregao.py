@@ -40,14 +40,12 @@ def conn(tmp_path):
         yield conexao
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-3-41, corrigido antes do F3-8j")
 def test_ano_inteiro_coberto_pelo_arquivo_gerado_no_ultimo_pregao(conn):
     lido = proventos_b3.calendario_do_banco(conn, date(2024, 1, 1), date(2024, 12, 31))
     assert not isinstance(lido, proventos_b3.Abstencao), lido
     assert lido["pregoes"][-1] == ULTIMO_PREGAO_2024.isoformat()
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-3-41, corrigido antes do F3-8j")
 def test_data_ex_no_inicio_de_janeiro_decidida_pelo_calendario(conn):
     registro = {"lastDatePriorEx": DATA_COM.strftime("%d/%m/%Y")}
     pregoes = b3_proventos.pregoes_da_data_ex(conn, [registro], REFERENCIA)

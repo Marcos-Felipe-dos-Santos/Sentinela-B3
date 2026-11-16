@@ -283,3 +283,102 @@ def test_carga_sem_data_de_geracao_nao_cobre():
     assert lido == proventos_b3.Abstencao(
         proventos_b3.MOTIVO_CALENDARIO_SEM_ANO.format(ano=2024)
     )
+
+
+# --- Decisão 44 (BUG-3-41): até o último pregão do mês guardado ------------------------------
+
+
+def test_ano_coberto_pelo_arquivo_gerado_no_ultimo_pregao():
+    pregoes = [date(2024, 1, 2), date(2024, 12, 27), date(2024, 12, 30)]
+    lido = proventos_b3.calendario_anual(
+        pregoes, [_carga(2024, "2024-12-30")], date(2024, 1, 1), date(2024, 12, 31)
+    )
+    assert lido["pregoes"][-1] == "2024-12-30"
+
+
+def test_carga_parada_antes_de_um_pregao_guardado_no_mes_nao_cobre():
+    """Outra carga guarda o 27/12; o arquivo anual gerado em 20/12 não chega lá."""
+    pregoes = [date(2024, 12, 20), date(2024, 12, 27)]
+    lido = proventos_b3.calendario_anual(
+        pregoes, [_carga(2024, "2024-12-20")], date(2024, 12, 1), date(2024, 12, 31)
+    )
+    assert lido == proventos_b3.Abstencao(
+        proventos_b3.MOTIVO_CALENDARIO_GERACAO.format(
+            ano=2024, geracao="2024-12-20", fim="2024-12-27"
+        )
+    )
+
+
+def test_fim_de_outro_mes_vai_ate_o_ultimo_pregao_dele():
+    pregoes = [date(2025, 6, 2), date(2025, 6, 27)]
+    cargas = [_carga(2025, "2025-06-27")]
+    lido = proventos_b3.calendario_anual(
+        pregoes, cargas, date(2025, 6, 1), date(2025, 6, 30)
+    )
+    assert lido["pregoes"] == ["2025-06-02", "2025-06-27"]
+
+
+def test_meio_do_mes_exige_o_proprio_dia():
+    pregoes = [date(2025, 6, 2), date(2025, 6, 27)]
+    cargas = [_carga(2025, "2025-06-27")]
+    lido = proventos_b3.calendario_anual(
+        pregoes, cargas, date(2025, 6, 1), date(2025, 6, 29)
+    )
+    assert lido == proventos_b3.Abstencao(
+        proventos_b3.MOTIVO_CALENDARIO_GERACAO.format(
+            ano=2025, geracao="2025-06-27", fim="2025-06-29"
+        )
+    )
+
+
+def test_fim_do_mes_sem_pregao_guardado_no_mes_exige_o_proprio_dia():
+    pregoes = [date(2025, 5, 30)]
+    cargas = [_carga(2025, "2025-06-27")]
+    lido = proventos_b3.calendario_anual(
+        pregoes, cargas, date(2025, 5, 1), date(2025, 6, 30)
+    )
+    assert lido == proventos_b3.Abstencao(
+        proventos_b3.MOTIVO_CALENDARIO_GERACAO.format(
+            ano=2025, geracao="2025-06-27", fim="2025-06-30"
+        )
+    )
+
+
+def test_pregao_do_mes_fora_do_intervalo_nao_conta():
+    """Só os pregões do intervalo pedido: o 30/12 guardado não vale para um trecho até 31/12
+    que começa depois dele."""
+    lido = proventos_b3.calendario_anual(
+        [date(2024, 12, 30)],
+        [_carga(2024, "2024-12-30")],
+        date(2024, 12, 31),
+        date(2024, 12, 31),
+    )
+    assert lido == proventos_b3.Abstencao(
+        proventos_b3.MOTIVO_CALENDARIO_GERACAO.format(
+            ano=2024, geracao="2024-12-30", fim="2024-12-31"
+        )
+    )
+
+
+def test_pregao_no_ultimo_dia_do_mes_exige_a_geracao_nele():
+    """30/06/2025 é pregão guardado: o arquivo gerado em 27/06 não chega ao fim do mês."""
+    pregoes = [date(2025, 6, 27), date(2025, 6, 30)]
+    cargas = [_carga(2025, "2025-06-27")]
+    lido = proventos_b3.calendario_anual(
+        pregoes, cargas, date(2025, 6, 1), date(2025, 6, 30)
+    )
+    assert lido == proventos_b3.Abstencao(
+        proventos_b3.MOTIVO_CALENDARIO_GERACAO.format(
+            ano=2025, geracao="2025-06-27", fim="2025-06-30"
+        )
+    )
+
+
+def test_pregao_no_primeiro_dia_do_intervalo_conta():
+    lido = proventos_b3.calendario_anual(
+        [date(2024, 12, 30)],
+        [_carga(2024, "2024-12-30")],
+        date(2024, 12, 30),
+        date(2024, 12, 31),
+    )
+    assert lido["pregoes"] == ["2024-12-30"]
