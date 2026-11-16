@@ -128,6 +128,62 @@ def ipca_da_janela(
     }
 
 
+def _encerramentos(exercicios: list[dict]) -> list[date]:
+    """Os cinco encerramentos distintos, no fim do mês, em ordem."""
+    finais = sorted(date.fromisoformat(e["fim"]) for e in exercicios)
+    if len(finais) != 5 or len(set(finais)) != 5:
+        raise ValueError("IPCA exige cinco encerramentos distintos")
+    if any(d.day != calendar.monthrange(d.year, d.month)[1] for d in finais):
+        raise ValueError("IPCA exige encerramento no fim do mês")
+    return finais
+
+
+def _publicacoes_ipca(itens: list[dict]) -> dict[str, date]:
+    """Mês de referência (AAAAMM) → dia da divulgação, pelo calendário do IBGE."""
+    publicacoes = {}
+    for evento in itens:
+        if evento.get("produto_id") == 9256:
+            mes = f"{int(evento['ano_referencia_inicio']):04}{int(evento['mes_referencia_inicio']):02}"
+            publicacoes[mes] = divulgacao_ibge(evento["data_divulgacao"]).date()
+    return publicacoes
+
+
+def indices_ipca(
+    linhas: list[dict], publicacoes: dict[str, date], finais: list[date], dia: date
+) -> dict[str, float]:
+    """Índices relativos nos encerramentos, só com os meses divulgados antes de `dia`."""
+    valores = {}
+    for linha in linhas:
+        if linha.get("D1C") != "1" or linha.get("D2C") != "63":
+            continue
+        mes = linha["D3C"]
+        if mes not in publicacoes or publicacoes[mes] >= dia:
+            continue
+        if linha.get("MN") != "%":
+            raise ValueError("unidade do IPCA inválida")
+        valor = _numero(linha.get("V"), "IPCA")
+        if mes in valores and valores[mes] != valor:
+            raise ValueError("IPCA conflitante")
+        valores[mes] = valor
+    indices = {}
+    acumulado = 1.0
+    referencias = {d.strftime("%Y%m") for d in finais}
+    primeiro = finais[0].year * 12 + finais[0].month - 1
+    ultimo = finais[-1].year * 12 + finais[-1].month - 1
+    for numero in range(primeiro, ultimo + 1):
+        ano, mes_zero = divmod(numero, 12)
+        mes = f"{ano:04}{mes_zero + 1:02}"
+        if mes not in valores:
+            raise ValueError(f"IPCA ausente ou não publicado na janela: {mes}")
+        if numero != primeiro:
+            acumulado *= 1 + valores[mes]
+        if not math.isfinite(acumulado) or acumulado <= 0:
+            raise ValueError("IPCA acumulado sem fator positivo finito")
+        if mes in referencias:
+            indices[f"{ano:04}-{mes_zero + 1:02}"] = acumulado
+    return indices
+
+
 def pib_focus(
     linhas: list[dict], edicoes: dict[date, datetime], *, as_of: datetime
 ) -> dict:
@@ -294,49 +350,13 @@ class MacroProvider:
         A idade do último IPCA corrente não limita esta janela histórica.
         """
         dia = _local(instante)
-        finais = sorted(date.fromisoformat(e["fim"]) for e in exercicios)
-        if len(finais) != 5 or len(set(finais)) != 5:
-            raise ValueError("IPCA exige cinco encerramentos distintos")
-        if any(d.day != calendar.monthrange(d.year, d.month)[1] for d in finais):
-            raise ValueError("IPCA exige encerramento no fim do mês")
+        finais = _encerramentos(exercicios)
         agenda = self.baixar(IBGE_CALENDARIO, instante)
-        publicacoes = {}
-        for evento in json.loads(agenda.conteudo)["items"]:
-            if evento.get("produto_id") == 9256:
-                mes = f"{int(evento['ano_referencia_inicio']):04}{int(evento['mes_referencia_inicio']):02}"
-                publicacoes[mes] = divulgacao_ibge(evento["data_divulgacao"]).date()
+        publicacoes = _publicacoes_ipca(json.loads(agenda.conteudo)["items"])
         inicio, fim = finais[0], finais[-1]
         url = f"https://apisidra.ibge.gov.br/values/t/1737/n1/all/v/63/p/{inicio:%Y%m}-{fim:%Y%m}?formato=json"
         serie = self.baixar(url, instante)
-        valores = {}
-        for linha in json.loads(serie.conteudo):
-            if linha.get("D1C") != "1" or linha.get("D2C") != "63":
-                continue
-            mes = linha["D3C"]
-            if mes not in publicacoes or publicacoes[mes] >= dia:
-                continue
-            if linha.get("MN") != "%":
-                raise ValueError("unidade do IPCA inválida")
-            valor = _numero(linha.get("V"), "IPCA")
-            if mes in valores and valores[mes] != valor:
-                raise ValueError("IPCA conflitante")
-            valores[mes] = valor
-        indices = {}
-        acumulado = 1.0
-        referencias = {d.strftime("%Y%m") for d in finais}
-        primeiro = inicio.year * 12 + inicio.month - 1
-        ultimo = fim.year * 12 + fim.month - 1
-        for numero in range(primeiro, ultimo + 1):
-            ano, mes_zero = divmod(numero, 12)
-            mes = f"{ano:04}{mes_zero + 1:02}"
-            if mes not in valores:
-                raise ValueError(f"IPCA ausente ou não publicado na janela: {mes}")
-            if numero != primeiro:
-                acumulado *= 1 + valores[mes]
-            if not math.isfinite(acumulado) or acumulado <= 0:
-                raise ValueError("IPCA acumulado sem fator positivo finito")
-            if mes in referencias:
-                indices[f"{ano:04}-{mes_zero + 1:02}"] = acumulado
+        indices = indices_ipca(json.loads(serie.conteudo), publicacoes, finais, dia)
         return {
             "fonte": serie.fonte,
             "coleta": serie.coleta,
