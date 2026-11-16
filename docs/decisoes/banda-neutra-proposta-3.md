@@ -1,6 +1,6 @@
 # Banda neutra — proposta fora da amostra (F3-8d)
 
-**Situação em 15/11/2026: sem número.** Nenhuma lente teve valor em nenhuma data da sonda; nenhuma formou quintis; a banda não pode ser calibrada. Este documento registra a regra que será aplicada, a execução real, a cobertura por lente e por ano e o que falta. É **proposta** para o Marcos, sem efeito em código, ficha ou apresentação. Não é recomendação nem sugestão de carteira.
+**Situação em 16/11/2026 (F3-8j, seção 6): sem número, e a amostra declarada não pode formar quintis.** Situação em 15/11/2026: sem número. Nenhuma lente teve valor em nenhuma data da sonda; nenhuma formou quintis; a banda não pode ser calibrada. Este documento registra a regra que será aplicada, a execução real, a cobertura por lente e por ano e o que falta. É **proposta** para o Marcos, sem efeito em código, ficha ou apresentação. Não é recomendação nem sugestão de carteira.
 
 Script: `scripts/banda_neutra_fase3.py` (decisão 29). Testes: `tests/test_banda_neutra_fase3.py`, com contas à mão. Saídas da execução, fora do git: `outputs/f3-8d/sonda/` (`observacoes.json`, `proposta.json`, `resultados.db`).
 
@@ -66,3 +66,17 @@ Os motivos por ano, lente e horizonte estão em `outputs/f3-8d/sonda/proposta.js
 - Graham e Lynch abstêm em toda data até junho de 2024, porque o primeiro exercício da janela de cinco anos (2013 a 2019) não tem Composição do Capital no documento do lucro. Isso vira o levantamento F3-8k, sobre a fonte da quantidade de ações por exercício antes de 2020. A regra do F2A-3 continua: sem as ações do mesmo documento, abstém.
 - O retorno abstém na maior parte dos ativos pela conferência de identidade da decisão 33: units e ações ON sem ISIN da companhia no GetDetail, ou complemento sem proventos. Mudar a conferência é regra de identidade decidida pelo Marcos, então fica como pergunta em `docs/loop/pendencias.md`, sem item.
 - 2024 e 2025: “modelo da demonstração não demonstrado no BPP consolidado” (AALR3, ABCB4), também para o F3-8k.
+
+## 6. Reexecução do F3-8j (16/11/2026)
+
+- **Amostra declarada antes da execução (DD-82, escrita às 14:16 UTC):** a da DD-69, ratificada pela decisão 4: último pregão de junho de 2018 a 2025 (8 datas) e o primeiro elegível de cada classe na ordem do universo (`--limite-por-classe 1`). Banco real só leitura; saída em `outputs/f3-8j/sonda/`; cerca de 2 h 47 min; 231 observações, `sem_analise` vazio.
+- **Lacunas do §11 fechadas desde a sonda do F3-8f-col:** DY e bloco do Bazin pelo banco (F3-8g, F3-8h), calendário da data ex com cobertura (F3-8h-cal, F3-8h-cov) e taxa real do `series_macro` (F3-8i, já ligada). Comparação observação a observação (`outputs/f3-8j/comparacao.txt`): mesmas 231 chaves; nenhum valor ganho, perdido ou alterado; nenhum motivo de retorno mudou; no horizonte de 12 meses mudaram 4 motivos de lente:
+  - Rendimento do FII, 3 datas (2022, 2024, 2025): "DY ausente ou inválido" → "tipo de FII fora do escopo na 2B: papel" (o DY do Informe agora chega à lente, F3-8g);
+  - Bazin, 30/06/2022: "proventos … o bloco do Bazin pelo COTAHIST" → "DY abaixo do mínimo" (o bloco agora é montado, F3-8h).
+- **Valores no horizonte de 12 meses:** Gordon 1 de 16 e Graham 1 de 16; Bancos, Bazin, Lynch e FII, nenhum. Retorno total com valor: 5 de 88.
+- **Por que não há banda, e não haverá nesta amostra:** a regra (seção 1) só usa datas em que a lente formou quintis, e `formar_quintis` exige 25 ativos com distância válida na mesma data. Com um ativo por classe, isso nunca acontece, em nenhuma lente e em nenhuma data, qualquer que seja a cobertura. Toda lente abstém com "lente sem data com quintis formados". A sonda do F3-8d já tinha esse desenho; o aceite do item se cumpre pela cobertura e pelos motivos, mas a banda só pode ser medida com amostra de 25 ou mais ativos com valor por data e lente.
+- **O que trava o valor hoje, na amostra:**
+  - Graham e Lynch: "sem Composição do Capital no documento do lucro" até 2024 (F3-8k) e modelo não demonstrado no BPP em 2024–2025;
+  - Bazin e o retorno: a identidade do emissor da decisão 33 (75 de 88 retornos: unit e ON sem ISIN da companhia no GetDetail, ou complemento sem proventos para conferir) e 8 sem coleta da relação;
+  - FII: "DY ausente" de 2018 a 2021 pelo BUG-3-42 (o provedor não lê o Informe no leiaute anterior a 2021; F3-8j-fii), em 2023 só 6 linhas do Informe do fundo até D ("menos de 12 meses com DY e valor da cota do mês anterior") e "tipo papel" em 2022, 2024 e 2025; a guarda seguinte é a fonte de eventos de cota (DD-75, F3-8l).
+- **Para o checkpoint:** se a falta da Composição do Capital antes de 2020 vale para todo emissor, como a sonda sugere (o motivo cita o exercício e não o ativo; não verificado no universo), nem o universo inteiro de uma data teria 25 valores em Graham ou Lynch antes de 2025. Medir a banda pede, nesta ordem, o F3-8k (ações antes de 2020), a resposta sobre a identidade da decisão 33 e uma amostra declarada com 25 ou mais ativos por data, cujo custo depende do reaproveitamento do F3-8e e ainda não foi medido.
