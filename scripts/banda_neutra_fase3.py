@@ -17,7 +17,8 @@ ficha ou apresentação. Saída só em ``outputs/``.
 
 Uso:
     python scripts/banda_neutra_fase3.py --executar --banco sentinela_store.db \
-        --saida outputs/f3-8d [--datas 2023-06-30 ...] [--limite-por-classe N]
+        --saida outputs/f3-8d [--datas 2023-06-30 ...] [--limite-por-classe N] \
+        [--classes STOCK UNIT]
     python scripts/banda_neutra_fase3.py --observacoes outputs/f3-8d/observacoes.json \
         --saida outputs/f3-8d
 """
@@ -235,7 +236,24 @@ def _saida_em_outputs(caminho: Path) -> Path:
     return destino
 
 
-def _executar(banco: Path, saida: Path, datas: list[date] | None, limite: int | None):
+def filtrar_elegiveis(
+    elegiveis: list[dict], limite: int | None, classes: list[str] | None
+) -> list[dict]:
+    """Elegíveis das classes pedidas (todas sem ``classes``), até ``limite`` por classe."""
+    por_classe = defaultdict(list)
+    for item in elegiveis:
+        if not classes or item.get("classe") in classes:
+            por_classe[item.get("classe")].append(item)
+    return [item for itens in por_classe.values() for item in itens[:limite]]
+
+
+def _executar(
+    banco: Path,
+    saida: Path,
+    datas: list[date] | None,
+    limite: int | None,
+    classes: list[str] | None = None,
+):
     import pandas as pd
 
     from backtesting.backtest_pit import BacktestPIT
@@ -259,17 +277,14 @@ def _executar(banco: Path, saida: Path, datas: list[date] | None, limite: int | 
         )
     ]
     datas = datas or datas_fim_de_mes(pregoes, date(2018, 1, 1))
-    if limite is not None:
+    if limite is not None or classes:
         original = universo.universo_backtest
 
         def limitado(*args, **kwargs):
             resposta = original(*args, **kwargs)
-            por_classe = defaultdict(list)
-            for item in resposta["elegiveis"]:
-                por_classe[item.get("classe")].append(item)
-            resposta["elegiveis"] = [
-                item for itens in por_classe.values() for item in itens[:limite]
-            ]
+            resposta["elegiveis"] = filtrar_elegiveis(
+                resposta["elegiveis"], limite, classes
+            )
             return resposta
 
         universo.universo_backtest = limitado
@@ -284,6 +299,7 @@ def _executar(banco: Path, saida: Path, datas: list[date] | None, limite: int | 
     conn.close()
     resposta["datas_pedidas"] = [d.isoformat() for d in datas]
     resposta["limite_por_classe"] = limite
+    resposta["classes"] = classes
     (saida / "observacoes.json").write_text(
         json.dumps(resposta, ensure_ascii=False, indent=1, default=str)
     )
@@ -297,19 +313,23 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--banco", type=Path)
     parser.add_argument("--datas", nargs="*", type=date.fromisoformat)
     parser.add_argument("--limite-por-classe", type=int)
+    parser.add_argument("--classes", nargs="+")  # F3-8j-uni: só as classes pedidas
     parser.add_argument("--observacoes", type=Path)
     args = parser.parse_args(argv)
     saida = _saida_em_outputs(args.saida)
     if args.executar:
         if args.banco is None:
             parser.error("--executar exige --banco")
-        resposta = _executar(args.banco, saida, args.datas, args.limite_por_classe)
+        resposta = _executar(
+            args.banco, saida, args.datas, args.limite_por_classe, args.classes
+        )
     elif args.observacoes is not None:
         resposta = json.loads(args.observacoes.read_text())
     else:
         parser.error("use --executar ou --observacoes")
     proposta = propor(resposta["observacoes"], resposta.get("datas_pedidas", []))
     proposta["limite_por_classe"] = resposta.get("limite_por_classe")
+    proposta["classes"] = resposta.get("classes")
     (saida / "proposta.json").write_text(
         json.dumps(proposta, ensure_ascii=False, indent=1)
     )

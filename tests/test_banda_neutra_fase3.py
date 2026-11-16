@@ -198,3 +198,40 @@ def test_ultimo_mes_aberto_fica_fora_das_datas(banda):
 def test_saida_fora_de_outputs_e_recusada(banda, tmp_path):
     with pytest.raises(SystemExit, match="só em outputs/"):
         banda.main(["--saida", str(tmp_path), "--observacoes", "x.json"])
+
+
+ELEGIVEIS = [
+    {"ticker": "AAAA3", "classe": "STOCK"},
+    {"ticker": "BBBB11", "classe": "FII"},
+    {"ticker": "CCCC4", "classe": "STOCK"},
+    {"ticker": "DDDD11", "classe": "UNIT"},
+    {"ticker": "EEEE11", "classe": "FII"},
+]
+
+
+def _tickers(itens):
+    return [item["ticker"] for item in itens]
+
+
+def test_filtro_por_classe_sem_limite_mantem_todos_da_classe(banda):
+    filtrados = banda.filtrar_elegiveis(ELEGIVEIS, None, ["STOCK", "UNIT"])
+    assert _tickers(filtrados) == ["AAAA3", "CCCC4", "DDDD11"]
+
+
+def test_limite_por_classe_sem_filtro_de_classe(banda):
+    filtrados = banda.filtrar_elegiveis(ELEGIVEIS, 1, None)
+    assert _tickers(filtrados) == ["AAAA3", "BBBB11", "DDDD11"]
+
+
+def test_filtro_e_limite_juntos(banda):
+    assert _tickers(banda.filtrar_elegiveis(ELEGIVEIS, 1, ["FII"])) == ["BBBB11"]
+
+
+def test_sem_filtro_nem_limite_devolve_todos_agrupados_por_classe(banda):
+    filtrados = banda.filtrar_elegiveis(ELEGIVEIS, None, None)
+    assert _tickers(filtrados) == ["AAAA3", "CCCC4", "BBBB11", "EEEE11", "DDDD11"]
+
+
+def test_classes_sem_valor_e_erro_de_uso(banda, tmp_path):
+    with pytest.raises(SystemExit):
+        banda.main(["--executar", "--saida", "outputs/x", "--classes"])

@@ -80,3 +80,34 @@ Os motivos por ano, lente e horizonte estão em `outputs/f3-8d/sonda/proposta.js
   - Bazin e o retorno: a identidade do emissor da decisão 33 (15 dos 24 pares ativo-data: espécie UNT ou ON da relação sem ISIN da companhia no GetDetail, ou complemento sem proventos para conferir) e os 8 pares de FII sem coleta da relação;
   - FII: "DY ausente" de 2018 a 2021 pelo BUG-3-42 (o provedor não lê o Informe no leiaute anterior a 2021; F3-8j-fii), em 2023 só 6 linhas do Informe do fundo até D ("menos de 12 meses com DY e valor da cota do mês anterior") e "tipo papel" em 2022, 2024 e 2025; a guarda seguinte é a fonte de eventos de cota (DD-75, F3-8l).
 - **Para o checkpoint:** se a falta da Composição do Capital antes de 2020 vale para todo emissor, como a sonda sugere (o motivo cita o exercício e não o ativo; não verificado no universo), nem o universo inteiro de uma data teria 25 valores em Graham ou Lynch antes de 2025. Medir a banda pede, nesta ordem, o F3-8k (ações antes de 2020), a resposta sobre a identidade da decisão 33 e uma amostra declarada com 25 ou mais ativos por data, cujo custo depende do reaproveitamento do F3-8e e ainda não foi medido.
+
+## 7. Universo elegível de ações (F3-8j-uni, 16/11/2026)
+
+- **Execução (DD-84):** as mesmas 8 datas da seção 6, todo o universo elegível de STOCK e UNIT (`--classes STOCK UNIT`, sem `--limite-por-classe`). Banco real só leitura; saída em `outputs/f3-8j-uni/sonda/`; de 14:57 a 19:57 (horário de Brasília), 5 h, abaixo da estimativa de 7 a 10 h registrada antes (o universo das datas antigas é menor: 75 ações em 2018 contra 173 em 2023). 13.055 observações, `sem_analise` vazio.
+- **Ações por data:** 75 (2018), 86 (2019), 124 (2020), 115 (2021), 152 (2022), 173 (2023), 146 (2024), 144 (2025).
+- **Valores por lente no horizonte de 12 meses** (com valor / com valor e retorno):
+
+| Lente | 2018 | 2019 | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 |
+|---|---|---|---|---|---|---|---|---|
+| Gordon | 0 | 0 | 1 / 1 | 22 / 10 | 44 / 15 | 43 / 19 | 40 / 23 | 39 / 24 |
+| Graham | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 39 / 19 |
+| Bancos | 0 | 0 | 0 | 0 | 0 | 3 / 0 | 1 / 0 | 3 / 0 |
+| Bazin | 0 | 0 | 0 | 0 | 0 | 1 / 1 | 1 / 1 | 1 / 1 |
+| Lynch | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+  Por lente e ano, com os motivos e os horizontes de 24 e 36 meses: `outputs/f3-8j-uni/sonda/proposta.json` (`cobertura`).
+- **Banda, por lente e horizonte:**
+  - **Gordon, 12 meses: banda de 65,0%.** Datas com quintis: 2022, 2023, 2024 e 2025 (2021 tem 22 valores, abaixo de 25); fronteira em 30/06/2023; calibração com as 44 observações de 2022 (15 com retorno), 43 excluídas pela fronteira (as de 2023, que terminam em 2024), validação com 79 (2024 e 2025, 47 com retorno). Estados na calibração: 3 sinal positivo, 22 neutro, 19 sinal negativo; na validação: 1, 42 e 36. Os retornos médios por estado estão no `proposta.json` e só descrevem: com 15 retornos na calibração e 1 observação de sinal positivo na validação, não sustentam leitura nenhuma.
+  - **Gordon, 24 e 36 meses:** abstém, "nenhuma observação de calibração termina até a fronteira" (3 e 2 datas com quintis; a primeira metade termina depois da fronteira).
+  - **Graham, 12 meses:** abstém pelo mesmo motivo; só 2025 forma quintis (39 valores), e uma data sozinha não tem calibração. 24 e 36 meses: "lente sem data com quintis formados".
+  - **Lynch, Bazin e Bancos, os três horizontes:** "lente sem data com quintis formados".
+- **O que trava cada lente no universo:**
+  - Graham e Lynch: "sem Composição do Capital no documento do lucro" em toda janela com exercício anterior a 2020, para todo emissor (89 em 2021, por exemplo), o que confirma no universo o que a seção 6 só supunha; a proposta da fonte está em `acoes-por-exercicio-3.md` §4, para o Marcos. Em 2025, Graham passa; Lynch ainda abstém por "perfil não demonstrado: DY comum ausente ou não confiável" (33), "fator oficial B3 indisponível" (34, a coleta da B3) e "escala das ações indeterminada" (16).
+  - Bazin: "complemento da coleta não guardado para conferir o ISIN do ticker no pregão" é o primeiro motivo em todo ano (349 no horizonte de 12 meses), seguido de "sem coleta da relação de proventos do emissor" (136). A recoleta da decisão 43 cobriu só a amostra declarada; o universo não tem a relação da B3 coletada.
+  - Retorno total: falta em 623 das 1.015 observações de 12 meses; motivos: "sem coleta da relação de proventos do emissor" (171), "complemento sem proventos para conferir" (130), "espécie PN da relação sem ISIN da companhia no GetDetail" (117) e "espécie UNT" (49). É a mesma coleta da B3 e a identidade da decisão 33.
+  - Bancos: cerca de 9 bancos no universo por data ("modelo banco fora do escopo do método" nas outras lentes), e a lente teve valor em no máximo 3. Pela regra da seção 1, que exige 25 valores na data, a lente de bancos não forma quintis com nenhuma cobertura: é limite do número de bancos listados, não de dado.
+- **Para o checkpoint (decisões do Marcos, sem efeito até lá):**
+  1. A única banda medida (Gordon, 12 meses, 65,0%) vem de uma data de calibração; publicá-la ou esperar mais datas (as mensais em vez das 8 de junho, por exemplo) é decisão de amostra.
+  2. Graham e Lynch antes de 2025 dependem da regra das ações antes de 2020 (F3-8k).
+  3. Bazin e o retorno do universo pedem a coleta da relação de proventos da B3 para todos os emissores, fora do escopo da decisão 43 (amostra declarada); medir antes o volume, como no F3-8d-col.
+  4. A lente de bancos não chega a 25 valores por data; a banda dela pede outra regra (agrupar datas, por exemplo) ou fica sem banda.
