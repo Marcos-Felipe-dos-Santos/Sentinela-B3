@@ -368,3 +368,5 @@ Os sete bugs abertos em oito casos xfail estritos foram migrados à proposta nã
 | BUG-3-45 | Retorno usa sufixo 4→PN e perde proventos PNA/PNB comprovados pelo ISIN | backtesting/backtest_pit.py | Gemini C1, 17/11/2026 | `test_bug_3_45_especie_isin_backtest.py` | F3-AUD-GC1 | corrigido |
 
 | BUG-3-46 | Retorno reinveste naturezas de dinheiro fora de dividendos/JCP sem abstenção | backtesting/backtest_pit.py | Gemini C2, 17/11/2026 | `test_bug_3_46_natureza_provento_backtest.py` | F3-AUD-GC2 | corrigido |
+
+| BUG-3-47 | Deslistada exige negócio no dia do fim e falta de cotação em T confirma suspensão sem prova | backtesting/backtest_pit.py | Gemini C4, 17/11/2026 | `test_bug_3_47_estado_terminal_backtest.py` | F3-AUD-GC4 | corrigido |

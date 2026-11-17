@@ -172,8 +172,9 @@ def retorno_total(
     dentro = sorted((dia, p) for dia, p in precos.items() if inicio <= dia <= limite)
     if any(not _finito(p) or p <= 0 for _, p in dentro):
         return _abstencao("preço não positivo ou não finito no intervalo")
-    if deslistagem is not None and limite not in precos:
-        return _abstencao("último fechamento da deslistagem indisponível")
+    if deslistagem is not None:
+        # A data formal pode não ter negócio; caixa começa no último fechamento.
+        limite = dentro[-1][0]
     suspensao = deslistagem is None and fim not in precos
     if suspensao:
         if not suspensao_confirmada:
@@ -516,6 +517,14 @@ class BacktestPIT:
             evidencia = {"ticker": ticker, "precos": linhas, "estado_terminal": estado}
             return retorno, None, None, None, evidencia
         estado = self._estado_terminal(cnpj, ticker, fim, fim in precos)
+        encerrada = estado["deslistagem"] is not None and estado["deslistagem"] <= fim
+        fim_ativo = (
+            max((d for d in precos if d <= estado["deslistagem"]), default=inicio)
+            if encerrada
+            else fim
+        )
+        # Data com no último negócio só pode ter data ex depois da saída.
+        corte_com = fim_ativo if encerrada else date.fromordinal(fim.toordinal() + 1)
 
         emissor = ticker[:4]
         relacao = b3_proventos.proventos_ate(
@@ -555,7 +564,7 @@ class BacktestPIT:
                     if cotado <= 0 or valor < 0:
                         motivo = "provento bruto ou unidade inválidos"
                         break
-                    if inicio < ex <= fim:
+                    if inicio < ex <= fim_ativo:
                         if item.get("natureza") not in NATUREZAS:
                             motivo = "natureza de provento não prevista na ficha"
                             break
@@ -566,7 +575,7 @@ class BacktestPIT:
                         data_com = date.fromisoformat(data_com) if data_com else None
                     except ValueError:
                         data_com = None
-                    if data_com is None or inicio <= data_com <= fim:
+                    if data_com is None or inicio <= data_com < corte_com:
                         motivo = "relação de proventos contém registros sem prova no horizonte"
                         break
         if motivo:
@@ -581,7 +590,7 @@ class BacktestPIT:
                     data_com = date.fromisoformat(evento["data_com"])
                 except (KeyError, TypeError, ValueError):
                     data_com = None
-                if data_com is None or inicio <= data_com <= fim:
+                if data_com is None or inicio <= data_com < corte_com:
                     motivo_evento = "evento em ações sem prova no horizonte"
                     break
             for evento in eventos_lidos["eventos"]:
@@ -591,7 +600,7 @@ class BacktestPIT:
                         data_com = date.fromisoformat(evento["data_com"])
                     except (KeyError, TypeError, ValueError):
                         data_com = None
-                    if data_com is not None and inicio <= data_com <= fim:
+                    if data_com is not None and inicio <= data_com < corte_com:
                         motivo_evento = (
                             evento.get("motivo_data_ex")
                             or "evento em ações sem data ex demonstrada no horizonte"
@@ -599,7 +608,7 @@ class BacktestPIT:
                         break
                     continue
                 data_ex = date.fromisoformat(ex)
-                if not inicio < data_ex <= fim:
+                if not inicio < data_ex <= fim_ativo:
                     continue
                 if isin is None:
                     # sem o ISIN do ticker, o evento do emissor pode ser do papel
@@ -734,21 +743,12 @@ class BacktestPIT:
                 "suspensao_confirmada": False,
                 "motivo_deslistagem": self._motivo_cancelamento(cnpj),
             }
-        try:
-            referencia_atual = date.fromisoformat(registro[0])
-        except ValueError:
-            return {
-                "deslistagem": None,
-                "suspensao_confirmada": False,
-                "motivo_deslistagem": None,
-            }
+        # FCA e ausência de negócio em T não comprovam suspensão. Sem fonte
+        # explícita desse estado, o cálculo exige preço final ou se abstém.
         return {
             "deslistagem": None,
             "motivo_deslistagem": None,
-            "suspensao_confirmada": (
-                not preco_final_disponivel
-                and (data_fim is not None or referencia_atual >= fim)
-            ),
+            "suspensao_confirmada": False,
         }
 
     def _motivo_cancelamento(self, cnpj):

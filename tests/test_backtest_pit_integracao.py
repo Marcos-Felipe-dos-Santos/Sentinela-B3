@@ -262,7 +262,7 @@ def test_motivo_cancelamento_normaliza_cnpj_e_preserva_cache():
     assert cadastro.leituras == 1
 
 
-def test_fca_sem_fim_confirma_suspensao_e_falta_de_fca_permanece_desconhecida(
+def test_fca_sem_fim_nao_comprova_suspensao_e_falta_de_fca_permanece_desconhecida(
     monkeypatch,
 ):
     from sentinela.data.referencia import universo
@@ -279,7 +279,7 @@ def test_fca_sem_fim_confirma_suspensao_e_falta_de_fca_permanece_desconhecida(
     executor = BacktestPIT(
         _BancoRetornos([]), None, hoje=date(2026, 11, 13), cache_dir="cache"
     )
-    assert executor._estado_terminal("cnpj", "ABEV3", T, False)["suspensao_confirmada"]
+    assert executor._estado_terminal("cnpj", "ABEV3", T, False)["suspensao_confirmada"] is False
     assert executor._estado_terminal(None, "ABEV3", T, False) == {
         "deslistagem": None,
         "suspensao_confirmada": False,
@@ -304,7 +304,7 @@ def test_fca_com_fim_apos_horizonte_preserva_estado_listado(monkeypatch):
     )
     assert executor._estado_terminal("cnpj", "ABEV3", T, False) == {
         "deslistagem": None,
-        "suspensao_confirmada": True,
+        "suspensao_confirmada": False,
         "motivo_deslistagem": None,
     }
 

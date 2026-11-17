@@ -460,9 +460,10 @@ def test_preco_abaixo_de_um_real_vale_e_zero_abstem():
     assert zero["abstencao"] == "preço não positivo ou não finito no intervalo"
 
 
-def test_deslistagem_sem_fechamento_do_ultimo_pregao_abstem():
+def test_deslistagem_sem_negocio_no_dia_exige_calendario_do_cdi():
     saida = retorno_total({D: 10, T: 11}, inicio=D, fim=T, deslistagem=EX)
-    assert saida["abstencao"] == "último fechamento da deslistagem indisponível"
+    assert saida["retorno"] is None
+    assert saida["abstencao"] == "calendário do CDI indisponível no horizonte"
 
 
 def test_suspensao_sem_o_pregao_final_no_calendario_abstem():
