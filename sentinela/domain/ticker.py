@@ -30,3 +30,13 @@ def validar(texto: object) -> str:
     if ticker is None:
         raise ValueError(f"ticker inválido: {texto!r}")
     return ticker
+
+
+def tickers_oficiais(indice, candidatos: list[str]) -> list[str]:
+    """Os candidatos que o índice oficial conhece, sem repetição e em ordem.
+
+    Não presume que um código antigo é alias de uma identidade atual. Sem índice, nenhum.
+    """
+    if indice is None:
+        return []
+    return sorted({t for t in candidatos if indice.buscar(t) is not None})

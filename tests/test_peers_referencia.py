@@ -99,7 +99,7 @@ def test_cobertura_curta_e_declarada():
 
 
 def test_cli_nao_inventa_alias_para_codigo_antigo():
-    from auditar_recomendacoes import tickers_oficiais
+    from sentinela.domain.ticker import tickers_oficiais
 
     assert tickers_oficiais(indice_teste(), ["VIIA3", "TSTA3", "TSTA3"]) == ["TSTA3"]
     assert tickers_oficiais(None, ["TSTA3"]) == []

@@ -20,6 +20,7 @@ import pandas as pd
 from config import DISTRESSED_TICKERS
 from fii_engine import FIIEngine
 from market_engine import MarketEngine
+from sentinela.domain.ticker import tickers_oficiais
 from sentinela.services.asset_classifier import AssetClassifier
 from technical_engine import TechnicalEngine
 from valuation_engine import ValuationEngine
@@ -43,13 +44,6 @@ TICKERS_AUDITORIA: list[str] = sorted(
     }
 )
 HIGH_RISK_SHOULD_NOT_BE_STRONG_BUY = DISTRESSED_TICKERS
-
-
-def tickers_oficiais(indice, candidatos: list[str]) -> list[str]:
-    """Não presume que um código antigo é alias de uma identidade atual."""
-    if indice is None:
-        return []
-    return sorted({t for t in candidatos if indice.buscar(t) is not None})
 
 
 LOG_DIR = "logs"
