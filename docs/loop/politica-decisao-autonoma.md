@@ -39,6 +39,7 @@ Toda decisão delegada das classes 2 e 3 é revista pela **outra família** na p
 5. **Volume:** projeção de brutos acima de 100 GB, ou disco livre abaixo do dobro da projeção, medido no sistema de arquivos onde está `data/`, dentro do WSL (decisão 39 do Marcos, 11/11/2026; antes, 20 GB).
 6. **Decisão delegada contestada** sem acordo entre as duas famílias.
 7. **Três reprovações de código ou de regra** no mesmo item (o limite do protocolo). Reprovação só de texto não conta.
+8. **Aceite escrito que não se cumpre** (Marcos, 16/11/2026, depois da DD-85): quando a condição de aceite de um item não pode ser cumprida, a saída é `[!]`, não uma decisão delegada da classe 2 que a contorne.
 
 Num `[!]`, vale a regra "Item bloqueado": registrar, pular para os itens independentes e parar quando não houver mais nenhum.
 

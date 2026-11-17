@@ -111,3 +111,9 @@ Os motivos por ano, lente e horizonte estão em `outputs/f3-8d/sonda/proposta.js
   2. Graham e Lynch antes de 2025 dependem da regra das ações antes de 2020 (F3-8k).
   3. Bazin e o retorno do universo pedem a coleta da relação de proventos da B3 para todos os emissores, fora do escopo da decisão 43 (amostra declarada); medir antes o volume, como no F3-8d-col.
   4. A lente de bancos não chega a 25 valores por data; a banda dela pede outra regra (agrupar datas, por exemplo) ou fica sem banda.
+
+## 8. Decisões do Marcos (16/11/2026, noite)
+
+- **Gordon, 12 meses:** os 65,0% não são adotados. Uma data de calibração com 15 observações com retorno é insuficiente. Status: **não calibrada, dados insuficientes**; o backtest segue sem banda em todas as lentes.
+- **Bancos:** fora da banda até existirem as regras específicas de bancos. A regra dos 25 valores por data (seção 1) não muda.
+- **Pendências de dados**, registradas em `docs/loop/pendencias.md`: as ações antes de 2020 (Graham e Lynch, `acoes-por-exercicio-3.md`) e a coleta completa da relação de proventos da B3 (faltam 623 dos 1.015 retornos de 12 meses no universo).
