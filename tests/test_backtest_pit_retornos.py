@@ -120,6 +120,7 @@ def _executar(
 def _provento(especie, ex, valor, cotado="1"):
     return {
         "especie": especie,
+        "natureza": "DIVIDENDO",
         "data_ex": ex.isoformat(),
         "valor_bruto": valor,
         "cotado_por": cotado,

@@ -139,6 +139,7 @@ def test_provento_bruto_reinvestido_e_evento_de_outra_especie_ignorado(monkeypat
             "proventos": [
                 {
                     "especie": "ON",
+                    "natureza": "DIVIDENDO",
                     "data_ex": EX.isoformat(),
                     "valor_bruto": "1,00",
                     "cotado_por": "1",

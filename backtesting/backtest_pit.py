@@ -25,7 +25,7 @@ from sentinela.data.pit.serie_ajustada import (
     ajustar,
     evento_emite_mesmo_papel,
 )
-from sentinela.data.proventos_b3 import ESPECIE_DO_ISIN
+from sentinela.data.proventos_b3 import ESPECIE_DO_ISIN, NATUREZAS
 
 AVISO_EXPLORATORIO = "possível reapresentação posterior não observável"
 HORIZONTES = (12, 24, 36)
@@ -556,6 +556,9 @@ class BacktestPIT:
                         motivo = "provento bruto ou unidade inválidos"
                         break
                     if inicio < ex <= fim:
+                        if item.get("natureza") not in NATUREZAS:
+                            motivo = "natureza de provento não prevista na ficha"
+                            break
                         proventos.append({"data_ex": ex, "valor": valor / cotado})
                 for item in relacao.get("sem_prova", []):
                     data_com = item.get("data_com")

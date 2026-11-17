@@ -366,3 +366,5 @@ Os sete bugs abertos em oito casos xfail estritos foram migrados à proposta nã
 | BUG-3-44 | reset_db remove o banco único e resultados_analise; botão expõe exclusão total | database.py, app.py | Gemini D1, 17/11/2026 | `test_bug_3_44_reset_banco_unico.py` | F3-AUD-D1 | corrigido |
 
 | BUG-3-45 | Retorno usa sufixo 4→PN e perde proventos PNA/PNB comprovados pelo ISIN | backtesting/backtest_pit.py | Gemini C1, 17/11/2026 | `test_bug_3_45_especie_isin_backtest.py` | F3-AUD-GC1 | corrigido |
+
+| BUG-3-46 | Retorno reinveste naturezas de dinheiro fora de dividendos/JCP sem abstenção | backtesting/backtest_pit.py | Gemini C2, 17/11/2026 | `test_bug_3_46_natureza_provento_backtest.py` | F3-AUD-GC2 | corrigido |
