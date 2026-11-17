@@ -158,7 +158,7 @@ def test_ticker_pn_le_so_a_especie_pn_com_milhar_e_lote(monkeypatch):
             _provento("PN", EX, "1.000,00", "1.000"),
         ],
     )
-    retorno, *_ = _executar(monkeypatch, BASE, ticker="ABEV4")
+    retorno, *_ = _executar(monkeypatch, BASE, ticker="ABEV4", isin="BRABEVACNPR1")
     # 1.000,00 por lote de 1.000 = R$ 1 por ação, comprada a 10: 1,1 × 1,1 − 1
     assert retorno["retorno"] == pytest.approx(0.21)
 
@@ -178,7 +178,7 @@ def test_provento_zero_e_valido_e_nao_altera_o_retorno(monkeypatch):
 
 def test_especie_sem_mapeamento_abstem_com_motivo(monkeypatch):
     _Fontes(monkeypatch)
-    retorno, *_ = _executar(monkeypatch, BASE, ticker="ABEV11")
+    retorno, *_ = _executar(monkeypatch, BASE, ticker="ABEV11", isin="BRABEVCDAM11")
     assert retorno["abstencao"] == "espécie do ticker não mapeada para proventos brutos"
 
 

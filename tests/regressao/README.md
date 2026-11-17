@@ -364,3 +364,5 @@ Os sete bugs abertos em oito casos xfail estritos foram migrados à proposta nã
 | BUG-3-43 | Backtest aplicava o fator de evento cujo ISIN de origem é o ticker, mas cujo `ativo_emitido` é outra espécie; CYRE3 e RENT3, D=30/06/2025, produziam retorno numérico sem reconciliação | guarda compartilhada de `sentinela/data/pit/serie_ajustada.py`, usada por `backtesting/backtest_pit.py` | auditoria C-1 da Fase 3, 16/11/2026 | `test_bug_3_43_evento_outra_especie_retorno.py` | correção C-1 | corrigido |
 
 | BUG-3-44 | reset_db remove o banco único e resultados_analise; botão expõe exclusão total | database.py, app.py | Gemini D1, 17/11/2026 | `test_bug_3_44_reset_banco_unico.py` | F3-AUD-D1 | corrigido |
+
+| BUG-3-45 | Retorno usa sufixo 4→PN e perde proventos PNA/PNB comprovados pelo ISIN | backtesting/backtest_pit.py | Gemini C1, 17/11/2026 | `test_bug_3_45_especie_isin_backtest.py` | F3-AUD-GC1 | corrigido |

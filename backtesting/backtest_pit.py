@@ -25,6 +25,7 @@ from sentinela.data.pit.serie_ajustada import (
     ajustar,
     evento_emite_mesmo_papel,
 )
+from sentinela.data.proventos_b3 import ESPECIE_DO_ISIN
 
 AVISO_EXPLORATORIO = "possível reapresentação posterior não observável"
 HORIZONTES = (12, 24, 36)
@@ -527,9 +528,14 @@ class BacktestPIT:
         proventos = []
         motivo = relacao.get("abstencao")
         if motivo is None:
-            sufixo = ticker[-1:]
-            especie_esperada = {"3": "ON", "4": "PN"}.get(sufixo)
-            if especie_esperada is None:
+            especie_esperada = (
+                ESPECIE_DO_ISIN.get(isin[6:11])
+                if isinstance(isin, str) and len(isin) == 12
+                else None
+            )
+            # Sem registros nem ISIN não há provento a associar; os eventos
+            # continuam exigindo sua própria prova abaixo (BUG-3-33).
+            if especie_esperada is None and (isin is not None or relacao["proventos"]):
                 motivo = "espécie do ticker não mapeada para proventos brutos"
             else:
                 for item in relacao["proventos"]:
