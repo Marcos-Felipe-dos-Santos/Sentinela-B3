@@ -205,3 +205,5 @@ Decisões delegadas (`docs/loop/politica-decisao-autonoma.md`, §1). O Marcos ra
   - Rendimentos do FII (`rendimentos-fii-retorno-3.md` §6): fonte, o Informe da CVM; os dois meses divergentes do HGLG investigados (emissão de cotas no mês, §4); data ex inferida pela regra conservadora, a mais tardia na dúvida.
   - Processo: decisão da classe 2 que contorna um aceite não cumprido deve parar em `[!]`; registrado na política, §3, item 8.
   - Escopo: o F3-9c-aud fica com o Marcos (teste do BUG-2C-58); F3-10a, F3-10b e o checkpoint não começam: auditoria completa do projeto antes da Fase 4.
+
+- 2026-11-17 · codex · decisão delegada DD-87: F3-AUD-D1, hash RENDER_ANTERIOR abrange também a Config → atualizar somente o hash esperado para a retirada autorizada do reset, depois de comprovar igualdade byte a byte de todo app.py antes de `elif modo == "Config":`; nova regressão executa a Config e proíbe o botão. Teste comum, fora da lista de protegidos; nenhuma asserção removida (classe 4, desempate 4 e 6; alternativas: manter o botão destrutivo contra o pedido do Marcos, ou enfraquecer o teste para ignorar a Config).

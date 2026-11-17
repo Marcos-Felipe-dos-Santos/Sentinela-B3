@@ -38,9 +38,9 @@ def test_database_reset_db(db, db_path):
     # Write some data to create wal/shm
     db.salvar_analise({'ticker': 'TEST3', 'score_final': 80})
     
-    # Even if they don't exist yet, we check reset_db executes without error
-    # and reinitializes
-    db.reset_db()
+    # O reset legado é recusado antes de tocar o banco único (BUG-3-44).
+    with pytest.raises(RuntimeError, match="Reset destrutivo desativado"):
+        db.reset_db()
     
     # Should still exist
     assert os.path.exists(db_path)

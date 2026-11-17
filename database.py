@@ -157,22 +157,8 @@ class DatabaseManager:
                     logger.error(f"JSON corrompido para {ticker}: {e}")
             return None
 
-    def reset_db(self):
-        import os
-        base_path, _ = os.path.splitext(self.db_path)
-        db_paths = {
-            self.db_path,
-            f"{self.db_path}-wal",
-            f"{self.db_path}-shm",
-            f"{base_path}.db-wal",
-            f"{base_path}.db-shm",
-            f"{base_path}.sqlite-wal",
-            f"{base_path}.sqlite-shm",
-        }
-        removed = False
-        for db_path in db_paths:
-            if os.path.exists(db_path):
-                os.remove(db_path)
-                removed = True
-        if removed:
-            self._init_db()
+    def reset_db(self) -> None:
+        """Recusa o reset legado para preservar todas as tabelas do banco único."""
+        raise RuntimeError(
+            "Reset destrutivo desativado: o banco único deve ser preservado."
+        )

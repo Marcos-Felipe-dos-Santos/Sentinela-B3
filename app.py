@@ -535,20 +535,4 @@ elif modo == "Config":
     st.title("⚙️ Sistema")
     
     st.write("---")
-    st.subheader("Zona de Perigo")
-    
-    # Confirmação em dois passos restaurada
-    if st.button("⚠️ RESETAR BANCO DE DADOS", type="primary"):
-        st.session_state['reset_confirm'] = True
-        
-    if st.session_state.get('reset_confirm'):
-        st.warning("Tem certeza? Isso apaga TODO o histórico e carteira. Irreversível.")
-        c1, c2 = st.columns(2)
-        if c1.button("Sim, apagar tudo"):
-            db.reset_db()
-            st.success("Sistema resetado.")
-            st.session_state.clear()
-            st.rerun()
-        if c2.button("Cancelar"):
-            st.session_state['reset_confirm'] = False
-            st.rerun()
+    st.info("O banco único preserva o histórico de análises e os dados locais.")

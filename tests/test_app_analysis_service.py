@@ -26,7 +26,8 @@ from sentinela.services.analyze_asset import AnalysisService as ServicoReal
 
 APP = Path(__file__).resolve().parents[1] / "app.py"
 AST_ANTERIOR = "a53439c2bf6c8b34d778754e7d3a81cccd0cb1fd5fcdb8fc9bfa110605590b4f"
-RENDER_ANTERIOR = "065535f757513363a286a7db0851e7446acb338f3deded6fafdf643a96426730"
+# Gemini D1: Config sem reset destrutivo; trecho anterior à Config preservado.
+RENDER_ANTERIOR = "0d71cf7445382ebd0c387ee571d829f96b7fa44cf3b975162009b441f66c5b46"
 
 
 ORQUESTRACAO_ANTERIOR = """
