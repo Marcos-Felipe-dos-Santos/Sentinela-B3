@@ -281,7 +281,7 @@ BUG-2A-19 a 23: registrados no F2B-36 (18/10/2026). BUG-2B-01 a 12: confirmados 
 
 | ID | Sintoma | Evidência | Origem | Teste | Corrige | Estado |
 |---|---|---|---|---|---|---|
-| BUG-2C-58 | Leitores CLI fabricam síntese zero ou pedem veredito para apresentação1.0 | Ficha apresentação1.0§8, lentes separadas sem sinal | inventário F2C-4 | `test_bug_2c_58_cli_lentes.py` | F2C-4 | corrigido |
+| BUG-2C-58 | Leitores CLI fabricam síntese zero ou pedem veredito para apresentação1.0 | Ficha apresentação1.0§8, lentes separadas sem sinal | inventário F2C-4 | `test_bug_2c_58_cli_lentes.py` (desde o F3-9c-aud, a invariante da linha de comando mora no apresentador das lentes do app, `test_app_mostra_lente_abstida_sem_score_ou_valor_zero`; o script `auditar_recomendacoes.py` saiu) | F2C-4 | corrigido |
 | BUG-2C-59 | Invariantes históricos ignoram números inválidos no transporte valuation/raw | Invariantes externos de finitude e score[0,100], compatibilidadeF2C-4 | revisão F2C-4 | `test_bug_2c_59_invariantes_historicas.py` | F2C-4 | corrigido |
 | BUG-2B-51 | venda parcial recalcula o preço médio pela média ponderada com o preço de venda (100 a R$ 10, venda de 50 a R$ 20: PM vira R$ 0,00), contra a regra do custo médio | database.py (adicionar_posicao) | auditoria rápida do fechamento (F2B-69), "Ficam para o Marcos" (xfail sem ID); registrado pós-fechamento, 25/10/2026 | tests/test_database_posicoes.py::test_venda_parcial_preserva_preco_medio (mantido nesse arquivo, fora de `tests/regressao/`) | F3-P02 (origem F2C-48) | corrigido (F3-P02) |
 

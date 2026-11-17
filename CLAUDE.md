@@ -76,7 +76,6 @@ A lista de exceções do vulture (`vulture_whitelist.py`) traz o motivo de cada 
 | `peers_engine.py` | Comparação descritiva por referência oficial, classe, espécie e modelo documental; sem mapa fixo |
 | `ai_core.py` | LLM: Groq → Gemini → Ollama |
 | `auditoria.py` | Invariantes e leitura das lentes vigentes; métodos duplicados aposentados |
-| `auditar_recomendacoes.py` | Validação contra tickers conhecidos |
 
 **Provedores:** `cvm_provider.py`, `cvm_fii_provider.py`, `brapi_provider.py`. O Fundamentus
 saiu no F2A-22. `cvm_ticker_map.py` e `cvm_fii_map.py` não são mais lidos pela cascata
@@ -96,13 +95,13 @@ Na 2B entraram `taxas.py` (cesta real), `providers/tesouro.py` (CSV oficial),
 e `providers/b3_fundos.py` (Informe e eventos de cota; corte temporal da taxa e das coletas,
 F2B-58). `gordon_cvm.entradas(..., modelo="banco")` alimenta a lente de bancos (F2B-32), e o
 IF.data lê também a inadimplência do relatório 16, só para leitura.
-`domain/ticker.py` valida o ticker (lista permitida).
+`domain/ticker.py` valida o ticker (lista permitida) e filtra candidatos pelo índice oficial (`tickers_oficiais`, desde o F3-9c-aud).
 
 **Camada nova (`sentinela/`).** A V1 também usa `methods/qualidade.py`,
 `methods/registry.py` (quadros descritivos) e `domain/apresentacao.py`. Já usados pela V1: `sentinela/methods/` (`base.py` e seis
 métodos nos motores, mais `bancos.py`, a lente de bancos do motor de ações desde o F2B-32) e `domain/units.py`, chamados por `valuation_engine.py` e `fii_engine.py`
 (extraídos na Fase 1 e atualizados nas Fases 2A/2B/2C); `services/asset_classifier.py` (`app.py`,
-`market_engine.py`, `auditar_recomendacoes.py`) e `domain/provenance.py`
+`market_engine.py`) e `domain/provenance.py`
 e `enums.py` (`market_engine.py`, `valuation_engine.py`). `sentinela/reports/rastreabilidade.py`
 roda por linha de comando (`python -m`); o app reutiliza a apresentação do quadro de qualidade. **NÃO conectados** (só os testes
 importam): `domain/models.py` (usado por `services/analyze_asset.py` e
