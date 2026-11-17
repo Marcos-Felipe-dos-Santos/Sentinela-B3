@@ -370,3 +370,5 @@ Os sete bugs abertos em oito casos xfail estritos foram migrados à proposta nã
 | BUG-3-46 | Retorno reinveste naturezas de dinheiro fora de dividendos/JCP sem abstenção | backtesting/backtest_pit.py | Gemini C2, 17/11/2026 | `test_bug_3_46_natureza_provento_backtest.py` | F3-AUD-GC2 | corrigido |
 
 | BUG-3-47 | Deslistada exige negócio no dia do fim e falta de cotação em T confirma suspensão sem prova | backtesting/backtest_pit.py | Gemini C4, 17/11/2026 | `test_bug_3_47_estado_terminal_backtest.py` | F3-AUD-GC4 | corrigido |
+
+| BUG-3-48 | FCA terminal lê entregas posteriores a T e cache mistura horizontes | backtesting/backtest_pit.py | Gemini A3, 17/11/2026 | `test_bug_3_48_fca_terminal_apos_horizonte.py` | F3-AUD-GA3 | corrigido |

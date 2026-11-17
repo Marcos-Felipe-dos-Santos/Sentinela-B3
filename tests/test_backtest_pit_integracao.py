@@ -214,7 +214,7 @@ def test_fca_com_fim_de_negociacao_classifica_deslistagem(monkeypatch):
         "_fca_por_referencia",
         lambda conn, corte: (
             (conn is executor.conn)
-            and (corte == date.max.isoformat())
+            and (corte == date.fromordinal(T.toordinal() + 1).isoformat())
             and {
                 (cnpj, "2022-12-31"): [
                     {

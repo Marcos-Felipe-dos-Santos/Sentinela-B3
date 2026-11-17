@@ -264,7 +264,7 @@ class BacktestPIT:
         self.cadastro = cadastro
         self.hoje = hoje
         self.cache_dir = Path(cache_dir)
-        self._fca_tickers = None
+        self._fca_tickers: dict[date, dict[tuple[str, str], tuple[str, dict]]] = {}
         self._motivos_cancelamento = None
 
     def executar(
@@ -706,19 +706,22 @@ class BacktestPIT:
             }
         from sentinela.data.referencia import universo
 
-        if self._fca_tickers is None:
-            referencias = universo._fca_por_referencia(self.conn, date.max.isoformat())
-            self._fca_tickers = {}
+        if fim not in self._fca_tickers:
+            # O leitor usa corte exclusivo; inclui as entregas do próprio dia T.
+            corte = date.fromordinal(fim.toordinal() + 1).isoformat()
+            referencias = universo._fca_por_referencia(self.conn, corte)
+            por_ticker: dict[tuple[str, str], tuple[str, dict]] = {}
             for (cnpj_linha, referencia), linhas in referencias.items():
                 for linha in linhas or ():
                     codigo = (linha.get("Codigo_Negociacao") or "").strip().upper()
                     if not codigo:
                         continue
                     chave = (cnpj_linha, codigo)
-                    anterior = self._fca_tickers.get(chave)
+                    anterior = por_ticker.get(chave)
                     if anterior is None or referencia > anterior[0]:
-                        self._fca_tickers[chave] = (referencia, linha)
-        registro = self._fca_tickers.get((cnpj, ticker.upper()))
+                        por_ticker[chave] = (referencia, linha)
+            self._fca_tickers[fim] = por_ticker
+        registro = self._fca_tickers[fim].get((cnpj, ticker.upper()))
         if registro is None:
             return {
                 "deslistagem": None,
