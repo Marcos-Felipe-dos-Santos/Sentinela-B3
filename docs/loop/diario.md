@@ -1695,3 +1695,12 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Inventário** (`docs/limpeza/inventario.md`): vulture ≥ 80% 7 → 7, deptry 1 → 1, Ruff completo 155 → 152.
 - **Gate:** 5062 passed, 1 skipped, 1 warning (exatamente a conta acima); golden `500645a3…` igual (`outputs/f3-9c-aud-3-gate.txt`). Aviso fora da linha do item (classe 4): `CLAUDE.md`, `docs/limpeza/inventario.md`, `pyproject.toml` e `tests/regressao/README.md`, as referências e a documentação do BUG-2C-58 pedidas pela decisão.
 - **Revisão (`/review-diff`): PODE COMMITAR.** Médios corrigidos: a ordem no inventário (o parágrafo do F3-9c-aud agora vem depois do resumo do F3-9c) e a redação da docstring do teste de regressão. Registrados: a seção "Fase atual" do `AGENTS.md` ainda lista os dois scripts entre os arquivos travados (é do Marcos); o teste do app confere a invariante no leitor real, e a fiação do motor até o texto da linha de comando saiu com o script.
+
+### F3-AUD-ARQ — auditorias integrais e revisão cruzada de entrada
+- **Executor:** codex.
+- Autorização: Marcos, 17/11/2026; pausa encerrada e correções das auditorias antes da 3-d e de F3-10a.
+- Retomada A: v2/fase-3 @ 9b0e74c, árvore limpa; stash antigo preservado; Python na venv; arquivos obrigatórios presentes.
+- Arquivadas sem edição as origens informadas: Gemini em docs/loop/auditorias/fase-3-gemini.md (SHA-256 77013374cd757f1442ab761444cb7e4243d86d581808556b51ecc7cccc6b58fa) e Codex em docs/loop/auditorias/fase-3-codex.md (9168ac83e2dac8cc4778a746c5a7edf7c6c2f2d3847964c4514b75b769999915). Igualdade byte a byte conferida; achados arquivados não são confirmação dinâmica nem autorização para mudar método.
+- Revisões cruzadas: DD-68, DD-70, DD-72, DD-73, DD-74, DD-75, DD-78 e DD-85 conferem nos limites registrados em pendencias.md; nenhuma contestada. DD-85 apoiada na medição exigida, sem inferir cobertura geral; DD-78 não certifica os consumidores apontados pelo Gemini.
+- Baseline: 5064 passed, 1 skipped, 1 warning (outputs/sessao-20261117-baseline-acesso.log), TMPDIR e basetemp no cache codex. Primeira tentativa no sandbox interrompida por erros de acesso ao cache; repetição com acesso autorizado verde. Nenhum código ou teste alterado, nenhuma sonda repetida.
+- Sem push, PR, leitura de .env, alteração de banco ou dado de carteira. Saídas da sessão em outputs/ (ignorado).
