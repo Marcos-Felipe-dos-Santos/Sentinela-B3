@@ -28,6 +28,11 @@ MOTIVO_COTACAO_REPETIDA = "código com mais de uma cotação no mesmo pregão"
 MOTIVO_SEM_ISIN = "código sem ISIN único nos preços do período"
 
 
+def evento_emite_mesmo_papel(evento: Mapping, isin: str) -> bool:
+    """Só o fator que emite o próprio ISIN ajusta preço ou retorno do papel."""
+    return evento.get("ativo_emitido") == isin
+
+
 def _data(texto: object) -> date | None:
     try:
         return date.fromisoformat(str(texto))
@@ -135,11 +140,11 @@ def serie_do_banco(conn, codigo: str, emissor: str, dia: date, pregoes: int) -> 
     (isin,) = isins
     lidos = b3_proventos.eventos_ate(conn, emissor, dia)
     do_papel = [e for e in lidos["eventos"] if e.get("isin") == isin]
-    mesma_especie = [e for e in do_papel if e.get("ativo_emitido") == isin]
+    mesma_especie = [e for e in do_papel if evento_emite_mesmo_papel(e, isin)]
     outra_especie = [
         e | {"motivo": MOTIVO_OUTRA_ESPECIE}
         for e in do_papel
-        if e.get("ativo_emitido") != isin
+        if not evento_emite_mesmo_papel(e, isin)
     ]
     sem_prova = [e for e in lidos["sem_prova"] if e.get("isin") == isin]
     precos = [(c.data, c.fechamento) for c in cotacoes]

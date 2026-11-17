@@ -20,7 +20,11 @@ from statistics import median
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from sentinela.data.pit.serie_ajustada import ajustar
+from sentinela.data.pit.serie_ajustada import (
+    MOTIVO_OUTRA_ESPECIE,
+    ajustar,
+    evento_emite_mesmo_papel,
+)
 
 AVISO_EXPLORATORIO = "possível reapresentação posterior não observável"
 HORIZONTES = (12, 24, 36)
@@ -604,6 +608,9 @@ class BacktestPIT:
                     motivo_evento = (
                         evento.get("motivo_sem_fator") or "fator do evento ausente"
                     )
+                    break
+                if not evento_emite_mesmo_papel(evento, isin):
+                    motivo_evento = MOTIVO_OUTRA_ESPECIE
                     break
                 eventos.append(
                     {

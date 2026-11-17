@@ -129,6 +129,7 @@ def _provento(especie, ex, valor, cotado="1"):
 def _split(ex, isin="BRABEVACNOR1", data_com=None, fator=2, **extra):
     return {
         "isin": isin,
+        "ativo_emitido": isin,
         "data_com": (data_com or date.fromordinal(ex.toordinal() - 1)).isoformat(),
         "data_ex": ex.isoformat(),
         "fator": fator,
