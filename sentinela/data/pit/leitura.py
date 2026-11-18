@@ -445,8 +445,22 @@ def _versoes_do_informe(versoes: dict[str, set], dia: date, modo: str):
     return None, vistas
 
 
+def _versoes_com_numeros(
+    versoes: dict[str, set], presentes: set[str], dia: date, modo: str
+) -> tuple[str | None, dict]:
+    """A versão selecionada não pode desaparecer por falta de complemento."""
+    motivo, escolhidas = _versoes_do_informe(versoes, dia, modo)
+    if motivo or not escolhidas:
+        return motivo, escolhidas
+    maior = max(escolhidas, key=lambda v: _inteiro(v) if _inteiro(v) is not None else -1)
+    if maior not in presentes:
+        return MOTIVO_SEM_NUMEROS, {}
+    return None, escolhidas
+
+
 def informe_fii(
-    conn: sqlite3.Connection, cnpj: str, as_of: datetime, *, modo: str = ESTRITO
+    conn: sqlite3.Connection, cnpj: str, as_of: datetime, *, modo: str = ESTRITO,
+    ano: int | None = None,
 ) -> Leitura:
     """Linhas do Informe do fundo em D: `{"registros": complemento, "composicoes": ativo}`.
 
@@ -455,15 +469,18 @@ def informe_fii(
     a regra das versões de cada uma está em `_versoes_do_informe`. A escolha entre as versões
     passadas e as guardas de versão ilegível e de conflito do complemento continuam com
     `rendimento_fii` (as mesmas da cascata). Linha sem geral de mesma referência e versão
-    fica fora, com motivo.
+    fica fora, com motivo. `ano` limita a leitura para a remontagem anual, sem alterar
+    a seleção independente de cada mês nem a leitura completa quando omitido.
     """
     dia = _dia(as_of, modo)
     geral: dict[str, dict[str, set]] = defaultdict(lambda: defaultdict(set))
     partes: dict[str, list] = defaultdict(list)
     for dt_refer, versao, parte, entrega, texto, fonte, coleta, hash_ in conn.execute(
         "SELECT dt_refer, versao, parte, data_entrega, linha_json, fonte, coleta, hash_sha256 "
-        "FROM fii_informe_linhas WHERE cnpj = ? ORDER BY dt_refer, versao, parte, linha_sha256",
-        (cnpj,),
+        "FROM fii_informe_linhas WHERE cnpj = ? "
+        "AND (? IS NULL OR substr(dt_refer, 1, 4) = ?) "
+        "ORDER BY dt_refer, versao, parte, linha_sha256",
+        (cnpj, None if ano is None else str(ano), None if ano is None else str(ano)),
     ):
         linha = linha_do_informe(texto)
         partes[parte].append((dt_refer, versao, linha, (fonte, coleta, hash_)))
@@ -476,7 +493,8 @@ def informe_fii(
     for dt_refer, versoes in sorted(geral.items()):
         if not _mes_encerrado(dt_refer, dia):
             continue  # referência que ainda não existia em D: nem dados, nem motivo
-        motivo, escolhidas = _versoes_do_informe(versoes, dia, modo)
+        presentes = {v for ref, v, _, _ in partes["complemento"] if ref == dt_refer}
+        motivo, escolhidas = _versoes_com_numeros(versoes, presentes, dia, modo)
         if motivo:
             motivos[(cnpj, dt_refer)] = motivo
         for versao, valor in escolhidas.items():

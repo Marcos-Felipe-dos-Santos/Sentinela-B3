@@ -190,34 +190,39 @@ def zip_informe_em(
     *,
     modo: str = leitura.ESTRITO,
 ) -> Path:
-    """ZIP `inf_mensal_fii_{ano}.zip` com as linhas guardadas do geral entregues antes de D.
+    """Remonta o Informe pelo leitor canônico, preservando bloqueios e modo.
 
-    Complemento e ativo/passivo entram só nas referências e versões cujo geral entrou; a
-    escolha entre versões e as guardas do Informe continuam com o leitor da cascata
-    (`rendimento_fii`), como no arquivo aberto. As linhas saem como foram guardadas.
+    As linhas mantêm o leiaute original; o controle lateral guarda os documentos
+    indisponíveis para impedir recuo silencioso no consumidor. Data/modo isolam arquivos.
     """
     dia = leitura._dia(as_of, modo)
-    visiveis: set[tuple] = set()
-    partes: dict[str, list[dict]] = {}
-    for cnpj, dt_refer, versao, parte, entrega, texto in conn.execute(
-        "SELECT cnpj, dt_refer, versao, parte, data_entrega, linha_json "
-        "FROM fii_informe_linhas WHERE substr(dt_refer, 1, 4) = ? "
-        "ORDER BY parte DESC, cnpj, dt_refer, versao, linha_sha256",
+    linhas = conn.execute(
+        "SELECT cnpj, dt_refer, versao, parte, linha_json FROM fii_informe_linhas "
+        "WHERE substr(dt_refer, 1, 4) = ? ORDER BY cnpj, dt_refer, versao, parte, linha_sha256",
         (str(ano),),
-    ):  # `parte DESC`: o geral vem antes do complemento e do ativo/passivo
-        if parte == "geral":
-            if not (
-                leitura._antes(entrega, dia) and leitura._mes_encerrado(dt_refer, dia)
-            ):
-                continue
-            visiveis.add((cnpj, dt_refer, versao))
-        elif (cnpj, dt_refer, versao) not in visiveis:
-            continue
-        partes.setdefault(parte, []).append(json.loads(texto))
+    ).fetchall()
+    visiveis: set[tuple[str, str, str]] = set()
+    motivos: dict[str, dict[str, str]] = {}
+    for cnpj in sorted({r[0] for r in linhas}):
+        lido = leitura.informe_fii(conn, cnpj, as_of, modo=modo, ano=ano)
+        visiveis.update(
+            (cnpj, r["Data_Referencia"], r["Versao"]) for r in lido.dados["registros"]
+        )
+        for (_, referencia), motivo in lido.motivos.items():
+            motivos.setdefault(cnpj, {})[referencia] = motivo
+    partes: dict[str, list[dict]] = {}
+    for cnpj, referencia, versao, parte, texto in linhas:
+        if (cnpj, referencia, versao) in visiveis:
+            partes.setdefault(parte, []).append(json.loads(texto))
+    destino = destino / dia.isoformat() / modo
     destino.mkdir(parents=True, exist_ok=True)
     caminho = destino / f"inf_mensal_fii_{ano}.zip"
     with _gravar(caminho) as zf:
-        for parte, linhas in sorted(partes.items()):
-            colunas = list(dict.fromkeys(c for linha in linhas for c in linha))
-            zf.writestr(f"inf_mensal_fii_{parte}_{ano}.csv", _csv(colunas, linhas))
+        for parte, registros in sorted(partes.items()):
+            colunas = list(dict.fromkeys(c for r in registros for c in r))
+            zf.writestr(f"inf_mensal_fii_{parte}_{ano}.csv", _csv(colunas, registros))
+        zf.writestr(
+            "sentinela_informe_pit.json",
+            json.dumps({"dia": dia.isoformat(), "modo": modo, "motivos": motivos}, ensure_ascii=False),
+        )
     return caminho

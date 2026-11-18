@@ -3,6 +3,7 @@
 Complementa o [e2e] de `test_servico_historico.py` nas bordas de cada etapa trocada.
 """
 
+import json
 import sqlite3
 import zipfile
 from contextlib import closing
@@ -105,7 +106,10 @@ def test_informe_exploratorio_e_ano_sem_linhas(conn, tmp_path):
     carga_cvm.carregar(conn, FII, tipo="FII_INFORME", fonte="cvm", coleta="c")
     vazio = remontagem.zip_informe_em(conn, 2010, D, tmp_path / "a")
     with zipfile.ZipFile(vazio) as z:
-        assert z.namelist() == []
+        assert z.namelist() == ["sentinela_informe_pit.json"]
+        assert json.loads(z.read("sentinela_informe_pit.json")) == {
+            "dia": "2020-03-02", "modo": leitura.ESTRITO, "motivos": {}
+        }
     hoje = datetime(2026, 11, 12, 15, tzinfo=UTC)
     estrito = remontagem.zip_informe_em(conn, 2023, hoje, tmp_path / "b")
     explorado = remontagem.zip_informe_em(
@@ -114,8 +118,10 @@ def test_informe_exploratorio_e_ano_sem_linhas(conn, tmp_path):
     with zipfile.ZipFile(estrito) as a, zipfile.ZipFile(explorado) as b:
         assert sorted(a.namelist()) == sorted(b.namelist()) == [
             "inf_mensal_fii_ativo_passivo_2023.csv", "inf_mensal_fii_complemento_2023.csv",
-            "inf_mensal_fii_geral_2023.csv",
+            "inf_mensal_fii_geral_2023.csv", "sentinela_informe_pit.json",
         ]  # fmt: skip
+        assert json.loads(a.read("sentinela_informe_pit.json"))["modo"] == leitura.ESTRITO
+        assert json.loads(b.read("sentinela_informe_pit.json"))["modo"] == leitura.EXPLORATORIO
 
 
 # --- motor histórico ------------------------------------------------------------------------
@@ -160,7 +166,7 @@ def test_provedores_lem_os_zips_remontados(conn, tmp_path):
     assert itr == tmp_path / "pit" / "itr" / "itr_cia_aberta_2020.zip"
     assert motor.cvm.baixar_dfp(2019).parent == tmp_path / "pit" / "dfp"
     informe = motor.cvm_fii.baixar_informe(2023)
-    assert informe == tmp_path / "pit" / "fii" / "inf_mensal_fii_2023.zip"
+    assert informe == tmp_path / "pit" / "fii" / "2026-11-12" / "estrito" / "inf_mensal_fii_2023.zip"
     carga_cvm.carregar(conn, DFP, tipo="DFP", fonte="cvm", coleta="c")
     entre = datetime(2020, 2, 21, 15, tzinfo=UTC)  # versão 1 da DFP entregue; a 2, não
     cedo = historico.MotorHistorico(conn, entre, tmp_path / "c", CADASTRO)

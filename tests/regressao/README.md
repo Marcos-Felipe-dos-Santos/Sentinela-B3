@@ -372,3 +372,5 @@ Os sete bugs abertos em oito casos xfail estritos foram migrados à proposta nã
 | BUG-3-47 | Deslistada exige negócio no dia do fim e falta de cotação em T confirma suspensão sem prova | backtesting/backtest_pit.py | Gemini C4, 17/11/2026 | `test_bug_3_47_estado_terminal_backtest.py` | F3-AUD-GC4 | corrigido |
 
 | BUG-3-48 | FCA terminal lê entregas posteriores a T e cache mistura horizontes | backtesting/backtest_pit.py | Gemini A3, 17/11/2026 | `test_bug_3_48_fca_terminal_apos_horizonte.py` | F3-AUD-GA3 | corrigido |
+
+| BUG-3-49 | Informe vigente bloqueado some da remontagem e desloca a janela; VPA direto não corta mês/entrega; exploratório ignora reapresentação | remontagem.py, cvm_fii_provider.py, fronteira rendimento_fii | Gemini A1, 17/11/2026 | `test_bug_3_49_informe_fii_sem_recuo.py` | F3-AUD-GA1a/GA1b | parcial: 36 corrigidos em GA1a; 8 xfail estritos em GA1b ([!], arquivo vigente ilegível) |

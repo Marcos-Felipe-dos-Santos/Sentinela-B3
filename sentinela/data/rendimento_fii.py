@@ -98,10 +98,11 @@ def _anterior(mes: tuple[int, int]) -> tuple[int, int]:
 
 
 def _por_mes(
-    registros: Iterable[Mapping],
+    registros: Iterable[Mapping], *, colunas: tuple[str, ...] = _COLUNAS_DA_CONTA,
 ) -> tuple[dict[tuple[int, int], Mapping], set[tuple[int, int]]]:
     """Um registro por mês, o de maior `Versao` (versão ilegível perde), e os meses em conflito.
 
+    O consumidor pode incluir outros campos usados, como patrimônio líquido, em `colunas`.
     Duas linhas da maior versão do mês com DY, valor da cota, cotas ou amortização diferentes
     são conflito (F2B-54 e F2B-57, BUG-2B-37): nenhuma vence pela ordem do arquivo. Duplicata
     nessas colunas não é conflito, nem com célula vazia (as duas vazias); vazio contra
@@ -123,7 +124,7 @@ def _por_mes(
             if any(
                 fii_elegibilidade.forma(registro.get(c))
                 != fii_elegibilidade.forma(atual.get(c))
-                for c in _COLUNAS_DA_CONTA
+                for c in colunas
             ):
                 conflitos.add(mes)
             if versao_ilegivel(registro) and not versao_ilegivel(atual):
@@ -194,7 +195,14 @@ IDADE_MAXIMA_MESES = 3
 
 
 def _entregue(registro: Mapping, dia_as_of: date) -> bool:
-    """Data de entrega demonstrada e anterior ao dia do as_of (o dia só vale depois do fim)."""
+    """Entrega anterior a D ou versão exploratória validada para esse mesmo dia."""
+    # Declaração exclusiva do leitor PIT exploratório, já selecionada e rotulada.
+    # A data original permanece no registro; CSV literal não produz o booleano True.
+    if (
+        registro.get("_pit_exploratorio") is True
+        and registro.get("_pit_dia") == dia_as_of.isoformat()
+    ):
+        return True
     try:
         return date.fromisoformat(str(registro.get("Data_Entrega"))[:10]) < dia_as_of
     except ValueError:

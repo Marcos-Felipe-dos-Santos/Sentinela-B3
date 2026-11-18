@@ -7,8 +7,11 @@ Schema verificado contra inf_mensal_fii_*_2024.csv (CVM, 2024-06):
 
 Observação: vacância física NÃO está disponível no informe mensal.
 """
+import json
 import logging
+import math
 import zipfile
+from collections import defaultdict
 from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -16,8 +19,9 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 from cvm_download import baixar_arquivo
-from sentinela.data import proveniencia
+from sentinela.data import proveniencia, rendimento_fii
 from sentinela.data.cache_leitura import ler_csv_zip
+from sentinela.data.pit import leitura
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +119,8 @@ class CVMFIIProvider:
 
         `None` se o arquivo local não é legível.
         """
+        if isinstance(row, pd.Series):
+            row = row.to_dict()  # Converte escalares do pandas para os tipos do registro.
         try:
             arquivo = proveniencia.registrar_arquivo(
                 zip_path, _INF_URL.format(ano=ano), "Informe Mensal", str(ano)
@@ -126,13 +132,17 @@ class CVMFIIProvider:
             "Data_Referencia": row.get("Data_Referencia"),
             "Versao": row.get("Versao"),
         }
-        try:
-            geral = _ler_informe(zip_path, f"inf_mensal_fii_geral_{ano}.csv")
-            entrega = proveniencia.entrega_no_indice(
-                geral.to_dict("records"), documento, coluna="Data_Entrega"
-            )
-        except (OSError, KeyError, ValueError, zipfile.BadZipFile):
-            entrega = None
+        if row.get("_pit_entrega_selecionada") is True:
+            # O recorte já conferiu esta entrega; reler o índice perderia a seleção.
+            entrega = row.get("Data_Entrega")
+        else:
+            try:
+                geral = _ler_informe(zip_path, f"inf_mensal_fii_geral_{ano}.csv")
+                entrega = proveniencia.entrega_no_indice(
+                    geral.to_dict("records"), documento, coluna="Data_Entrega"
+                )
+            except (OSError, KeyError, ValueError, zipfile.BadZipFile):
+                entrega = None
         return arquivo.do_documento(
             documento["Data_Referencia"],
             documento["Versao"],
@@ -144,11 +154,86 @@ class CVMFIIProvider:
     # API pública
     # ------------------------------------------------------------------
 
+    def _recorte_informe(
+        self, zip_path: Path, cnpj: str, registros: list[dict], dia: date
+    ) -> tuple[list[dict], dict[str, str], tuple[str, ...]]:
+        """Mesma seleção documental do PIT, também para o arquivo aberto direto."""
+        with zipfile.ZipFile(zip_path) as zf:
+            controle = (
+                json.loads(zf.read("sentinela_informe_pit.json"))
+                if "sentinela_informe_pit.json" in zf.namelist() else {}
+            )
+        modo = controle.get("modo", leitura.ESTRITO)
+        if modo not in leitura.MODOS:
+            raise ValueError(f"modo desconhecido no Informe: {modo}")
+        if controle and controle.get("dia") != dia.isoformat():
+            raise ValueError("recorte do Informe pertence a outra data")
+        motivos = dict(controle.get("motivos", {}).get(cnpj, {}))
+        geral: dict[str, dict[str, set]] = defaultdict(lambda: defaultdict(set))
+        tabela = self._tabela(zip_path, "geral", literal=True)
+        for r in tabela.to_dict("records"):
+            if str(r.get("CNPJ_Fundo_Classe", "")).strip() == cnpj:
+                geral[str(r.get("Data_Referencia", ""))][str(r.get("Versao", ""))].add(
+                    (r.get("Data_Entrega"), r.get("Codigo_ISIN"))
+                )
+        usadas: dict[tuple[str, str], tuple] = {}
+        for ref, versoes in geral.items():
+            if not leitura._mes_encerrado(ref, dia):
+                continue
+            presentes = {str(r.get("Versao", "")) for r in registros if r.get("Data_Referencia") == ref}
+            motivo, escolhidas = leitura._versoes_com_numeros(versoes, presentes, dia, modo)
+            if motivo:
+                motivos[ref] = motivo
+            usadas.update({(ref, v): entrega for v, entrega in escolhidas.items()})
+        for r in registros:
+            ref, versao = str(r.get("Data_Referencia", "")), str(r.get("Versao", ""))
+            if leitura._mes_encerrado(ref, dia) and versao not in geral.get(ref, {}):
+                motivos[ref] = leitura.MOTIVO_SEM_GERAL
+        selecionados = []
+        for r in registros:
+            ref, versao = str(r.get("Data_Referencia", "")), str(r.get("Versao", ""))
+            if ref in motivos or (ref, versao) not in usadas:
+                continue
+            entrega, isin = usadas[(ref, versao)]
+            linha = {**r, "Data_Entrega": entrega, "Codigo_ISIN": isin,
+                     "_pit_entrega_selecionada": True}
+            if modo == leitura.EXPLORATORIO:
+                # Só o leitor temporal pode declarar esta disponibilidade; a entrega fica literal.
+                linha["_pit_exploratorio"] = True
+                linha["_pit_dia"] = dia.isoformat()
+            selecionados.append(linha)
+        _, conflitos = rendimento_fii._por_mes(
+            selecionados, colunas=(*rendimento_fii._COLUNAS_DA_CONTA, "Patrimonio_Liquido")
+        )
+        for ano, mes in conflitos:
+            motivos[f"{ano:04d}-{mes:02d}-01"] = rendimento_fii.MOTIVO_CONFLITO
+        selecionados = [r for r in selecionados if r["Data_Referencia"] not in motivos]
+        return selecionados, motivos, leitura._avisos(modo)
+
+    @staticmethod
+    def _bloqueio_informe(
+        registros: list[dict], motivos: dict[str, str], meses: int
+    ) -> str | None:
+        """Bloqueio no documento vigente ou nos 13 meses necessários, nunca recuo."""
+        referencias = [str(r.get("Data_Referencia", "")) for r in registros] + list(motivos)
+        datas = [date.fromisoformat(r[:10]) for r in referencias if _data_iso(r)]
+        if not datas:
+            return None
+        final = max(datas)
+        limite = final.year * 12 + final.month - meses
+        for ref, motivo in sorted(motivos.items(), reverse=True):
+            if _data_iso(ref):
+                mes = date.fromisoformat(ref[:10])
+                if mes.year * 12 + mes.month >= limite:
+                    return motivo
+        return None
+
     def obter_dados_fii(self, cnpj_fundo: str, *, as_of: datetime | None = None) -> dict | None:
         """Retorna os dados mais recentes do fundo, ou None se não encontrado.
 
-        as_of seleciona os anos pela data de São Paulo; versões históricas estritas
-        são responsabilidade do leitor da 3-b, não deste carregamento.
+        as_of seleciona meses encerrados e versões entregues antes do dia de São Paulo,
+        pela mesma regra documental do leitor PIT. Documento vigente bloqueado abstém,
+        sem recuo. Recorte exploratório explicitamente rotulado mantém a entrega original.
 
         Campos no retorno:
           cnpj_fundo, dt_referencia, patrimonio_liquido, cotas_emitidas,
@@ -167,8 +252,22 @@ class CVMFIIProvider:
 
         for ano in [ano_atual, ano_atual - 1]:
             try:
-                zip_path = self.baixar_informe(ano)
-                df = self._parsear_complemento(zip_path, ano)
+                avisos: tuple[str, ...] = ()
+                if as_of is not None:
+                    lido = self._linhas_do_fundo(cnpj, ano)
+                    if lido is None:
+                        continue
+                    zip_path, linhas, _ = lido
+                    if any(not _data_iso(r.get("Data_Referencia")) for r in linhas):
+                        return {"abstencao": MOTIVO_DATA_ILEGIVEL}
+                    linhas, motivos, avisos = self._recorte_informe(zip_path, cnpj, linhas, dia)
+                    motivo = self._bloqueio_informe(linhas, motivos, 0)
+                    if motivo:
+                        return {"abstencao": motivo, "avisos": list(avisos)}
+                    df = pd.DataFrame(linhas)
+                else:
+                    zip_path = self.baixar_informe(ano)
+                    df = self._parsear_complemento(zip_path, ano)
                 if df.empty or "CNPJ_Fundo_Classe" not in df.columns:
                     continue
 
@@ -199,8 +298,21 @@ class CVMFIIProvider:
                 cotas = _to_float(row.get("Cotas_Emitidas"))
                 vpa = _to_float(row.get("Valor_Patrimonial_Cotas"))
 
+                if as_of is not None:
+                    for campo, valor in (("Patrimonio_Liquido", pl),
+                                         ("Cotas_Emitidas", cotas),
+                                         ("Valor_Patrimonial_Cotas", vpa)):
+                        if valor is not None and not math.isfinite(valor):
+                            return {"abstencao": f"{campo} não finito no Informe vigente",
+                                    "avisos": list(avisos)}
                 if pl is None:
+                    if as_of is not None:
+                        return {"abstencao": "Patrimonio_Liquido ausente ou ilegível no Informe vigente",
+                                "avisos": list(avisos)}
                     continue
+                if as_of is not None and vpa is None:
+                    return {"abstencao": "Valor_Patrimonial_Cotas ausente ou ilegível no Informe vigente",
+                            "avisos": list(avisos)}
 
                 result: dict = {
                     "cnpj_fundo":        cnpj,
@@ -213,6 +325,8 @@ class CVMFIIProvider:
                     "vacancia_fisica":   None,
                     "proveniencia":      self._proveniencia(zip_path, ano, row),
                 }
+                if avisos:
+                    result["avisos"] = list(avisos)
                 return result
 
             except Exception as exc:
@@ -241,7 +355,7 @@ class CVMFIIProvider:
     def _linhas_do_fundo(
         self, cnpj: str, ano: int
     ) -> tuple[Path, list[dict], list[dict]] | None:
-        """Linhas do fundo no complemento e no `ativo_passivo` do ano; `None` se ilegível.
+        """Linhas do fundo; `None` se complemento/geral ilegível, composição vazia se falha.
 
         Cada linha do complemento recebe a `Data_Entrega` e o `Codigo_ISIN` do `geral` da
         mesma referência e versão (F2B-2: corte por entrega da ficha FII 1.1, §3); sem o par
@@ -266,12 +380,17 @@ class CVMFIIProvider:
                 linha.update(
                     entregas.get((linha.get("Data_Referencia"), linha.get("Versao")), {})
                 )
-            ativo = self._tabela(zip_path, "ativo_passivo", literal=True)
-            composicoes = (
-                ativo[ativo["CNPJ_Fundo_Classe"].str.strip() == cnpj].to_dict("records")
-                if "CNPJ_Fundo_Classe" in ativo.columns
-                else []
-            )
+            try:
+                ativo = self._tabela(zip_path, "ativo_passivo", literal=True)
+                composicoes = (
+                    ativo[ativo["CNPJ_Fundo_Classe"].str.strip() == cnpj].to_dict("records")
+                    if "CNPJ_Fundo_Classe" in ativo.columns
+                    else []
+                )
+            except (OSError, ValueError, KeyError, zipfile.BadZipFile) as exc:
+                # A falha da composição não apaga a identidade nem o bloqueio do documento.
+                logger.warning("Composição do Informe ilegível cnpj=%s ano=%d: %s", cnpj, ano, exc)
+                composicoes = []
         except (OSError, ValueError, KeyError, zipfile.BadZipFile) as exc:
             logger.warning(
                 "Erro ao ler rendimentos FII cnpj=%s ano=%d: %s", cnpj, ano, exc
@@ -293,6 +412,8 @@ class CVMFIIProvider:
         necessário vem sem linhas do fundo, `lacunas` diz quais (BUG-3-03), e a cascata
         também as registra; o ano corrente sem linhas ou sem arquivo (em janeiro a CVM ainda
         não o publicou), que só manda ler o de dois anos atrás, não é lacuna.
+        Com as_of, o leitor documental seleciona as versões e preserva bloqueios nos 13
+        meses necessários; o modo exploratório mantém data original e aviso obrigatório.
         """
         cnpj = cnpj_fundo.strip()
         if as_of is not None and as_of.utcoffset() is None:
@@ -305,6 +426,9 @@ class CVMFIIProvider:
         anos = [ano_atual, ano_atual - 1]
         falhas = []
         lacunas = []
+        motivos: dict[str, str] = {}
+        avisos: set[str] = set()
+        modos: set[str] = set()
         for ano in anos:
             lido = self._linhas_do_fundo(cnpj, ano)
             if ano == ano_atual and not (lido and lido[1]):
@@ -315,6 +439,17 @@ class CVMFIIProvider:
                     lacunas.append(f"{ano} ilegível ou indisponível")
                 continue
             zip_path, linhas, do_ano = lido
+            if as_of is not None:
+                linhas, bloqueios, rotulos = self._recorte_informe(zip_path, cnpj, linhas, dia)
+                por_mes, _ = rendimento_fii._por_mes(linhas)
+                chaves = {(r["Data_Referencia"], r["Versao"]) for r in por_mes.values()}
+                do_ano = [r for r in do_ano if (r.get("Data_Referencia"), r.get("Versao")) in chaves]
+                motivos.update(bloqueios)
+                avisos.update(rotulos)
+                if linhas or bloqueios:
+                    modos.add(leitura.EXPLORATORIO if rotulos else leitura.ESTRITO)
+                if ano == ano_atual and not linhas and ano_atual - 2 not in anos:
+                    anos.append(ano_atual - 2)
             if not linhas and ano != ano_atual:
                 lacunas.append(f"{ano} sem linhas do fundo")
             registros.extend(linhas)
@@ -334,16 +469,24 @@ class CVMFIIProvider:
                 "Informe Mensal ilegível ou indisponível em todos os anos lidos: "
                 + ", ".join(str(ano) for ano in falhas)
             )
+        if len(modos) > 1:
+            raise leitura.ModosMisturados("Informes de modos diferentes na mesma janela")
+        motivo = self._bloqueio_informe(registros, motivos, 12)
+        if motivo:
+            return {"abstencao": motivo, "lacunas": [motivo], "avisos": sorted(avisos)}
         proveniencia_recente = (
             self._proveniencia(mais_recente[1], mais_recente[2], mais_recente[3])
             if mais_recente
             else None
         )
         isin = mais_recente[3].get("Codigo_ISIN") if mais_recente else None
-        return {
+        resultado = {
             "registros": registros,
             "composicoes": composicoes,
             "isin": isin if isinstance(isin, str) and isin.strip() else None,
             "proveniencia": proveniencia_recente,
             "lacunas": lacunas,
         }
+        if avisos:
+            resultado["avisos"] = sorted(avisos)
+        return resultado
