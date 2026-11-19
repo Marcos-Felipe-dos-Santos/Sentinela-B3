@@ -1824,3 +1824,9 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Executor:** codex (GPT-6), registro das regressões; correção pendente.
 - **Status:** [!] quarta revisão reprovou código; seguir somente itens independentes conforme o protocolo.
 - **Destino:** selecionar por (companhia, período) a última DT_RECEB anterior a D, mesmo com VERSAO numericamente menor; documento vigente ilegível, vazio ou em conflito bloqueia apenas o período; ZIP do ano corrente sem DRE e sem entrega da companhia não apaga exercício anterior legível. Quinze xfails estritos do BUG-3-50 têm este destino (o 15º veio da rodada final do GA2a); dois controles de TTM fora da janela passam pela saída pública. Antes do checkpoint: D27, correção, mutação ≥ 80%, gate e revisão externa.
+
+### Decisão 49 do Marcos (19/11/2026) — registro
+- **Executor:** claude-code (Opus 5.5).
+- **1 e 2 (F3-AUD-GA2a):** a rodada final pela outra família (claude-code), com limite de 2 h a partir de 09:26, terminou no commit `ee90214` às 10:21, sem acionar o passo 2 (patch e stash). Detalhes na seção do F3-AUD-GA2a.
+- **3 (regra até o fim da Fase 3):** registrada na política (§3, item 7) e no protocolo (passo 9 e lista das paradas): nos itens `F3-AUD-*`, a terceira reprovação de código não para o loop; aplica-se o patch em `outputs/`, o `git stash`, o xfail estrito como limitação declarada da Fase 3, a correção na proposta da Fase 4 (F3-10a), e a fila segue.
+- **Revisão (`/review-diff-leve`): PODE COMMITAR.** Registro de decisão, sem item da fila (nenhum `[x]`); a exceção vale só para `F3-AUD-*` e só até o fim da Fase 3, e o xfail estrito impede aceitar em silêncio o código reprovado.
