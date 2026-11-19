@@ -9,13 +9,19 @@ histórico diferentes: o preço corrente do espião (99,00) contra o do COTAHIST
 a DFP vista hoje (versão 2) contra a vista em D.
 """
 
+import json
+import math
 import sqlite3
+import zipfile
 from contextlib import closing
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time
 from unittest.mock import Mock
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import pytest
+from test_backtest_pit_e2e import PASTA as PUBLICAS
+from test_backtest_pit_e2e import banco_publico  # noqa: F401 (fixture)
 from test_carga_cvm import CIA, DFP
 from test_universo_pit import _fca_sintetico, _negocio, _precos, _pregoes, _valor
 
@@ -24,6 +30,7 @@ from backtesting.backtest_pit import BacktestPIT
 from fii_engine import FIIEngine
 from sentinela.data.pit import carga_cvm, remontagem
 from sentinela.data.store import migracoes, resultados
+from sentinela.methods.fii_yield import FiiYield
 from sentinela.services import historico
 from sentinela.services.analyze_asset import MOTIVO_PARES, AnalysisService
 from technical_engine import TechnicalEngine
@@ -307,3 +314,70 @@ def test_informe_e_dfp_compartilhados_por_ano_e_com_o_modo(monkeypatch, tmp_path
         ("fii", 2020, "exploratorio"),
         ("DFP", 2019, "exploratorio"),
     ]
+
+
+# --- F3-AUD-E2E: lente com número numa data passada, pelos produtores reais ------------
+
+FUSO_SP = ZoneInfo("America/Sao_Paulo")
+
+
+def _servico_historico(conn, tmp_path, cadastro, hoje=date(2026, 11, 13)):
+    return AnalysisService(
+        None, ValuationEngine(), FIIEngine(), TechnicalEngine(),
+        hoje=hoje, conexao_resultados=conn,
+        motor_historico=lambda instante: historico.MotorHistorico(
+            conn, instante, tmp_path / "pit", cadastro
+        ),
+    )  # fmt: skip
+
+
+def test_acao_nao_distressed_tem_lente_numerica_pelo_servico(banco_publico, tmp_path):  # noqa: F811
+    """ABEV3 em 31/03/2022 pelas fontes públicas do F3-8b (DD-67): DFP e FCA 2021, COTAHIST,
+    séries macro e a relação da B3, todos pelos produtores reais e pelo banco único; o
+    serviço escolhe o motor histórico, sem mock intermediário (decisão do Marcos de 17/11,
+    §4.6, e de 19/11). A rede é bloqueada pela fixture."""
+    cadastro = pd.read_csv(
+        PUBLICAS / "cad_cia_aberta_abev.csv", sep=";", encoding="latin-1", dtype=str
+    )
+    servico = _servico_historico(banco_publico, tmp_path, cadastro)
+    as_of = datetime.combine(date(2022, 3, 31), time.max, tzinfo=FUSO_SP)
+    dados = servico.analisar("ABEV3", as_of, use_ai=False).raw
+    assert dados["fonte_preco"] == historico.FONTE_PRECO
+    assert dados["disponibilidade_por_publicacao"] is True
+    gordon = dados["lentes"]["Gordon"]
+    assert gordon.get("abstencao") is None, gordon
+    assert gordon["valor"] > 0 and math.isfinite(gordon["valor"])
+    assert math.isfinite(gordon["distancia_ao_preco_pct"])
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "limitação da Fase 3 (F3-AUD-E2E, decisão do Marcos de 19/11): as fixtures públicas "
+        "do HGLG11 têm só o Informe de jan. a ago. de 2026 (o rendimento de 12 meses exige "
+        "13 valores patrimoniais), sem COTAHIST do fundo e sem NTN-B em D"
+    ),
+)
+def test_fii_nao_distressed_tem_lente_numerica_pelo_servico(tmp_path):
+    """HGLG11 em 15/09/2026 pelo Informe oficial recortado (contrato D18), pelo produtor e
+    pelo motor histórico reais; o que falta para o número é dado, não código."""
+    recorte = json.loads(
+        (PUBLICAS.parent / "contratos" / "inf_mensal_fii_2026_hglg.json").read_text()
+    )
+    caminho = tmp_path / "inf_mensal_fii_2026.zip"
+    with zipfile.ZipFile(caminho, "w") as zf:
+        for nome, texto in recorte["membros"].items():
+            zf.writestr(nome, texto.encode("latin-1"))
+    with closing(sqlite3.connect(":memory:")) as conn:
+        migracoes.aplicar(conn)
+        carga_cvm.carregar(
+            conn, caminho, tipo="FII_INFORME", fonte=recorte["fonte"],
+            coleta=recorte["data_coleta"],
+        )  # fmt: skip
+        servico = _servico_historico(conn, tmp_path, CADASTRO.iloc[0:0])
+        as_of = datetime.combine(date(2026, 9, 15), time.max, tzinfo=FUSO_SP)
+        resultado = servico.analisar("HGLG11", as_of, use_ai=False)
+    lente = (resultado.raw.get("lentes") or {}).get(FiiYield.nome) or {}
+    assert lente.get("abstencao") is None and lente, resultado.error or lente
+    assert lente["valor"] > 0
