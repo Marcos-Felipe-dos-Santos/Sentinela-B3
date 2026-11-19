@@ -1956,3 +1956,11 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **Formatação:** o `ruff format` de `market_engine.py` e `historico.py` reformataria os arquivos inteiros (mais de mil linhas); foi revertido e só as linhas do item mudaram.
 - **Decisões delegadas novas:** nenhuma. **Resíduos:** `outputs/f3-aud-ca2b-*` e `mutants/`. Nenhum banco real, rede, `.env` ou dado da carteira.
 - **Revisão (`/review-diff`): PODE COMMITAR**, rodada 1. Registrados: `MotorHistorico._data_passada` confia no chamador (o serviço e o backtest só o montam para D passado); o sobrevivente do fuso poderia morrer com um instante perto da meia-noite em máquina com outro fuso; o lado "D = hoje" é testado no predicado, e a cascata corrente inteira fica com o golden e a suíte.
+
+### Decisões do Marcos (19/11/2026) — DD-89, decisão 48, E2E e fim da fila
+- **Executor:** claude-code (Opus 5.5).
+- **DD-89:** ratificada; a revisão cruzada do Codex segue pendente. **Regra D20 da TGMA3 (F3-AUD-CB2):** proposta da Fase 4, no aceite do F3-10a.
+- **Decisão 48:** vale; o F3-3D-FRE sai desta fila (linha retirada) e o aceite dele vai, inteiro, para o F3-10a.
+- **F3-AUD-E2E:** fixtures públicas da ABEV3 (DD-67) e, para o FII, do HGLG11; uma lente com número para cada um pelos produtores reais; limite de meio dia, e o que faltar vira limitação com xfail estrito. Escrito no aceite do item.
+- **Fim da fila:** F3-3D-COL (backup verificado antes), F3-3D-SONDA, F3-10a, F3-10b, F3-10c (item novo: README do fim da fase, no formato do commit `0f6cc0b` de 18/11) e parada no checkpoint. As pendências do GC5 e do CB2 também entram no aceite do F3-10a.
+- **Revisão (`/review-diff-leve`): PODE COMMITAR**, rodada 1. Médio corrigido: como o F3-10b arquiva a fila, a fila nova que ele cria leva o F3-10c antes do `[DECISÃO]`, e o `pr-fase-3.md` o lista; a ordem pedida (10a, 10b, 10c) fica. O HGLG11 do E2E é conferido pelo executor do item.
