@@ -218,7 +218,7 @@ def test_fontes_de_proventos_e_eventos_sao_lidas_ate_t_inclusive(monkeypatch):
     "data_com,abstem",
     [
         (D.isoformat(), True),
-        (T.isoformat(), True),
+        (T.isoformat(), False),  # ex depois de T (BUG-3-54)
         (DEPOIS.isoformat(), False),
         (None, True),
         ("31/03/2022", True),
@@ -264,7 +264,7 @@ def test_desdobramento_com_ex_em_t_ajusta_a_entrada_depois_de_eventos_alheios(
     assert retorno["retorno"] == pytest.approx(0.1)
 
 
-@pytest.mark.parametrize("data_com", [D, T])
+@pytest.mark.parametrize("data_com", [D])  # em T, a ex cai depois de T (BUG-3-54)
 def test_evento_sem_data_ex_no_horizonte_abstem_com_motivo_padrao(
     monkeypatch, data_com
 ):
@@ -282,7 +282,7 @@ def test_evento_sem_data_ex_no_horizonte_abstem_com_motivo_padrao(
 
 @pytest.mark.parametrize(
     "data_com,abstem",
-    [(D, True), (T, True), (DEPOIS, False), ("31/03/2022", True)],
+    [(D, True), (T, False), (DEPOIS, False), ("31/03/2022", True)],  # T: BUG-3-54
     ids=["em_d", "em_t", "depois_de_t", "data_ilegivel"],
 )
 def test_evento_sem_prova_no_horizonte_abstem(monkeypatch, data_com, abstem):

@@ -523,8 +523,9 @@ class BacktestPIT:
             if encerrada
             else fim
         )
-        # Data com no último negócio só pode ter data ex depois da saída.
-        corte_com = fim_ativo if encerrada else date.fromordinal(fim.toordinal() + 1)
+        # Data com no último negócio (ou em T) só pode ter data ex depois dele, fora do
+        # horizonte (D, T] da ficha (BUG-3-54).
+        corte_com = fim_ativo
 
         emissor = ticker[:4]
         relacao = b3_proventos.proventos_ate(
