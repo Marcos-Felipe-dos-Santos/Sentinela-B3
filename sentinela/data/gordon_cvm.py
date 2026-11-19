@@ -189,6 +189,19 @@ def entradas(
             or ipca.get("fim") != fim.isoformat()
         ):
             return Abstencao("inflação incompatível com a janela da DFP")
+        # BUG-3-57: o insumo ausente é nomeado, em vez do `TypeError` genérico do `None`
+        insumos = (
+            ("lucro_controladores", fonte.get("lucro_controladores")),
+            ("pl_inicial_controladores", fonte.get("pl_inicial_controladores")),
+            ("fator_unit", fonte.get("fator_unit", 1)),
+            ("custo_capital_real", macro.get("custo_capital_real")),
+            ("inflacao.valor", ipca.get("valor")),
+            ("pib.valor", pib.get("valor")),
+            *((("lpa", fonte.get("lpa")),) if modelo == "empresa" else ()),
+        )
+        ausente = next((nome for nome, valor in insumos if valor is None), None)
+        if ausente is not None:
+            return Abstencao(f"insumo ausente do Gordon: {ausente}")
         lucro, pl = fonte["lucro_controladores"], fonte["pl_inicial_controladores"]
         if (
             isinstance(lucro, bool)
