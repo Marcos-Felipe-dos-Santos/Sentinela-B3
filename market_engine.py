@@ -368,6 +368,14 @@ def _hoje_sp(agora: datetime | None = None) -> date:
 
 
 class MarketEngine:
+    def _data_passada(self, as_of: datetime | None) -> bool:
+        """D anterior a hoje pelo relógio; o motor histórico responde pela data do serviço
+        (BUG-3-58)."""
+        return (
+            as_of is not None
+            and as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date() < _hoje_sp()
+        )
+
     def __init__(self, asset_classifier: AssetClassifier | None = None) -> None:
         self.brapi = BrapiProvider()
         self.cvm = CVMProvider()
@@ -526,7 +534,7 @@ class MarketEngine:
             'cvm_disponivel': False,
             'riscos_dados': [],
         }
-        if as_of is not None and as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date() < _hoje_sp():
+        if self._data_passada(as_of):
             # decisão 40: numa data passada, a disponibilidade é a data de publicação da fonte
             dados['disponibilidade_por_publicacao'] = True
 
@@ -1162,10 +1170,7 @@ class MarketEngine:
         if cvm is None:
             return False
         recortar = getattr(cvm, 'recorte_em', None)
-        if (
-            as_of is not None and recortar is not None
-            and as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date() < _hoje_sp()
-        ):
+        if recortar is not None and self._data_passada(as_of):
             # F3-3d (DD-61): numa data passada, só o que a CVM recebeu antes do dia de D;
             # com as_of de hoje, a cascata lê os arquivos como antes.
             cvm = recortar(as_of)

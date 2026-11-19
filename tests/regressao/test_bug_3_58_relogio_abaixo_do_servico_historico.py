@@ -13,8 +13,10 @@ FCA e COTAHIST sintéticos, fontes correntes como espiões; só o relógio varia
 
 from datetime import UTC, date, datetime
 
+import pandas as pd
 import pytest
 from test_servico_historico import (  # noqa: F401 (fixtures)
+    HOJE,
     _servico,
     banco,
     espioes,
@@ -22,8 +24,10 @@ from test_servico_historico import (  # noqa: F401 (fixtures)
 )
 
 import market_engine
+from sentinela.services.historico import MotorHistorico
 
 D = datetime(2020, 3, 2, 15, tzinfo=UTC)
+DISTRESSED = "Empresa em situação especial/distressed"
 
 
 def _analise(banco, tmp_path, resultados_conn, monkeypatch, relogio):  # noqa: F811
@@ -44,9 +48,19 @@ def _analise(banco, tmp_path, resultados_conn, monkeypatch, relogio):  # noqa: F
     }
 
 
-@pytest.mark.xfail(
-    strict=True, reason="BUG-3-58 / F3-AUD-CA2: relógio abaixo do serviço"
-)
+def test_referencia_com_o_relogio_no_hoje_do_servico(
+    banco,  # noqa: F811
+    espioes,  # noqa: F811
+    tmp_path,
+    resultados_conn,  # noqa: F811
+    monkeypatch,
+):
+    """Controle: relógio igual ao `hoje` do serviço, regra da decisão 40."""
+    referencia = _analise(banco, tmp_path, resultados_conn, monkeypatch, HOJE)
+    assert referencia["por_publicacao"] is True
+    assert set(referencia["lentes"].values()) == {DISTRESSED}
+
+
 @pytest.mark.parametrize("relogio", [date(2020, 3, 2), date(2020, 2, 1)])
 def test_relogio_do_sistema_nao_muda_a_analise_da_data_passada(
     banco,  # noqa: F811
@@ -56,10 +70,25 @@ def test_relogio_do_sistema_nao_muda_a_analise_da_data_passada(
     monkeypatch,
     relogio,
 ):
-    referencia = _analise(
-        banco, tmp_path, resultados_conn, monkeypatch, date(2026, 11, 12)
-    )
-    assert referencia["por_publicacao"] is True
+    referencia = _analise(banco, tmp_path, resultados_conn, monkeypatch, HOJE)
     assert (
         _analise(banco, tmp_path, resultados_conn, monkeypatch, relogio) == referencia
     )
+
+
+def test_analise_corrente_segue_o_relogio(monkeypatch):
+    """D = hoje na cascata corrente: sem a marca da decisão 40, como antes."""
+    monkeypatch.setattr(
+        market_engine, "_hoje_sp", lambda agora=None: date(2026, 11, 12)
+    )
+    motor = market_engine.MarketEngine()
+    assert motor._data_passada(datetime(2026, 11, 12, 15, tzinfo=UTC)) is False
+    assert motor._data_passada(datetime(2026, 11, 11, 15, tzinfo=UTC)) is True
+    assert motor._data_passada(None) is False
+
+
+def test_motor_historico_responde_pela_data_do_servico(tmp_path, monkeypatch):
+    monkeypatch.setattr(market_engine, "_hoje_sp", lambda agora=None: date(2020, 3, 2))
+    motor = MotorHistorico(None, D, tmp_path, pd.DataFrame())
+    assert motor._data_passada(D) is True
+    assert motor._data_passada(None) is False

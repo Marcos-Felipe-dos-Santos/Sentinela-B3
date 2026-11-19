@@ -188,6 +188,11 @@ class MotorHistorico(MarketEngine):
         self.b3_fundos = None
         self.database = None
 
+    def _data_passada(self, as_of: datetime | None) -> bool:
+        """O serviço só monta este motor para D anterior ao seu `hoje`; o relógio do sistema
+        não decide a disponibilidade da análise (BUG-3-58)."""
+        return as_of is not None
+
     def buscar_dados_ticker_em(self, ticker: str, as_of: datetime) -> dict[str, Any] | None:
         if dia_local(as_of) != self.dia:
             raise ValueError("o motor histórico só responde pela data em que foi montado")
