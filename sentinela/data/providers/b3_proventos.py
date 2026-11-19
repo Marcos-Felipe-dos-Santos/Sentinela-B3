@@ -639,7 +639,9 @@ def relacao_ate(conn, emissor: str, dia: date, *, ticker: str | None = None) -> 
     declarado, sem os aprovados em D ou depois (a regra estrita do `proventos_ate`; o total
     desconta os retirados); a data com de cada registro é conferida na série
     (`proventos_b3.serie_12_meses`), como na cascata. O complemento em dinheiro é o da mesma
-    coleta (sem ele, abstém); os eventos em ações são todos os guardados do emissor.
+    coleta (sem ele, abstém); os eventos em ações são os guardados do emissor, também sem os
+    aprovados em D ou depois (BUG-3-52); o de aprovação ilegível fica (a série o pesa
+    pela data com).
     """
     lidos = proventos_ate(conn, emissor, dia, por_publicacao=True, ticker=ticker)
     if "abstencao" in lidos:
@@ -668,12 +670,13 @@ def relacao_ate(conn, emissor: str, dia: date, *, ticker: str | None = None) -> 
     # decisão 40, como no `proventos_ate`: aprovação em D ou depois ainda não era conhecida
     registros = [r for r in lidos_da_coleta if not _aprovado_em_d_ou_depois(r, dia)]
     eventos = [
-        json.loads(texto)
+        evento
         for (texto,) in conn.execute(
             "SELECT linha_json FROM eventos_societarios WHERE emissor = ? "
             "ORDER BY linha_sha256",
             (emissor,),
         )
+        if not _aprovado_em_d_ou_depois(evento := json.loads(texto), dia, "approvedOn")
     ]
     return {
         "registros": registros,
@@ -692,9 +695,12 @@ def relacao_ate(conn, emissor: str, dia: date, *, ticker: str | None = None) -> 
     }
 
 
-def _aprovado_em_d_ou_depois(registro: dict, dia: date) -> bool:
-    """Aprovação legível em D ou depois; a ilegível fica para a série abster."""
-    aprovacao = proventos_b3.ler_data(registro.get("dateApproval"))
+def _aprovado_em_d_ou_depois(
+    registro: dict, dia: date, campo: str = "dateApproval"
+) -> bool:
+    """Aprovação legível em D ou depois; a ilegível fica para a série abster. O campo é o da
+    relação em dinheiro (`dateApproval`) ou o do evento em ações do complemento (`approvedOn`)."""
+    aprovacao = proventos_b3.ler_data(registro.get(campo))
     return aprovacao is not None and aprovacao >= dia
 
 
