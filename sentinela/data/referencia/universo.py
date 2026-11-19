@@ -33,6 +33,7 @@ from sentinela.data.pit import leitura
 from sentinela.data.pit.carga_cvm import linha_do_informe
 from sentinela.data.providers import b3_cotahist
 from sentinela.data.referencia import montagem
+from sentinela.data.referencia.correcoes import ler_correcoes, ler_identidades_fii
 from sentinela.data.referencia.registro import Excecao, Indice
 
 CLASSES_DO_ISIN = {"ACN": "STOCK", "UNT": "UNIT", "CTF": "FUNDO", "BDR": "BDR"}
@@ -362,12 +363,34 @@ def _fca_sem_prova(
     return entregas, frozenset(sem_prova), list(excecoes.values())
 
 
+def referencias_em(dia: date) -> dict[str, list]:
+    """A tabela de correções e as identidades de FII oficiais válidas em D (BUG-3-55).
+
+    Uma linha vale em D quando as datas da sua evidência são anteriores a D: `data` (o
+    defeito na fonte ou o documento da identidade) e, na correção que a cita, `ligacao_data`.
+    São as datas que a tabela registra, não a entrega de cada documento (DD-89).
+    """
+    _dia(dia)
+    # data fora do formato ISO falha aqui, em vez de cortar a linha em silêncio
+    correcoes = [
+        c
+        for c in ler_correcoes()
+        if date.fromisoformat(c.data) < dia
+        and (not c.ligacao_data or date.fromisoformat(c.ligacao_data) < dia)
+    ]
+    # `ler_identidades_fii` já descarta a identidade sem data válida
+    identidades = [
+        i for i in ler_identidades_fii() if date.fromisoformat(i["data"]) < dia
+    ]
+    return {"correcoes": correcoes, "identidades_fii": identidades}
+
+
 def indice_em(
     conn,
     dia: date,
     cadastro: pd.DataFrame,
-    correcoes: Iterable = (),
-    identidades_fii: Iterable[dict[str, str]] = (),
+    correcoes: Iterable | None = None,
+    identidades_fii: Iterable[dict[str, str]] | None = None,
 ) -> Indice:
     """O índice de referência montado só com o que existia antes de D (F3-5).
 
@@ -376,9 +399,15 @@ def indice_em(
     BUG-3-24; sem prova da versão vigente em D, a companhia fica de fora com exceção,
     `_fca_sem_prova`), o Informe entregue antes de D e as cotações dos 63 pregões anteriores a D. O
     cadastro da CVM só existe na versão atual: dá o código CVM e os atributos, não decide quem
-    entra (a montagem não o usa para isso).
+    entra (a montagem não o usa para isso). Sem as tabelas, valem as oficiais em D
+    (`referencias_em`); quem as passa, mesmo vazias, decide.
     """
     texto = _dia(dia)
+    if correcoes is None or identidades_fii is None:
+        oficiais = referencias_em(dia)
+        correcoes = oficiais["correcoes"] if correcoes is None else correcoes
+        if identidades_fii is None:
+            identidades_fii = oficiais["identidades_fii"]
     entregas, sem_prova, excecoes = _fca_sem_prova(conn, texto)
     fcas = _fca_em(conn, texto, sem_prova)
     fonte = {"arquivo": "banco único", "data": texto}
