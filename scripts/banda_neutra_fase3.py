@@ -204,7 +204,9 @@ def cobertura(observacoes: Sequence[Mapping[str, Any]]) -> dict:
 
 
 def propor(
-    observacoes: Sequence[Mapping[str, Any]], datas_pedidas: Sequence[str]
+    observacoes: Sequence[Mapping[str, Any]],
+    datas_pedidas: Sequence[str],
+    sem_lentes: Sequence[Mapping[str, Any]] = (),
 ) -> dict:
     lentes = sorted({o["lente"] for o in observacoes} - {LENTE_SEM_ANALISE})
     return {
@@ -212,10 +214,13 @@ def propor(
         "modo": MODO,
         "datas_pedidas": list(datas_pedidas),
         "observacoes": len(observacoes),
+        # a análise sem lente vem em `sem_lentes` (BUG-3-56); a pseudo-lente "analise"
+        # só existe nas observações de execuções anteriores a ele (`--observacoes`)
         "sem_analise": dict(
             Counter(
                 o["abstencao"] for o in observacoes if o["lente"] == LENTE_SEM_ANALISE
             )
+            + Counter(s["motivo"] for s in sem_lentes)
         ),
         "lentes": {
             lente: [
@@ -327,7 +332,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         resposta = json.loads(args.observacoes.read_text())
     else:
         parser.error("use --executar ou --observacoes")
-    proposta = propor(resposta["observacoes"], resposta.get("datas_pedidas", []))
+    proposta = propor(
+        resposta["observacoes"],
+        resposta.get("datas_pedidas", []),
+        resposta.get("sem_lentes", []),
+    )
     proposta["limite_por_classe"] = resposta.get("limite_por_classe")
     proposta["classes"] = resposta.get("classes")
     (saida / "proposta.json").write_text(

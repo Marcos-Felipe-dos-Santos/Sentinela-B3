@@ -178,6 +178,9 @@ def test_proposta_nao_inclui_a_linha_sem_analise(banda):
     proposta = banda.propor(obs, [])
     assert list(proposta["lentes"]) == ["Graham"]
     assert proposta["sem_analise"] == {"sem histórico": 1}
+    # BUG-3-56: a análise sem lente chega em `sem_lentes`, somada às gravadas antes
+    sem_lentes = [{"ticker": "X", "D": "2020-06-30", "motivo": "sem histórico"}]
+    assert banda.propor(obs, [], sem_lentes)["sem_analise"] == {"sem histórico": 2}
     assert [p["horizonte"] for p in proposta["lentes"]["Graham"]] == [12, 24, 36]
 
 

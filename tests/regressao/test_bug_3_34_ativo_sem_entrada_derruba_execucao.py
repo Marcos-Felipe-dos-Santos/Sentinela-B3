@@ -28,7 +28,16 @@ def test_ativo_sem_fechamento_de_entrada_abstem_sem_derrubar_a_execucao(monkeypa
             return SimpleNamespace(raw={}, execucao_id="e", error="sem histórico")
 
     monkeypatch.setattr(analyze_asset, "AnalysisService", _Servico)
-    monkeypatch.setattr(resultados, "buscar", lambda *a, **k: [])
+    # BUG-3-56: a análise sem lente não vira mais a pseudo-lente "analise"; uma lente real
+    # abstida mantém o caminho do retorno sem o fechamento de entrada
+    lente = SimpleNamespace(
+        metodo="Graham",
+        versao="2.1.0",
+        resultado=None,
+        motivo_abstencao="sem histórico",
+        execucao_id="e",
+    )
+    monkeypatch.setattr(resultados, "buscar", lambda *a, **k: [lente])
     monkeypatch.setattr(
         universo,
         "universo_backtest",
@@ -47,6 +56,7 @@ def test_ativo_sem_fechamento_de_entrada_abstem_sem_derrubar_a_execucao(monkeypa
         saida = BacktestPIT(
             conn, None, hoje=date(2026, 11, 13), cache_dir="pit"
         ).executar([D], horizontes=(12,))
+    assert saida["sem_lentes"] == []
     (obs,) = saida["observacoes"]
     assert obs["ticker"] == "SEMP3" and obs["abstencao"] == "sem histórico"
     assert obs["retorno_total"] is None

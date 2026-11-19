@@ -42,6 +42,9 @@ def _finito(valor: object) -> bool:
         return False
 
 
+METODO_SEM_LENTE = "analise"  # o registro da análise sem lente no banco
+
+
 def formar_quintis(observacoes: Sequence[Mapping[str, Any]]) -> dict:
     """Ordenação aprovada: distância decrescente, código crescente, ceil(5i/n)."""
     validas, abstencoes = [], Counter()
@@ -309,6 +312,7 @@ class BacktestPIT:
 
         fuso = ZoneInfo("America/Sao_Paulo")
         fontes, observacoes, incompletas = [], [], Counter()
+        sem_lentes = []  # análise sem lente: por data e motivo, fora das lentes (BUG-3-56)
         datas_pregao = [
             date.fromisoformat(linha[0])
             for linha in self.conn.execute(
@@ -358,6 +362,9 @@ class BacktestPIT:
                 atuais = [
                     r for r in registros if r.execucao_id == resultado.execucao_id
                 ]
+                # o serviço grava a análise sem lente como `metodo="analise"`, com o motivo
+                # (`AnalysisService._gravar_resultados`): não é lente (BUG-3-56)
+                sem_lente = [r for r in atuais if r.metodo == METODO_SEM_LENTE]
                 lentes = {
                     registro.metodo: (
                         registro.resultado
@@ -368,6 +375,7 @@ class BacktestPIT:
                         }
                     )
                     for registro in atuais
+                    if registro.metodo != METODO_SEM_LENTE
                 }
                 dados_analise = dict(resultado.raw)
                 dados_analise.pop("historico", None)
@@ -396,12 +404,20 @@ class BacktestPIT:
                     }
                 )
                 preco_lente = resultado.raw.get("preco_atual")
-                if not atuais and not lentes:
-                    lentes = {
-                        "analise": {
-                            "abstencao": resultado.error or "análise sem lentes"
+                if not lentes:
+                    motivo = next(
+                        (r.motivo_abstencao for r in sem_lente if r.motivo_abstencao),
+                        resultado.error or "análise sem lentes",
+                    )
+                    sem_lentes.append(
+                        {
+                            "ticker": ticker,
+                            "D": dia.isoformat(),
+                            "classe": ativo.get("classe"),
+                            "motivo": motivo,
                         }
-                    }
+                    )
+                    continue
                 for horizonte in horizontes:
                     fim, motivo_fim = self._fim_horizonte(dia, horizonte, datas_pregao)
                     if fim is None:
@@ -456,13 +472,25 @@ class BacktestPIT:
 
         grupos = self._grupos(observacoes)
         resumo = self._resumir(observacoes, grupos, incompletas)
+        por_data = defaultdict(Counter)
+        for item in sem_lentes:
+            por_data[item["D"]][item["motivo"]] += 1
+        resumo["abstencoes_antes_das_lentes"] = {
+            dia: dict(motivos) for dia, motivos in sorted(por_data.items())
+        }
         hash_insumos = self._hash(fontes)
-        sem_hash = {"observacoes": observacoes, "grupos": grupos, "resumo": resumo}
+        sem_hash = {
+            "observacoes": observacoes,
+            "sem_lentes": sem_lentes,
+            "grupos": grupos,
+            "resumo": resumo,
+        }
         hash_resultado = self._hash(sem_hash)
         return {
             "hash_insumos": hash_insumos,
             "hash_resultado": hash_resultado,
             "observacoes": observacoes,
+            "sem_lentes": sem_lentes,
             "grupos": grupos,
             "resumo": resumo,
         }
@@ -779,10 +807,11 @@ class BacktestPIT:
             blocos[(obs["lente"], obs["D"], obs["fim"], obs["horizonte"])].append(obs)
         resultado = []
         for (lente, dia, fim, horizonte), itens in sorted(blocos.items()):
-            validas = [o for o in itens if o.get("abstencao") is None]
-            modos = quintis_por_modo(validas) if validas else {}
+            # as abstenções entram para a contagem por motivo em cada D (ficha §3.3,
+            # BUG-3-56); só as válidas formam os quintis (`formar_quintis`)
+            modos = quintis_por_modo(itens)
             for modo, grupo in modos.items():
-                por_ticker = {o["ticker"]: o for o in validas if o["modo"] == modo}
+                por_ticker = {o["ticker"]: o for o in itens if o["modo"] == modo}
                 retornos_quintis = {}
                 for quintil, tickers in grupo["quintis"].items():
                     ativos = [por_ticker[t] for t in tickers]

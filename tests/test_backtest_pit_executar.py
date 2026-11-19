@@ -359,25 +359,25 @@ def test_observacoes_carregam_lente_retorno_benchmarks_e_estado(cenario):
     assert sem_cdi["deslistada"] is False
 
 
-def test_analise_sem_registro_vira_lente_unica_com_o_motivo(cenario):
+def test_analise_sem_registro_fica_fora_das_lentes_com_o_motivo(cenario):
+    """BUG-3-56: sem lente registrada, a análise vai para `sem_lentes`, sem pseudo-lente."""
     saida = cenario.executar()
-    com_erro = _obs(saida, SEM_REGISTRO_COM_ERRO, D1, lente="analise")
-    assert com_erro["abstencao"] == "histórico sem cadastro"
-    assert com_erro["versao"] is None and com_erro["valor"] is None
-    assert com_erro["retorno_total"] is None
-    assert com_erro["abstencao_retorno"] == "fechamento de entrada indisponível"
-    sem = _obs(saida, SEM_REGISTRO, D1, lente="analise")
-    assert sem["abstencao"] == "análise sem lentes"
-    lentes = {o["lente"] for o in saida["observacoes"] if o["ticker"] == SEM_REGISTRO}
-    assert lentes == {"analise"}
+    sem_lentes = {(s["ticker"], s["D"]): s for s in saida["sem_lentes"]}
+    com_erro = sem_lentes[(SEM_REGISTRO_COM_ERRO, D1.isoformat())]
+    assert com_erro["motivo"] == "histórico sem cadastro"
+    assert com_erro["classe"] == "STOCK"
+    assert sem_lentes[(SEM_REGISTRO, D1.isoformat())]["motivo"] == "análise sem lentes"
+    sem_obs = {SEM_REGISTRO, SEM_REGISTRO_COM_ERRO}
+    assert not [o for o in saida["observacoes"] if o["ticker"] in sem_obs]
 
 
 def test_quintis_e_relatorio_por_lente_com_contas_a_mao(cenario):
     cenario.cdi_t1 = False
     saida = cenario.executar()
     grupos = {(g["lente"], g["D"]): g for g in saida["grupos"]}
-    # Bazin abstém em tudo: nenhum grupo; Graham forma quintis nas duas datas
-    assert {lente for lente, _ in grupos} == {"Graham"}
+    # Bazin abstém em tudo: grupo sem quintis, só com as abstenções (BUG-3-56); Graham
+    # forma quintis nas duas datas
+    assert {lente for lente, _ in grupos} == {"Graham", "Bazin"}
     g1 = grupos[("Graham", "2022-03-31")]
     assert (
         g1["fim"] == "2023-03-31" and g1["horizonte"] == 12 and g1["modo"] == "estrito"
@@ -385,7 +385,7 @@ def test_quintis_e_relatorio_por_lente_com_contas_a_mao(cenario):
     # n = 26 (o índice 26 abstém): posições 1–5, 6–10, 11–15, 16–20 e 21–26
     assert g1["elegiveis"] == 26
     assert g1["quintis"][1] == TICKERS[0:5] and g1["quintis"][5] == TICKERS[20:26]
-    assert g1["abstencoes"] == {}
+    assert g1["abstencoes"] == {"lente sem valor finito e positivo": 1}  # BUG-3-56
     q1, q2, q5 = (g1["retornos_quintis"][q] for q in ("Q1", "Q2", "Q5"))
     r3 = 1.1 * 1.0005 - 1
     assert q1["retorno_medio"] == pytest.approx((0 + 0.01 + 0.02 + r3 + 0.04) / 5)
@@ -401,7 +401,8 @@ def test_quintis_e_relatorio_por_lente_com_contas_a_mao(cenario):
 
     resumo = saida["resumo"]
     # §8: horizonte de 24 meses sem pregão final, contado por lente de cada ativo
-    assert resumo["horizontes_incompletos"] == {24: 2 * (27 * 2 + 2)}
+    # (sem a pseudo-lente "analise" dos dois ativos sem lente, BUG-3-56)
+    assert resumo["horizontes_incompletos"] == {24: 2 * (27 * 2)}
     linha = next(
         r
         for r in resumo["lentes"]
@@ -569,6 +570,7 @@ def test_hash_do_resultado_muda_com_o_preco_final(cenario, monkeypatch):
         "hash_insumos",
         "hash_resultado",
         "observacoes",
+        "sem_lentes",
         "grupos",
         "resumo",
     }
