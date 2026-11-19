@@ -134,6 +134,16 @@ def _fator_do_par(
     return fator, evidencia
 
 
+def relacao_por_publicacao(dados: Mapping) -> bool:
+    """A relação B3 é o bloco montado do banco numa data passada: as duas marcas (decisão 40)."""
+    relacao = dados.get("proventos_b3")
+    return (
+        dados.get("disponibilidade_por_publicacao") is True
+        and isinstance(relacao, Mapping)
+        and relacao.get("aprovacao_antes_de_d") is True
+    )
+
+
 def fatores_da_relacao(dados: Mapping, registros: Sequence, instante: datetime) -> dict:
     """Fatores acumulados até a base final ou abstenção com causa e sem fonte nova.
 
@@ -163,7 +173,12 @@ def fatores_da_relacao(dados: Mapping, registros: Sequence, instante: datetime) 
             fonte = proveniencia.get("fonte")
             if not fonte:
                 raise ValueError("fonte B3 não demonstrada")
-            coleta = _coleta(relacao.get("coleta"), instante)
+            # decisão 40 (BUG-3-53): o bloco do banco (`relacao_ate`) numa data passada vale
+            # pela publicação; cada evento usado é conferido por aprovação e data com antes de
+            # D (`_fator_do_par`). A relação corrente mantém a guarda de coleta (DD-65).
+            coleta = _coleta(
+                relacao.get("coleta"), instante, relacao_por_publicacao(dados)
+            )
             eventos = relacao.get("eventos_acoes")
             if not isinstance(eventos, (list, tuple)):
                 raise ValueError("lista de eventos em ações ausente ou inválida")
@@ -181,9 +196,12 @@ def fatores_da_relacao(dados: Mapping, registros: Sequence, instante: datetime) 
             ]
             if any(not p.get("fonte") for p in fontes):
                 raise ValueError("fonte documental não demonstrada")
-            # DD-65: o ramo documental cai na decisão 40; o da relação B3 (acima) mantém a guarda
+            # DD-65: o ramo documental cai na decisão 40; o da relação B3 corrente (acima)
+            # mantém a guarda, o bloco do banco numa data passada não (BUG-3-53)
             por_publicacao = dados.get("disponibilidade_por_publicacao") is True
-            coletas = [_coleta(p.get("data_coleta"), instante, por_publicacao) for p in fontes]
+            coletas = [
+                _coleta(p.get("data_coleta"), instante, por_publicacao) for p in fontes
+            ]
             coleta = max(coletas, key=datetime.fromisoformat)
             fonte, proveniencia = "Composição do Capital de cada documento", fontes
         evidencias, fatores_pares = [], []
