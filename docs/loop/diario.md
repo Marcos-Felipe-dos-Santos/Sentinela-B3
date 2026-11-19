@@ -1830,3 +1830,10 @@ Fila ativa: `docs/loop/fila.md`, ativada em 10/11/2026 (`da0a78c`). O diário do
 - **1 e 2 (F3-AUD-GA2a):** a rodada final pela outra família (claude-code), com limite de 2 h a partir de 09:26, terminou no commit `ee90214` às 10:21, sem acionar o passo 2 (patch e stash). Detalhes na seção do F3-AUD-GA2a.
 - **3 (regra até o fim da Fase 3):** registrada na política (§3, item 7) e no protocolo (passo 9 e lista das paradas): nos itens `F3-AUD-*`, a terceira reprovação de código não para o loop; aplica-se o patch em `outputs/`, o `git stash`, o xfail estrito como limitação declarada da Fase 3, a correção na proposta da Fase 4 (F3-10a), e a fila segue.
 - **Revisão (`/review-diff-leve`): PODE COMMITAR.** Registro de decisão, sem item da fila (nenhum `[x]`); a exceção vale só para `F3-AUD-*` e só até o fim da Fase 3, e o xfail estrito impede aceitar em silêncio o código reprovado.
+
+### Decisão 50 do Marcos (19/11/2026) — registro
+- **Executor:** claude-code (Opus 5.5).
+- **Decisão:** a regra 3 da decisão 49 vale também para o F3-AUD-GA1b e o F3-AUD-GA2b, abertos em `[!]` antes dela.
+- **Aplicação:** os dois itens passam a `[x]` na fila, fechados com limitação declarada da Fase 3. Os xfails estritos ficam como estão (8 do BUG-3-49, 15 do BUG-3-50), nenhum teste muda. O diff reprovado do GA2 continua em `outputs/f3-aud-ga2-d47-full-stage.patch`; o GA1b não tem stage reprovado a guardar, porque o código aprovado entrou no GA1a e o caminho do arquivo ilegível nunca foi corrigido. Não houve `git stash`: não havia stage. As correções e as quatro pendências do GA2b (índice criptografado no `_Recorte`, linha ilegível de outra companhia, `DT_REFER` sem normalização, log vermelho contra o HEAD) entram no aceite do F3-10a. O registro de regressão (BUG-3-49 e BUG-3-50) aponta a limitação e o destino.
+- **Seguinte:** a fila segue do F3-AUD-GA4, sem parar entre itens (GOAL, decisões 48 e 49).
+- **Revisão (`/review-diff-leve`):** rodada 1 NAO PODE COMMITAR (a quarta pendência do GA2b, o log vermelho contra o HEAD, não estava em `pendencias.md`); corrigido, rodada 2 PODE COMMITAR. Registro de decisão, sem código nem teste alterado.
