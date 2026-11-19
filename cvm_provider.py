@@ -542,11 +542,14 @@ class CVMProvider:
 
         for delta in range(anos):
             ano = ano_final - delta
+            zip_path = None
+            numeros_lidos = False
             try:
                 zip_path = self.baixar_dfp(ano)
                 bpa = self.parsear_demonstrativo(zip_path, "BPA_con", include_cd_cvm=True, include_versao=True)
                 bpp = self.parsear_demonstrativo(zip_path, "BPP_con", include_cd_cvm=True, include_versao=True)
                 dre = self.parsear_demonstrativo(zip_path, "DRE_con", include_cd_cvm=True, include_versao=True)
+                numeros_lidos = True
 
                 def _filtrar(df: pd.DataFrame) -> pd.DataFrame:
                     if "CD_CVM" in df.columns:
@@ -720,6 +723,31 @@ class CVMProvider:
                 resultado[ano] = ind
 
             except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
+                # A vigência entre versões permanece para o item GA2b.
+                # O índice só decide a abstenção do exercício final no recorte PIT; a API
+                # legada não o lê e conserva o aviso.
+                entregue = False
+                if (
+                    ano == ano_final
+                    and getattr(self, "por_publicacao", False)
+                    and not numeros_lidos
+                    and zip_path is not None
+                ):
+                    try:
+                        entregue = any(
+                            int(linha["CD_CVM"]) == cd_cvm
+                            and date.fromisoformat(str(linha["DT_REFER"])).year == ano
+                            for linha in self._entregas(zip_path)
+                        )
+                    except (
+                        OSError, RuntimeError, NotImplementedError, StopIteration,
+                        KeyError, TypeError, ValueError, zipfile.BadZipFile,
+                    ):
+                        pass
+                if entregue:
+                    raise OSError(
+                        f"documento vigente em D sem números legíveis para indicadores do ano {ano}"
+                    ) from exc
                 logger.warning("Erro ao calcular indicadores cd_cvm=%d ano=%d: %s", cd_cvm, ano, exc)
 
         return resultado
