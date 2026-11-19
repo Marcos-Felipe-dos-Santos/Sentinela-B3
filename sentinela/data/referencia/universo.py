@@ -29,6 +29,7 @@ from datetime import date, datetime
 import pandas as pd
 
 from sentinela.data import liquidez
+from sentinela.data.pit import leitura
 from sentinela.data.pit.carga_cvm import linha_do_informe
 from sentinela.data.providers import b3_cotahist
 from sentinela.data.referencia import montagem
@@ -78,15 +79,26 @@ def gerar(conn, gerado_em: str) -> int:
     return len(linhas)
 
 
+def _geral_antes(conn, texto: str) -> list[str]:
+    """Linhas do geral do Informe entregues antes de D, só de mês de referência encerrado antes
+    de D (BUG-3-51): o mês aberto e a referência futura não contam, como na leitura."""
+    dia = date.fromisoformat(texto)
+    return [
+        linha
+        for dt_refer, linha in conn.execute(
+            "SELECT dt_refer, linha_json FROM fii_informe_linhas WHERE parte = 'geral' "
+            "AND data_entrega != '' AND data_entrega < ? ORDER BY dt_refer, versao, linha_sha256",
+            (texto,),
+        )
+        if leitura._mes_encerrado(dt_refer, dia)
+    ]
+
+
 def _fiis_com_informe(conn, dia: str) -> set[str]:
-    """ISINs dos fundos com Informe mensal (geral) entregue antes de D."""
+    """ISINs dos fundos com Informe mensal (geral) de mês encerrado, entregue antes de D."""
     return {
         isin
-        for (texto,) in conn.execute(
-            "SELECT linha_json FROM fii_informe_linhas WHERE parte = 'geral' "
-            "AND data_entrega != '' AND data_entrega < ?",
-            (dia,),
-        )
+        for texto in _geral_antes(conn, dia)
         if (isin := json.loads(texto).get("Codigo_ISIN"))
     }
 
@@ -275,15 +287,9 @@ def _fca_em(
 
 
 def _informe_em(conn, texto: str) -> pd.DataFrame:
-    """Linhas do geral do Informe mensal entregues antes de D, como o CSV oficial."""
-    linhas = [
-        linha_do_informe(t)
-        for (t,) in conn.execute(
-            "SELECT linha_json FROM fii_informe_linhas WHERE parte = 'geral' "
-            "AND data_entrega != '' AND data_entrega < ? ORDER BY dt_refer, versao, linha_sha256",
-            (texto,),
-        )
-    ]
+    """Linhas do geral do Informe mensal entregues antes de D, como o CSV oficial; só meses
+    encerrados antes de D, para o corte de seis meses não andar com o mês aberto (BUG-3-51)."""
+    linhas = [linha_do_informe(t) for t in _geral_antes(conn, texto)]
     # sem Informe, a montagem só lê a coluna do ISIN
     return pd.DataFrame(linhas) if linhas else pd.DataFrame(columns=["Codigo_ISIN"])
 
