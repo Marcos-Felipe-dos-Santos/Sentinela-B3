@@ -7,7 +7,9 @@ desdobramento 1:2 desse outro emissor, da mesma espécie, reconciliava uma séri
 quantidade dobrou por outra causa, e o LPA anterior era dividido por 2 em Graham e Lynch.
 Decisão 51 do Marcos (20/11/2026): o evento só reconcilia se o ISIN dele estiver entre os
 ISINs do próprio emissor (GetDetail das coletas pelo código CVM do ativo, ou o CODISI do
-pregão); senão abstém.
+pregão). Esclarecimento do Marcos no mesmo dia (C3-03b): o evento com ISIN de outro emissor é
+descartado, não abstém; só o evento que não pode ser atribuído (ISIN ausente ou ilegível)
+faz a lente abster.
 
 Respostas oficiais da B3 da Lojas Renner (contrato D18) e COTAHIST do LREN4, como em
 `test_bloco_bazin_historico`, gravados pelos produtores reais (`gravar_proventos`,
@@ -38,7 +40,7 @@ from sentinela.data.providers import b3_proventos
 
 ISIN_DO_OUTRO = "BRLRENACNPR9"  # PN de outro emissor que usou a mesma raiz
 CD_CVM_DO_OUTRO = 99990
-MOTIVO = "evento em ações com ISIN fora dos ISINs do emissor; vínculo ao papel não demonstrado"
+SEM_EVENTO = "base incompatível sem evento oficial B3 no par documental"
 FATORES = {"2021": 2, "2022": 2, "2023": 1, "2024": 1, "2025": 1}
 
 
@@ -83,22 +85,35 @@ def test_evento_de_outro_emissor_com_a_mesma_raiz_nao_reconcilia(
     relacao,  # noqa: F811
     tmp_path,
 ):
+    """Descartado o evento do outro emissor, a série 100 → 200 fica sem evento e abstém."""
     _gravar(conn, relacao)
     _do_outro_emissor(conn, relacao)
-    assert _fatores(conn, tmp_path) == {"abstencao": MOTIVO}
+    assert _fatores(conn, tmp_path) == {"abstencao": SEM_EVENTO}
 
 
-def test_evento_de_outro_emissor_na_janela_abstem_mesmo_com_o_proprio(
+def test_evento_de_outro_emissor_na_janela_e_descartado_e_o_proprio_reconcilia(
     conn,  # noqa: F811
     relacao,  # noqa: F811
     tmp_path,
 ):
-    """Decisão 51: o evento sem vínculo ao emissor abstém, não é descartado em silêncio."""
+    """C3-03b: com o evento próprio e o alheio na janela, vale só o próprio (fator 2, não 4)."""
     _gravar(
         conn, dataclasses.replace(relacao, eventos_acoes=(_desdobramento(ISIN_PN),))
     )
     _do_outro_emissor(conn, relacao)
-    assert _fatores(conn, tmp_path) == {"abstencao": MOTIVO}
+    r = _fatores(conn, tmp_path)
+    assert r.get("fatores") == FATORES, r
+    (par,) = [e for e in r["evidencias"] if e["eventos"]]
+    assert [e["isinCode"] for e in par["eventos"]] == [ISIN_PN]
+
+
+@pytest.mark.parametrize("isin", [None, 123, "BRLREN", "BRLRENXXXXX9"])
+def test_evento_sem_isin_atribuivel_abstem(isin):
+    """C3-03b: ISIN ausente ou ilegível não permite atribuir o evento; a lente abstém."""
+    d = dados_sinteticos([{**_desdobramento("BRTESTACNOR0"), "isinCode": isin}])
+    assert fatores_da_relacao(d, documentos(), AS_OF_SINTETICO) == {
+        "abstencao": "espécie do evento em ações não demonstrada"
+    }
 
 
 def test_isin_do_pregao_prova_o_vinculo(conn, relacao, tmp_path):  # noqa: F811

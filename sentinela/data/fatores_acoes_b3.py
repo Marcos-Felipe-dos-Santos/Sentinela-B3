@@ -64,7 +64,6 @@ def _fator(evento: Mapping) -> float:
     return fator
 
 
-MOTIVO_EVENTO_DE_OUTRO_EMISSOR = "evento em ações com ISIN fora dos ISINs do emissor; vínculo ao papel não demonstrado"
 MOTIVO_SEM_ISINS_DO_EMISSOR = (
     "ISINs do emissor não demonstrados para os eventos em ações"
 )
@@ -115,8 +114,9 @@ def _fator_do_par(
         ):
             continue
         if isin not in isins:
-            # a raiz pode ser de outro emissor (decisão 51): sem vínculo, não reconcilia
-            raise ValueError(MOTIVO_EVENTO_DE_OUTRO_EMISSOR)
+            # a raiz pode ser de outro emissor (decisão 51): o evento dele é descartado; o sem
+            # ISIN atribuível já abstém acima (C3-03b)
+            continue
         if data_com in (inicio, fim):
             raise ValueError(
                 "data com coincide com encerramento; data ex não demonstrada"

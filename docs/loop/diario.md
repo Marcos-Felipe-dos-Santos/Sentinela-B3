@@ -58,3 +58,15 @@ Diário da Fase 3 arquivado pelo F3-10b em `docs/loop/historico/fase-3/diario.md
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** a aplicabilidade pela classe (FII sem lentes entra só em "Rendimento do FII"; ação, nas cinco lentes de ação).
 - **Limitações (revisão):** a lente que não teve nenhuma observação na execução não entra no mapa nem ganha linha no resumo; se todos os FIIs falhassem antes das lentes, eles apareceriam só em `abstencoes_antes_das_lentes` por data, sem a cobertura 0/N do "Rendimento do FII" (conservador, nunca infla). Os registros de `sem_lentes` ganharam `horizontes`, e o `hash_resultado` deixa de ser comparável com o das sondas anteriores.
+
+
+### C3-03b — fix: discard stock events of another issuer instead of abstaining
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** esclarecimento do Marcos (20/11/2026) ao C3-03: o evento em ações com ISIN fora dos ISINs do emissor é descartado e não faz a lente abster; só o evento que não pode ser atribuído (ISIN ausente, não texto ou sem espécie legível) abstém, pela guarda que já existia ("espécie do evento em ações não demonstrada"). Em `_fator_do_par`, o `raise` do evento alheio virou `continue`, e saiu a constante `MOTIVO_EVENTO_DE_OUTRO_EMISSOR`. A regressão BUG-3-60 mudou com a regra: só o evento alheio, a série 100 → 200 abstém por falta de evento; com o próprio e o alheio na janela, o fator é 2 (não 4) e a evidência traz só o evento próprio; ISIN `None`, número, curto ou sem espécie abstém.
+- **Dificuldades:** nenhuma. A sonda do C3-SONDA (PID 44369) seguiu rodando: o processo já tinha importado `fatores_acoes_b3` antes da edição.
+- **Como resolvi:** —
+- **Testes:** 5206 passed, 1 skipped, 24 xfailed → 5210 passed, 1 skipped, 24 xfailed. Vermelho no código do C3-03 em `outputs/c3/c3-03b-vermelho.log` (os dois cenários do outro emissor). Mutação à mão na linha nova: `continue` → `break` e a guarda desligada fazem testes falharem.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** o efeito na sonda (abaixo, no C3-SONDA): a sonda em curso roda o código do C3-03 (abstenção), e a comparação vai mostrar se alguma observação muda com o descarte.
