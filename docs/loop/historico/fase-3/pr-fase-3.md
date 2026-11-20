@@ -8,24 +8,39 @@ Branch `v2/fase-3`, a partir da `main` `284165f`; ativação em `da0a78c`. Fila,
 
 | Condição | Demonstração |
 |---|---|
-| `as_of` = hoje reproduz o resultado atual | golden dos motores com o mesmo SHA256 `500645a3263ad25e…bcc` da baseline em todos os gates da fase; `test_equivalencia_motores.py` e seções A, B e C de `test_financeiro_pre_refactor.py` intactas |
+| `as_of` = hoje reproduz o resultado atual | golden dos motores com o mesmo SHA256 `500645a3263ad25e…bcc` da baseline em todos os gates da fase, inclusive os do checkpoint; `test_equivalencia_motores.py` e seções A, B e C de `test_financeiro_pre_refactor.py` intactas. Ressalva: o golden roda os motores com `as_of` fixo (`AS_OF_GORDON`, 20/10/2026 15h UTC) sobre entradas sintéticas e não passa pelo motor histórico; a equivalência para `as_of` = hoje é provada pelos testes do `AnalysisService`, não pelo hash |
 | Backtest reprodutível | `test_backtest_pit_e2e.py`: duas execuções com o mesmo `hash_insumos`, `hash_resultado` e observações, recálculo imutável em `resultados_analise` |
-| Operacional por amostra declarada, com cobertura por lente e ano e abstenção com motivo | sonda final única do F3-3D-SONDA (oito datas de junho de 2018 a 2025, universo elegível inteiro): 15.292 observações; cobertura por lente e ano no diário arquivado e em `outputs/f3-3d-sonda/cobertura.txt`; a varredura completa fica como limitação registrada |
-| Universo com deslistadas | `test_universo_pit.py` (ALL e Americanas pelo FCA oficial, BUG-3-24, `sem_identificacao`); universo em D com correções e identidades oficiais cortadas por data (BUG-3-55, DD-89) |
+| Operacional por amostra declarada, com cobertura por lente e ano e abstenção com motivo | sonda final do F3-3D-SONDA refeita uma vez no checkpoint (C3-SONDA, decisão 51), nas mesmas oito datas de junho de 2018 a 2025 e universo elegível inteiro: 15.292 observações; cobertura por lente, ano e horizonte abaixo, no diário e em `outputs/c3-sonda/analise.txt`; a varredura completa fica como limitação registrada |
+| Universo com deslistadas | `test_universo_pit.py` (ALL e Americanas pelo FCA oficial, BUG-3-24, `sem_identificacao`); universo em D com correções e identidades oficiais cortadas pela entrega da evidência (BUG-3-55, DD-89 revista pela decisão 51, BUG-3-59) |
 | Limitações na proveniência | abstenções com motivo por campo e fonte; exploratório separado e rotulado (D17); limitações declaradas abaixo |
 
-## Cobertura da sonda final (12 meses)
+## Cobertura da sonda final
 
-Por lente e ano de D: com valor / universo da lente (com valor e retorno), na sonda única do F3-3D-SONDA, depois da recoleta da B3. Fonte: `outputs/f3-3d-sonda/sonda/observacoes.json` (fora do git), conta reproduzível por `outputs/f3-3d-sonda/cobertura.py`.
+Sonda do C3-SONDA (checkpoint, código do C3-06; o C3-03b não muda nenhum resultado dela). Unidade: observação de lente (ticker, lente, D, horizonte). Por lente e ano de D, em 12 meses: com valor / universo elegível da lente (com valor e retorno). O universo inclui os ativos elegíveis da classe da lente que falharam antes das lentes (`sem_lentes`, BUG-3-62): 3 FIIs em 2018 a 2020 e 1 em 2021 a 2023. Fonte: `outputs/c3-sonda/sonda/observacoes.json` (fora do git), conta reproduzível por `outputs/c3-sonda/analise.py`; as tabelas de 24 e 36 meses estão em `outputs/c3-sonda/analise.txt`.
 
 | Lente | 2018 | 2019 | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 |
 |---|---|---|---|---|---|---|---|---|
 | Bancos | 0/75 (0) | 0/86 (0) | 0/124 (0) | 0/115 (0) | 0/152 (0) | 3/173 (2) | 1/146 (0) | 3/145 (0) |
-| Bazin | 3/75 (3) | 2/86 (2) | 1/124 (1) | 2/115 (2) | 14/152 (14) | 7/173 (7) | 13/146 (12) | 15/145 (15) |
-| Gordon | 0/75 (0) | 0/86 (0) | 1/124 (1) | 22/115 (10) | 44/152 (13) | 43/173 (14) | 40/146 (21) | 39/145 (17) |
-| Graham | 0/75 (0) | 0/86 (0) | 0/124 (0) | 0/115 (0) | 0/152 (0) | 0/173 (0) | 0/146 (0) | 41/145 (15) |
+| Bazin | 6/75 (6) | 2/86 (2) | 1/124 (1) | 4/115 (2) | 18/152 (18) | 15/173 (15) | 17/146 (16) | 20/145 (20) |
+| Gordon | 0/75 (0) | 0/86 (0) | 1/124 (1) | 22/115 (12) | 44/152 (18) | 43/173 (21) | 40/146 (24) | 39/145 (23) |
+| Graham | 0/75 (0) | 0/86 (0) | 0/124 (0) | 0/115 (0) | 0/152 (0) | 0/173 (0) | 0/146 (0) | 43/145 (21) |
 | Lynch | 0/75 (0) | 0/86 (0) | 0/124 (0) | 0/115 (0) | 0/152 (0) | 0/173 (0) | 0/146 (0) | 1/145 (1) |
-| Rendimento do FII | 0/40 (0) | 0/59 (0) | 0/94 (0) | 0/122 (0) | 0/134 (0) | 0/141 (0) | 0/156 (0) | 0/150 (0) |
+| Rendimento do FII | 0/43 (0) | 0/62 (0) | 0/97 (0) | 0/123 (0) | 0/135 (0) | 0/142 (0) | 0/156 (0) | 0/150 (0) |
+
+A lente do FII fica sem número porque o motor histórico desliga o complemento da B3 do fundo (`b3_fundo`, fonte só corrente; `MotorHistorico._buscar_rendimento_fii`), e `rendimento_fii.avaliar` não demonstra a continuidade dos eventos de cota: em 12 meses, 307 observações abstêm por "fonte de eventos de cota indisponível", além de 326 fundos de papel ou de fundos fora do escopo e 209 sem DY. O retorno total do FII também não está ligado (F3-8l). Correção no F4-H03.
+
+### Retornos por horizonte, contra as sondas anteriores
+
+Unidade: observação de lente com retorno, nas chaves em comum. A sonda do F3-3D-SONDA, contra a do F3-8j-uni, mostrava perdas por todos os horizontes, e não só em 12 meses como dizia a versão anterior deste resumo (Codex C3-05); a do checkpoint, contra a do F3-3D-SONDA, recupera as perdas por identidade (C3-02) sem nenhuma perda nova.
+
+| Horizonte | Observações | F3-3D-SONDA: perdas / ganhos (por identidade; perdidas com valor na lente) | C3-SONDA: perdas / ganhos | Sem retorno no C3-SONDA |
+|---|---|---|---|---|
+| 12 meses | 5.976 | 235 / 100 (115; 26) | 0 / 440 | 3.711 |
+| 24 meses | 5.101 | 205 / 75 (85; 13) | 0 / 355 | 3.261 |
+| 36 meses | 4.215 | 180 / 75 (65; 10) | 0 / 290 | 2.770 |
+| **Total dos três horizontes** | 15.292 | **620 / 250 (265; 49)** | **0 / 1.085** | 9.742 |
+
+Na sonda do checkpoint, 26 observações do Bazin e 2 do Graham ganharam valor (estavam abstidas pela mesma identidade); nenhuma lente perdeu valor e nenhum valor mudou onde as duas sondas tinham valor. Ainda sem retorno por identidade, por outras causas (como espécie PNA sem ISIN no GetDetail): 1.845, 1.565 e 1.280 por horizonte, para o F4-H16.
 
 ## Testes
 
@@ -33,7 +48,8 @@ Por lente e ano de D: com valor / universo da lente (com valor e retorno), na so
 |---|---|---|
 | Ativação (`da0a78c`) | 3599 passed, 1 skipped, 8 xfailed | `500645a3…bcc` |
 | Fim da 3-b (`675f24d`) | 4823 passed, 1 skipped, 0 xfailed | igual |
-| Agora (fim da 3-d) | 5181 passed, 1 skipped, 24 xfailed | igual |
+| Fim da 3-d | 5181 passed, 1 skipped, 24 xfailed | igual |
+| Checkpoint (decisão 51, C3-03b) | 5210 passed, 1 skipped, 24 xfailed | igual |
 
 Os 24 xfails estritos são limitações declaradas: 8 do BUG-3-49 (F3-AUD-GA1b) e 15 do BUG-3-50 (F3-AUD-GA2b), pelas decisões 49 e 50, e 1 do FII no E2E (decisão do Marcos de 19/11). Todos têm destino na proposta da Fase 4 (`docs/loop/fila-fase4-proposta.md`, bloco H). Ruff CI e Ruff completo em `sentinela/data` e `sentinela/methods` verdes; mutação acima de 80% nas funções tocadas, item a item, no diário.
 
@@ -219,18 +235,37 @@ baa5157 docs: incorporate phase 3 document audit decisions into the queue propos
 36be431 docs: propose the phase 3 queue from the approved decision package
 ```
 
+## Fila do checkpoint (decisão 51 do Marcos, 20/11/2026)
+
+Auditorias do checkpoint: `docs/loop/auditorias/checkpoint-3-codex.md` e `docs/loop/auditorias/checkpoint-3-gemini.md`. Cada `fix:` com o vermelho antes (D27), golden igual e mutação nas funções tocadas no diário.
+
+```
+5e7d6da docs: add the Gemini phase 3 checkpoint audit unchanged
+daea1a1 fix: discard stock events of another issuer instead of abstaining
+69c6cfd fix: count eligible assets without lenses in the lens coverage
+05e0dc6 fix: prove the issuer identity only with announcements before the cut
+a2cc346 fix: reconcile share bases only with events of the issuer's own ISINs
+2b2db2d fix: date the MGLU3 species correction by the DFP delivery
+a65682d docs: queue the phase 3 checkpoint fixes from decision 51
+```
+
+Mais o commit da sonda (C3-SONDA) e o deste resumo (C3-DOCS). C3-04 continua limitação declarada (decisão 50, F4-H01); C3-07 vai para a Fase 4 (F4-H03).
+
 ## Decisões
 
 - **Do Marcos:** do pacote da fase (`docs/decisoes/decisoes-fase3.md`) às decisões 46 a 50 e às de 19/11/2026, transcritas no diário arquivado e em `pendencias.md`. A 49 e a 50 mudaram a política só até o fim da Fase 3 (terceira reprovação de código de item de auditoria não para o loop).
-- **Delegadas (DD-01 a DD-89):** texto de cada uma em `docs/loop/pendencias.md`. Pela marca na própria linha, 21 estão ratificadas e 65 não trazem a marca (parte foi tratada em bloco nos checkpoints das metades: `resumo-3a.md` e `resumo-3b.md`). Revisões cruzadas pendentes citadas na fila: DD-88 e DD-89 (esta ratificada em 19/11).
+- **Delegadas (DD-01 a DD-89):** texto de cada uma em `docs/loop/pendencias.md`. Pela marca na própria linha, 21 estão ratificadas e 65 não trazem a marca (parte foi tratada em bloco nos checkpoints das metades: `resumo-3a.md` e `resumo-3b.md`). Revisões cruzadas pendentes citadas na fila: DD-88 e DD-89 (esta ratificada em 19/11 e revista pela decisão 51). DD-90 (identidade com corte) ratificada pelo Marcos em 20/11.
 
 ## Limitações declaradas da Fase 3
 
-- GA1b (BUG-3-49) e GA2b (BUG-3-50), com os xfails estritos e o diff reprovado do GA2 só local em `outputs/f3-aud-ga2-d47-full-stage.patch`.
-- Lente do FII com número numa data passada não provada de ponta a ponta (fixtures do HGLG11 sem COTAHIST, 13 meses do Informe e NTN-B).
+- GA1b (BUG-3-49): o arquivo vigente do Informe de FII (complemento ou geral) presente e vazio ou malformado deixa recuar ao ano anterior; 8 xfails estritos (F4-H02).
+- GA2b (BUG-3-50), mais amplo que documento ilegível: em qualquer período da CVM (DFP ou ITR; exercício anual, indicadores ou TTM), quando a versão vigente em D está no índice sem linhas numéricas nos CSVs abertos (reapresentada depois de D, ou retida pelos conflitos de carga da DD-57), o `cvm_provider.py` recua em silêncio ao exercício, à referência ou ao trimestre anterior; a versão ainda é escolhida pela maior `VERSAO` entregue antes de D, e não pela última `DT_RECEB` antes de D; e uma linha ilegível de outra companhia no índice ainda pode interromper a busca da entrega (Codex C3-04). 15 xfails estritos (F4-H01); o diff reprovado do GA2 fica só local em `outputs/f3-aud-ga2-d47-full-stage.patch`.
+- Lente do FII com número numa data passada não provada de ponta a ponta (fixtures do HGLG11 sem COTAHIST, 13 meses do Informe e NTN-B) e sem número em nenhuma data da sonda, pelo `b3_fundo` desligado no histórico (F4-H03; o teste do xfail ainda não prova a ligação, Codex C3-07).
 - Graham e Lynch só a partir de 2025 nas datas da sonda (sem Composição do Capital antes de 2020; o FRE ficou para a Fase 4, decisão 48).
 - Retorno do FII sem ligação (F3-8l); banda neutra só como proposta (Gordon 12 meses, "não calibrada, dados insuficientes").
-- Escolha da coleta B3 mais recente mesmo posterior a D (Codex A-1): na sonda final, 265 retornos de 12 meses perdidos pela coleta nova sem identidade comprovada.
+- Escolha da coleta B3 mais recente mesmo posterior a D (Codex A-1): a parte da identidade foi corrigida no checkpoint (C3-02, DD-90 ratificada; F4-H08 fechado); a seleção da coleta mais recente de macro e Tesouro não foi medida.
+- Vínculo do evento em ações ao emissor (C3-03 e C3-03b): o evento com ISIN fora dos ISINs do emissor é descartado. A cascata corrente conhece só os ISINs do GetDetail da coleta; um evento próprio com ISIN que a B3 já trocou é descartado e a lente abstém por falta de evento, sem nomear o descarte.
+- Cobertura (C3-06): uma lente sem nenhuma observação na execução não ganha linha no resumo, e os seus `sem_lentes` aparecem só no total por data.
 
 ## Resíduos para o Marcos
 
@@ -243,5 +278,5 @@ baa5157 docs: incorporate phase 3 document audit decisions into the queue propos
 
 1. As limitações declaradas e o bloco H da proposta da Fase 4.
 2. As correções da auditoria que mudam valor gravado ou disponibilidade: BUG-3-53 (fator B3 pela publicação), BUG-3-55 com a DD-89, BUG-3-56 (relatório sem pseudo-lente), BUG-3-58 (relógio).
-3. O efeito da recoleta na sonda final (265 retornos perdidos, Codex A-1) antes de qualquer recoleta nova.
+3. A fila do checkpoint (decisão 51): BUG-3-59 a BUG-3-62 e as tabelas por horizonte acima; antes de qualquer recoleta nova, a DD-90.
 4. As decisões delegadas sem marca de ratificação.

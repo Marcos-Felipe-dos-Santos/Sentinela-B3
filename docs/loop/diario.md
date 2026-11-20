@@ -83,3 +83,15 @@ Diário da Fase 3 arquivado pelo F3-10b em `docs/loop/historico/fase-3/diario.md
 - **Resíduos:** `outputs/c3-sonda/` (log, PID, sonda com `observacoes.json`, `proposta.json`, `resultados.db` e cache PIT; `analise.py`, `analise_validacao.py`, `analise.txt`). Nenhuma escrita no banco real, rede, `.env` ou dado da carteira.
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** os 1.845 retornos de 12 meses ainda sem identidade por outras causas, para o F4-H16.
+
+
+### C3-DOCS — docs: report coverage and probe changes per horizon
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** `pr-fase-3.md`: tabela de cobertura de 12 meses refeita pela sonda do C3-SONDA, com o universo que inclui os `sem_lentes` da classe (BUG-3-62); tabela de retornos por horizonte (12, 24 e 36 meses, total dos três rotulado) para as duas comparações: F3-3D-SONDA contra F3-8j-uni (620/250, 265 por identidade, 49 perdidas com valor na lente; Codex C3-05) e C3-SONDA contra F3-3D-SONDA (0/1.085); causa da cobertura zero do FII (`b3_fundo` desligado no histórico: 307 por eventos de cota indisponíveis, mais 326 fora do escopo e 209 sem DY; F4-H03); ressalva do golden com `as_of` fixo; GA1b e GA2b descritos por inteiro (GA2b: versão vigente sem números no índice, reapresentada depois de D ou retida pela DD-57, recuo silencioso em anual, indicadores e TTM, maior `VERSAO` no lugar da última `DT_RECEB`, linha ilegível de outra companhia, Codex C3-04); seção da fila do checkpoint com os commits; linha de testes do checkpoint (5210); limitações dos itens C3-03/C3-03b e C3-06 apontadas nas revisões; DD-90 ratificada. `README.md`: Lynch e Bancos na cobertura, Bazin até 20 e Graham 43, FII sem número com a causa, retorno do FII sem ligação, retornos recuperados por horizonte, GA2b por inteiro, contagem do gate de 20/11 e a ressalva do golden. Proposta da Fase 4: F4-H03 com a causa já conhecida e o pedido do Codex C3-07; F4-H16 com os números da sonda nova.
+- **Dificuldades:** a "perdidas com valor na lente" do Codex (12 a 12 meses) conta só as perdas por identidade; a tabela usa todas as perdas (26, 13, 10), com a unidade declarada.
+- **Como resolvi:** números conferidos contra `outputs/c3-sonda/analise.txt` e a validação contra as sondas antigas (`outputs/c3-sonda/analise_validacao.py`, que reproduz 235/100, 205/75 e 180/75).
+- **Testes:** sem código tocado; gate do stage.
+- **Resíduos:** nenhum novo. Para o Marcos: o `CLAUDE.md` (estado da fase e contagem 5181 nos comandos) fica fora da lista do item e deve passar a 5210; `stash@{0}` (separação do C3-02 e C3-06, já commitado).
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** a tabela por horizonte e o texto do README antes do PR.
