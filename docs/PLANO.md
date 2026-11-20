@@ -375,6 +375,7 @@ desses bugs nem ativação da proposta.
 | F3-10 | Resumo e arquivamento |
 
 **Gate:** `as_of` = hoje reproduz o resultado atual; backtest reprodutível; universo com deslistadas; limitações registradas na proveniência.
+**Situação (19/11/2026):** concluída no branch `v2/fase-3`, aguardando o aceite no checkpoint; gate demonstrado e limitações em `docs/loop/historico/fase-3/pr-fase-3.md`.
 **Decisões:** definição do universo; profundidade da série (desde 2011, quando começa o ITR aberto, ou menos); tratamento de reapresentações antigas.
 
 ### Fase 4 — Operação diária, rastreabilidade e risco [D6, D9]

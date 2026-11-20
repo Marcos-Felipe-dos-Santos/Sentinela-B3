@@ -12,12 +12,12 @@ Python + Streamlit (V1; interface FastAPI + HTMX prevista para a Fase 7), local-
 
 ---
 
-## Estado da fase — 09/11/2026
+## Estado da fase — 19/11/2026
 
-A Fase 2C está concluída no branch `v2/fase-2c`, aguardando o PR e o aceite do
-Marcos no checkpoint. Resumo em `docs/loop/historico/fase-2c/pr-fase-2c.md`; pendências e oito xfails
-migrados para `docs/loop/fila-fase3-proposta.md`, ainda sem ativar a Fase 3.
-Suíte: **3525 passed, 1 skipped, 8 xfailed**.
+A Fase 3 está concluída no branch `v2/fase-3`, aguardando o README (F3-10c), o PR e o aceite do
+Marcos no checkpoint. Resumo em `docs/loop/historico/fase-3/pr-fase-3.md`; limitações declaradas
+(24 xfails estritos) e pendências na proposta da Fase 4, `docs/loop/fila-fase4-proposta.md`, ainda sem ativar.
+Suíte: **5181 passed, 1 skipped, 24 xfailed**.
 A seção “Fase atual” do `AGENTS.md` é mantida exclusivamente pelo Marcos.
 
 ---
@@ -45,7 +45,7 @@ inglês (Conventional Commits, seção Git).
 ```bash
 streamlit run app.py                               # app (V1)
 T=$HOME/.cache/sentinela-testes-<executor>; mkdir -p $T   # nunca o /tmp (tmpfs)
-TMPDIR=$T python -m pytest tests/ -x --tb=short --basetemp=$T/pytest   # suíte (3525 passed, 1 skipped, 8 xfailed)
+TMPDIR=$T python -m pytest tests/ -x --tb=short --basetemp=$T/pytest   # suíte (5181 passed, 1 skipped, 24 xfailed)
 python -m pytest tests/test_x.py::test_y -v        # teste único
 python -m pytest tests/ --cov=. --cov-report=term-missing
 TMPDIR=$T python -m mutmut run --max-children 2 "technical_engine*"           # mutação de um módulo (config em [tool.mutmut])
@@ -302,7 +302,7 @@ Sem insumo, abstém-se — não devolve número conservador.
 0. **Preparação** — concluída (tag `v2-fase-0`)
 1. **Fundação** — concluída (tag `v2-fase-1`): `units.py`, contrato de método e extração de `methods/`, comportamento idêntico, golden dos motores
 2. **2A Dados corretos** — concluída (tag `v2-fase-2a`; dados de referência, E-1, DY único, E-2, cinco anos, dívida líquida, bancos, medida de liquidez); **2B Taxa real, bancos e escopo** — fila da fase concluída (resumo em `docs/loop/historico/fase-2b/pr-fase-2b.md`); fila de fechamento da auditoria concluída (`docs/loop/historico/fase-2b/fila-fechamento.md`); fase fechada em 25/10/2026 (PRs #24 e #25, tag `v2-fase-2b` no `c025c23`); **2C Qualidade e apresentação** — concluída, aguardando PR/aceite (Graham/Lynch 2.1, qualidade 1.0, lentes separadas sem agregado, vocabulário e Markowitz aposentado; pendências na proposta da Fase 3)
-3. **Tempo como entrada** — E-6, E-14, ponto-no-tempo, `analisar(ticker, as_of)`, backtest real
+3. **Tempo como entrada** — concluída, aguardando PR/aceite (E-6, E-14, ponto-no-tempo, `analisar(ticker, as_of)`, backtest real; resumo em `docs/loop/historico/fase-3/pr-fase-3.md`)
 4. **Operação diária, rastreabilidade e risco da carteira**
 5. **Notícias medidas** — coletor do IPE e estudo de evento
 6. **Vitrine** — fecha o núcleo de portfólio
