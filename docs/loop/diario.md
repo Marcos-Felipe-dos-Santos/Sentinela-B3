@@ -70,3 +70,16 @@ Diário da Fase 3 arquivado pelo F3-10b em `docs/loop/historico/fase-3/diario.md
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** o efeito na sonda (abaixo, no C3-SONDA): a sonda em curso roda o código do C3-03 (abstenção), e a comparação vai mostrar se alguma observação muda com o descarte.
+
+
+### C3-SONDA — docs: rerun the final historical probe after the checkpoint fixes
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso (uma execução)
+- **Execução:** `scripts/banda_neutra_fase3.py --executar --banco sentinela_store.db --saida outputs/c3-sonda/sonda --datas` nas mesmas oito datas do F3-3D-SONDA (2018-06-29, 2019-06-28, 2020-06-30, 2021-06-30, 2022-06-30, 2023-06-30, 2024-06-28, 2025-06-30), universo elegível inteiro; segundo plano, PID 44369 (subshell que grava o marcador) em `outputs/c3-sonda/pid`, espera pelo PID; de 13:17 a 20:39, `FIM_EXECUCAO codigo=0`. Código do commit `69c6cfd` (C3-01, C3-03, C3-02 e C3-06); banco real só lido.
+- **C3-03b (descarte do evento alheio, posterior ao início):** nenhuma observação abstém pelo motivo do C3-03 ("evento em ações com ISIN fora dos ISINs do emissor"), que era o único efeito que o descarte muda; nenhuma por "ISINs do emissor não demonstrados". A correção não muda nenhum resultado desta sonda, e não houve nova rodada.
+- **Resultado:** 15.292 observações, as mesmas chaves (ticker, lente, D, horizonte) da sonda anterior; 12 análises sem lente (FII, "DADOS INSUFICIENTES"), agora no universo do "Rendimento do FII" (896 + 12 = 908 em 12 meses). Tabelas por lente, ano e horizonte em `outputs/c3-sonda/analise.txt` (script `outputs/c3-sonda/analise.py`, que reproduz as contas do Codex sobre as duas sondas antigas: 235/100, 205/75 e 180/75; identidade 115 + 85 + 65 = 265).
+- **Retorno por horizonte (unidade: observação de lente; contra o F3-3D-SONDA):** 12 meses: 0 perdas, 440 ganhos, 3.711 de 5.976 sem retorno (antes 4.151); 24 meses: 0 perdas, 355 ganhos, 3.261 de 5.101 sem retorno; 36 meses: 0 perdas, 290 ganhos, 2.770 de 4.215 sem retorno. Total dos três horizontes: 0 perdas e 1.085 ganhos, todos com o motivo anterior de identidade (o anúncio de novembro de 2026 fora da relação; C3-02). Ainda sem retorno por identidade, por outras causas (por exemplo, espécie PNA sem ISIN no GetDetail): 1.845, 1.565 e 1.280.
+- **Lentes (12 meses):** 26 observações do Bazin e 2 do Graham ganharam valor (antes abstidas pela mesma identidade, na relação ou no fator B3); nenhuma perdeu; nenhum valor mudou onde as duas sondas tinham valor. Bazin com valor: 6, 2, 1, 4, 18, 15, 17 e 20 por data; Graham 43 em 2025; Gordon igual (até 44); Lynch 1 em 2025; Bancos 3, 1 e 3 de 2023 a 2025; "Rendimento do FII" 0 em todas (307 por eventos de cota indisponíveis, o `b3_fundo` desligado no histórico; 326 papel e fundo de fundos fora do escopo; 209 DY ausente).
+- **Resíduos:** `outputs/c3-sonda/` (log, PID, sonda com `observacoes.json`, `proposta.json`, `resultados.db` e cache PIT; `analise.py`, `analise_validacao.py`, `analise.txt`). Nenhuma escrita no banco real, rede, `.env` ou dado da carteira.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** os 1.845 retornos de 12 meses ainda sem identidade por outras causas, para o F4-H16.
