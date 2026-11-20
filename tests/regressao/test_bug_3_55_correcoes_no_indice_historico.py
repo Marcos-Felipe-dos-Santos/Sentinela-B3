@@ -30,7 +30,7 @@ CADASTRO = pd.DataFrame(
       "SETOR_ATIV": None, "CONTROLE_ACIONARIO": None}
      for c, n, cd in ((CSN, "CSN", "4030"), (MGLU, "MAGAZINE LUIZA", "22470"))]
 )  # fmt: skip
-ANTES_DA_MGLU, DEPOIS_DA_MGLU = date(2025, 6, 30), date(2026, 3, 2)
+ANTES_DA_MGLU, DEPOIS_DA_MGLU = date(2025, 6, 30), date(2026, 3, 13)  # BUG-3-59
 
 
 @pytest.fixture
@@ -64,7 +64,7 @@ def test_referencia_do_motor_historico_aplica_a_correcao_vigente_em_d(conn):
 def test_correcao_de_especie_vale_so_depois_da_evidencia(conn):
     antes = universo.indice_em(conn, ANTES_DA_MGLU, CADASTRO).registros
     depois = universo.indice_em(conn, DEPOIS_DA_MGLU, CADASTRO).registros
-    # a `data` da linha (2025-12-31, referência da DFP 2025) é posterior a D
+    # a `data` da linha (2026-03-12, entrega da DFP 2025; BUG-3-59) é posterior a D
     assert antes["MGLU3"].especie == "PN"
     assert depois["MGLU3"].especie == "ON"
 

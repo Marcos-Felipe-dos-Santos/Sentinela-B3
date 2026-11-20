@@ -366,9 +366,12 @@ def _fca_sem_prova(
 def referencias_em(dia: date) -> dict[str, list]:
     """A tabela de correções e as identidades de FII oficiais válidas em D (BUG-3-55).
 
-    Uma linha vale em D quando as datas da sua evidência são anteriores a D: `data` (o
-    defeito na fonte ou o documento da identidade) e, na correção que a cita, `ligacao_data`.
-    São as datas que a tabela registra, não a entrega de cada documento (DD-89).
+    Uma linha vale em D quando as datas da sua evidência são anteriores a D: `data` e, na
+    correção que a cita, `ligacao_data`. Decisão 51 (BUG-3-59), revendo a DD-89: a `data` é a
+    entrega ou publicação comprovada da evidência (na MGLU3, a `DT_RECEB` da DFP 2025), e não a
+    referência do documento. Nas correções de código (CSNA3, TRXF11, BPAC11) a linha só age
+    quando o código defeituoso já aparece num documento entregue antes de D; as datas de
+    conferência ou arquivamento (BPAC11, identidades de FII) são posteriores à publicação.
     """
     _dia(dia)
     # data fora do formato ISO falha aqui, em vez de cortar a linha em silêncio
