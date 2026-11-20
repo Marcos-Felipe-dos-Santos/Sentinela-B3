@@ -944,6 +944,7 @@ class MarketEngine:
             'registros': list(relacao.registros),
             'total': relacao.total,
             'eventos_acoes': list(relacao.eventos_acoes),
+            'isins_emissor': list(relacao.isins),  # GetDetail pelo código CVM (BUG-3-60)
             'dinheiro_complemento': list(relacao.dinheiro_complemento),
             'fechamentos': fechamentos,
             'pregoes': self._pregoes_da_data_ex(relacao.registros, referencia, agora),

@@ -290,7 +290,9 @@ class MotorHistorico(MarketEngine):
         if not anteriores:
             dados["proventos_b3"] = {"abstencao": proventos_b3.MOTIVO_PRECO_NAO_ENCERRADO}
             return
-        relacao = b3_proventos.relacao_ate(self.conn, ticker[:4], self.dia, ticker=ticker)
+        relacao = b3_proventos.relacao_ate(
+            self.conn, ticker[:4], self.dia, ticker=ticker, cd_cvm=dados.get("cd_cvm")
+        )
         if "abstencao" in relacao:
             dados["proventos_b3"] = {"abstencao": relacao["abstencao"]}
             return

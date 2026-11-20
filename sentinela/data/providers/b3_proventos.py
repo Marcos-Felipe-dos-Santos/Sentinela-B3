@@ -630,7 +630,36 @@ def proventos_ate(
 # --- Bloco do Bazin no motor histórico (F3-8h) ------------------------------------------------
 
 
-def relacao_ate(conn, emissor: str, dia: date, *, ticker: str | None = None) -> dict:
+def isins_do_emissor(
+    conn, emissor: str, cd_cvm: int | str | None, ticker: str | None, dia: date
+) -> list[str]:
+    """ISINs que provam o vínculo de um evento ao emissor analisado (decisão 51, BUG-3-60).
+
+    Os do GetDetail de cada coleta da raiz feita pelo código CVM do ativo (a raiz pode ter sido
+    reutilizada por outro emissor, com outro código CVM) e o CODISI do ticker no último pregão
+    antes do dia. Sem código CVM, nenhuma coleta conta; sem ticker, nenhum CODISI.
+    """
+    isins = set()
+    if cd_cvm is not None:
+        for codigo, texto in conn.execute(
+            "SELECT cd_cvm, isins_json FROM proventos_coletas WHERE emissor = ?",
+            (emissor,),
+        ):
+            if str(codigo).lstrip("0") == str(cd_cvm).lstrip("0"):
+                isins.update(json.loads(texto))
+    if ticker and (isin := isin_no_pregao(conn, ticker, dia)) is not None:
+        isins.add(isin)
+    return sorted(isins)
+
+
+def relacao_ate(
+    conn,
+    emissor: str,
+    dia: date,
+    *,
+    ticker: str | None = None,
+    cd_cvm: int | str | None = None,
+) -> dict:
     """A relação da B3 como a cascata a entrega ao Bazin, pela coleta do `proventos_ate`.
 
     A coleta é a que `proventos_ate` escolhe numa data passada (decisão 40, com a identidade
@@ -641,7 +670,8 @@ def relacao_ate(conn, emissor: str, dia: date, *, ticker: str | None = None) -> 
     (`proventos_b3.serie_12_meses`), como na cascata. O complemento em dinheiro é o da mesma
     coleta (sem ele, abstém); os eventos em ações são os guardados do emissor, também sem os
     aprovados em D ou depois (BUG-3-52); o de aprovação ilegível fica (a série o pesa
-    pela data com).
+    pela data com). `isins_emissor` são os de `isins_do_emissor`, que o fator da base exige
+    de cada evento usado (BUG-3-60).
     """
     lidos = proventos_ate(conn, emissor, dia, por_publicacao=True, ticker=ticker)
     if "abstencao" in lidos:
@@ -682,6 +712,7 @@ def relacao_ate(conn, emissor: str, dia: date, *, ticker: str | None = None) -> 
         "registros": registros,
         "total": total - (len(lidos_da_coleta) - len(registros)),  # conferido no leitor
         "eventos_acoes": eventos,
+        "isins_emissor": isins_do_emissor(conn, emissor, cd_cvm, ticker, dia),
         "dinheiro_complemento": json.loads(complemento[0]),
         "coleta": coleta,
         "aprovacao_antes_de_d": True,  # a marca que `proventos_b3.entradas` exige (DD-65)

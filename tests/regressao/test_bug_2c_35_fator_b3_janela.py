@@ -15,6 +15,7 @@ def test_fator_oficial_existente_e_consumido():
             "proventos_b3": {
                 "coleta": AS_OF.isoformat(),
                 "proveniencia": {"fonte": "B3 sintética"},
+                "isins_emissor": ["BRTESTACNOR0"],  # BUG-3-60
                 "eventos_acoes": [
                     {
                         "label": "DESDOBRAMENTO",

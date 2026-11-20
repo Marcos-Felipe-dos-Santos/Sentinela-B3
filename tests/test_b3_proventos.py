@@ -1,6 +1,7 @@
 """Provedor da relação de proventos da B3 e a etapa da cascata (F2B-31)."""
 
 import base64
+import dataclasses
 import hashlib
 import json
 from datetime import UTC, date, datetime
@@ -253,6 +254,13 @@ def test_cascata_grava_a_relacao_e_os_fechamentos():
     assert relacao["coleta"] == RELACAO.coleta
     assert relacao["proveniencia"]["nome_pregao"] == "TESTE SA"
     assert relacao["proveniencia"]["arquivos"] == [{"url": "u"}]
+
+
+def test_cascata_leva_os_isins_do_getdetail_pelo_codigo_cvm():
+    """BUG-3-60: o fator da base só aceita evento com ISIN do próprio emissor."""
+    relacao = dataclasses.replace(RELACAO, isins=("BRTSTEACNOR1", "BRTSTEACNPR8"))
+    dados = _cascata({}, _Provedor(relacao))
+    assert dados["proventos_b3"]["isins_emissor"] == ["BRTSTEACNOR1", "BRTSTEACNPR8"]
 
 
 def test_cascata_sem_dividendos_no_historico_nao_tem_conferencia():

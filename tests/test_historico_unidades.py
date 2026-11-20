@@ -272,11 +272,11 @@ def test_proventos_pelo_leitor_historico(conn, tmp_path, monkeypatch):
     motor = _motor(conn, tmp_path)
     dados = {
         "classe_ativo": "STOCK", "modelo_bpp": "empresa", "fonte_preco": historico.FONTE_PRECO,
-        "fechamentos_brutos": {"2020-02-27": 9.0, "2020-02-28": 10.0},
+        "fechamentos_brutos": {"2020-02-27": 9.0, "2020-02-28": 10.0}, "cd_cvm": "22357",
     }  # fmt: skip
     motor._buscar_proventos_b3("AMER3", dados)
     assert lido.call_args.args == (conn, "AMER", date(2020, 3, 2))
-    assert lido.call_args.kwargs == {"ticker": "AMER3"}
+    assert lido.call_args.kwargs == {"ticker": "AMER3", "cd_cvm": "22357"}
     assert dados["proventos_b3"] == {"abstencao": sem_coleta}
     lido.return_value = {"registros": [], "total": 0, "coleta": "c"}
     motor._buscar_proventos_b3("AMER3", dados)

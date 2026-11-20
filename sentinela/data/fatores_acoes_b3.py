@@ -64,12 +64,31 @@ def _fator(evento: Mapping) -> float:
     return fator
 
 
+MOTIVO_EVENTO_DE_OUTRO_EMISSOR = "evento em ações com ISIN fora dos ISINs do emissor; vínculo ao papel não demonstrado"
+MOTIVO_SEM_ISINS_DO_EMISSOR = (
+    "ISINs do emissor não demonstrados para os eventos em ações"
+)
+
+
+def _isins_do_emissor(relacao: Mapping) -> frozenset[str]:
+    """Os ISINs do próprio emissor que acompanham a relação (decisão 51, BUG-3-60)."""
+    isins = relacao.get("isins_emissor")
+    if (
+        not isinstance(isins, (list, tuple))
+        or not isins
+        or not all(isinstance(i, str) for i in isins)
+    ):
+        raise ValueError(MOTIVO_SEM_ISINS_DO_EMISSOR)
+    return frozenset(isins)
+
+
 def _fator_do_par(
     eventos: Sequence,
     componentes: Mapping,
     inicio: date,
     fim: date,
     dia: date,
+    isins: frozenset[str],
 ) -> tuple[float, list[dict]]:
     fatores = {classe: 1.0 for classe in componentes}
     encontrados = set()
@@ -95,6 +114,9 @@ def _fator_do_par(
             and classe_emitida not in componentes
         ):
             continue
+        if isin not in isins:
+            # a raiz pode ser de outro emissor (decisão 51): sem vínculo, não reconcilia
+            raise ValueError(MOTIVO_EVENTO_DE_OUTRO_EMISSOR)
         if data_com in (inicio, fim):
             raise ValueError(
                 "data com coincide com encerramento; data ex não demonstrada"
@@ -165,6 +187,7 @@ def fatores_da_relacao(dados: Mapping, registros: Sequence, instante: datetime) 
         incompativeis = any(not 0.9 < r < 1.1 for r in razoes)
         eventos = []
         componentes = {}
+        isins = frozenset()
         if incompativeis:
             relacao = _mapa(dados.get("proventos_b3"), "relação de eventos B3")
             if relacao.get("abstencao"):
@@ -182,6 +205,7 @@ def fatores_da_relacao(dados: Mapping, registros: Sequence, instante: datetime) 
             eventos = relacao.get("eventos_acoes")
             if not isinstance(eventos, (list, tuple)):
                 raise ValueError("lista de eventos em ações ausente ou inválida")
+            isins = _isins_do_emissor(relacao)
             componentes = pb._componentes(
                 dados.get("especie"),
                 dados.get("classe_ativo") == "UNIT",
@@ -216,6 +240,7 @@ def fatores_da_relacao(dados: Mapping, registros: Sequence, instante: datetime) 
                     fins[i],
                     fins[i + 1],
                     dia,
+                    isins,
                 )
             )
             residual = razao / fator
