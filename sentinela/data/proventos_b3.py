@@ -169,7 +169,10 @@ def mesmo_valor(relacao: object, complemento: object) -> bool:
 
 
 def conferir_emissor(
-    registros: Iterable[object], complemento: Iterable[object], isins: Iterable[str]
+    registros: Iterable[object],
+    complemento: Iterable[object],
+    isins: Iterable[str],
+    corte: date | None = None,
 ) -> str | None:
     """Motivo da abstenção se a relação não é comprovadamente do emissor; senão `None`.
 
@@ -178,6 +181,11 @@ def conferir_emissor(
     decisão 33 (b), "todo provento do complemento": sem o corte de espécie e de janela do
     `_cruzamento`. Provento por ISIN da unit (`CDAM`), que a relação por espécie não traz,
     e anúncio que a relação ainda não traz abstêm (DD-06).
+
+    `corte` (decisão 51, BUG-3-61; D na análise, o dia seguinte a T no retorno): o provento
+    do complemento anunciado (`approvedOn`) no corte ou depois e ausente da relação não
+    decide a identidade numa data anterior ao anúncio; o de aprovação ilegível segue
+    comparado. DD-90: ao menos um provento do complemento precisa estar na relação.
     """
     isins = tuple(isins)
     if not isins:
@@ -199,19 +207,25 @@ def conferir_emissor(
     complemento = tuple(complemento)
     if not complemento:
         return f"{MOTIVO_IDENTIDADE}: complemento sem proventos para conferir"
+    algum_na_relacao = False
     for evento in complemento:
         if not isinstance(evento, Mapping):
             return f"{MOTIVO_IDENTIDADE}: provento do complemento ilegível"
         data_com = ler_data(evento.get("lastDatePrior"))
         if data_com is None or _decimal(evento.get("rate")) is None:
             return f"{MOTIVO_IDENTIDADE}: provento do complemento ilegível"
-        if not any(
-            d == data_com and mesmo_valor(v, evento.get("rate")) for d, v in lidos
-        ):
-            return (
-                f"{MOTIVO_IDENTIDADE}: provento do complemento {evento.get('label')} "
-                f"{evento.get('lastDatePrior')} ausente da relação"
-            )
+        if any(d == data_com and mesmo_valor(v, evento.get("rate")) for d, v in lidos):
+            algum_na_relacao = True
+            continue
+        anuncio = ler_data(evento.get("approvedOn"))
+        if corte is not None and anuncio is not None and anuncio >= corte:
+            continue
+        return (
+            f"{MOTIVO_IDENTIDADE}: provento do complemento {evento.get('label')} "
+            f"{evento.get('lastDatePrior')} ausente da relação"
+        )
+    if not algum_na_relacao:
+        return f"{MOTIVO_IDENTIDADE}: nenhum provento do complemento na relação"
     return None
 
 

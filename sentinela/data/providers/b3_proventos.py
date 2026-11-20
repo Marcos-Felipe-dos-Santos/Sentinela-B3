@@ -494,7 +494,10 @@ def _identidade_com_o_pregao(
 
     O ISIN do CODISI soma aos da companhia no GetDetail só se o código do emissor (posições
     3 a 6) for o de um deles; as partes (a) a (d) são as de `conferir_emissor`, com a
-    relação e o complemento da própria coleta. Sem ISIN novo, fica o motivo gravado.
+    relação e o complemento da própria coleta. Decisão 51 (BUG-3-61): a conferência refeita
+    usa o corte do dia (`conferir_emissor(..., corte=dia)`), e o anúncio do complemento no
+    dia ou depois, ainda fora da relação, não decide. Sem ISIN novo e sem complemento
+    guardado, fica o motivo gravado.
     """
     isin = isin_no_pregao(conn, ticker, dia) if ticker else None
     (isins_json,) = conn.execute(
@@ -502,14 +505,15 @@ def _identidade_com_o_pregao(
         (emissor, coleta),
     ).fetchone()
     isins = tuple(json.loads(isins_json))
-    if isin is None or isin in isins or isin[2:6] not in {i[2:6] for i in isins}:
-        return identidade
+    novo = not (
+        isin is None or isin in isins or isin[2:6] not in {i[2:6] for i in isins}
+    )
     complemento = conn.execute(
         "SELECT dinheiro_json FROM proventos_complemento WHERE emissor = ? AND coleta = ?",
         (emissor, coleta),
     ).fetchone()
     if complemento is None:
-        return MOTIVO_COMPLEMENTO_NAO_GUARDADO
+        return MOTIVO_COMPLEMENTO_NAO_GUARDADO if novo else identidade
     registros = [
         json.loads(texto)
         for (texto,) in conn.execute(
@@ -520,7 +524,10 @@ def _identidade_com_o_pregao(
         )
     ]
     return proventos_b3.conferir_emissor(
-        registros, json.loads(complemento[0]), (*isins, isin)
+        registros,
+        json.loads(complemento[0]),
+        (*isins, isin) if novo else isins,
+        corte=dia,
     )
 
 
