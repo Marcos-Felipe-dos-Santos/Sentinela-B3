@@ -2,7 +2,7 @@
 
 Plataforma educacional e local para estudar ações e FIIs da B3 com dados oficiais. **Não é recomendação de investimento.**
 
-**Status: V2 em desenvolvimento ativo — Fase 3 de 8.** A interface disponível hoje usa Streamlit; a interface FastAPI + HTMX está planejada para a Fase 7.
+**Status: V2 em desenvolvimento ativo — Fase 3 de 8 concluída na branch de desenvolvimento, em revisão antes do merge.** A interface disponível hoje usa Streamlit; a interface FastAPI + HTMX está planejada para a Fase 7.
 
 ## Da V1 para a V2
 
@@ -18,15 +18,15 @@ As lentes agora aparecem **separadas**: cada uma mostra seu valor e premissas, o
 | **2A · Dados corretos** | Referência oficial de ticker, emissor e classe; demonstrações CVM, números por ação, série de **cinco exercícios** e TTM, proveniência e liquidez pelo COTAHIST. | [Resumo da Fase 2A](docs/loop/historico/fase-2a/pr-fase-2a.md) |
 | **2B · Taxa e escopo** | Taxa real, lentes de Gordon, Bazin, FII e bancos com insumos documentados; regras de escopo pelo modelo das demonstrações e liquidez mínima. | [Resumo da Fase 2B](docs/loop/historico/fase-2b/pr-fase-2b.md) |
 | **2C · Qualidade e apresentação** | Graham e Lynch revistos; lentes independentes com abstenção e distância ao preço; quadro descritivo de qualidade de **cinco exercícios**, sem nota única. | [Resumo da Fase 2C](docs/loop/historico/fase-2c/pr-fase-2c.md) |
-| **3 · Tempo como entrada, em andamento** | Banco com migrações e backup verificado, análise por `as_of`, leitura documental por entrega, universo histórico e séries de preço ajustadas. O levantamento da 3-b registrou **DFP de 2010 a 2026**, **Informe de FII de 2016 a 2026** e identificação de ações no universo a partir de **2018**. O backtest e a auditoria da fase ainda têm itens abertos. | [Resumo da 3-a](docs/loop/resumo-3a.md) · [Resumo da 3-b](docs/loop/resumo-3b.md) · [Fila ativa](docs/loop/fila.md) |
+| **3 · Tempo como entrada** | A data vira entrada: `analisar(ticker, as_of)` numa data passada lê só o banco único, com DFP, FCA, Informe de FII, COTAHIST, proventos da B3 e séries macro carregados ponto no tempo; a disponibilidade é a data de publicação. Universo histórico com deslistadas e backtest ponto no tempo com retorno total, relatório por lente, data e motivo de abstenção, e banda neutra só como proposta. A sonda final, em oito datas de 2018 a 2025, mediu a cobertura por lente e ano: Gordon com valor em até 44 ações por data, Bazin em até 15, Graham só em 2025 e a lente do FII sem número. Limitações declaradas, com destino na Fase 4: documento vigente ilegível na CVM e no Informe de FII, lente do FII sem prova de ponta a ponta e escolha da coleta mais recente da B3. | [Resumo da Fase 3](docs/loop/historico/fase-3/pr-fase-3.md) |
 
-Na branch de desenvolvimento, o gate de **18/11/2026** registrou **5.128 testes passando, 1 ignorado e 8 falhas esperadas estritas**. Esse número descreve a branch naquele ponto, não a `main` publicada. Bugs confirmados e seus destinos ficam no [registro de regressões](tests/regressao/README.md).
+Na branch de desenvolvimento, o gate de **19/11/2026** registrou **5.181 testes passando, 1 ignorado e 24 falhas esperadas estritas**, todas limitações declaradas da Fase 3. Esse número descreve a branch naquele ponto, não a `main` publicada. Bugs confirmados e seus destinos ficam no [registro de regressões](tests/regressao/README.md).
 
 ## Próximos passos
 
 | Fase | Direção prevista |
 |---|---|
-| **4** | Operação diária por CLI, fechamento, rastreabilidade e backup; modo offline com escopo a detalhar na fila da fase. |
+| **4** | Primeiro, as limitações herdadas da Fase 3; depois, operação diária por CLI, fechamento, rastreabilidade, backup e descrição de risco da carteira, sem alocação sugerida. A fila está em [proposta](docs/loop/fila-fase4-proposta.md), sem efeito até a aprovação. |
 | **5** | Fatos relevantes e estudo de evento para medir se notícias acrescentam informação. |
 | **6** | Vitrine técnica: documentação consolidada, página de metodologia e limpeza do núcleo. |
 | **7** | Interface FastAPI + HTMX com paridade funcional com a V1. |
