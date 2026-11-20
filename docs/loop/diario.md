@@ -45,3 +45,16 @@ Diário da Fase 3 arquivado pelo F3-10b em `docs/loop/historico/fase-3/diario.md
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos:** ratificar a DD-90; a outra parte do Codex A-1 (seleção da coleta mais recente de macro e Tesouro) não foi medida e fica para a ativação da Fase 4.
 - **Para o Marcos revisar:** a DD-90 e o efeito na sonda do C3-SONDA (as 265 observações perdidas por identidade na sonda anterior).
+
+
+### C3-06 — fix: count eligible assets without lenses in the lens coverage
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** decisão 51: no resumo do backtest, o universo elegível de cada lente soma às observações os ativos elegíveis que falharam antes das lentes (`sem_lentes`) da classe a que a lente se aplica, nas datas com o horizonte completo; a cobertura é `com_valor / universo`. A linha ganha `sem_lentes` (quantos entraram) e `abstencoes_antes_das_lentes` (os motivos deles, separados das abstenções da lente). O `executar` guarda em cada `sem_lentes` os horizontes completos em D e monta o mapa lente → classes dos ativos que a receberam (na sonda: as cinco lentes de ação para STOCK/UNIT e "Rendimento do FII" para FII). F4-H07 fica só com a contagem das datas sem benchmark.
+- **Dificuldades:** o modelo do BPP de quem falha antes das lentes em geral não é conhecido; como toda ação recebe as cinco lentes (Bancos abstida para empresa e vice-versa), a aplicabilidade é pela classe, o que nunca superestima a cobertura. A asserção antiga de `test_quintis_e_relatorio_por_lente_com_contas_a_mao` (universo 54, cobertura 52/54) era o próprio bug: passou a 58 e 52/58, com as duas ações sem lente de cada data.
+- **Como resolvi:** classe pelo mapa observado; registro de `sem_lentes` sem a lista de horizontes não entra.
+- **Testes:** 5201 passed, 1 skipped, 24 xfailed → 5206 passed, 1 skipped, 24 xfailed. Vermelho no HEAD em `outputs/c3/c3-06-vermelho.log` (4 falhas). Mutação de `_resumir` (`outputs/c3/c3-06-mutmut.txt`): 356 mortos, 17 sobreviventes (95,4%); nas linhas novas, o padrão `()` → `None` de `horizontes` passou a morrer com o teste do registro sem a lista, e `cobertura ... if universo or True` é equivalente (toda linha tem ao menos uma observação). No `executar`, conferidos à mão: sem o mapa de classes e com o teste de horizonte invertido, o cenário falha.
+- **Resíduos:** um `git stash` (`stash@{0}`, "c3-06 em andamento") ficou da separação dos itens C3-02 e C3-06; todo o conteúdo dele está nos commits do C3-02 e no deste item. O loop não apaga; o Marcos pode descartá-lo.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** a aplicabilidade pela classe (FII sem lentes entra só em "Rendimento do FII"; ação, nas cinco lentes de ação).
+- **Limitações (revisão):** a lente que não teve nenhuma observação na execução não entra no mapa nem ganha linha no resumo; se todos os FIIs falhassem antes das lentes, eles apareceriam só em `abstencoes_antes_das_lentes` por data, sem a cobertura 0/N do "Rendimento do FII" (conservador, nunca infla). Os registros de `sem_lentes` ganharam `horizontes`, e o `hash_resultado` deixa de ser comparável com o das sondas anteriores.

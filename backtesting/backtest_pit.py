@@ -313,6 +313,7 @@ class BacktestPIT:
         fuso = ZoneInfo("America/Sao_Paulo")
         fontes, observacoes, incompletas = [], [], Counter()
         sem_lentes = []  # análise sem lente: por data e motivo, fora das lentes (BUG-3-56)
+        classes_por_lente = defaultdict(set)  # a quem cada lente se aplica (BUG-3-62)
         datas_pregao = [
             date.fromisoformat(linha[0])
             for linha in self.conn.execute(
@@ -415,9 +416,18 @@ class BacktestPIT:
                             "D": dia.isoformat(),
                             "classe": ativo.get("classe"),
                             "motivo": motivo,
+                            # horizontes completos em D: a cobertura da lente os conta
+                            "horizontes": [
+                                h
+                                for h in horizontes
+                                if self._fim_horizonte(dia, h, datas_pregao)[0]
+                                is not None
+                            ],
                         }
                     )
                     continue
+                for nome in lentes:
+                    classes_por_lente[nome].add(ativo.get("classe"))
                 for horizonte in horizontes:
                     fim, motivo_fim = self._fim_horizonte(dia, horizonte, datas_pregao)
                     if fim is None:
@@ -471,7 +481,9 @@ class BacktestPIT:
                         )
 
         grupos = self._grupos(observacoes)
-        resumo = self._resumir(observacoes, grupos, incompletas)
+        resumo = self._resumir(
+            observacoes, grupos, incompletas, sem_lentes, classes_por_lente
+        )
         por_data = defaultdict(Counter)
         for item in sem_lentes:
             por_data[item["D"]][item["motivo"]] += 1
@@ -872,7 +884,16 @@ class BacktestPIT:
         return resultado
 
     @staticmethod
-    def _resumir(observacoes, grupos, incompletas):
+    def _resumir(
+        observacoes, grupos, incompletas, sem_lentes=(), classes_por_lente=None
+    ):
+        """Resumo por lente, horizonte e modo (ficha §7).
+
+        BUG-3-62 (decisão 51): o universo elegível de cada lente soma às observações os ativos
+        elegíveis que falharam antes das lentes (`sem_lentes`) da classe a que a lente se
+        aplica, nas datas com o horizonte completo; os motivos deles ficam à parte.
+        """
+        classes_por_lente = classes_por_lente or {}
         resumo = {"horizontes_incompletos": dict(incompletas), "lentes": []}
         chaves = sorted({(o["lente"], o["horizonte"], o["modo"]) for o in observacoes})
         for lente, horizonte, modo in chaves:
@@ -886,6 +907,14 @@ class BacktestPIT:
                 for g in grupos
                 if (g["lente"], g["horizonte"], g["modo"]) == (lente, horizonte, modo)
             ]
+            antes_das_lentes = [
+                s
+                for s in sem_lentes
+                if s.get("classe") in classes_por_lente.get(lente, ())
+                and horizonte in s.get("horizontes", ())
+            ]
+            com_valor = sum(o["abstencao"] is None for o in itens)
+            universo = len(itens) + len(antes_das_lentes)
             abstencoes = Counter(o["abstencao"] for o in itens if o["abstencao"])
             abstencoes_retorno = Counter(
                 o["abstencao_retorno"] for o in itens if o["abstencao_retorno"]
@@ -1012,14 +1041,14 @@ class BacktestPIT:
                     "lente": lente,
                     "horizonte": horizonte,
                     "modo": modo,
-                    "universo_elegivel": len(itens),
-                    "com_valor": sum(o["abstencao"] is None for o in itens),
-                    "cobertura": (
-                        sum(o["abstencao"] is None for o in itens) / len(itens)
-                        if itens
-                        else None
-                    ),
+                    "universo_elegivel": universo,
+                    "com_valor": com_valor,
+                    "cobertura": com_valor / universo if universo else None,
                     "abstencoes": dict(abstencoes),
+                    "sem_lentes": len(antes_das_lentes),
+                    "abstencoes_antes_das_lentes": dict(
+                        Counter(s["motivo"] for s in antes_das_lentes)
+                    ),
                     "abstencoes_retorno": dict(abstencoes_retorno),
                     "contagem_motivo_deslistagem": dict(motivos_deslistagem),
                     "datas_com_quintis": len(formados),

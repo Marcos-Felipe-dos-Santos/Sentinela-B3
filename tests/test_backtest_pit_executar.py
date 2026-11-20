@@ -408,8 +408,9 @@ def test_quintis_e_relatorio_por_lente_com_contas_a_mao(cenario):
         for r in resumo["lentes"]
         if (r["lente"], r["horizonte"], r["modo"]) == ("Graham", 12, "estrito")
     )
-    assert linha["universo_elegivel"] == 54 and linha["com_valor"] == 52
-    assert linha["cobertura"] == pytest.approx(52 / 54)
+    # BUG-3-62: as duas ações sem lente de cada data entram no universo elegível
+    assert linha["universo_elegivel"] == 58 and linha["com_valor"] == 52
+    assert linha["cobertura"] == pytest.approx(52 / 58)
     assert linha["abstencoes"] == {"lente sem valor finito e positivo": 2}
     assert linha["abstencoes_retorno"] == {"CDI indisponível no pregão 2023-03-31": 1}
     assert linha["contagem_motivo_deslistagem"] == {"OPA": 1}
