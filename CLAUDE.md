@@ -17,7 +17,7 @@ Python + Streamlit (V1; interface FastAPI + HTMX prevista para a Fase 7), local-
 A Fase 3 está concluída no branch `v2/fase-3`, aguardando o README (F3-10c), o PR e o aceite do
 Marcos no checkpoint. Resumo em `docs/loop/historico/fase-3/pr-fase-3.md`; limitações declaradas
 (24 xfails estritos) e pendências na proposta da Fase 4, `docs/loop/fila-fase4-proposta.md`, ainda sem ativar.
-Suíte: **5181 passed, 1 skipped, 24 xfailed**.
+Suíte: **5210 passed, 1 skipped, 24 xfailed**.
 A seção “Fase atual” do `AGENTS.md` é mantida exclusivamente pelo Marcos.
 
 ---
@@ -45,7 +45,7 @@ inglês (Conventional Commits, seção Git).
 ```bash
 streamlit run app.py                               # app (V1)
 T=$HOME/.cache/sentinela-testes-<executor>; mkdir -p $T   # nunca o /tmp (tmpfs)
-TMPDIR=$T python -m pytest tests/ -x --tb=short --basetemp=$T/pytest   # suíte (5181 passed, 1 skipped, 24 xfailed)
+TMPDIR=$T python -m pytest tests/ -x --tb=short --basetemp=$T/pytest   # suíte (5210 passed, 1 skipped, 24 xfailed)
 python -m pytest tests/test_x.py::test_y -v        # teste único
 python -m pytest tests/ --cov=. --cov-report=term-missing
 TMPDIR=$T python -m mutmut run --max-children 2 "technical_engine*"           # mutação de um módulo (config em [tool.mutmut])
