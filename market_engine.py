@@ -376,6 +376,24 @@ class MarketEngine:
             and as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date() < _hoje_sp()
         )
 
+    def _instante_da_coleta(self, as_of: datetime | None) -> datetime:
+        """O instante que os coletores desta execução gravam como coleta (BUG-3-63).
+
+        Na análise do dia, a coleta acontece dentro da análise, não depois dela: as fontes
+        consultadas agora entram no `as_of` da borda (o clique), nunca depois dele. Sem as_of
+        ou numa data passada (decisão 40), o relógio, como antes; a coleta de outra execução,
+        gravada depois do as_of, continua barrada pelas guardas.
+        """
+        agora = datetime.now(UTC)
+        if as_of is None or self._data_passada(as_of):
+            return agora
+        return min(as_of, agora)
+
+    def _coleta_de(self, dados: dict[str, Any], as_of: datetime | None) -> datetime:
+        """O instante decidido no início desta execução; chamada direta da etapa, o do momento."""
+        instante = dados.get('_instante_coleta')
+        return instante if instante is not None else self._instante_da_coleta(as_of)
+
     def __init__(self, asset_classifier: AssetClassifier | None = None) -> None:
         self.brapi = BrapiProvider()
         self.cvm = CVMProvider()
@@ -537,6 +555,9 @@ class MarketEngine:
         if self._data_passada(as_of):
             # decisão 40: numa data passada, a disponibilidade é a data de publicação da fonte
             dados['disponibilidade_por_publicacao'] = True
+        # BUG-3-63: o instante das coletas é decidido uma vez, no início da execução; a cascata
+        # que passa da meia-noite não troca a regra no meio do caminho.
+        dados['_instante_coleta'] = self._instante_da_coleta(as_of)
 
         classifier = getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER)
 
@@ -584,7 +605,9 @@ class MarketEngine:
         if as_of is None:
             self._contexto_janelas(dados, datetime.now(UTC))
         else:
-            self._contexto_janelas(dados, as_of, coletado_em=datetime.now(UTC))
+            self._contexto_janelas(dados, as_of, coletado_em=self._coleta_de(dados, as_of))
+
+        dados.pop('_instante_coleta', None)  # marca interna da execução, fora do retrato
 
         # F2A-23: estimativas manuais de FII não são aplicadas.
 
@@ -838,7 +861,7 @@ class MarketEngine:
         if provedor is None:
             return
         try:
-            dados['b3_fundo'] = provedor.coletar(cnpj, ticker, datetime.now(UTC))
+            dados['b3_fundo'] = provedor.coletar(cnpj, ticker, self._coleta_de(dados, as_of))
         except (OSError, ValueError) as exc:
             logger.warning(f"[{ticker}] complemento da B3 do fundo indisponível: {exc}")
             dados['b3_fundo'] = {
@@ -916,7 +939,7 @@ class MarketEngine:
         ):
             dados['proventos_b3'] = {'abstencao': proventos_b3.MOTIVO_PRECO}
             return
-        agora = datetime.now(UTC)
+        agora = self._coleta_de(dados, as_of)
         referencia_analise = agora if as_of is None else as_of
         hoje = referencia_analise.astimezone(proventos_b3.FUSO).date()
         anteriores = [date.fromisoformat(d) for d in fechamentos if date.fromisoformat(d) < hoje]
