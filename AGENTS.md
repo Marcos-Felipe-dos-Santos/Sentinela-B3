@@ -14,15 +14,20 @@ Suíte em 09/11/2026: 3525 passed, 1 skipped, 8 xfailed.
 
 ## Fase atual
 
-**Fase 3 (Tempo como entrada) ativa** no branch `v2/fase-3`, em três metades
-(3-a fundação e dívidas, 3-b histórico ponto-no-tempo, 3-c backtest).
-Executores alternados Claude Code e Codex. O mantenedor trabalha num branch
-local por fase e só publica nos checkpoints. Baseie seu branch sempre na
-`main` mais recente.
+**Fase 3 (Tempo como entrada) concluída** em 20/11/2026: merge na `main`
+(PR #28) e tag `v2-fase-3`. Resumo e limitações declaradas em
+`docs/loop/historico/fase-3/pr-fase-3.md`.
 
-Arquivos travados nesta fase: `config.py`, `database.py`, `backtesting/`,
-`sentinela/data/`, `sentinela/services/`, `app.py`, `limpar_banco.py` e
-`auditar_recomendacoes.py`. Nenhum PR pode tocá-los até o fim da fase.
+**Fase 4 (operação diária) em preparação.** A proposta da fila está em
+`docs/loop/fila-fase4-proposta.md`, com as heranças da Fase 3 (F4-H01 a
+F4-H16). Ela passa por auditoria e pelas decisões do mantenedor antes da
+ativação; nenhum trabalho da Fase 4 começa antes disso. Executores
+alternados Claude Code e Codex. O mantenedor trabalha num branch local por
+fase e só publica nos checkpoints. Baseie seu branch sempre na `main` mais
+recente.
+
+Até a ativação da Fase 4, nenhum PR altera código de produção: só
+documentação.
 
 ## Regra fundamental: especificação externa
 
