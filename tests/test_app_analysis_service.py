@@ -14,7 +14,7 @@ from contextlib import closing
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -22,6 +22,7 @@ import pytest
 import streamlit as st
 from streamlit.testing.v1 import AppTest
 
+from market_engine import MarketEngine
 from sentinela.services.analyze_asset import AnalysisService as ServicoReal
 
 APP = Path(__file__).resolve().parents[1] / "app.py"
@@ -106,10 +107,16 @@ def _preparar(monkeypatch, tmp_path, *, fii=False, falha=None):
         "perfil": "DESCRITIVO",
         "lentes": {"Lente": lente},
     }
-    mercado, val, fundo, tecnica, pares, ia = (Mock() for _ in range(6))
-    mercado.buscar_dados_ticker.side_effect = lambda ticker: (
-        deepcopy(dados) if falha != "dados" else {"erro": "indisponível"}
-    )
+    # Achado 10: o dublê tem a interface do MarketEngine, para o serviço seguir o caminho de
+    # produção (`buscar_dados_ticker_em`); o oráculo legado congelado usa `buscar_dados_ticker`.
+    mercado = create_autospec(MarketEngine, instance=True)
+    val, fundo, tecnica, pares, ia = (Mock() for _ in range(5))
+
+    def _buscar(ticker, as_of=None):
+        return deepcopy(dados) if falha != "dados" else {"erro": "indisponível"}
+
+    mercado.buscar_dados_ticker_em.side_effect = _buscar
+    mercado.buscar_dados_ticker.side_effect = _buscar
     val.processar.side_effect = lambda *a, **k: (
         None if falha == "motor" else deepcopy(analise)
     )
@@ -270,7 +277,8 @@ def test_terminal_chama_entrada_temporal_e_persiste_uma_vez(monkeypatch, tmp_pat
     assert isinstance(as_of, datetime) and as_of.utcoffset() is not None
     assert hoje == as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date()
     mercado, val, fundo, tecnica, pares, ia = motores
-    mercado.buscar_dados_ticker.assert_called_once_with("TSTA3")
+    mercado.buscar_dados_ticker_em.assert_called_once_with("TSTA3", as_of)
+    mercado.buscar_dados_ticker.assert_not_called()
     val.processar.assert_called_once()
     assert val.processar.call_args.kwargs == {"as_of": as_of}
     fundo.analisar.assert_not_called()
