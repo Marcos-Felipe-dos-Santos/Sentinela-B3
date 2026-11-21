@@ -16,6 +16,7 @@ yfinance) entram já montados e com coleta anterior ao clique: não são o que e
 Nenhum valor é dado de mercado.
 """
 
+import hashlib
 import json
 import sqlite3
 from collections import OrderedDict
@@ -37,6 +38,7 @@ from sentinela.data.providers import b3_fundos, b3_proventos, macro
 from sentinela.data.referencia.registro import Indice, Registro
 from sentinela.data.store import migracoes
 from sentinela.services.analyze_asset import AnalysisService
+from sentinela.services.historico import MotorHistorico
 from technical_engine import TechnicalEngine
 from valuation_engine import ValuationEngine
 
@@ -55,11 +57,19 @@ FII = enriquecer_fii({"ticker": "HGLG11", "preco_atual": 100.0, "dy": 0.09}, ntn
 
 
 class _Relogio(datetime):
-    """`datetime` do `market_engine` com o relógio parado 3 s depois do clique."""
+    """`datetime` do `market_engine` e do `config`: o relógio 3 s depois do clique, ou o que o
+    teste da meia-noite puser em `atual`."""
+
+    atual = DEPOIS
 
     @classmethod
     def now(cls, tz=None):
-        return DEPOIS if tz is None else DEPOIS.astimezone(tz)
+        # sem fuso, a hora local ingênua, como o `datetime` real
+        return (
+            cls.atual.astimezone(tz)
+            if tz
+            else cls.atual.astimezone().replace(tzinfo=None)
+        )
 
 
 class _Resposta:
@@ -208,7 +218,9 @@ def _documentos_cvm(ticker, dados, *, as_of=None):
 @pytest.fixture
 def servico(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)  # caches dos provedores (data/macro) na pasta do teste
+    monkeypatch.setattr(_Relogio, "atual", DEPOIS)
     monkeypatch.setattr(market_engine, "datetime", _Relogio)
+    monkeypatch.setattr(config, "datetime", _Relogio)  # a taxa real também lê o relógio
     monkeypatch.setattr(requests, "get", _http)
     monkeypatch.setattr(market_engine.yf, "Ticker", _Ticker)
     # a cesta do Tesouro já carregada no dia: no mesmo dia, o corte é a própria coleta (2B)
@@ -240,19 +252,6 @@ def servico(monkeypatch, tmp_path):
         )  # fmt: skip
 
 
-def _motivos(resultado):
-    return {
-        nome: lente.get("abstencao") for nome, lente in resultado.raw["lentes"].items()
-    }
-
-
-MARCA = pytest.mark.xfail(
-    strict=True,
-    reason="BUG-3-63 · coleta desta execução datada depois do as_of · corrige: fix/as-of-hoje",
-)
-
-
-@MARCA
 def test_acao_de_hoje_aceita_a_coleta_da_propria_execucao(servico):
     resultado = servico.analisar("ABEV3", AGORA, use_ai=False)
     lentes, dados = resultado.raw["lentes"], resultado.raw
@@ -273,7 +272,6 @@ def test_acao_de_hoje_aceita_a_coleta_da_propria_execucao(servico):
     assert lentes["Bazin"]["valor"] == pytest.approx(0.8464 / 0.06)
 
 
-@MARCA
 def test_fii_de_hoje_aceita_a_coleta_da_propria_execucao(servico):
     resultado = servico.analisar("HGLG11", AGORA, use_ai=False)
     lente = resultado.raw["lentes"]["Rendimento do FII"]
@@ -282,3 +280,80 @@ def test_fii_de_hoje_aceita_a_coleta_da_propria_execucao(servico):
     assert resultado.raw["b3_fundo"]["coleta"] == AGORA.isoformat()
     # R$ 9,00 por cota em 12 meses ÷ (NTN-B 7% da taxa do dia + spread do tijolo).
     assert lente["valor"] == pytest.approx(9.0 / (0.07 + 0.03505842448151178))
+
+
+def test_coleta_de_outra_execucao_depois_do_as_of_continua_barrada(servico, tmp_path):
+    """O calendário do IBGE gravado no cache por outra execução 1 s depois do clique não vale."""
+    calendario = json.dumps(_ipca()[0])
+    copia = macro.SnapshotMacro(
+        calendario,
+        macro.IBGE_CALENDARIO,
+        (AGORA + timedelta(seconds=1)).isoformat(),
+        hashlib.sha256(calendario.encode()).hexdigest(),
+    )
+    pasta = tmp_path / "data" / "macro"
+    pasta.mkdir(parents=True)
+    nome = hashlib.sha256(macro.IBGE_CALENDARIO.encode()).hexdigest() + ".json"
+    (pasta / nome).write_text(json.dumps(copia.__dict__), encoding="utf-8")
+    resultado = servico.analisar("ABEV3", AGORA, use_ai=False)
+    assert resultado.raw["ipca_serie"] == {
+        "abstencao": "coleta macro posterior ao as_of"
+    }
+    graham = resultado.raw["lentes"]["Graham"]
+    assert graham["abstencao"] == "coleta macro posterior ao as_of"
+    assert graham.get("valor") is None
+
+
+@pytest.mark.parametrize(
+    ("as_of", "esperado"),
+    [
+        (None, DEPOIS),  # sem as_of: o relógio, como antes
+        (AGORA, AGORA),  # análise do dia: o instante da borda
+        (
+            AGORA + timedelta(hours=1),
+            DEPOIS,
+        ),  # mais tarde no mesmo dia: nunca depois do relógio
+        (AGORA - timedelta(days=1), DEPOIS),  # data passada (decisão 40): o relógio
+    ],
+)
+def test_instante_da_coleta(monkeypatch, as_of, esperado):
+    monkeypatch.setattr(market_engine, "datetime", _Relogio)
+    assert MarketEngine.__new__(MarketEngine)._instante_da_coleta(as_of) == esperado
+
+
+def test_motor_historico_mantem_o_relogio(monkeypatch):
+    monkeypatch.setattr(market_engine, "datetime", _Relogio)
+    assert MotorHistorico.__new__(MotorHistorico)._instante_da_coleta(AGORA) == DEPOIS
+
+
+def test_cascata_que_passa_da_meia_noite_mantem_a_coleta_no_as_of(servico, monkeypatch):
+    """Clique às 23:59:59 de 20/11 em São Paulo; o relógio vira o dia durante o yfinance."""
+    clique = datetime(2026, 11, 21, 2, 59, 59, tzinfo=UTC)
+    monkeypatch.setattr(_Relogio, "atual", clique + timedelta(milliseconds=500))
+
+    class _TickerDaMeiaNoite(_Ticker):
+        def history(self, *args, **kwargs):
+            _Relogio.atual = clique + timedelta(seconds=3)  # 21/11, 00:00:02
+            return super().history(*args, **kwargs)
+
+    monkeypatch.setattr(market_engine.yf, "Ticker", _TickerDaMeiaNoite)
+    dados = servico.analisar("ABEV3", clique, use_ai=False).raw
+    assert "disponibilidade_por_publicacao" not in dados
+    assert dados["proventos_b3"]["coleta"] == clique.isoformat()
+    assert dados["ipca_serie"]["coleta"] == clique.isoformat()
+    assert {n: dados["lentes"][n]["abstencao"] for n in ("Graham", "Bazin")} == {
+        "Graham": None,
+        "Bazin": None,
+    }
+    assert "_instante_coleta" not in dados
+
+
+def test_etapa_chamada_direto_decide_o_instante_ela_mesma(monkeypatch):
+    """Fora de `buscar_dados_ticker` (sem a marca da execução), a etapa usa a mesma regra."""
+    monkeypatch.setattr(market_engine, "datetime", _Relogio)
+    monkeypatch.setattr(_Relogio, "atual", DEPOIS)
+    motor = MarketEngine.__new__(MarketEngine)
+    assert motor._coleta_de({}, AGORA) == AGORA
+    assert motor._coleta_de({}, None) == DEPOIS
+    marcado = AGORA - timedelta(seconds=1)
+    assert motor._coleta_de({"_instante_coleta": marcado}, AGORA) == marcado
