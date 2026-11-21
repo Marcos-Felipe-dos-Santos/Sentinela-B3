@@ -46,6 +46,7 @@ def dados(eventos=None):
         "especie": "ON",
         "proventos_b3": {
             "eventos_acoes": [evento()] if eventos is None else eventos,
+            "isins_emissor": [ON, PN, "BRTESTACNPA0", "BRTESTACNPB0"],  # BUG-3-60
             "coleta": "2026-10-20T12:00:00+00:00",
             "proveniencia": {
                 "fonte": "B3 CompanyCall",

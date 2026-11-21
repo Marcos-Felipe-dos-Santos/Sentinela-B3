@@ -1,6 +1,9 @@
 streamlit>=1.32.0,<2.0.0
 pandas>=2.2.0,<3.0.0
 numpy>=1.26.4,<2.0.0
+# pyarrow (dependência do streamlit) fixado na versão do venv local: as versões mais novas
+# exigem NumPy 2 ("pyarrow requires NumPy 2.0 or newer"), e o projeto segue no NumPy 1.26.4.
+pyarrow==25.0.1
 yfinance>=0.2.50,<0.3.0
 requests>=2.31.0,<3.0.0
 jinja2>=3.1.0,<4.0.0

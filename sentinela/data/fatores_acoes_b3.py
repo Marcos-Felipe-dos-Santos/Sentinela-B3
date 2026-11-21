@@ -40,9 +40,13 @@ def _positivo(valor: object) -> float:
     return float(valor)
 
 
-def _coleta(valor: object, instante: datetime) -> str:
+def _coleta(valor: object, instante: datetime, por_publicacao: bool = False) -> str:
+    """Coleta com fuso e até o as_of; numa data passada (decisão 40), a coleta dos documentos
+    da CVM não é critério (a entrega de cada um é conferida nas janelas)."""
     coleta = datetime.fromisoformat(str(valor))
-    if coleta.tzinfo is None or coleta.utcoffset() is None or coleta > instante:
+    if coleta.tzinfo is None or coleta.utcoffset() is None:
+        raise ValueError("coleta sem fuso ou posterior ao as_of")
+    if not por_publicacao and coleta > instante:
         raise ValueError("coleta sem fuso ou posterior ao as_of")
     return str(valor)
 
@@ -60,12 +64,30 @@ def _fator(evento: Mapping) -> float:
     return fator
 
 
+MOTIVO_SEM_ISINS_DO_EMISSOR = (
+    "ISINs do emissor não demonstrados para os eventos em ações"
+)
+
+
+def _isins_do_emissor(relacao: Mapping) -> frozenset[str]:
+    """Os ISINs do próprio emissor que acompanham a relação (decisão 51, BUG-3-60)."""
+    isins = relacao.get("isins_emissor")
+    if (
+        not isinstance(isins, (list, tuple))
+        or not isins
+        or not all(isinstance(i, str) for i in isins)
+    ):
+        raise ValueError(MOTIVO_SEM_ISINS_DO_EMISSOR)
+    return frozenset(isins)
+
+
 def _fator_do_par(
     eventos: Sequence,
     componentes: Mapping,
     inicio: date,
     fim: date,
     dia: date,
+    isins: frozenset[str],
 ) -> tuple[float, list[dict]]:
     fatores = {classe: 1.0 for classe in componentes}
     encontrados = set()
@@ -90,6 +112,10 @@ def _fator_do_par(
             and classe_emitida is not None
             and classe_emitida not in componentes
         ):
+            continue
+        if isin not in isins:
+            # a raiz pode ser de outro emissor (decisão 51): o evento dele é descartado; o sem
+            # ISIN atribuível já abstém acima (C3-03b)
             continue
         if data_com in (inicio, fim):
             raise ValueError(
@@ -130,6 +156,16 @@ def _fator_do_par(
     return fator, evidencia
 
 
+def relacao_por_publicacao(dados: Mapping) -> bool:
+    """A relação B3 é o bloco montado do banco numa data passada: as duas marcas (decisão 40)."""
+    relacao = dados.get("proventos_b3")
+    return (
+        dados.get("disponibilidade_por_publicacao") is True
+        and isinstance(relacao, Mapping)
+        and relacao.get("aprovacao_antes_de_d") is True
+    )
+
+
 def fatores_da_relacao(dados: Mapping, registros: Sequence, instante: datetime) -> dict:
     """Fatores acumulados até a base final ou abstenção com causa e sem fonte nova.
 
@@ -151,6 +187,7 @@ def fatores_da_relacao(dados: Mapping, registros: Sequence, instante: datetime) 
         incompativeis = any(not 0.9 < r < 1.1 for r in razoes)
         eventos = []
         componentes = {}
+        isins = frozenset()
         if incompativeis:
             relacao = _mapa(dados.get("proventos_b3"), "relação de eventos B3")
             if relacao.get("abstencao"):
@@ -159,10 +196,16 @@ def fatores_da_relacao(dados: Mapping, registros: Sequence, instante: datetime) 
             fonte = proveniencia.get("fonte")
             if not fonte:
                 raise ValueError("fonte B3 não demonstrada")
-            coleta = _coleta(relacao.get("coleta"), instante)
+            # decisão 40 (BUG-3-53): o bloco do banco (`relacao_ate`) numa data passada vale
+            # pela publicação; cada evento usado é conferido por aprovação e data com antes de
+            # D (`_fator_do_par`). A relação corrente mantém a guarda de coleta (DD-65).
+            coleta = _coleta(
+                relacao.get("coleta"), instante, relacao_por_publicacao(dados)
+            )
             eventos = relacao.get("eventos_acoes")
             if not isinstance(eventos, (list, tuple)):
                 raise ValueError("lista de eventos em ações ausente ou inválida")
+            isins = _isins_do_emissor(relacao)
             componentes = pb._componentes(
                 dados.get("especie"),
                 dados.get("classe_ativo") == "UNIT",
@@ -177,7 +220,12 @@ def fatores_da_relacao(dados: Mapping, registros: Sequence, instante: datetime) 
             ]
             if any(not p.get("fonte") for p in fontes):
                 raise ValueError("fonte documental não demonstrada")
-            coletas = [_coleta(p.get("data_coleta"), instante) for p in fontes]
+            # DD-65: o ramo documental cai na decisão 40; o da relação B3 corrente (acima)
+            # mantém a guarda, o bloco do banco numa data passada não (BUG-3-53)
+            por_publicacao = dados.get("disponibilidade_por_publicacao") is True
+            coletas = [
+                _coleta(p.get("data_coleta"), instante, por_publicacao) for p in fontes
+            ]
             coleta = max(coletas, key=datetime.fromisoformat)
             fonte, proveniencia = "Composição do Capital de cada documento", fontes
         evidencias, fatores_pares = [], []
@@ -192,6 +240,7 @@ def fatores_da_relacao(dados: Mapping, registros: Sequence, instante: datetime) 
                     fins[i],
                     fins[i + 1],
                     dia,
+                    isins,
                 )
             )
             residual = razao / fator

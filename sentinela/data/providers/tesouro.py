@@ -295,6 +295,31 @@ def ler_snapshot(
     )
 
 
+AVISO_HISTORICO = "valores do histórico atual do Tesouro; revisão posterior não observável"
+
+
+def ler_historico(
+    arquivo: ArquivoTesouro, *, as_of: datetime
+) -> tuple[TituloTesouro, ...]:
+    """Títulos com `Data Base` anterior ao dia de `as_of`, de um arquivo coletado depois.
+
+    F3-1c-a (contrato F3-P12, DD-37): a coleta posterior não prova o passado; a prova é a
+    linha datada do CSV histórico, e o hash identifica o arquivo lido. Revisão posterior de
+    uma linha passada não é observável (`AVISO_HISTORICO`, na proveniência do registro).
+    """
+    instante = _com_fuso(as_of)
+    registro = arquivo.proveniencia
+    if registro is None:
+        raise ValueError("proveniência ausente")
+    if proveniencia.hash_sha256(arquivo.caminho) != registro.hash_sha256:
+        raise ValueError("conteúdo diverge da proveniência")
+    return ler_csv(
+        arquivo.caminho.read_text(encoding="utf-8-sig"),
+        as_of=_dia_local(instante),
+        validar_aplicacao=False,
+    )
+
+
 class TesouroProvider:
     def __init__(self, cache_dir: str | Path = "data/tesouro") -> None:
         self.cache_dir = Path(cache_dir)

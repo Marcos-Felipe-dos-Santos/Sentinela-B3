@@ -12,13 +12,21 @@ Python + Streamlit (V1; interface FastAPI + HTMX prevista para a Fase 7), local-
 
 ---
 
-## Estado da fase — 09/11/2026
+## Estado da fase — 19/11/2026
 
-A Fase 2C está concluída no branch `v2/fase-2c`, aguardando o PR e o aceite do
-Marcos no checkpoint. Resumo em `docs/loop/historico/fase-2c/pr-fase-2c.md`; pendências e oito xfails
-migrados para `docs/loop/fila-fase3-proposta.md`, ainda sem ativar a Fase 3.
-Suíte: **3525 passed, 1 skipped, 8 xfailed**.
+A Fase 3 está concluída no branch `v2/fase-3`, aguardando o README (F3-10c), o PR e o aceite do
+Marcos no checkpoint. Resumo em `docs/loop/historico/fase-3/pr-fase-3.md`; limitações declaradas
+(24 xfails estritos) e pendências na proposta da Fase 4, `docs/loop/fila-fase4-proposta.md`, ainda sem ativar.
+Suíte: **5210 passed, 1 skipped, 24 xfailed**.
 A seção “Fase atual” do `AGENTS.md` é mantida exclusivamente pelo Marcos.
+
+---
+
+## Idioma
+
+Responda sempre em português do Brasil (decisão do Marcos de 16/11/2026): nas mensagens,
+no diário, na passagem e depois de compactação de contexto. Mensagens de commit seguem em
+inglês (Conventional Commits, seção Git).
 
 ---
 
@@ -28,6 +36,7 @@ A seção “Fase atual” do `AGENTS.md` é mantida exclusivamente pelo Marcos.
 - Python 3.13, venv em `venv/` (criada com `uv venv --python 3.13 --seed venv`).
 - Ative a venv antes de abrir o Claude Code: `source venv/bin/activate`.
 - O loop roda dentro do tmux, em modo auto: `claude --permission-mode auto`.
+- **Nunca no `/tmp`** (instrução do Marcos, 11/11/2026; DD-46): o `/tmp` do WSL é tmpfs (RAM) e o `/tmp/pytest-of-<usuário>` chegou a 7,8 GB, derrubando a mutação. Todo pytest roda com `TMPDIR=$HOME/.cache/sentinela-testes-<executor>` e `--basetemp=$HOME/.cache/sentinela-testes-<executor>/pytest`; o mutmut, com o mesmo `TMPDIR` e `--max-children 2` (se cair por memória, um módulo de cada vez). A pasta `$HOME/.cache/sentinela-testes-<executor>` é do executor, fica fora do repositório e pode ser limpa por ele antes de cada suíte (não é resíduo do Marcos); crie-a antes do primeiro uso (`mkdir -p`).
 
 ---
 
@@ -35,10 +44,11 @@ A seção “Fase atual” do `AGENTS.md` é mantida exclusivamente pelo Marcos.
 
 ```bash
 streamlit run app.py                               # app (V1)
-python -m pytest tests/ -x --tb=short              # suíte (3525 passed, 1 skipped, 8 xfailed)
+T=$HOME/.cache/sentinela-testes-<executor>; mkdir -p $T   # nunca o /tmp (tmpfs)
+TMPDIR=$T python -m pytest tests/ -x --tb=short --basetemp=$T/pytest   # suíte (5210 passed, 1 skipped, 24 xfailed)
 python -m pytest tests/test_x.py::test_y -v        # teste único
 python -m pytest tests/ --cov=. --cov-report=term-missing
-python -m mutmut run "technical_engine*"           # mutação de um módulo (config em [tool.mutmut])
+TMPDIR=$T python -m mutmut run --max-children 2 "technical_engine*"           # mutação de um módulo (config em [tool.mutmut])
 python -m mutmut export-cicd-stats                 # mortos e sobreviventes, para o mutation score
 ruff check .
 ruff format <arquivos alterados>                   # nunca no repositório inteiro
@@ -66,8 +76,6 @@ A lista de exceções do vulture (`vulture_whitelist.py`) traz o motivo de cada 
 | `peers_engine.py` | Comparação descritiva por referência oficial, classe, espécie e modelo documental; sem mapa fixo |
 | `ai_core.py` | LLM: Groq → Gemini → Ollama |
 | `auditoria.py` | Invariantes e leitura das lentes vigentes; métodos duplicados aposentados |
-| `auditar_recomendacoes.py` | Validação contra tickers conhecidos |
-| `limpar_banco.py` | Manutenção do SQLite. Cobertura 0% |
 
 **Provedores:** `cvm_provider.py`, `cvm_fii_provider.py`, `brapi_provider.py`. O Fundamentus
 saiu no F2A-22. `cvm_ticker_map.py` e `cvm_fii_map.py` não são mais lidos pela cascata
@@ -87,13 +95,13 @@ Na 2B entraram `taxas.py` (cesta real), `providers/tesouro.py` (CSV oficial),
 e `providers/b3_fundos.py` (Informe e eventos de cota; corte temporal da taxa e das coletas,
 F2B-58). `gordon_cvm.entradas(..., modelo="banco")` alimenta a lente de bancos (F2B-32), e o
 IF.data lê também a inadimplência do relatório 16, só para leitura.
-`domain/ticker.py` valida o ticker (lista permitida).
+`domain/ticker.py` valida o ticker (lista permitida) e filtra candidatos pelo índice oficial (`tickers_oficiais`, desde o F3-9c-aud).
 
 **Camada nova (`sentinela/`).** A V1 também usa `methods/qualidade.py`,
 `methods/registry.py` (quadros descritivos) e `domain/apresentacao.py`. Já usados pela V1: `sentinela/methods/` (`base.py` e seis
 métodos nos motores, mais `bancos.py`, a lente de bancos do motor de ações desde o F2B-32) e `domain/units.py`, chamados por `valuation_engine.py` e `fii_engine.py`
 (extraídos na Fase 1 e atualizados nas Fases 2A/2B/2C); `services/asset_classifier.py` (`app.py`,
-`market_engine.py`, `auditar_recomendacoes.py`) e `domain/provenance.py`
+`market_engine.py`) e `domain/provenance.py`
 e `enums.py` (`market_engine.py`, `valuation_engine.py`). `sentinela/reports/rastreabilidade.py`
 roda por linha de comando (`python -m`); o app reutiliza a apresentação do quadro de qualidade. **NÃO conectados** (só os testes
 importam): `domain/models.py` (usado por `services/analyze_asset.py` e
@@ -195,15 +203,15 @@ O caminho elegível sem score agregado retorna `INDISPONIVEL` desde a 2C; o back
 ponto-no-tempo será reconstruído na Fase 3 (F3-8/F3-P16).
 
 **7. Suíte verde não é sinal**
-`app.py`, `auditoria.py`, `limpar_banco.py` em 0%. `adicionar_posicao` tem teste (`tests/test_database_posicoes.py`).
-`tests/conftest.py` semeia Selic e taxa real: semeia o BCB (14,75%, igual ao fallback) durante o import de
-`config` — contorno do E-6, não correção — e bloqueia `socket.connect`, falhando o teste e a sessão
+`app.py` e `auditoria.py` em 0% (`limpar_banco.py` saiu no F3-9c). `adicionar_posicao` tem teste (`tests/test_database_posicoes.py`).
+`tests/conftest.py` semeia Selic e taxa real: a Selic (14,75%, igual ao fallback) vai direto para o cache de
+`config.get_selic_atual` (o import de `config` não faz rede desde o F3-1a) e bloqueia `socket.connect`, falhando o teste e a sessão
 que tentarem rede. A semente de taxa real substitui o carregador só nos testes; não existe contingência equivalente em produção. Também ajusta `sys.path` e `basetemp` no Windows.
 
-**8. `config.py:329` faz rede no import**
-`MACRO = MacroContext()` chama a API do BCB ao importar. Em CI ou daemon isso vira
-chamada externa a cada execução, e a Selic fica congelada pelo tempo do processo.
-A suíte contorna isso com a semente do `tests/conftest.py`; a correção (E-6) é anterior ao monitoramento contínuo.
+**8. Rede no import de `config` — corrigida (F3-1a, E-6)**
+`MACRO = MacroContext()` não chama mais o BCB ao importar: a Selic é lida sob demanda por
+`get_selic_atual` (cache de 24 h e `SELIC_FALLBACK`), e a regressão BUG-3-01 importa `config` com a rede
+bloqueada. Selic e IPCA por data vêm de `MacroContext(as_of=...)` (F3-1b/F3-1d). Não volte a ler a rede no import.
 
 **9. Integrações vigentes e resíduos**
 `get_taxa_real` é chamado pela cascata; Gordon e FII consomem o registro. A antiga
@@ -294,7 +302,7 @@ Sem insumo, abstém-se — não devolve número conservador.
 0. **Preparação** — concluída (tag `v2-fase-0`)
 1. **Fundação** — concluída (tag `v2-fase-1`): `units.py`, contrato de método e extração de `methods/`, comportamento idêntico, golden dos motores
 2. **2A Dados corretos** — concluída (tag `v2-fase-2a`; dados de referência, E-1, DY único, E-2, cinco anos, dívida líquida, bancos, medida de liquidez); **2B Taxa real, bancos e escopo** — fila da fase concluída (resumo em `docs/loop/historico/fase-2b/pr-fase-2b.md`); fila de fechamento da auditoria concluída (`docs/loop/historico/fase-2b/fila-fechamento.md`); fase fechada em 25/10/2026 (PRs #24 e #25, tag `v2-fase-2b` no `c025c23`); **2C Qualidade e apresentação** — concluída, aguardando PR/aceite (Graham/Lynch 2.1, qualidade 1.0, lentes separadas sem agregado, vocabulário e Markowitz aposentado; pendências na proposta da Fase 3)
-3. **Tempo como entrada** — E-6, E-14, ponto-no-tempo, `analisar(ticker, as_of)`, backtest real
+3. **Tempo como entrada** — concluída, aguardando PR/aceite (E-6, E-14, ponto-no-tempo, `analisar(ticker, as_of)`, backtest real; resumo em `docs/loop/historico/fase-3/pr-fase-3.md`)
 4. **Operação diária, rastreabilidade e risco da carteira**
 5. **Notícias medidas** — coletor do IPE e estudo de evento
 6. **Vitrine** — fecha o núcleo de portfólio

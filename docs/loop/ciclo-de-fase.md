@@ -10,7 +10,7 @@
 | 1 | Proposta | loop (item `levantamento` da fase anterior) | `docs/loop/fila-faseN-proposta.md` | o item está commitado |
 | 2 | Revisão da proposta | Codex (DOCUMENTO), Claude no chat (consolida e prepara as decisões), Marcos | proposta corrigida, com as `[DECISÃO]` de ativação respondidas por escrito | auditoria "pode seguir" ou "pode seguir com ressalvas" |
 | 3 | Ativação | Marcos | branch `v2/fase-N`, `docs/loop/fila.md`, "Fase atual" do `AGENTS.md` | commit `chore: activate phase N queue` |
-| 4 | Execução | loop: Claude Code; Codex quando a cota do Claude acaba | um commit por item, diário | itens antes do `[DECISÃO]` em `[x]`, ou parada em `[!]` |
+| 4 | Execução | loop: Claude Code; Codex quando a cota do Claude acaba | um commit por item, diário | itens antes do `[DECISÃO]` em `[x]`, parada do protocolo, ou nenhum item executável (todo item aberto `[!]`, dependente de um `[!]` ou além dos três adiante) |
 | 5 | Fichas do meio da fase | loop escreve, Codex audita (FICHA), Gemini desempata, Marcos aprova | `docs/metodologia/<lente>.md` aprovada | ficha "aprovada" e o marcador do `[DECISÃO]` trocado por `[x]` |
 | 6 | Auditoria da fase | Codex (FASE) e Gemini 4 Argon no app (FASE, pelo pacote de texto) | `docs/loop/historico/fase-N/auditoria-externa.md` | todo bug confirmado virou teste (seção 4); bloqueios corrigidos ou dispensados por escrito |
 | 7 | Fechamento | loop (fila de fechamento, se houver), Codex (auditoria rápida), Marcos | PR, merge commit, tag `v2-fase-N` | CI verde no PR |
@@ -23,14 +23,17 @@ Nos comandos, `N` é a fase em minúsculas (`2b`, `2c`, `3`...). Todos rodam na 
 ### Etapa 1. Proposta
 Já vem pronta: o penúltimo item de cada fila é o `levantamento` que propõe a próxima.
 
+Todo item **produtor** (dado, função ou módulo que outro item vai consumir) aponta, na própria linha, o item **consumidor** e o teste `[e2e]` que liga os dois pelo produtor real (F3-0g, P8). Produtor sem consumidor na fase entra como pendência explícita, com o item de destino, e não como item solto.
+
 ### Etapa 2. Revisão da proposta
 ```bash
 python scripts/auditar.py codex documento --fase N --arquivo docs/loop/fila-faseN-proposta.md
 ```
 1. Mande o `...-relatorio.md` e a proposta ao Claude no chat. Ele confere cada achado e traz cada `[DECISÃO]` com as opções, os dados e a opção que ele escolheria, com o motivo.
 2. Você decide. A proposta corrigida entra por commit seu, na `main`.
-3. Decisão de método (taxa, janela, limiar, fórmula) nunca fica no texto da proposta: vira `[DECISÃO]` sua ou vai para uma ficha.
+3. Decisão de método (taxa, janela, limiar, fórmula) nunca fica no texto da proposta: vira `[DECISÃO]` sua ou vai para uma ficha. Ficha de método continua com a auditoria FICHA (etapa 5).
 4. Se a proposta mudou muito, rode o Codex de novo com `--foco "o que mudou desde a rodada anterior: ..."`.
+5. **Pacote de decisões antes da ativação** (F3-0g, P8, como foi feito na Fase 3): a proposta só ativa com o pacote de decisões junto, com toda decisão aberta listada com as opções, a recomendação e o padrão provisório, sempre do lado da abstenção (sem a decisão, o item abstém em vez de assumir um número). Decisão aberta fora do pacote é achado da auditoria DOCUMENTO.
 
 ### Etapa 3. Ativação
 ```bash
@@ -49,9 +52,11 @@ ai-memory run claude
 ```
 No Claude Code: `/retomar` e depois o `/goal` (seção 6).
 - **A cota do Claude acabou:** `ai-memory run codex`, `$retomar`, `$executar-fila`. Ao sair do Codex, `ai-memory finalize-session`. Nunca dois executores ao mesmo tempo (workflow, seção 5).
-- **Parou em `[!]` ou com três reprovações:** mande o trecho do diário ao Claude no chat. A sua decisão vira texto na fila, por commit seu, e o loop retoma.
+- **`[!]` pelos casos (a), (b), (e) ou (f):** o loop não para; registra a pendência em `docs/loop/pendencias.md` e segue com até três itens de `python scripts/fila.py independentes <ID>` (protocolo, "Item bloqueado"). Para quando esses itens acabam, quando um segundo `[!]` aparece entre eles ou em qualquer outra parada do protocolo, como a terceira falha da verificação ou a terceira reprovação na revisão num deles. Na revisão diária das pendências, mande o trecho do diário ao Claude no chat; a sua decisão vira texto na fila, por commit seu.
+- **Parou em `[!]` pelos casos (c) ou (d), por pergunta do pacote da fase ou com três reprovações:** mande o trecho do diário ao Claude no chat. A sua decisão vira texto na fila, por commit seu, e o loop retoma.
 - **"Para o Marcos revisar" no diário:** leia no fim de cada sessão. Bug confirmado vira teste no mesmo dia (seção 4).
 - Até o checkpoint da 2B, anote cada troca de executor em `outputs/piloto-multiagente.md` (workflow, seção 8).
+- **`[DECISÃO]` de checkpoint de metade (F3-0e, decisões 23 e 26):** o executor roda a auditoria cruzada da metade antes de parar, uma rodada por família que executou itens na metade: `python scripts/auditar.py claude fase --fase N --desde <commit anterior ao 1º item da metade>` audita os commits `Executor: codex`, e `python scripts/auditar.py codex fase --fase N --desde <...>` audita os `Executor: claude-code`; com as duas famílias na metade, as duas rodadas. O `--desde` só delimita o intervalo; a seleção é por autoria: o prompt de cada família traz todos os hashes com a linha `Executor:` da outra, e os commits sem `Executor:` saem à parte no relatório. O relatório fica fora do git; o veredito e o caminho entram no diário por um commit `docs:` próprio (com `/review-diff`), fora do intervalo auditado, e o loop para. Auditor sem cota: registra e para, sem trocar a família.
 
 ### Etapa 5. Fichas do meio da fase
 Lente nova ou versão nova de método só entra com ficha aprovada (ADR-0003, D21).
@@ -75,7 +80,7 @@ python scripts/auditar.py gemini fase --fase N
 4. Mande os dois relatórios ao Claude no chat. Ele confere cada achado no código e escreve o `auditoria-externa.md` da fase, com a lista de bugs.
 5. Você decide (D30): bloqueio que a própria fase criou é corrigido numa fila de fechamento; o resto vira xfail estrito com o item de destino na proposta da próxima fase (é a dispensa por escrito).
 
-Itens que o Codex executou (`Executor: codex` no corpo do commit) não são auditados por ele (D30): abra uma sessão nova do Claude Code em modo plano (só leitura) e cole o prompt de `python scripts/auditar.py prompt fase --fase N --foco "só os commits com Executor: codex no corpo"`. Sem cota no Codex: `agy` na cópia descartável (workflow, etapa 4).
+Itens que o Codex executou (`Executor: codex` no corpo do commit) não são auditados por ele (D30): `python scripts/auditar.py claude fase --fase N --desde <base>` roda o Claude Code não interativo e só de leitura com a lista exata dos commits `Executor: codex` (F3-0e). Modo das decisões 37 e 38: o `auditar.py` exporta a árvore rastreada do commit final (`git archive` do hash completo, extraído com `tarfile` numa pasta temporária nova, fora do repositório; nenhum arquivo ignorado, como `.env`, bancos, logs ou `outputs/`, chega lá). Antes do modelo, o script roda no repositório real os comandos fixos (`git log`, `git diff` e `git show` entre commits, nunca `--no-index`, e `ruff check --select E9,F63,F7,F82 --no-cache .`) e a saída vai para `evidencias.txt` na raiz da cópia (e uma cópia ao lado do relatório). O Claude roda com a pasta de trabalho na cópia, sem Bash (só Read, Grep e Glob, `--permission-mode dontAsk`, só as configurações do projeto, sem MCP, `stdin` nulo), sem liberação ampla de leitura (o `dontAsk` nega o que fica fora da cópia), com o repositório real negado por regra própria e as negações de `.env`, bancos e `outputs/` como segunda camada; o repositório real não vai por `--add-dir` nem aparece no prompt. O relatório sai pelo stdout e o script o grava no destino; a cópia é apagada pelo próprio script ao fim, mesmo com erro. Documento ou ficha auditados pelo Claude precisam estar commitados (caminho relativo à raiz). O Ruff das evidências roda na árvore de trabalho: audite com a árvore limpa. Com `/tmp` cheio, aponte o `TMPDIR` para outro disco. A suíte não roda na auditoria do Claude; `python scripts/auditar.py codex fase --fase N --desde <base>` faz o inverso. Sem `--desde`, o modo fase continua cobrindo a fase inteira. Sem cota no Codex: `agy` na cópia descartável (workflow, etapa 4).
 
 ### Etapa 7. Fechamento
 1. Fila de fechamento, se houver: o primeiro item registra os bugs em `tests/regressao/`, os seguintes corrigem, o último acrescenta o fechamento ao `pr-fase-N.md` e arquiva a fila.
@@ -128,7 +133,7 @@ A regra completa e o registro estão em `tests/regressao/README.md`. No ciclo:
 ## 6. O `/goal`
 
 ```
-/goal Todos os itens de docs/loop/fila.md antes da linha [DECISÃO] estão marcados [x], ou algum item está [!] com o motivo registrado em docs/loop/diario.md. Leia e siga docs/loop/protocolo.md à risca. Nunca faça git push nem abra PR. Ao fechar cada item, rode cat docs/loop/fila.md e git log --oneline -3.
+/goal Todos os itens de docs/loop/fila.md antes da linha [DECISÃO] estão marcados [x], ou o protocolo mandou parar, com o motivo registrado em docs/loop/diario.md, ou não resta item executável: todo item aberto antes do [DECISÃO] está [!], depende de um [!] (python scripts/fila.py independentes <ID>) ou ficou além do limite de três adiante. Leia e siga docs/loop/protocolo.md à risca. Nunca faça git push nem abra PR. Ao fechar cada item, rode python scripts/fila.py status e git --no-pager log --oneline -3.
 ```
 
 ## 7. Roteiro até o fim

@@ -1,7 +1,7 @@
 """Testes para MacroContext dinâmico (config.py).
 
-Todos os testes usam MacroContext(selic=0.10) para evitar chamada BCB na
-inicialização. Propriedades dinâmicas (cdi, ipca_12m) são
+Os testes usam MacroContext(selic=0.10), ou trocam get_selic_atual, para não chamar o
+BCB; desde o F3-1a o construtor não lê a Selic. Propriedades dinâmicas (cdi, ipca_12m) são
 testadas via monkeypatch dos fetchers privados — sem tráfego de rede.
 """
 
@@ -165,15 +165,31 @@ def test_taxa_real_sem_rede_no_import():
     assert config.get_taxa_real()["inflacao"]["valor"] == 0.055
 
 
+def _relogio(agora):
+    """`config.datetime` com `now` parado em `agora` (o resto do datetime real)."""
+    from datetime import datetime
+
+    class _Relogio(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return agora.astimezone(tz) if tz else agora.replace(tzinfo=None)
+
+    return _Relogio
+
+
 def test_taxa_real_cache_por_janela_dia_e_edicao(monkeypatch):
     from datetime import UTC, date, datetime, timedelta
 
     import config
 
     monkeypatch.setattr(config, "_taxa_real_cache", {})
+    # relógio no dia dos as_of (F3-1c: dia anterior ao de hoje vai ao banco)
+    monkeypatch.setattr(
+        config, "datetime", _relogio(datetime(2026, 10, 19, 9, tzinfo=UTC))
+    )
     chamadas = []
 
-    def carregar(instante, janela):
+    def carregar(instante, janela, coleta=None):
         chamadas.append((instante, janela))
         return {
             "ntnb": 0.07,
@@ -205,6 +221,27 @@ def test_taxa_real_falha_sem_contingencia_e_sem_cache_numerico(monkeypatch):
     import config
 
     monkeypatch.setattr(config, "_taxa_real_cache", {})
+    monkeypatch.setattr(
+        config, "datetime", _relogio(datetime(2026, 10, 19, 22, tzinfo=UTC))
+    )
     monkeypatch.setattr(config, "_carregar_taxa_real", lambda *a: None)
     assert config.get_taxa_real(as_of=datetime(2026, 10, 20, tzinfo=UTC)) is None
     assert config._taxa_real_cache == {}
+
+
+def test_selic_sem_argumento_e_lida_sob_demanda(monkeypatch):
+    """F3-1a (E-6): o construtor não lê a Selic; `selic` e `selic_liquida` a leem ao usar."""
+    import config
+
+    leituras = []
+
+    def _selic_atual():
+        leituras.append(1)
+        return 0.12
+
+    monkeypatch.setattr(config, "get_selic_atual", _selic_atual)
+    m = MacroContext()
+    assert leituras == []
+    assert m.selic == 0.12
+    assert m.selic_liquida == pytest.approx(0.12 * MacroContext.FII_FATOR_IR)
+    assert len(leituras) == 2

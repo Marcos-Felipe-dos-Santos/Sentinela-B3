@@ -105,6 +105,7 @@ def entradas(
         if instante.tzinfo is None or instante.utcoffset() is None:
             return Abstencao("as_of exige fuso horário")
         as_of = instante.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+    por_publicacao = dados.get("disponibilidade_por_publicacao") is True
     fonte = dados.get("gordon_cvm") or {}
     if not fonte:
         return Abstencao("DFP anual dos controladores ausente")
@@ -156,9 +157,11 @@ def entradas(
             if (
                 date.fromisoformat(prov["periodo_referencia"]) >= as_of
                 or date.fromisoformat(prov["data_entrega"]) >= as_of
-                or (instante is not None and coleta > instante)
+                # decisão 40: numa data passada, a entrega decide; a coleta não é critério
+                or (not por_publicacao and instante is not None and coleta > instante)
                 or (
-                    instante is None
+                    not por_publicacao
+                    and instante is None
                     and coleta.astimezone(ZoneInfo("America/Sao_Paulo")).date() > as_of
                 )
             ):
@@ -179,11 +182,26 @@ def entradas(
             ):
                 return Abstencao("contexto da taxa real posterior ao as_of")
         ipca, pib = macro.get("inflacao") or {}, macro.get("pib") or {}
+        if "abstencao" in ipca:  # BUG-3-38: a abstenção da inflação chega com o motivo
+            return Abstencao(f"inflação indisponível: {ipca['abstencao']}")
         if (
             ipca.get("inicio") != inicio.isoformat()
             or ipca.get("fim") != fim.isoformat()
         ):
             return Abstencao("inflação incompatível com a janela da DFP")
+        # BUG-3-57: o insumo ausente é nomeado, em vez do `TypeError` genérico do `None`
+        insumos = (
+            ("lucro_controladores", fonte.get("lucro_controladores")),
+            ("pl_inicial_controladores", fonte.get("pl_inicial_controladores")),
+            ("fator_unit", fonte.get("fator_unit", 1)),
+            ("custo_capital_real", macro.get("custo_capital_real")),
+            ("inflacao.valor", ipca.get("valor")),
+            ("pib.valor", pib.get("valor")),
+            *((("lpa", fonte.get("lpa")),) if modelo == "empresa" else ()),
+        )
+        ausente = next((nome for nome, valor in insumos if valor is None), None)
+        if ausente is not None:
+            return Abstencao(f"insumo ausente do Gordon: {ausente}")
         lucro, pl = fonte["lucro_controladores"], fonte["pl_inicial_controladores"]
         if (
             isinstance(lucro, bool)

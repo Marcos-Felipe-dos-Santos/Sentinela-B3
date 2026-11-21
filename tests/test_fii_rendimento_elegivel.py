@@ -238,3 +238,25 @@ def test_conferencia_divergente_vira_aviso_sem_abster():
     assert r["avisos"][0] == (
         "rendimento do Informe diverge da B3: 2026-09 Informe R$ 1,00, B3 R$ 0,50"
     )
+
+
+def test_empate_ilegivel_e_sem_versao_com_colunas_diferentes_e_conflito_nas_duas_ordens():
+    """BUG-3-05: o conflito também não depende da ordem do arquivo."""
+    registros = _registros()
+    for linha in registros:
+        del linha["Versao"]
+    final = max(registros, key=lambda r: r["Data_Referencia"])
+    ilegivel = {**final, "Versao": "ilegivel", "Valor_Patrimonial_Cotas": "1"}
+    for ordem in ([ilegivel, *registros], [*registros, ilegivel]):
+        meses, conflitos = rf._por_mes(ordem)
+        mes = rf._mes(final)
+        assert mes in conflitos
+        assert meses[mes] is ilegivel
+
+
+def test_mes_anterior_com_versao_valida_e_ilegivel_usa_a_valida():
+    registros = _registros()
+    alvo = next(r for r in registros if r["Data_Referencia"] == "2026-05-01")
+    resultado_antes = _avaliar(registros, _composicao())
+    registros.append({**alvo, "Versao": "ilegivel"})
+    assert _avaliar(registros, _composicao()) == resultado_antes

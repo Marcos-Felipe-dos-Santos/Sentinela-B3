@@ -1,0 +1,106 @@
+# Pacote de decisões — processo do loop (F3-0)
+
+**Data:** 09/11/2026. **Autor:** Claude (chat), a pedido do Marcos. **Base lida:** branch `v2/fase-3` no GitHub, commit `b1317d0`.
+**Vale quando:** o Marcos escreve no prompt do loop "aprovo o pacote inteiro". Decisão escrita por ele num item prevalece sobre este texto.
+**Não muda:** método, fórmula, parâmetro, golden, intocáveis da fase, gate G, D27, D30, a seção "Fase atual" do `AGENTS.md` e as decisões de `docs/decisoes/decisoes-fase3.md`.
+
+## 1. Medição (feita pelo chat, sem custo para o loop)
+
+Aproximação de 3,4 caracteres por token.
+
+| Arquivo | Tamanho | Tokens (aprox.) | Quando é lido hoje |
+|---|---|---|---|
+| `docs/loop/fila-fase3-proposta.md` (vira `fila.md` na ativação) | 60,5 KB | 17 mil | `cat` ao fechar **cada item** (protocolo, passo 11, e `/goal`); `retomar`; `/review-diff` ("o item na fila") |
+| `CLAUDE.md` | 28,3 KB | 8 mil | toda sessão |
+| `docs/loop/diario.md` | cresce ~1,7 KB por item | 0,5 mil por item | relido inteiro para editar |
+| `docs/loop/protocolo.md` | 8,1 KB | 2,3 mil | toda sessão e depois de compactação |
+| `docs/decisoes/predicados-golden-2c.md` | 271 KB | 80 mil | não deveria ser aberto |
+| `docs/PLANO.md` | 45 KB | 13 mil | por seção, mas nada impede a leitura inteira |
+
+**Maior desperdício:** a fila da Fase 3 tem 47 itens. O `cat docs/loop/fila.md` ao fim de cada um custa cerca de 17 mil tokens por vez, perto de **800 mil tokens na fase**, e ainda enche o contexto e antecipa compactações. O revisor (Opus) paga os mesmos 17 mil sempre que abre a fila para ler um item que já está no diff.
+
+**O que a medição desmentiu** (sugestões do chat que saem):
+- Suíte completa só no checkpoint: a suíte roda em 15 s e em modo `-q`. O gate G continua por item.
+- Cartão por item: os itens da proposta já trazem arquivos e aceite. Falta só ler um item de cada vez.
+- Decisão provisória pela abstenção, `[e2e]`, mutação ≥ 80% e destino dos achados de auditoria: já são regra (proposta, "Regras de execução" 1, 4 e 7; ciclo, etapa 6).
+- Enxugar o `CLAUDE.md`: renderia cerca de 5 mil tokens por sessão, com risco de esconder armadilha. Fica para o checkpoint da Fase 3.
+
+## 2. Decisões aprovadas
+
+- **P1. Leitura por trecho.** O loop não abre inteiros a fila, o diário, a proposta, o `PLANO.md`, o histórico nem os arquivos grandes da lista do F3-0b. Estado e próximo item saem de `scripts/fila.py`.
+- **P2. Bloqueio não para tudo.** Depois de um `[!]` dos casos (a), (b), (e) ou (f) do plano final da 2B, o loop segue com os itens independentes do bloqueado. Os casos (c) e (d), as duas paradas por pergunta e a terceira reprovação na revisão continuam parando o loop.
+- **P3. Pendências num lugar só.** Toda decisão provisória e todo `[!]` ganham uma linha em `docs/loop/pendencias.md`. O Marcos revisa uma vez por dia.
+- **P4. Ideia nova não entra em fila ativa.** Vai para `docs/loop/ideias.md` e só é avaliada num checkpoint.
+- **P5. Gate mecânico antes do revisor.** `/review-diff` só roda depois de `scripts/gate.py` verde.
+- **P6. Auditoria cruzada disparada pelo loop.** Ao chegar a um `[DECISÃO]` de checkpoint, o executor roda a auditoria D30 e registra o veredito antes de parar. A consolidação continua com o Claude (chat) e a decisão com o Marcos.
+- **P7. Push guardado do branch da fase.** O loop publica o branch `v2/fase-N` só pelo `scripts/push_fase.py`, só ao parar em `[DECISÃO]` ou `[!]`. `main`, tags, PR e merge continuam exclusivos do Marcos. O `deny` de `git push` no `.claude/settings.json` fica como está.
+- **P8. Revisão leve para documentação.** Itens `docs` e `levantamento` passam pelo revisor Sonnet com a mesma checklist. Os demais tipos seguem no `senior-reviewer`.
+- **P9. Fechamento por script.** `scripts/fechar_fase.py` é rodado pelo Marcos, nunca pelo loop.
+
+## 3. Itens
+
+Formato da fila. Gate G em todos, com duas ressalvas: `scripts/` está fora do `source_paths` do mutmut, então nos itens `feat` de script o aceite é cada teste falhar com a função coberta quebrada à mão, registrado no diário; e o golden tem SHA igual em todos.
+
+### Bloco 1 — entra antes do próximo item `[ ]`
+
+- [ ] **F3-0a** · feat · `feat: add a queue helper for status, next item and diary entries` — P1, P2, P3. Arquivos: `scripts/fila.py`, `tests/test_script_fila.py`. **Aceite:** subcomandos sobre `docs/loop/fila.md` (caminho configurável para teste): `status` imprime no máximo 12 linhas (branch, contagem de `[x]`, `[ ]` e `[!]` antes do primeiro `[DECISÃO]` aberto, ID do próximo item, primeiros 120 caracteres do próximo `[DECISÃO]`); `proximo` imprime só a linha do próximo item `[ ]` e, se a próxima linha aberta for `[DECISÃO]`, imprime essa linha e sai com código 3; `item <ID>` imprime só a linha do item; `marcar <ID> x|!` altera exatamente uma linha e, com zero ou mais de uma ocorrência, falha deixando o arquivo intacto; `independentes <ID>` lista os itens abertos antes do `[DECISÃO]` que não citam `<ID>` no texto e não compartilham com ele nenhum caminho entre crases fora de `tests/` e `docs/`; `diario <arquivo>` acrescenta o conteúdo ao fim de `docs/loop/diario.md` sem imprimir o diário; `pendencia <ID> "<texto>"` acrescenta uma linha datada a `docs/loop/pendencias.md`, criando o arquivo se faltar. Só biblioteca padrão; sem rede, banco, relógio fora da data da pendência, nem `.env`. Testes em `tmp_path` cobrindo cada subcomando, ID inexistente, ID duplicado e `[DECISÃO]` à frente. G.
+- [ ] **F3-0b** · docs · `docs: read loop files by excerpt during execution` — P1, P3, P4. Arquivos: `docs/loop/protocolo.md`, `docs/loop/ciclo-de-fase.md` (§6), `.agents/skills/retomar/SKILL.md`, `.agents/skills/executar-fila/SKILL.md`, `.claude/skills/review-diff/SKILL.md`, `docs/loop/ideias.md` (novo). **Aceite:** (1) protocolo: cada item começa com `python scripts/fila.py proximo`; passo 6 escreve a entrada em `outputs/diario-item.md` e a anexa com `fila.py diario`; passo 7 usa `fila.py marcar`; passo 11 troca o `cat` por `python scripts/fila.py status` e `git --no-pager log --oneline -3`; decisão provisória e `[!]` ganham também `fila.py pendencia`. (2) Regra dura nova: não abrir inteiros `docs/loop/fila.md`, `docs/loop/diario.md`, `docs/loop/fila-fase*-proposta.md`, `docs/PLANO.md`, `docs/decisoes/predicados-golden-2c.md`, `docs/loop/historico/**` nem `tests/fixtures/golden_motores.jsonl`; consulta por `grep -n` e faixa de linhas. Exceção: o item que manda editar a estrutura de um desses arquivos. (3) Regra dura nova: comando ou script de dados imprime no máximo 30 linhas; o restante vai para `outputs/`. (4) O retorno do `junior-dev` ao orquestrador tem no máximo 15 linhas: arquivos, testes antes → depois, pendências. (5) `retomar`: o passo 1.2 usa `fila.py status` e `fila.py proximo`; o 1.3 usa `tail -n 40 docs/loop/diario.md`. (6) `executar-fila`: "ao fechar cada item" usa `fila.py status`. (7) `review-diff`: o item é a linha alterada de `docs/loop/fila.md` dentro do diff; o revisor não abre a fila nem o diário. (8) `/goal` do ciclo §6 sem `cat`. (9) `docs/loop/ideias.md` criado com a regra P4 e a primeira entrada da seção 4 deste pacote. Cada afirmação conferida contra o `scripts/fila.py` do F3-0a. G documental.
+- [ ] **F3-0c** · docs · `docs: let independent items continue after a blocked item` — P2. Arquivos: `docs/loop/protocolo.md`, `.agents/skills/executar-fila/SKILL.md`, `docs/loop/ciclo-de-fase.md` (etapa 4). **Aceite:** o protocolo passa a dizer: item marcado `[!]` pelos casos (a), (b), (e) ou (f) registra a pendência e o loop segue só com os itens de `python scripts/fila.py independentes <ID>`, na ordem da fila, no máximo três adiante; item de resumo, de limpeza ou de arquivamento nunca roda com `[!]` aberto; `[!]` pelos casos (c) ou (d), parada por pergunta do pacote da fase e terceira reprovação na revisão param o loop como hoje. Os trechos "pare o loop" que ficarem em contradição são ajustados, e só eles. G documental.
+
+### Bloco 2 — entra imediatamente antes do item de resumo da metade corrente (na 3-a, o `F3-A-R`)
+
+- [ ] **F3-0d** · feat · `feat: add a mechanical gate runner for queue items` — P5. Arquivos: `scripts/gate.py`, `tests/test_script_gate.py`, `docs/loop/protocolo.md` (passos 4 e 9). **Aceite:** `python scripts/gate.py --item <ID>` roda e resume em no máximo 20 linhas, uma por verificação, com código de saída diferente de zero se alguma falhar: suíte (`python -m pytest -q`, só a linha final e os nomes dos testes que falharam); Ruff CI; Ruff completo nos diretórios do protocolo que existirem; `git diff --staged --check`; SHA256 de `tests/fixtures/golden_motores.jsonl` igual ao do `HEAD`, salvo `--golden-autorizado`; arquivos proibidos no stage (`.env`, `*.db`, `outputs/`, `mutants/`, `__pycache__`); arquivos do stage que não aparecem entre crases na linha do item, como **aviso**, sem reprovar. Não roda mutação nem altera arquivo. O protocolo manda rodar o `gate.py` no passo 4 e só chamar `/review-diff` com ele verde. Testes com as verificações injetadas, sem rodar a suíte real. G.
+- [ ] **F3-0e** · feat · `feat: run the cross-family audit from the loop` — P6. Arquivos: `scripts/auditar.py`, `tests/test_script_auditar.py`, `docs/loop/ciclo-de-fase.md` (etapas 4 e 6), `docs/loop/protocolo.md`. **Aceite:** alvo novo `claude` no `auditar.py`, com os mesmos modos e prompts do `codex`, chamando o Claude Code em modo não interativo e somente leitura (conferir os flags em `claude --help` antes de fixar; se não houver modo somente leitura não interativo, `[!]` caso (e)). Ao chegar a um `[DECISÃO]` de checkpoint, o executor roda a auditoria `fase` dos commits da metade com `--desde <commit anterior ao primeiro item da metade>`: Codex para os commits `Executor: claude-code`, Claude para os `Executor: codex`; registra no diário o veredito e o caminho do relatório; e então para. Relatório fora do git, como hoje. Auditor sem cota: registra e para, sem trocar a família. Testes do roteamento e da montagem do prompt, sem chamar nenhum CLI. G.
+- [ ] **F3-0f** · feat · `feat: add guarded phase push and phase closing scripts` — P7, P9. Arquivos: `scripts/push_fase.py`, `scripts/fechar_fase.py`, `tests/test_script_push_fase.py`, `tests/test_script_fechar_fase.py`, e o texto sobre push em `CLAUDE.md`, `AGENTS.md` (fora da "Fase atual"), `docs/loop/protocolo.md`, `docs/loop/ciclo-de-fase.md` (§5), `.agents/skills/retomar/SKILL.md` e `.agents/skills/executar-fila/SKILL.md`. **Aceite:** `push_fase.py` só publica se o branch atual casa com `v2/fase-*`, a árvore está limpa e o destino é `origin` com o mesmo nome; recusa `main`, tag, `--force` e qualquer argumento extra; usa `git --no-pager`. `fechar_fase.py` simula por padrão e executa com `--aplicar`; verifica, nesta ordem, árvore limpa, PR mesclado com merge commit na `main`, tag `v2-fase-N` no commit de merge, "Fase atual" do `AGENTS.md` sem a fase fechada, e só então apaga o branch depois de confirmar com `git branch --merged main`; qualquer verificação que falhe interrompe sem apagar nada. Os textos passam a dizer: o loop publica o branch da fase só pelo `push_fase.py`, ao parar em `[DECISÃO]` ou `[!]`; `git push` direto, `main`, tags, PR e merge continuam proibidos ao loop; `fechar_fase.py` é do Marcos. `CLAUDE.md` e `AGENTS.md` sem contradição entre si. Testes em repositório git temporário, cobrindo cada recusa e cada interrupção. O loop **não** edita `.claude/settings.json`. G.
+- [ ] **F3-0g** · docs · `docs: record the phase 3 process rules in the phase cycle` — P8. Arquivos: `docs/loop/ciclo-de-fase.md` (etapas 1 e 2), `docs/loop/prompts/documento.md`, `docs/loop/protocolo.md` (passo 9), `docs/PLANO.md` (§9, uma linha), `.claude/agents/revisor-leve.md` (novo), `.claude/skills/review-diff-leve/SKILL.md` (novo). **Aceite:** a etapa 2 exige o pacote de decisões antes da ativação (toda decisão aberta, com opções, recomendação e padrão provisório do lado da abstenção), como foi feito na Fase 3; a etapa 1 e o prompt `documento` exigem que todo item produtor aponte o item consumidor e o teste `[e2e]`; `review-diff-leve` copia a checklist do `review-diff` com agente Sonnet somente leitura, e o passo 9 o usa para itens `docs` e `levantamento`. Ficha de método continua com a auditoria FICHA do ciclo. G documental.
+
+## 4. Primeira entrada de `docs/loop/ideias.md`
+
+**Análise offline com resumo histórico (09/11/2026).** Uso derivado, para um projeto de terceiro: rodar a análise sem rede sobre um snapshot local e gerar um resumo histórico por ativo, sem compra nem venda. O que a Fase 3 já cobre: `as_of`, ponto-no-tempo, eventos societários, deslistadas e banco único. Falta avaliar: critério "sem rede na análise" (hoje o F3-1 trata o import); modo offline que falha fechado; manifesto e verificação do snapshot; cópia local do backup (o F4-5 envia para o Google Drive); instalação sem rede; resumo com carimbo "dados até X" em modo estrito (D17). Destino provável: proposta da Fase 4. Fora do repositório: formato dos dados do terceiro, frequência de atualização, critério de aceite e responsabilidade pelo uso.
+
+## 5. O que fica com o Marcos, à mão
+
+1. Depois do F3-0f, acrescentar ao `allow` do `.claude/settings.json` a linha `"Bash(python scripts/push_fase.py)"`. O `deny` de `git push` não muda.
+2. Ativar a proteção da `main` no GitHub (sem push direto, sem force push).
+3. Uma revisão diária de `docs/loop/pendencias.md`.
+4. No checkpoint da 3-a: decidir se um segundo executor pode trabalhar em outro branch (hoje a regra é um executor por vez) e se o `CLAUDE.md` será dividido.
+
+## Adendo de 09/11/2026 — pendências do Bloco 1 (decisão do Marcos)
+
+Dois itens entram na fila antes do `[DECISÃO] Processo F3-0, bloco 1`, executados pelo protocolo novo; o loop para no `[DECISÃO]` e a 3-a não é ativada.
+
+- **F3-0h** · fix · `fix: make queue independence conservative`. Arquivos: `scripts/fila.py`, `tests/test_script_fila.py`. **Aceite**, com teste vermelho antes de cada correção: `independentes` conta todo caminho entre crases, menos `docs/loop/fila.md`, `docs/loop/diario.md` e `docs/loop/pendencias.md`; sufixo `:linha` é cortado antes da comparação; glob e diretório casam por padrão, nos dois sentidos; a dependência vale nos dois sentidos (A cita B ou B cita A); caminho que o script não consegue interpretar torna o item dependente; qualquer linha `[DECISÃO]` que não esteja `[x]` encerra a contagem; o teste do `_branch` limpa as variáveis `GIT_*`. Cada teste novo falha com a função quebrada à mão, registrado no diário.
+- **F3-0i** · docs · `docs: align the goal and the blocked-item rule`. Arquivos: `docs/loop/ciclo-de-fase.md` (§6), `docs/loop/protocolo.md`, `.agents/skills/executar-fila/SKILL.md`. **Aceite:** o `/goal` termina quando todos os itens antes do `[DECISÃO]` estão `[x]`, ou o protocolo mandou parar, ou não resta item executável (todo item aberto está `[!]`, depende de um `[!]`, ou o limite de três adiante foi atingido); um segundo `[!]` entre os itens independentes para o loop; a terceira falha da verificação continua parando, e isso fica escrito; a pendência correspondente sai de `docs/loop/pendencias.md`.
+
+## Segundo adendo de 09/11/2026 — segunda rodada do Bloco 1 (decisão do Marcos)
+
+Decisões sem item:
+
+1. Teste de script de processo fica em `tests/test_script_*.py`, fora do registro D27 de `tests/regressao/`.
+2. `proximo` parar em `[DECISÃO]` `[!]` com saída 3 está aprovado.
+3. Item que cita comando entre crases fica sem independentes, sem correção.
+
+As pendências correspondentes saem de `docs/loop/pendencias.md`. Dois itens entram na fila antes do `[DECISÃO] Processo F3-0, bloco 1`; o loop para no `[DECISÃO]` e a 3-a não é ativada.
+
+- **F3-0j** · fix · `fix: treat root files as paths in queue independence`. Arquivos: `scripts/fila.py`, `tests/test_script_fila.py`. **Aceite**, com teste vermelho antes: nome entre crases com extensão e sem barra (`config.py`, `app.py`) conta como caminho, e dois itens que o citam são dependentes; barras repetidas são normalizadas (`scripts//fila.py` equivale a `scripts/fila.py`); palavra sem extensão e sem barra continua ignorada. Se o primeiro teste já passar no código atual, registre "já estava feito" e entregue só o que faltar.
+- **F3-0k** · docs · `docs: update the execution step for the blocked-item rule`. Arquivos: `docs/loop/ciclo-de-fase.md` (etapa 4). **Aceite:** a linha da tabela e a frase dos casos (a), (b), (e) ou (f) passam a descrever a regra vigente, inclusive a parada no segundo `[!]`. Nada além desses dois trechos.
+
+## Terceiro adendo de 10/11/2026 — rodada 3 da auditoria DOCUMENTO (decisão do Marcos)
+
+Sobre o relatório `auditoria-documento-fila-fase3-proposta-codex-3-relatorio.md` ("não pode seguir"). Incorporadas em `docs/loop/fila-fase3-proposta.md` como decisões 18 a 23. A 3-a não é ativada.
+
+1. **P7 revista (prevalece sobre o texto original da P7):** o loop publica o branch da fase só em `[DECISÃO]` de checkpoint, depois da auditoria cruzada do F3-0e, e só com parecer "pode seguir" ou "pode seguir com ressalvas". Em `[!]` ou com bloqueio aberto, nada é publicado. A D30 não tem exceção. No F3-0f, o `push_fase.py` recebe o caminho do relatório e recusa sem parecer ou com "não pode seguir", com teste para cada recusa; o ciclo §6 entra nos arquivos autorizados.
+2. **F3-8b:** autorizado a incluir em `source_paths` do `pyproject.toml` só o módulo novo do backtest ponto-no-tempo, com o comando de medição no aceite. O backtest legado fica fora da mutação.
+3. **Baseline:** separar a baseline histórica (`main` `284165f`) da de ativação, a medir na reconferência, com o Bloco 1 do F3-0 incluído.
+4. **Gate G:** citar a exceção de mutação para scripts de processo (`decisoes-processo-f3-0.md`, seção 3).
+5. **F3-0d:** o `gate.py` roda de novo depois do stage final e antes de cada revisão, inclusive após correções.
+6. **F3-0e:** o prompt da auditoria lista os hashes dos commits de cada executor (`git log --grep`), cada família audita todos os commits da outra, e o teste do prompt confere essa seleção.
+
+## Quarto adendo de 10/11/2026 — rodada 4 da auditoria DOCUMENTO (decisão do Marcos)
+
+Sobre o relatório `auditoria-documento-fila-fase3-proposta-codex-4-relatorio.md` ("não pode seguir"). Incorporadas em `docs/loop/fila-fase3-proposta.md` como decisões 25 a 28. A 3-a não é ativada.
+
+1. **A P7 e a decisão 18 estão retiradas** (o item 1 do terceiro adendo deixa de valer). O loop nunca faz push; a publicação continua exclusiva do Marcos, no checkpoint, como antes do pacote. O F3-0f fica só com `scripts/fechar_fase.py` e seus testes: saem o `push_fase.py`, o `--relatorio`, a leitura de parecer, a definição de bloqueio aberto e todas as alterações de texto sobre push (`CLAUDE.md`, `AGENTS.md`, protocolo, ciclo §5 e §6, skills). A proibição 8 e o checkpoint final voltam ao texto anterior à decisão 18.
+2. **F3-0e:** a auditoria cruzada continua sendo rodada pelo loop ao chegar no `[DECISÃO]` de checkpoint. O veredito e o caminho do relatório entram no diário por um commit `docs:` próprio, fora do intervalo auditado, antes de parar.
+3. **F3-8b:** a lista de arquivos permite duas edições no `pyproject.toml`: a linha do módulo novo em `source_paths` e, só se houver sobreposição, a troca de `backtesting/` no `also_copy`.
+4. Nenhum item desta fila altera o §7 do PLANO.

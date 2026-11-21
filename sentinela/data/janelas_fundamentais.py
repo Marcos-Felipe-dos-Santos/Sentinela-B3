@@ -11,7 +11,7 @@ from collections.abc import Mapping
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from sentinela.data.fatores_acoes_b3 import fatores_da_relacao
+from sentinela.data.fatores_acoes_b3 import fatores_da_relacao, relacao_por_publicacao
 from sentinela.data.series_cvm import _meses
 
 FUSO = ZoneInfo("America/Sao_Paulo")
@@ -33,11 +33,20 @@ def _numero(valor: object) -> float:
     return float(valor)
 
 
-def _fonte(registro: Mapping, instante: datetime, campo: str = "coleta") -> None:
+def _fonte(
+    registro: Mapping,
+    instante: datetime,
+    campo: str = "coleta",
+    por_publicacao: bool = False,
+) -> None:
+    """Fonte demonstrada e coleta com fuso; até o as_of, salvo numa data passada (decisão 40),
+    em que a disponibilidade é a data de publicação, conferida por quem chama."""
     if not registro.get("fonte"):
         raise ValueError("fonte não demonstrada")
     coleta = datetime.fromisoformat(str(registro.get(campo)))
-    if coleta.tzinfo is None or coleta.utcoffset() is None or coleta > instante:
+    if coleta.tzinfo is None or coleta.utcoffset() is None:
+        raise ValueError("coleta sem fuso ou posterior ao as_of")
+    if not por_publicacao and coleta > instante:
         raise ValueError("coleta sem fuso ou posterior ao as_of")
 
 
@@ -57,7 +66,10 @@ def _acoes_documentais(registros: list[dict]) -> list[float]:
 
 
 def fatores_da_base(
-    registros: list[dict], reconciliacao: object, instante: datetime
+    registros: list[dict],
+    reconciliacao: object,
+    instante: datetime,
+    por_publicacao: bool = False,
 ) -> dict[str, float]:
     """Ficha2.1: quantidades já escaladas por documento, razão estrita ou fator B3."""
     quantidades = _acoes_documentais(registros)
@@ -70,7 +82,7 @@ def fatores_da_base(
         return {str(e["exercicio"]): 1.0 for e in registros}
     if not isinstance(reconciliacao, Mapping):
         raise TypeError("base de ações incompatível sem fator oficial B3")
-    _fonte(reconciliacao, instante)
+    _fonte(reconciliacao, instante, por_publicacao=por_publicacao)
     if date.fromisoformat(reconciliacao["inicio"]) > date.fromisoformat(
         registros[0]["inicio"]
     ) or date.fromisoformat(reconciliacao["fim"]) < date.fromisoformat(
@@ -91,6 +103,7 @@ def entradas(dados: Mapping, instante: datetime) -> dict:
     """Insumos de Graham/Lynch separados, sem reservar valores em múltiplos."""
     cobertura = {"esperados": 5, "disponiveis": 0}
     meta = {"avisos": ["reorganização societária no período não é detectada"]}
+    por_publicacao = dados.get("disponibilidade_por_publicacao") is True  # decisão 40
     try:
         if instante.tzinfo is None or instante.utcoffset() is None:
             raise ValueError("as_of exige fuso horário")
@@ -113,6 +126,7 @@ def entradas(dados: Mapping, instante: datetime) -> dict:
         if len(registros) != 5:
             raise ValueError("exige cinco exercícios completos contínuos")
         reconciliacao = dados.get("reconciliacao_serie")
+        da_relacao_historica = False
         if reconciliacao is None:
             _acoes_documentais(registros)
             reconciliacao = fatores_da_relacao(dados, registros, instante)
@@ -120,7 +134,12 @@ def entradas(dados: Mapping, instante: datetime) -> dict:
                 raise ValueError(
                     f"fator oficial B3 indisponível: {reconciliacao['abstencao']}"
                 )
-        fatores = fatores_da_base(registros, reconciliacao, instante)
+            da_relacao_historica = relacao_por_publicacao(dados)
+        # o fator do bloco do banco numa data passada vale pela publicação (BUG-3-53); o da
+        # relação corrente e o injetado mantêm a guarda de coleta (DD-65)
+        fatores = fatores_da_base(
+            registros, reconciliacao, instante, por_publicacao=da_relacao_historica
+        )
         perimetros = set()
         lpas, meses = [], []
         anterior = None
@@ -134,7 +153,7 @@ def entradas(dados: Mapping, instante: datetime) -> dict:
                 raise ValueError("identidade do exercício incompatível")
             anterior = fim
             prov = _mapa(e.get("proveniencia"))
-            _fonte(prov, instante, "data_coleta")
+            _fonte(prov, instante, "data_coleta", por_publicacao)
             if date.fromisoformat(prov["data_entrega"]) >= dia:
                 raise ValueError("documento não entregue até o corte")
             perimetros.add(e.get("perimetro") or "controladores")
@@ -180,7 +199,7 @@ def entradas(dados: Mapping, instante: datetime) -> dict:
         ipca = _mapa(dados.get("ipca_serie"))
         if ipca.get("abstencao"):
             raise ValueError(ipca["abstencao"])
-        _fonte(ipca, instante)
+        _fonte(ipca, instante, por_publicacao=por_publicacao)
         indices = _mapa(ipca.get("indices"))
         publicacoes = _mapa(ipca.get("publicacoes"))
         valores = []

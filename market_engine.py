@@ -1,5 +1,6 @@
 import logging
 import math
+import sqlite3
 import zipfile
 from datetime import UTC, date, datetime
 from typing import Any
@@ -9,6 +10,7 @@ import pandas as pd
 import yfinance as yf
 from yfinance.exceptions import YFException
 
+import config
 from brapi_provider import BrapiProvider
 from config import _normalizar_dy, get_taxa_real
 from cvm_fii_provider import CVMFIIProvider
@@ -240,12 +242,19 @@ def _retrato(dados: dict[str, Any]) -> dict[str, Any]:
 
 
 def _lpa_divulgado_comparado(
-    divulgados: dict[str, Any], especie: str | None, especie_base: str | None = None
+    divulgados: dict[str, Any],
+    especie: str | None,
+    especie_base: str | None = None,
+    acoes_por_unit: dict | None = None,
+    *,
+    escala: bool = False,
 ) -> dict[str, Any] | None:
-    """LPA divulgado coerente da classe do ticker (F2A-5), ou o da espécie sem a classe.
+    """LPA divulgado coerente da classe do ticker (F2A-5), ou o da unit pela composição.
 
     Só o coerente (F2B-14; ficha, 7.3 e 7.5): com o divulgado da classe descartado pela D19, não
-    há conferência, e o alerta é o da incoerência. Sem classe (unit ou sem índice), o da escala.
+    há conferência, e o alerta é o da incoerência. Sem classe: ação que não é unit
+    (`escala=True`) confere com o da escala, como antes; unit, com a soma ponderada dos
+    componentes, e sem composição completa não escolhe a primeira classe (F3-P03).
     """
     for chave in (especie, especie_base):
         if chave in divulgados:
@@ -253,13 +262,41 @@ def _lpa_divulgado_comparado(
             if not isinstance(achado, acoes_cvm.LpaDivulgado):
                 return None
             return {'especie': chave, 'valor': achado.valor}
-    if especie is None:
+    if especie is None and escala:
         ordem = [*acoes_cvm.ORDEM_DA_ESCALA, *sorted(set(divulgados) - set(acoes_cvm.ORDEM_DA_ESCALA))]
         for chave in ordem:
             achado = divulgados.get(chave)
             if isinstance(achado, acoes_cvm.LpaDivulgado):
                 return {'especie': chave, 'valor': achado.valor}
+        return None
+    if especie is None:
+        return _lpa_divulgado_da_unit(divulgados, acoes_por_unit)
     return None
+
+
+def _lpa_divulgado_da_unit(
+    divulgados: dict[str, Any], acoes_por_unit: dict | None
+) -> dict[str, Any] | None:
+    """Divulgado da unit na base por ação: Σ quantidade × LPA da classe ÷ Σ quantidade.
+
+    F3-P03 (BUG-2C-11; ficha por ação, §1 e 7.3): a conferência compara o recalculado da unit
+    dividido pelas ações por unit (`acoes_por_papel`) com esta média ponderada. Composição
+    ausente, inválida ou incompleta (componente sem divulgado coerente, ou com mais de uma
+    classe da espécie) não escolhe a primeira classe: sem conferência.
+    """
+    if not acoes_cvm._unit_valida(acoes_por_unit):
+        return None
+    soma = 0.0
+    for componente, quantidade in acoes_por_unit.items():
+        especie = acoes_cvm.especie_da_classe(componente)
+        classes = [c for c in divulgados if acoes_cvm.especie_da_classe(c) == especie]
+        if len(classes) != 1 or not isinstance(
+            divulgados[classes[0]], acoes_cvm.LpaDivulgado
+        ):
+            return None
+        soma += quantidade * divulgados[classes[0]].valor
+    rotulo = " + ".join(f"{q:g} {c}" for c, q in acoes_por_unit.items())
+    return {'especie': f"unit ({rotulo})", 'valor': soma / sum(acoes_por_unit.values())}
 
 
 def _linhas_de_lpa(ind: dict[str, Any]) -> dict[str, list]:
@@ -307,14 +344,38 @@ def _definir_fonte_fundamentos(dados: dict[str, Any], fonte: str) -> None:
     dados['fonte_fundamentos'] = fonte
 
 
-def _fundamentos_validos_para_cache(
-    dados: dict[str, Any],
-    asset_classifier: AssetClassifier | None = None,
-) -> bool:
-    return not list_missing_required_fields(dados, asset_classifier)
+# F3-A-F3 (BUG-3-16): fonte de preço que não diz a data do fechamento grava o motivo.
+MOTIVO_SEM_DATA = {
+    'yfinance_historico': 'yfinance: histórico sem data legível no último fechamento',
+    'yfinance_info': 'yfinance: currentPrice sem data do fechamento',
+    'brapi': 'brapi: preço sem data do fechamento',
+}
+
+
+def _data_do_fechamento(indice: Any) -> str | None:
+    """Data ISO do índice do histórico (Timestamp ou date); `None` se não for data (`NaT`)."""
+    if pd.isna(indice):
+        return None
+    try:
+        return indice.date().isoformat()
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
+def _hoje_sp(agora: datetime | None = None) -> date:
+    """O dia de hoje em São Paulo, o mesmo relógio do serviço (não o fuso do sistema)."""
+    return (agora or datetime.now(UTC)).astimezone(ZoneInfo("America/Sao_Paulo")).date()
 
 
 class MarketEngine:
+    def _data_passada(self, as_of: datetime | None) -> bool:
+        """D anterior a hoje pelo relógio; o motor histórico responde pela data do serviço
+        (BUG-3-58)."""
+        return (
+            as_of is not None
+            and as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date() < _hoje_sp()
+        )
+
     def __init__(self, asset_classifier: AssetClassifier | None = None) -> None:
         self.brapi = BrapiProvider()
         self.cvm = CVMProvider()
@@ -439,8 +500,20 @@ class MarketEngine:
         }
         dados.pop('_field_sources', None)
 
-    def buscar_dados_ticker(self, ticker: str) -> dict[str, Any] | None:
+    def buscar_dados_ticker_em(self, ticker: str, as_of: datetime) -> dict[str, Any] | None:
+        """Referência explícita na cascata (F3-6c).
+
+        Numa data passada, a CVM é lida pelo recorte da entrega (F3-3d, DD-61); a análise
+        histórica completa, sem fonte corrente, é a do `MotorHistorico` do serviço.
+        """
+        return self.buscar_dados_ticker(ticker, as_of=as_of)
+
+    def buscar_dados_ticker(
+        self, ticker: str, *, as_of: datetime | None = None
+    ) -> dict[str, Any] | None:
         """Busca dados de mercado com fallback multi-fonte."""
+        if as_of is not None and as_of.utcoffset() is None:
+            raise ValueError("as_of exige fuso horário")
         # F2A-12: ticker fora do formato da B3 não chega a nenhuma fonte externa.
         normalizado = ticker_b3.normalizar(ticker)
         if normalizado is None:
@@ -461,6 +534,9 @@ class MarketEngine:
             'cvm_disponivel': False,
             'riscos_dados': [],
         }
+        if self._data_passada(as_of):
+            # decisão 40: numa data passada, a disponibilidade é a data de publicação da fonte
+            dados['disponibilidade_por_publicacao'] = True
 
         classifier = getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER)
 
@@ -482,31 +558,42 @@ class MarketEngine:
 
         # 3. CVM: fundamentos oficiais das demonstrações financeiras.
         #    Roda após brapi para ter a última palavra nos campos que provê.
-        self._buscar_cvm(ticker, dados)
+        if as_of is None:
+            self._buscar_cvm(ticker, dados)
+        else:
+            self._buscar_cvm(ticker, dados, as_of=as_of)
 
         if not dados.get('fonte_preco'):
             return None
 
-        self._buscar_ifdata(dados, as_of=datetime.now(UTC))
-        self._buscar_cvm_fii(ticker, dados)
-        self._buscar_rendimento_fii(ticker, dados)
-        self._buscar_proventos_b3(ticker, dados)
+        self._buscar_ifdata(dados, as_of=as_of if as_of is not None else datetime.now(UTC))
+        if as_of is None:
+            self._buscar_cvm_fii(ticker, dados)
+        else:
+            self._buscar_cvm_fii(ticker, dados, as_of=as_of)
+        if as_of is None:
+            self._buscar_rendimento_fii(ticker, dados)
+        else:
+            self._buscar_rendimento_fii(ticker, dados, as_of=as_of)
+        if as_of is None:
+            self._buscar_proventos_b3(ticker, dados)
+        else:
+            self._buscar_proventos_b3(ticker, dados, as_of=as_of)
         self._buscar_liquidez(ticker, dados)
-        self._buscar_taxa_real(dados)
-        self._contexto_janelas(dados, datetime.now(UTC))
-
-        if list_missing_required_fields(dados, classifier):
-            self._aplicar_cache_fundamentos(ticker, dados)
+        self._buscar_taxa_real(dados, as_of=as_of)
+        if as_of is None:
+            self._contexto_janelas(dados, datetime.now(UTC))
+        else:
+            self._contexto_janelas(dados, as_of, coletado_em=datetime.now(UTC))
 
         # F2A-23: estimativas manuais de FII não são aplicadas.
 
         # F2A-22: o Fundamentus saiu da cascata; a falta de campo obrigatório depois de
-        # todas as fontes (inclusive cache e fallback manual) vira `fundamentos_incompletos`.
+        # todas as fontes vira `fundamentos_incompletos` (o cache de 7 dias saiu no F3-9b, DD-85).
         obrigatorios_faltando = list_missing_required_fields(dados, classifier)
         dados['fundamentos_incompletos'] = bool(obrigatorios_faltando)
         dados['campos_faltantes'] = obrigatorios_faltando + list_missing_market_fields(dados)
         dados['dados_parciais'] = bool(dados['campos_faltantes'])
-        self._salvar_cache_se_valido(ticker, dados)
         dados.setdefault('ticker', ticker)
         self._attach_field_provenance(dados)
         dados['valores_coletados'] = _retrato(dados)
@@ -561,9 +648,20 @@ class MarketEngine:
             hist = tk.history(period="1y", timeout=10)
             if hist is not None and not hist.empty:
                 dados['historico'] = hist
-                dados['preco_atual'] = hist['Close'].iloc[-1]
-                dados['fonte_preco'] = 'yfinance'
-                self._record_field_sources(dados, ('preco_atual',), 'yfinance')
+                # F3-A-F5 (BUG-3-17): só um último fechamento finito e positivo vira o preço,
+                # com fonte e data; senão o `currentPrice` ou a brapi preenchem, com a fonte certa.
+                # `_as_float` já devolve `None` para ausente, `NaN` e `inf`.
+                fechamento = _as_float(hist['Close'].iloc[-1])
+                if fechamento is not None and fechamento > 0:
+                    dados['preco_atual'] = hist['Close'].iloc[-1]
+                    dados['fonte_preco'] = 'yfinance'
+                    # F3-A-F3 (BUG-3-16): a data do fechamento usado acompanha o preço.
+                    data_preco = _data_do_fechamento(hist.index[-1])
+                    if data_preco:
+                        dados['data_preco'] = data_preco
+                    else:
+                        dados['motivo_data_preco'] = MOTIVO_SEM_DATA['yfinance_historico']
+                    self._record_field_sources(dados, ('preco_atual',), 'yfinance')
                 # F2B-54 (BUG-2B-33): o DY da B3 usa o fechamento bruto (ficha Bazin, §2); o
                 # `historico` ajustado fica para retorno e técnico (armadilha 11).
                 # Leitura à parte: a falha dela não pode derrubar os fundamentos do `info`.
@@ -602,6 +700,7 @@ class MarketEngine:
                 if not dados.get('fonte_preco') and preco_info and preco_info > 0:
                     dados['preco_atual'] = preco_info
                     dados['fonte_preco'] = 'yfinance'
+                    dados['motivo_data_preco'] = MOTIVO_SEM_DATA['yfinance_info']
                     self._record_field_sources(dados, ('preco_atual',), 'yfinance')
 
                 shares = _as_float(info.get('sharesOutstanding'))
@@ -683,6 +782,10 @@ class MarketEngine:
             if _is_field_missing('preco_atual', dados.get('preco_atual'), dados):
                 preenchidos_preco = merge_if_valid(dados, brapi_data, allowed_keys={'preco_atual'})
                 self._record_field_sources(dados, preenchidos_preco, 'brapi')
+                if 'preco_atual' in preenchidos_preco:
+                    # o fechamento do yfinance, se houve, não é o preço usado
+                    dados.pop('data_preco', None)
+                    dados['motivo_data_preco'] = MOTIVO_SEM_DATA['brapi']
 
             if dados.get('preco_atual') and not dados.get('fonte_preco'):
                 dados['fonte_preco'] = 'brapi'
@@ -698,7 +801,7 @@ class MarketEngine:
 
         return False
 
-    def _buscar_rendimento_fii(self, ticker: str, dados: dict[str, Any]) -> None:
+    def _buscar_rendimento_fii(self, ticker: str, dados: dict[str, Any], *, as_of: datetime | None = None) -> None:
         """Informe Mensal e complemento da B3 do FII, para a lente de rendimento (F2B-2).
 
         Grava, fora do prompt, `dados['informe_fii']` (linhas do complemento com a entrega e
@@ -714,13 +817,23 @@ class MarketEngine:
         if ler is None or not cnpj:
             return
         try:
-            dados['informe_fii'] = ler(cnpj)
-        except Exception as exc:
+            dados['informe_fii'] = ler(cnpj) if as_of is None else ler(cnpj, as_of=as_of)
+        except (OSError, ValueError) as exc:
+            # F3-P04 (BUG-2C-12): falha da fonte vira abstenção e risco de dados; erro de
+            # programação (TypeError, KeyError, AttributeError...) propaga.
             logger.warning(
                 f"[{ticker}] Informe Mensal indisponível para o rendimento: {exc}"
             )
-            dados['informe_fii'] = {'abstencao': f"Informe Mensal indisponível: {exc}"}
+            motivo = f"Informe Mensal indisponível: {exc}"
+            dados['informe_fii'] = {'abstencao': motivo}
+            dados.setdefault('riscos_dados', []).append(f"{motivo} (rendimento do FII)")
             return
+        lacunas = dados['informe_fii'].get('lacunas') if isinstance(dados['informe_fii'], dict) else None
+        if lacunas:
+            # BUG-3-03: ano da janela ilegível ou sem linhas do fundo não sai com cara de sucesso.
+            dados.setdefault('riscos_dados', []).append(
+                f"Informe Mensal incompleto: {'; '.join(lacunas)} (rendimento do FII)"
+            )
         provedor = getattr(self, 'b3_fundos', None)
         if provedor is None:
             return
@@ -732,7 +845,9 @@ class MarketEngine:
                 'abstencao': f"complemento da B3 do fundo indisponível: {exc}"
             }
 
-    def _contexto_janelas(self, dados: dict[str, Any], instante: datetime) -> None:
+    def _contexto_janelas(
+        self, dados: dict[str, Any], instante: datetime, *, coletado_em: datetime | None = None
+    ) -> None:
         """Disponibiliza fontes existentes; não presume eventos/perímetros conciliados."""
         from sentinela.data.janelas_fundamentais import entradas
 
@@ -744,25 +859,28 @@ class MarketEngine:
         exercicios = (dados.get("serie_cvm") or {}).get("exercicios") or []
         if len(exercicios) == 5 and not dados.get("ipca_serie"):
             try:
-                dados["ipca_serie"] = MacroProvider().ipca_serie(exercicios, instante)
+                dados["ipca_serie"] = MacroProvider().ipca_serie(
+                    exercicios, instante if coletado_em is None else coletado_em
+                )
             except FALHAS_DA_FONTE as erro:
                 dados["ipca_serie"] = _falha_da_fonte(erro)
             except ERROS_DO_CODIGO as erro:
                 dados["ipca_serie"] = _erro_do_codigo(erro)
         dados["janelas_fundamentais"] = entradas(dados, instante)
 
-    def _buscar_taxa_real(self, dados: dict[str, Any]) -> None:
+    def _buscar_taxa_real(self, dados: dict[str, Any], *, as_of: datetime | None = None) -> None:
         """Registro aditivo, fora dos métodos e do prompt (F2B-30).
 
         Sem início/fim comprovados, IPCA se abstém; não inferir janeiro pela
-        data final de um balanço nem usar a janela do TTM como DFP anual.
+        data final de um balanço nem usar a janela do TTM como DFP anual. A referência é
+        o `as_of` da cascata, ou o instante atual sem ele (BUG-3-22).
         """
         janela = dados.get('janela_contabil_cvm')
         dados['taxa_real'] = get_taxa_real(
-            as_of=datetime.now(UTC), janela=janela
+            as_of=datetime.now(UTC) if as_of is None else as_of, janela=janela
         )
 
-    def _buscar_proventos_b3(self, ticker: str, dados: dict[str, Any]) -> None:
+    def _buscar_proventos_b3(self, ticker: str, dados: dict[str, Any], *, as_of: datetime | None = None) -> None:
         """Relação de proventos em dinheiro da B3 para o Bazin (F2B-31), fora do prompt.
 
         Só STOCK e UNIT do modelo empresa pelo BPP consolidado (ficha Bazin 1.0, §4). Grava em
@@ -799,7 +917,8 @@ class MarketEngine:
             dados['proventos_b3'] = {'abstencao': proventos_b3.MOTIVO_PRECO}
             return
         agora = datetime.now(UTC)
-        hoje = agora.astimezone(proventos_b3.FUSO).date()
+        referencia_analise = agora if as_of is None else as_of
+        hoje = referencia_analise.astimezone(proventos_b3.FUSO).date()
         anteriores = [date.fromisoformat(d) for d in fechamentos if date.fromisoformat(d) < hoje]
         if not anteriores:
             dados['proventos_b3'] = {'abstencao': proventos_b3.MOTIVO_PRECO_NAO_ENCERRADO}
@@ -813,6 +932,10 @@ class MarketEngine:
                 'abstencao': f"relação de proventos da B3 indisponível: {exc}"
             }
             return
+        if relacao.identidade is not None:
+            # F3-P01, decisão 33: relação pelo nome sem identidade do emissor comprovada.
+            dados['proventos_b3'] = {'abstencao': relacao.identidade}
+            return
         dividendos = None
         if 'Dividends' in historico:
             pagos = historico['Dividends'][historico['Dividends'] > 0]
@@ -821,6 +944,7 @@ class MarketEngine:
             'registros': list(relacao.registros),
             'total': relacao.total,
             'eventos_acoes': list(relacao.eventos_acoes),
+            'isins_emissor': list(relacao.isins),  # GetDetail pelo código CVM (BUG-3-60)
             'dinheiro_complemento': list(relacao.dinheiro_complemento),
             'fechamentos': fechamentos,
             'pregoes': self._pregoes_da_data_ex(relacao.registros, referencia, agora),
@@ -833,6 +957,42 @@ class MarketEngine:
                 'arquivos': list(relacao.fontes),
             },
         }
+        self._calendario_proventos_b3(ticker, dados)
+
+    @staticmethod
+    def _calendario_proventos_b3(ticker: str, dados: dict[str, Any]) -> None:
+        """Calendário anual de pregões para a regularidade de proventos (F3-P14b).
+
+        Contrato em `docs/decisoes/calendario-proventos-3.md`: dos exercícios da série CVM, do
+        início do primeiro menos 7 dias ao fim do último mais 7 dias, pelo COTAHIST anual
+        guardado no banco único (`proventos_b3.calendario_do_banco`). Sem série, sem banco ou
+        sem cobertura, a chave fica ausente e a lente de qualidade mostra o motivo; o motivo
+        do produtor fica em `calendario_proventos_b3_motivo`.
+        """
+        serie = dados.get('serie_cvm')
+        exercicios = serie.get('exercicios') if isinstance(serie, dict) else None
+        try:
+            inicio = min(date.fromisoformat(e['inicio']) for e in exercicios)
+            fim = max(date.fromisoformat(e['fim']) for e in exercicios)
+        except (TypeError, KeyError, ValueError):
+            return
+        conn = config._conexao_series_macro()
+        try:
+            calendario = proventos_b3.calendario_do_banco(
+                conn,
+                inicio - proventos_b3.FOLGA_SEM_PREGAO,
+                fim + proventos_b3.FOLGA_SEM_PREGAO,
+            )
+        except sqlite3.Error as exc:
+            logger.warning(f"[{ticker}] calendário anual da B3 indisponível: {exc}")
+            calendario = proventos_b3.Abstencao(f"calendário anual B3 indisponível: {exc}")
+        finally:
+            if conn is not None:
+                conn.close()
+        if isinstance(calendario, proventos_b3.Abstencao):
+            dados['calendario_proventos_b3_motivo'] = calendario.motivo
+        else:
+            dados['calendario_proventos_b3'] = calendario
 
     @staticmethod
     def _pregoes_da_data_ex(registros, referencia: date, agora: datetime) -> list | None:
@@ -894,7 +1054,7 @@ class MarketEngine:
             pregoes = len({c.data for c in coleta.cotacoes})
             dados['liquidez']['incompleta'] = pregoes < 63
 
-    def _buscar_cvm_fii(self, ticker: str, dados: dict[str, Any]) -> bool:
+    def _buscar_cvm_fii(self, ticker: str, dados: dict[str, Any], *, as_of: datetime | None = None) -> bool:
         """VPA, P/VP, PL e cotas do FII pelo Informe Mensal da CVM (F2A-11; E-10, armadilha 9).
 
         O CNPJ vem só do índice oficial (F2A-31; sem ele, o Informe não é consultado). O P/VP
@@ -912,7 +1072,10 @@ class MarketEngine:
                 dados.setdefault('riscos_dados', []).append(RISCO_FII_FORA_DO_INFORME)
             return False
         try:
-            informe = provedor.obter_dados_fii(cnpj)
+            informe = (
+                provedor.obter_dados_fii(cnpj) if as_of is None
+                else provedor.obter_dados_fii(cnpj, as_of=as_of)
+            )
         except Exception as exc:
             logger.warning(f"[{ticker}] Informe Mensal do FII indisponível: {exc}")
             dados.setdefault('riscos_dados', []).append(
@@ -996,7 +1159,7 @@ class MarketEngine:
         )
         return None
 
-    def _buscar_cvm(self, ticker: str, dados: dict[str, Any]) -> bool:
+    def _buscar_cvm(self, ticker: str, dados: dict[str, Any], *, as_of: datetime | None = None) -> bool:
         """Preenche fundamentos a partir das DFPs oficiais da CVM.
 
         Cobre: ROE (dos controladores), margens, PL, lucro, receita, ativo circulante/total,
@@ -1007,6 +1170,11 @@ class MarketEngine:
         cvm = getattr(self, 'cvm', None)
         if cvm is None:
             return False
+        recortar = getattr(cvm, 'recorte_em', None)
+        if recortar is not None and self._data_passada(as_of):
+            # F3-3d (DD-61): numa data passada, só o que a CVM recebeu antes do dia de D;
+            # com as_of de hoje, a cascata lê os arquivos como antes.
+            cvm = recortar(as_of)
 
         # F2A-31: o CD_CVM vem só do índice oficial; os mapas manuais não são mais lidos.
         cd_cvm = dados.get('cd_cvm')
@@ -1023,13 +1191,21 @@ class MarketEngine:
             # para manter a interface dos provedores anteriores ao F2A-33.
             modelo = contas_cvm.modelo_do_setor(dados.get('setor'))
             extra = {} if modelo == 'empresa' else {'modelo': modelo}
-            ano_final = self._serie_cvm(ticker, dados, cvm, cd_cvm, modelo)
+            if as_of is not None:
+                extra['as_of'] = as_of
+            ano_final = (
+                self._serie_cvm(ticker, dados, cvm, cd_cvm, modelo)
+                if as_of is None
+                else self._serie_cvm(ticker, dados, cvm, cd_cvm, modelo, as_of=as_of)
+            )
             selecionar_exercicio = getattr(cvm, "exercicio_anual_mais_recente", None)
             if callable(selecionar_exercicio):
                 if ano_final is None:
                     dados["cvm_disponivel"] = False
                     return False
                 extra["ano_final"] = ano_final
+                # O corte já foi resolvido; a API antiga do snapshot recebe só o ano.
+                extra.pop("as_of", None)
             historico = cvm.calcular_indicadores(cd_cvm, anos=1, **extra)
             if not historico:
                 dados['cvm_disponivel'] = False
@@ -1073,7 +1249,7 @@ class MarketEngine:
                 dados["modelo_bpp_proveniencia"] = ind.get("proveniencia")
             obter_gordon = getattr(cvm, "gordon_do_documento", None)
             if callable(obter_gordon):
-                instante_gordon = datetime.now(UTC)
+                instante_gordon = as_of if as_of is not None else datetime.now(UTC)
                 fato = obter_gordon(cd_cvm, ind, instante_gordon)
                 if "abstencao" not in fato:
                     acoes = dados.get("acoes_cvm") or {}
@@ -1232,7 +1408,8 @@ class MarketEngine:
             riscos.append(f"{RISCO_LIMITACAO_BANCO} ({campo}): {motivo}")
 
     def _serie_cvm(
-        self, ticker: str, dados: dict[str, Any], cvm: Any, cd_cvm: int, modelo: str
+        self, ticker: str, dados: dict[str, Any], cvm: Any, cd_cvm: int, modelo: str,
+        *, as_of: datetime | None = None
     ) -> int | None:
         """Série de cinco exercícios e TTM da CVM (F2A-7), em `dados['serie_cvm']` e `dados['ttm_cvm']`.
 
@@ -1245,7 +1422,12 @@ class MarketEngine:
         selecionar_exercicio = getattr(cvm, 'exercicio_anual_mais_recente', None)
         if indicadores_da_serie is None and acumulados_ttm is None and selecionar_exercicio is None:
             return None
-        hoje = date.today()
+        if as_of is not None and as_of.utcoffset() is None:
+            raise ValueError("as_of exige fuso horário")
+        hoje = (
+            date.today() if as_of is None
+            else as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+        )
         exercicios = []
         ano_final = None
         try:
@@ -1402,6 +1584,8 @@ class MarketEngine:
                 divulgados,
                 None if eh_unit else classe,
                 None if eh_unit else dados.get('especie'),
+                acoes_por_unit if eh_unit else None,
+                escala=not eh_unit,
             ),
         }
         dados['divergencia_acoes'] = acoes_cvm.divergencia_acoes(
@@ -1438,73 +1622,3 @@ class MarketEngine:
                 riscos.append(f"{RISCO_SEM_LPA_CVM}: {lpa.motivo}")
         elif sem_lpa:
             riscos.append(f"{RISCO_SEM_LPA_CVM}: {lpa.motivo}")
-
-    def _aplicar_cache_fundamentos(
-        self,
-        ticker: str,
-        dados: dict[str, Any],
-    ) -> bool:
-        database = getattr(self, 'database', None)
-        if database is None:
-            return False
-
-        try:
-            cache = database.buscar_fundamentos_cache(ticker)
-        except Exception as e:
-            logger.warning(f"[{ticker}] Cache fundamentos indisponivel: {e}")
-            return False
-
-        if not cache:
-            return False
-
-        preenchidos = merge_if_valid(
-            dados,
-            cache,
-            allowed_keys=set(FUNDAMENTAL_KEYS),
-        )
-        self._record_field_sources(dados, preenchidos, 'fundamentals_cache')
-        if not preenchidos:
-            return False
-
-        dados['dados_cache'] = True
-        _registrar_fonte_fundamentos(dados, 'cache')
-        dados.setdefault('riscos_dados', []).append(
-            'campos fundamentais preenchidos via cache'
-        )
-        logger.info(f"[{ticker}] Usando cache de fundamentos ({len(preenchidos)} campos)")
-        return True
-
-    def _salvar_cache_se_valido(self, ticker: str, dados: dict[str, Any]) -> None:
-        if (
-            dados.get('dados_cache')
-            or dados.get('dados_manual')
-            or not _fundamentos_validos_para_cache(
-                dados,
-                getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER),
-            )
-        ):
-            return
-
-        fonte = dados.get('fonte_fundamentos')
-        if not fonte or fonte == 'yfinance_partial':
-            return
-
-        payload = {
-            chave: dados[chave]
-            for chave in FUNDAMENTAL_KEYS
-            if chave in dados and not _is_field_missing(chave, dados.get(chave), dados)
-        }
-        if not _fundamentos_validos_para_cache(
-            {'ticker': ticker, **payload},
-            getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER),
-        ):
-            return
-
-        database = getattr(self, 'database', None)
-        if database is None:
-            return
-
-        try:
-            database.salvar_fundamentos_cache(ticker, payload, fonte)
-        except Exception as e:
-            logger.warning(f"[{ticker}] Falha ao salvar cache de fundamentos: {e}")

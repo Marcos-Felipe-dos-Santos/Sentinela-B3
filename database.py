@@ -2,8 +2,9 @@ import json
 import logging
 import sqlite3
 from contextlib import closing
-from datetime import datetime, timedelta
+from datetime import datetime
 
+from sentinela.data.store import unico
 from sentinela.domain.apresentacao import adaptar_leitura
 
 logger = logging.getLogger("Database")
@@ -14,8 +15,9 @@ class DatabaseManager:
     # Riscos: dados defasados usados em análise fresca sem aviso ao usuário.
     # Implementar apenas quando houver flag clara de "cache_stale" no resultado.
     # Por ora, salvar_analise() já persiste dados_completos como JSON readonly.
-    def __init__(self, db_path="sentinela_v6.db"):
-        self.db_path = db_path
+    def __init__(self, db_path=None):
+        # F3-2c: sem caminho, o banco único (`sentinela.data.store.unico.caminho_padrao`).
+        self.db_path = unico.caminho_padrao() if db_path is None else db_path
         self._init_db()
 
     def _get_conn(self):
@@ -54,7 +56,12 @@ class DatabaseManager:
                 """)
 
     def adicionar_posicao(self, ticker: str, qtd: int, preco: float) -> None:
-        """Adiciona ou atualiza uma posição na carteira com preço médio ponderado."""
+        """Adiciona ou reduz uma posição da carteira pela regra do custo médio.
+
+        Compra (`qtd` > 0) recalcula o preço médio pela média ponderada; redução parcial
+        (`qtd` < 0) mantém o preço médio (F3-P02, BUG-2B-51). Zeragem e redução maior que
+        a posição removem a linha, como antes.
+        """
         ticker = ticker.upper().strip()
         with closing(self._get_conn()) as conn:
             with conn:
@@ -71,7 +78,10 @@ class DatabaseManager:
                     nova_qtd   = qtd_antiga + qtd
 
                     if nova_qtd > 0:
-                        novo_pm = ((qtd_antiga * pm_antigo) + (qtd * preco)) / nova_qtd
+                        if qtd < 0:
+                            novo_pm = pm_antigo
+                        else:
+                            novo_pm = ((qtd_antiga * pm_antigo) + (qtd * preco)) / nova_qtd
                         conn.execute(
                             "UPDATE carteira_real SET quantidade=?, preco_medio=? WHERE ticker=?",
                             (nova_qtd, novo_pm, ticker)
@@ -147,81 +157,8 @@ class DatabaseManager:
                     logger.error(f"JSON corrompido para {ticker}: {e}")
             return None
 
-    def salvar_fundamentos_cache(self, ticker: str, dados: dict, fonte: str) -> None:
-        """Salva os últimos fundamentos válidos de um ticker."""
-        ticker = ticker.upper().replace(".SA", "").strip()
-        if not ticker or not dados:
-            return
-
-        with closing(self._get_conn()) as conn:
-            with conn:
-                conn.execute(
-                    """
-                    INSERT OR REPLACE INTO fundamentals_cache
-                    (ticker, dados_json, fonte, atualizado_em)
-                    VALUES (?, ?, ?, ?)
-                    """,
-                    (
-                        ticker,
-                        json.dumps(dados, default=str),
-                        fonte,
-                        datetime.now().isoformat(timespec="seconds"),
-                    ),
-                )
-
-    def buscar_fundamentos_cache(self, ticker: str, max_age_days: int = 7):
-        """Busca fundamentos em cache quando ainda estão dentro do TTL."""
-        ticker = ticker.upper().replace(".SA", "").strip()
-        if not ticker:
-            return None
-
-        with closing(self._get_conn()) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT dados_json, atualizado_em
-                FROM fundamentals_cache
-                WHERE ticker = ?
-                """,
-                (ticker,),
-            )
-            row = cursor.fetchone()
-
-        if not row:
-            return None
-
-        try:
-            atualizado_em = datetime.fromisoformat(row["atualizado_em"])
-        except (TypeError, ValueError):
-            logger.warning(f"Cache de fundamentos com data inválida: {ticker}")
-            return None
-
-        if datetime.now() - atualizado_em > timedelta(days=max_age_days):
-            logger.info(f"Cache de fundamentos expirado: {ticker}")
-            return None
-
-        try:
-            return json.loads(row["dados_json"])
-        except (json.JSONDecodeError, TypeError) as e:
-            logger.error(f"Cache de fundamentos corrompido para {ticker}: {e}")
-            return None
-
-    def reset_db(self):
-        import os
-        base_path, _ = os.path.splitext(self.db_path)
-        db_paths = {
-            self.db_path,
-            f"{self.db_path}-wal",
-            f"{self.db_path}-shm",
-            f"{base_path}.db-wal",
-            f"{base_path}.db-shm",
-            f"{base_path}.sqlite-wal",
-            f"{base_path}.sqlite-shm",
-        }
-        removed = False
-        for db_path in db_paths:
-            if os.path.exists(db_path):
-                os.remove(db_path)
-                removed = True
-        if removed:
-            self._init_db()
+    def reset_db(self) -> None:
+        """Recusa o reset legado para preservar todas as tabelas do banco único."""
+        raise RuntimeError(
+            "Reset destrutivo desativado: o banco único deve ser preservado."
+        )

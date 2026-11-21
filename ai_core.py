@@ -8,6 +8,7 @@ import requests
 
 from config import GEMINI_MODEL, GROQ_MODEL, OLLAMA_MODEL, OLLAMA_URL
 from sentinela.domain import ticker as ticker_b3
+from sentinela.services.analyze_asset import contexto_classe_ia
 
 # CORRIGIDO: removido `import html` que foi importado mas nunca usado
 
@@ -126,6 +127,7 @@ class SentinelaAI:
 
     def _montar_prompt(self, ticker, dados):
         dados_txt = self._formatar_dados(dados)
+        classe_txt = contexto_classe_ia(dados if isinstance(dados, dict) else {})
         perfil = dados.get("perfil", "GERAL") if isinstance(dados, dict) else "GERAL"
         proveniencia_txt = self._formatar_proveniencia_campos(
             dados.get("field_provenance") if isinstance(dados, dict) else None
@@ -134,6 +136,8 @@ class SentinelaAI:
         if isinstance(dados, dict) and dados.get("apresentacao_versao") == "1.0":
             return f"""Você é um analista educacional. Analise o ativo {ticker} (Perfil: {perfil}).
 Baseie-se ESTRITAMENTE nos dados fornecidos. Não invente dados ausentes.
+CONTEXTO DA CLASSE:
+{classe_txt}
 DADOS FORNECIDOS:
 {dados_txt}
 Proveniência dos dados:
@@ -153,6 +157,8 @@ Você é um analista educacional. Analise o ativo {ticker} (Perfil: {perfil}).
 Registro histórico de versão anterior; não é recálculo da apresentação atual.
 Baseie-se ESTRITAMENTE nos dados fornecidos abaixo. Não invente ou presuma dados ausentes.
 
+CONTEXTO DA CLASSE:
+{classe_txt}
 DADOS FORNECIDOS:
 {dados_txt}
 

@@ -25,6 +25,7 @@ def test_especie_desconhecida_fora_da_janela_nao_apaga_split_valido():
         "proventos_b3": {
             "coleta": AS_OF.isoformat(),
             "proveniencia": {"fonte": "B3 sintética"},
+            "isins_emissor": ["BRTESTACNOR0"],  # BUG-3-60
             "eventos_acoes": [evento],
         },
     }

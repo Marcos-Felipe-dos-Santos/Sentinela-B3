@@ -241,6 +241,9 @@ class AnalysisResult:
     warnings: list[Any] = field(default_factory=list)
     extra: dict[str, Any] = field(default_factory=dict)
 
+    as_of: str | None = None
+    execucao_id: str | None = None
+
     def __post_init__(self) -> None:
         self.market = _coerce_model(MarketSnapshot, self.market)
         self.fundamentals = _coerce_model(FundamentalsSnapshot, self.fundamentals)

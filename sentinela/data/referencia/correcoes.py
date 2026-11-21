@@ -3,7 +3,8 @@
 Cada linha liga um ticker ao CNPJ que a evidência oficial aponta, no lugar de um código
 defeituoso da fonte (`codigo_na_fonte`: o `Codigo_Negociacao` do FCA ou o `Codigo_ISIN` do
 Informe Mensal). Nenhum código é inventado: a linha só vale se a evidência (arquivo oficial,
-coluna e data em que o defeito aparece) estiver preenchida.
+coluna e data em que o defeito aparece) estiver preenchida. No índice em D, a `data` é a
+entrega ou publicação comprovada da evidência e precisa ser anterior a D (decisão 51).
 
 Correção de espécie (F2B-13; ficha por ação 1.1, decisão 7.10): `campo` = "especie" e
 `valor` = a espécie correta (ON ou PN), para o ticker do `codigo_na_fonte`. Exige as duas

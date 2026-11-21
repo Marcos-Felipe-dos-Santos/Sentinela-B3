@@ -35,6 +35,7 @@ MOTIVO_MESES_INCOMPLETOS = "menos de 12 meses com DY e valor da cota do mês ant
 MOTIVO_PRECO = "preço ausente ou não positivo"
 MOTIVO_NAO_FINITO = "resultado não finito: rendimento de 12 meses do FII"
 MOTIVO_CONFLITO = "Informe com linhas conflitantes da mesma versão"
+MOTIVO_VERSAO_ILEGIVEL = "versão do Informe ilegível, sem identidade documental"
 # Ficha FII 1.3 (BUG-2B-37, reaberto): todo campo usado do complemento entra no conflito.
 _COLUNAS_DA_CONTA = (
     "Percentual_Dividend_Yield_Mes",
@@ -61,6 +62,21 @@ def _numero(bruto: object) -> float | None:
     return numero if math.isfinite(numero) else None
 
 
+def versao_ilegivel(registro: Mapping) -> bool:
+    """Versão presente e não numérica: explicitamente ilegível (F3-P08, BUG-2C-27).
+
+    O dicionário da CVM traz `Versao` numérica; texto não vazio que não é número finito não
+    demonstra identidade documental. Ausência legada (sem a chave, `None`, vazio ou `NaN`)
+    não entra aqui e segue o escopo ratificado no F2C-47 (regra 2).
+    """
+    bruto = registro.get("Versao")
+    if bruto is None or (isinstance(bruto, float) and math.isnan(bruto)):
+        return False
+    if isinstance(bruto, str) and not bruto.strip():
+        return False
+    return _numero(bruto) is None
+
+
 def _versao(registro: Mapping) -> float:
     versao = _numero(registro.get("Versao"))
     return versao if versao is not None else float("-inf")
@@ -82,14 +98,17 @@ def _anterior(mes: tuple[int, int]) -> tuple[int, int]:
 
 
 def _por_mes(
-    registros: Iterable[Mapping],
+    registros: Iterable[Mapping], *, colunas: tuple[str, ...] = _COLUNAS_DA_CONTA,
 ) -> tuple[dict[tuple[int, int], Mapping], set[tuple[int, int]]]:
     """Um registro por mês, o de maior `Versao` (versão ilegível perde), e os meses em conflito.
 
+    O consumidor pode incluir outros campos usados, como patrimônio líquido, em `colunas`.
     Duas linhas da maior versão do mês com DY, valor da cota, cotas ou amortização diferentes
     são conflito (F2B-54 e F2B-57, BUG-2B-37): nenhuma vence pela ordem do arquivo. Duplicata
     nessas colunas não é conflito, nem com célula vazia (as duas vazias); vazio contra
-    inválido é conflito (`fii_elegibilidade.forma`).
+    inválido é conflito (`fii_elegibilidade.forma`). No empate entre versão ilegível e linha
+    sem versão (as duas sem número), fica a ilegível, que abstém: o resultado não depende da
+    ordem do arquivo (BUG-3-05).
     """
     escolhidos: dict[tuple[int, int], Mapping] = {}
     conflitos: set[tuple[int, int]] = set()
@@ -101,12 +120,15 @@ def _por_mes(
         if atual is None or _versao(registro) > _versao(atual):
             escolhidos[mes] = registro
             conflitos.discard(mes)
-        elif _versao(registro) == _versao(atual) and any(
-            fii_elegibilidade.forma(registro.get(c))
-            != fii_elegibilidade.forma(atual.get(c))
-            for c in _COLUNAS_DA_CONTA
-        ):
-            conflitos.add(mes)
+        elif _versao(registro) == _versao(atual):
+            if any(
+                fii_elegibilidade.forma(registro.get(c))
+                != fii_elegibilidade.forma(atual.get(c))
+                for c in colunas
+            ):
+                conflitos.add(mes)
+            if versao_ilegivel(registro) and not versao_ilegivel(atual):
+                escolhidos[mes] = registro
     return escolhidos, conflitos
 
 
@@ -173,7 +195,14 @@ IDADE_MAXIMA_MESES = 3
 
 
 def _entregue(registro: Mapping, dia_as_of: date) -> bool:
-    """Data de entrega demonstrada e anterior ao dia do as_of (o dia só vale depois do fim)."""
+    """Entrega anterior a D ou versão exploratória validada para esse mesmo dia."""
+    # Declaração exclusiva do leitor PIT exploratório, já selecionada e rotulada.
+    # A data original permanece no registro; CSV literal não produz o booleano True.
+    if (
+        registro.get("_pit_exploratorio") is True
+        and registro.get("_pit_dia") == dia_as_of.isoformat()
+    ):
+        return True
     try:
         return date.fromisoformat(str(registro.get("Data_Entrega"))[:10]) < dia_as_of
     except ValueError:
@@ -182,6 +211,34 @@ def _entregue(registro: Mapping, dia_as_of: date) -> bool:
 
 def _rotulo(mes: tuple[int, int]) -> str:
     return f"{mes[0]:04d}-{mes[1]:02d}"
+
+
+def dy_entregue_ate(
+    registros: Iterable[Mapping], preco: object, dia_as_of: date
+) -> dict | Abstencao:
+    """`rendimento_12_meses` só com as versões do Informe entregues antes do dia (F3-8g).
+
+    É o DY do campo `dy` da cascata numa data passada, para a guarda de entrada do motor de
+    FII. Da ficha FII 1.3 vale aqui a idade (mês final até 3 meses antes do as_of); a faixa de
+    0 a 25% é a do DY de 12 meses (o mês negativo e as demais guardas seguem em `avaliar`).
+    """
+    elegiveis = [r for r in registros if _entregue(r, dia_as_of)]
+    meses = [m for m in map(_mes, elegiveis) if m is not None]
+    if (
+        meses
+        and (dia_as_of.year * 12 + dia_as_of.month)
+        - (max(meses)[0] * 12 + max(meses)[1])
+        > IDADE_MAXIMA_MESES
+    ):
+        return Abstencao(MOTIVO_IDADE)
+    medida = rendimento_12_meses(elegiveis, preco)
+    if isinstance(medida, Abstencao):
+        return medida
+    if medida["dy"] < 0:
+        return Abstencao(MOTIVO_DY_NEGATIVO)
+    if medida["dy"] > DY_MAXIMO:
+        return Abstencao(MOTIVO_DY_NAO_CONFIAVEL)
+    return medida
 
 
 def avaliar(
@@ -222,6 +279,10 @@ def avaliar(
             return Abstencao(MOTIVO_MESES_INCOMPLETOS)
         if mes in conflitos:
             return Abstencao(f"{MOTIVO_CONFLITO}: {_rotulo(mes)}")
+        # F3-P08 e BUG-3-04 (ficha FII 1.3, §3): mês da janela só com versões
+        # explicitamente ilegíveis (a válida venceria na seleção) não demonstra a versão.
+        if versao_ilegivel(linha):
+            return Abstencao(f"{MOTIVO_VERSAO_ILEGIVEL}: {_rotulo(mes)}")
         # F2B-60 (BUG-2B-48): os 13 VPs da janela, inclusive o do mês final.
         vp = _numero(linha.get("Valor_Patrimonial_Cotas"))
         if vp is None or vp <= 0:
@@ -254,9 +315,13 @@ def avaliar(
         return medida
     # F2B-59 (BUG-2B-47; ficha 1.3, §3c): só a composição da versão do complemento
     # selecionado no mês final; de outra versão não classifica o fundo.
+    # F3-P08 (BUG-2C-27): composição ilegível não casa por -inf (a versão de cada mês da
+    # janela já foi conferida acima).
     selecionada = _versao(meses[final])
     composicao = [
-        c for c in composicoes if _mes(c) == final and _versao(c) == selecionada
+        c
+        for c in composicoes
+        if _mes(c) == final and _versao(c) == selecionada and not versao_ilegivel(c)
     ]
     if not composicao:
         return Abstencao(MOTIVO_SEM_COMPOSICAO)
@@ -376,7 +441,10 @@ def entradas(dados: Mapping, instante: datetime) -> dict | Abstencao:
         )
     prov = informe.get("proveniencia")
     coleta = _instante(prov.get("data_coleta")) if isinstance(prov, Mapping) else None
-    if coleta is None or coleta > instante:
+    # decisão 40: numa data passada, a disponibilidade é a `Data_Entrega` de cada versão
+    # (conferida nos registros); a coleta continua na proveniência, sem ser critério
+    por_publicacao = dados.get("disponibilidade_por_publicacao") is True
+    if not por_publicacao and (coleta is None or coleta > instante):
         return Abstencao(MOTIVO_COLETA_INFORME)
     b3 = dados.get("b3_fundo")
     resposta = b3.get("resposta") if isinstance(b3, Mapping) else None

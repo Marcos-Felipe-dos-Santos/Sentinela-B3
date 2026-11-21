@@ -3,7 +3,6 @@ import socket
 import sys
 import tempfile
 from pathlib import Path
-from unittest import mock
 
 import pytest
 
@@ -12,28 +11,17 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 # ── Hermeticidade ──────────────────────────────────────────────────────────────
-# CONTORNO, não correção (E-6): `config.MACRO = MacroContext()` chama o BCB no
-# import. Enquanto o config.py não for corrigido, a Selic é semeada aqui.
-# Escolha: stub de `requests.get` durante o import de `config`, em vez de mexer em
-# `config.py` (intocável nesta fase). O import dos módulos de teste acontece na
-# coleta, antes de qualquer fixture, então a semente precisa nascer no carregamento
-# deste arquivo; a fixture `_selic_semeada` só confere que ela continua valendo.
-# O valor 14.75 (% a.a.) é igual ao SELIC_FALLBACK, para não mudar nenhum resultado.
+# F3-1a (E-6 corrigido): importar `config` não faz rede; a Selic é lida sob demanda por
+# `get_selic_atual`, com cache de 24 h. A semente vai direto para esse cache, válido
+# pela sessão inteira, e nenhuma chamada ao BCB acontece. Quebra autorizada F3-1: muda o
+# mecanismo, não o valor. O valor 14.75 (% a.a.) é igual ao SELIC_FALLBACK, para não
+# mudar nenhum resultado; a fixture `_selic_semeada` confere que ela continua valendo.
 SELIC_SEMENTE_PCT = "14.75"
-_BCB_SELIC_URL = "api.bcb.gov.br/dados/serie/bcdata.sgs.432/"
 
+import config  # noqa: E402
 
-def _requests_get_so_bcb(url, *args, **kwargs):
-    if _BCB_SELIC_URL not in url:
-        raise RuntimeError(f"requests.get bloqueado na semeadura da Selic: {url}")
-    resposta = mock.Mock()
-    resposta.raise_for_status.return_value = None
-    resposta.json.return_value = [{"valor": SELIC_SEMENTE_PCT}]
-    return resposta
-
-
-with mock.patch("requests.get", _requests_get_so_bcb):
-    import config  # instancia MACRO com a Selic semeada
+config._selic_cache_value = float(SELIC_SEMENTE_PCT) / 100
+config._selic_cache_time = float("inf")
 
 # F2B-30: semente isolada, sem contingência equivalente em produção.
 TAXA_REAL_SEMENTE = {
@@ -47,7 +35,15 @@ TAXA_REAL_SEMENTE = {
     "pib": {"valor": 0.02, "ano": 2030},
     "proveniencia": {"fonte": "semente de teste"},
 }
-config._carregar_taxa_real = lambda instante, janela: dict(TAXA_REAL_SEMENTE)
+config._carregar_taxa_real = lambda instante, janela, coleta=None: dict(
+    TAXA_REAL_SEMENTE
+)
+# F3-1c: a suíte nunca abre o banco único real; teste que lê `series_macro` injeta a conexão.
+# A função real fica guardada uma vez só (o conftest pode ser importado de novo, no mutmut).
+if not hasattr(config, "_conexao_series_macro_real"):
+    config._conexao_series_macro_real = config._conexao_series_macro
+CONEXAO_SERIES_MACRO_REAL = config._conexao_series_macro_real
+config._conexao_series_macro = lambda: None
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -132,3 +128,18 @@ def pytest_configure(config):
     fallback = Path(tempfile.gettempdir()) / "sentinela_pytest"
     fallback.mkdir(parents=True, exist_ok=True)
     config.option.basetemp = str(fallback)
+
+
+@pytest.fixture(autouse=True)
+def _macro_fii_cenario_temporal(monkeypatch):
+    """Mantém a injeção dos cenários antigos na nova fábrica, sem rede em testes.
+
+    É semente de cenário, não histórico observado. Testes temporais de integração
+    sobrescrevem a fábrica com MacroContext e provedor SGS reais.
+    """
+    import fii_engine
+
+    def contexto(*, as_of):
+        return config.MacroContext(selic=fii_engine.get_selic_atual(), as_of=as_of)
+
+    monkeypatch.setattr(fii_engine, "MacroContext", contexto)

@@ -2,13 +2,16 @@ import calendar
 import io
 import logging
 import math
+import os
 import re
+import tempfile
 import threading
 import zipfile
 from collections import OrderedDict
 from dataclasses import replace
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -297,6 +300,18 @@ class CVMProvider:
         proveniencia.registrar_sem_falhar(caminho, _ITR_URL.format(ano=ano), "ITR", str(ano))
         return caminho
 
+    def recorte_em(self, as_of: datetime) -> "CVMProvider":
+        """O mesmo provedor vendo só o que a CVM recebeu antes do dia de D (F3-3d, DD-61).
+
+        Corte estrito (decisão 3 de 09/11, D17): do índice de entregas, só as versões com
+        `DT_RECEB` anterior ao dia local de D; de cada documento, só os números da maior delas.
+        Se o arquivo traz só uma versão entregue depois (a fonte aberta guarda a última, DD-34),
+        o documento fica no índice sem números; sem o índice, sem números.
+        """
+        if as_of.utcoffset() is None:
+            raise ValueError("as_of exige fuso horário")
+        return _Recorte(self, as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date())
+
     def _entregas(self, zip_path: Path) -> list[dict]:
         """Linhas do índice de entregas do ZIP (`dfp_cia_aberta_<ano>.csv` ou o do ITR)."""
         stat = Path(zip_path).stat()
@@ -498,11 +513,12 @@ class CVMProvider:
     # ------------------------------------------------------------------
 
     def calcular_indicadores(
-        self, cd_cvm: int, anos: int = 5, modelo: str = "empresa", ano_final: int | None = None
+        self, cd_cvm: int, anos: int = 5, modelo: str = "empresa", ano_final: int | None = None,
+        *, as_of: datetime | None = None
     ) -> dict:
         """
         Retorna dict {ano: {indicador: valor}} para os últimos N anos, até `ano_final`
-        (padrão: o ano anterior ao corrente).
+        (padrão: o ano anterior ao dia local de as_of, ou ao corrente na API legada).
 
         Indicadores: ativo_total, ativo_circulante, passivo_total,
         passivo_circulante, patrimonio_liquido, receita_liquida, ebit,
@@ -518,16 +534,22 @@ class CVMProvider:
         os modelos, como o F2A-3 fazia pela descrição.
         """
         if ano_final is None:
-            ano_final = date.today().year - 1
+            if as_of is not None and as_of.utcoffset() is None:
+                raise ValueError("as_of exige fuso horário")
+            dia = date.today() if as_of is None else as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+            ano_final = dia.year - 1
         resultado: dict[int, dict] = {}
 
         for delta in range(anos):
             ano = ano_final - delta
+            zip_path = None
+            numeros_lidos = False
             try:
                 zip_path = self.baixar_dfp(ano)
                 bpa = self.parsear_demonstrativo(zip_path, "BPA_con", include_cd_cvm=True, include_versao=True)
                 bpp = self.parsear_demonstrativo(zip_path, "BPP_con", include_cd_cvm=True, include_versao=True)
                 dre = self.parsear_demonstrativo(zip_path, "DRE_con", include_cd_cvm=True, include_versao=True)
+                numeros_lidos = True
 
                 def _filtrar(df: pd.DataFrame) -> pd.DataFrame:
                     if "CD_CVM" in df.columns:
@@ -701,6 +723,31 @@ class CVMProvider:
                 resultado[ano] = ind
 
             except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
+                # A vigência entre versões permanece para o item GA2b.
+                # O índice só decide a abstenção do exercício final no recorte PIT; a API
+                # legada não o lê e conserva o aviso.
+                entregue = False
+                if (
+                    ano == ano_final
+                    and getattr(self, "por_publicacao", False)
+                    and not numeros_lidos
+                    and zip_path is not None
+                ):
+                    try:
+                        entregue = any(
+                            int(linha["CD_CVM"]) == cd_cvm
+                            and date.fromisoformat(str(linha["DT_REFER"])).year == ano
+                            for linha in self._entregas(zip_path)
+                        )
+                    except (
+                        OSError, RuntimeError, NotImplementedError, StopIteration,
+                        KeyError, TypeError, ValueError, zipfile.BadZipFile,
+                    ):
+                        pass
+                if entregue:
+                    raise OSError(
+                        f"documento vigente em D sem números legíveis para indicadores do ano {ano}"
+                    ) from exc
                 logger.warning("Erro ao calcular indicadores cd_cvm=%d ano=%d: %s", cd_cvm, ano, exc)
 
         return resultado
@@ -732,7 +779,10 @@ class CVMProvider:
                     arquivo = proveniencia.registrar_arquivo(
                         caminho, url.format(ano=ano), documento, str(ano)
                     )
-                    if datetime.fromisoformat(arquivo.data_coleta) > as_of:
+                    if (
+                        not getattr(self, "por_publicacao", False)
+                        and datetime.fromisoformat(arquivo.data_coleta) > as_of
+                    ):  # decisão 40: numa data passada, a entrega decide, não a coleta
                         return {
                             "abstencao": "composição recente com coleta posterior ao as_of"
                         }
@@ -878,7 +928,11 @@ class CVMProvider:
                 prov is None
                 or prov.get("data_entrega") is None
                 or date.fromisoformat(prov["data_entrega"]) >= dia
-                or datetime.fromisoformat(prov["data_coleta"]) > as_of
+                # decisão 40: numa data passada, a entrega basta; a coleta não é critério
+                or (
+                    not getattr(self, "por_publicacao", False)
+                    and datetime.fromisoformat(prov["data_coleta"]) > as_of
+                )
             ):
                 return {"abstencao": "disponibilidade histórica da DFP não demonstrada"}
 
@@ -1405,3 +1459,96 @@ class CVMProvider:
                 )
         return acumulados
 
+
+class _Recorte(CVMProvider):
+    """`CVMProvider.recorte_em`: os ZIPs do provedor de base recortados no dia de D."""
+
+    por_publicacao = True  # decisão 40: numa data passada, a entrega prova a disponibilidade
+
+    def __init__(self, base: CVMProvider, dia: date):
+        self.cache_dir = base.cache_dir
+        self._base = base
+        self.dia = dia
+
+    def recorte_em(self, as_of: datetime) -> CVMProvider:
+        return self._base.recorte_em(as_of)
+
+    def baixar_dfp(self, ano: int) -> Path:
+        return self._recortar(self._base.baixar_dfp(ano), "dfp", ano)
+
+    def baixar_itr(self, ano: int) -> Path:
+        return self._recortar(self._base.baixar_itr(ano), "itr", ano)
+
+    def _recortar(self, original: Path, doc: str, ano: int) -> Path:
+        stat = Path(original).stat()
+        destino = (
+            self.cache_dir / "recorte" / self.dia.isoformat()
+            / f"{Path(original).stem}_{stat.st_size}_{stat.st_mtime_ns}.zip"
+        )
+        if destino.exists():
+            return destino
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        descritor, nome_temporario = tempfile.mkstemp(dir=destino.parent, suffix=".tmp")
+        os.close(descritor)
+        temporario = Path(nome_temporario)
+        try:
+            self._escrever(original, temporario, doc, ano)
+            # o mtime do baixado: a coleta registrada do recorte é a do download
+            os.utime(temporario, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+            temporario.replace(destino)
+        finally:
+            temporario.unlink(missing_ok=True)
+        return destino
+
+    def _escrever(self, original: Path, temporario: Path, doc: str, ano: int) -> None:
+        with zipfile.ZipFile(original) as zi, zipfile.ZipFile(temporario, "w", zipfile.ZIP_DEFLATED) as zo:
+            indice = f"{doc}_cia_aberta_{ano}.csv"
+            # sem o índice, nenhuma entrega é demonstrada: os documentos ficam sem números
+            linhas = _linhas(zi.read(indice)) if indice in zi.namelist() else []
+            colunas = linhas[0].rstrip("\r\n").split(";") if linhas else []
+            entregues, vigente = linhas[:1], {}
+            for linha in linhas[1:]:
+                campos = dict(zip(colunas, linha.rstrip("\r\n").split(";"), strict=False))
+                if _recebido_antes(campos.get("DT_RECEB"), self.dia):
+                    entregues.append(linha)
+                    chave = (campos["CNPJ_CIA"], campos["DT_REFER"])
+                    vigente[chave] = max(vigente.get(chave, 0), _inteiro(campos["VERSAO"]))
+            if linhas:
+                zo.writestr(indice, "".join(entregues).encode("latin-1"))
+            for nome in zi.namelist():
+                if nome != indice:
+                    zo.writestr(nome, _so_vigentes(zi.read(nome), vigente))
+
+
+def _linhas(conteudo: bytes) -> list[str]:
+    """Linhas do CSV quebradas só em `\\r` e `\\n` (o latin-1 tem 0x85 e outros separadores)."""
+    return [linha.decode("latin-1") for linha in conteudo.splitlines(keepends=True)]
+
+
+def _recebido_antes(texto: str | None, dia: date) -> bool:
+    try:
+        return date.fromisoformat(str(texto).strip()[:10]) < dia
+    except ValueError:
+        return False  # entrega ilegível não prova disponibilidade
+
+
+def _inteiro(texto: str) -> int:
+    texto = str(texto).strip()
+    return int(texto) if texto.isascii() and texto.isdigit() else -1
+
+
+def _so_vigentes(conteudo: bytes, vigente: dict) -> bytes:
+    """Linhas do CSV só da versão vigente de cada documento; o cabeçalho sempre."""
+    linhas = _linhas(conteudo)
+    if not linhas:
+        return conteudo
+    colunas = linhas[0].rstrip("\r\n").split(";")
+    if not {"CNPJ_CIA", "DT_REFER", "VERSAO"} <= set(colunas):
+        return conteudo
+    i, j, k = (colunas.index(c) for c in ("CNPJ_CIA", "DT_REFER", "VERSAO"))
+    mantidas = [linhas[0]]
+    for linha in linhas[1:]:
+        campos = linha.rstrip("\r\n").split(";")
+        if len(campos) > max(i, j, k) and vigente.get((campos[i], campos[j])) == _inteiro(campos[k]):
+            mantidas.append(linha)
+    return "".join(mantidas).encode("latin-1")

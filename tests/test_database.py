@@ -38,34 +38,9 @@ def test_database_reset_db(db, db_path):
     # Write some data to create wal/shm
     db.salvar_analise({'ticker': 'TEST3', 'score_final': 80})
     
-    # Even if they don't exist yet, we check reset_db executes without error
-    # and reinitializes
-    db.reset_db()
+    # O reset legado é recusado antes de tocar o banco único (BUG-3-44).
+    with pytest.raises(RuntimeError, match="Reset destrutivo desativado"):
+        db.reset_db()
     
     # Should still exist
     assert os.path.exists(db_path)
-
-
-def test_fundamentos_cache_roundtrip(db):
-    dados = {"pl": 8.0, "pvp": 1.2, "roe": 0.15, "dy": 0.04}
-
-    db.salvar_fundamentos_cache("petr4.sa", dados, "brapi")
-
-    assert db.buscar_fundamentos_cache("PETR4") == dados
-
-
-def test_fundamentos_cache_stale_is_not_returned(db):
-    dados = {"pl": 8.0, "pvp": 1.2, "roe": 0.15, "dy": 0.04}
-    db.salvar_fundamentos_cache("VALE3", dados, "brapi")
-
-    with db._get_conn() as conn:
-        with conn:
-            conn.execute(
-                """
-                UPDATE fundamentals_cache
-                SET atualizado_em = '2000-01-01T00:00:00'
-                WHERE ticker = 'VALE3'
-                """
-            )
-
-    assert db.buscar_fundamentos_cache("VALE3", max_age_days=7) is None

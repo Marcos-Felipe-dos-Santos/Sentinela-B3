@@ -31,7 +31,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 from zoneinfo import ZoneInfo
 
 import requests
@@ -154,11 +154,21 @@ def caminho_cadastro(ano_mes: str, raiz: str) -> str:
     )
 
 
+def literal_odata(valor: str) -> str:
+    """Literal OData opaco na query (F3-P05, BUG-2C-13).
+
+    Apóstrofo duplicado (OASIS OData 4.01, Part 2, §2.2), depois codificado em UTF-8 com
+    percentual, para que `&`, `+`, `#`, `%` e afins não mudem a query; dígitos e letras ASCII
+    ficam como estão, e a identidade da instituição não muda.
+    """
+    return "'" + quote(valor.replace("'", "''"), safe="") + "'"
+
+
 def caminho_capital(ano_mes: str, codinst: str) -> str:
     return (
         "IfDataValores(AnoMes=@AnoMes,TipoInstituicao=@TipoInstituicao,Relatorio=@Relatorio)"
         f"?@AnoMes={ano_mes}&@TipoInstituicao=1&@Relatorio='5'"
-        f"&$filter=CodInst eq '{codinst}'&$format=json"
+        f"&$filter=CodInst eq {literal_odata(codinst)}&$format=json"
     )
 
 

@@ -8,10 +8,6 @@ from sentinela.data.providers.ifdata import caminho_capital, caminho_carteira
 
 
 @pytest.mark.parametrize("construir", [caminho_capital, caminho_carteira])
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG-2C-13 · literal CodInst sem escape OData · corrige: F3-P05 (origem F2C-52)",
-)
 def test_codinst_e_literal_opaco(construir) -> None:
     caminho = construir("202606", "O'Neil")
     filtro = parse_qs(urlsplit(caminho).query)["$filter"][0]

@@ -24,6 +24,12 @@ inválido, provento negativo, natureza diferente de dividendo e JCP na janela, e
 ações na janela (sem reconciliação nesta versão) e unit sem composição válida.
 Duplicatas idênticas contam uma vez.
 
+Identidade do emissor (F3-P01, decisões 30 e 33 do Marcos, 10/11/2026): `conferir_emissor`
+aceita a relação lida pelo nome de pregão só se (a) cada espécie (`typeStock`) dela tem ISIN
+da companhia no GetDetail pelo código CVM, (b) cada provento em dinheiro do complemento
+aparece nela com a mesma data com e o mesmo valor na precisão da relação (`mesmo_valor`) e
+(c) o complemento traz algum provento; qualquer falha devolve o motivo da abstenção.
+
 Função pura: sem rede, sem relógio, sem `config`.
 """
 
@@ -33,6 +39,7 @@ import math
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from zoneinfo import ZoneInfo
 
 FUSO = ZoneInfo("America/Sao_Paulo")
@@ -44,6 +51,10 @@ FOLGA_SEM_PREGAO = timedelta(days=7)
 # R$ 3,0064572, yfinance R$ 3,006456); o mínimo de R$ 0,000001 é o do marcador da 2B, §2.3.
 TOLERANCIA_CONFERENCIA = 1e-6
 ESPECIE_DO_ISIN = {"ACNOR": "ON", "ACNPR": "PN", "ACNPA": "PNA", "ACNPB": "PNB"}
+# Decisão 33 (b): o complemento traz 11 casas e a relação, em geral, 4; o valor confere se
+# |relação − complemento arredondado a 4 casas| ≤ 0,00005. Empate arredonda para cima.
+CASAS_COMPLEMENTO = Decimal("0.0001")
+TOLERANCIA_COMPLEMENTO = Decimal("0.00005")
 
 MOTIVO_SEM_RELACAO = "insumo ausente: relação de proventos da B3"
 MOTIVO_INCOMPLETA = (
@@ -73,6 +84,7 @@ MOTIVO_COLETA = (
 MOTIVO_CRUZAMENTO = (
     "relação B3 pelo nome de pregão sem provento do complemento do emissor"
 )
+MOTIVO_IDENTIDADE = "identidade do emissor não comprovada"
 AVISO_SEM_CONFERENCIA = "conferência dos proventos no yfinance indisponível"
 # Ficha Bazin 1.2, §3 (decisão do Marcos de 20/10/2026): fora de `riscos`.
 AVISO_EXTRAORDINARIA = (
@@ -131,6 +143,90 @@ def _numero(bruto: object, nome: str) -> float | Abstencao:
     if math.isinf(numero):
         return Abstencao(f"insumo inválido: {nome}, infinito")
     return numero
+
+
+def _decimal(bruto: object) -> Decimal | None:
+    """Valor da B3 (vírgula decimal) como `Decimal` finito, ou `None`."""
+    texto = _texto(bruto)
+    if texto is None or "_" in texto:  # `Decimal` aceitaria "1_000"
+        return None
+    if "," in texto:
+        texto = texto.replace(".", "").replace(",", ".")
+    try:
+        numero = Decimal(texto)
+    except InvalidOperation:
+        return None
+    return numero if numero.is_finite() else None
+
+
+def mesmo_valor(relacao: object, complemento: object) -> bool:
+    """Decisão 33 (b): valor da relação igual ao do complemento na precisão da relação."""
+    r, c = _decimal(relacao), _decimal(complemento)
+    if r is None or c is None:
+        return False
+    arredondado = c.quantize(CASAS_COMPLEMENTO, rounding=ROUND_HALF_UP)
+    return abs(r - arredondado) <= TOLERANCIA_COMPLEMENTO
+
+
+def conferir_emissor(
+    registros: Iterable[object],
+    complemento: Iterable[object],
+    isins: Iterable[str],
+    corte: date | None = None,
+) -> str | None:
+    """Motivo da abstenção se a relação não é comprovadamente do emissor; senão `None`.
+
+    `isins` são os da companhia no GetDetail pelo código CVM (`otherCodes`); `complemento`,
+    os proventos em dinheiro do GetListedSupplementCompany do emissor. Leitura literal da
+    decisão 33 (b), "todo provento do complemento": sem o corte de espécie e de janela do
+    `_cruzamento`. Provento por ISIN da unit (`CDAM`), que a relação por espécie não traz,
+    e anúncio que a relação ainda não traz abstêm (DD-06).
+
+    `corte` (decisão 51, BUG-3-61; D na análise, o dia seguinte a T no retorno): o provento
+    do complemento anunciado (`approvedOn`) no corte ou depois e ausente da relação não
+    decide a identidade numa data anterior ao anúncio; o de aprovação ilegível segue
+    comparado. DD-90: ao menos um provento do complemento precisa estar na relação.
+    """
+    isins = tuple(isins)
+    if not isins:
+        return f"{MOTIVO_IDENTIDADE}: GetDetail sem ISIN da companhia"
+    especies = {ESPECIE_DO_ISIN.get(str(isin)[6:11]) for isin in isins} - {None}
+    lidos = []
+    for registro in registros:
+        if not isinstance(registro, Mapping):
+            return f"{MOTIVO_IDENTIDADE}: registro da relação ilegível"
+        especie = registro.get("typeStock")
+        if especie not in especies:
+            return (
+                f"{MOTIVO_IDENTIDADE}: espécie {especie} da relação sem ISIN da "
+                "companhia no GetDetail"
+            )
+        lidos.append(
+            (ler_data(registro.get("lastDatePriorEx")), registro.get("valueCash"))
+        )
+    complemento = tuple(complemento)
+    if not complemento:
+        return f"{MOTIVO_IDENTIDADE}: complemento sem proventos para conferir"
+    algum_na_relacao = False
+    for evento in complemento:
+        if not isinstance(evento, Mapping):
+            return f"{MOTIVO_IDENTIDADE}: provento do complemento ilegível"
+        data_com = ler_data(evento.get("lastDatePrior"))
+        if data_com is None or _decimal(evento.get("rate")) is None:
+            return f"{MOTIVO_IDENTIDADE}: provento do complemento ilegível"
+        if any(d == data_com and mesmo_valor(v, evento.get("rate")) for d, v in lidos):
+            algum_na_relacao = True
+            continue
+        anuncio = ler_data(evento.get("approvedOn"))
+        if corte is not None and anuncio is not None and anuncio >= corte:
+            continue
+        return (
+            f"{MOTIVO_IDENTIDADE}: provento do complemento {evento.get('label')} "
+            f"{evento.get('lastDatePrior')} ausente da relação"
+        )
+    if not algum_na_relacao:
+        return f"{MOTIVO_IDENTIDADE}: nenhum provento do complemento na relação"
+    return None
 
 
 def inicio_da_janela(referencia: date) -> date:
@@ -218,7 +314,7 @@ def _cruzamento(
                     r.get("typeStock"),
                     r.get("corporateAction"),
                     r.get("lastDatePriorEx"),
-                    valor,
+                    r.get("valueCash"),
                 )
             )
     for evento in complemento:
@@ -229,7 +325,8 @@ def _cruzamento(
         valor = _numero(evento.get("rate"), "valor")
         chave = (especie, evento.get("label"), evento.get("lastDatePrior"))
         if isinstance(valor, Abstencao) or not any(
-            (e, n, d) == chave and abs(v - valor) <= 1e-9 for e, n, d, v in chaves
+            (e, n, d) == chave and mesmo_valor(v, evento.get("rate"))
+            for e, n, d, v in chaves
         ):
             return f"{chave[1]} {chave[2]} {especie}"
     return None
@@ -430,12 +527,24 @@ def entradas(dados: Mapping, instante: datetime) -> dict | Abstencao:
         return Abstencao(MOTIVO_SEM_RELACAO)
     if "abstencao" in relacao:
         return Abstencao(str(relacao["abstencao"]))
-    # Marcador da 2B, §2: uma coleta posterior não prova disponibilidade anterior.
+    # Marcador da 2B, §2: uma coleta posterior não prova disponibilidade anterior. Decisão 40
+    # (F3-8h): só o bloco montado do banco por `b3_proventos.relacao_ate`, que já retirou os
+    # registros aprovados em D ou depois, vale pela publicação numa data passada; a coleta
+    # continua exigida e datada, sem ser critério. A relação coletada agora pela cascata
+    # corrente mantém a guarda de coleta mesmo com a marca (DD-65).
     try:
         coleta = datetime.fromisoformat(str(relacao.get("coleta")))
     except ValueError:
         return Abstencao(MOTIVO_COLETA)
-    if coleta.tzinfo is None or coleta.utcoffset() is None or coleta > instante:
+    por_publicacao = (
+        dados.get("disponibilidade_por_publicacao") is True
+        and relacao.get("aprovacao_antes_de_d") is True
+    )
+    if (
+        coleta.tzinfo is None
+        or coleta.utcoffset() is None
+        or (coleta > instante and not por_publicacao)
+    ):
         return Abstencao(MOTIVO_COLETA)
     dia_as_of = instante.astimezone(FUSO).date()
     fechamentos = relacao.get("fechamentos")
@@ -481,3 +590,113 @@ def entradas(dados: Mapping, instante: datetime) -> dict | Abstencao:
         "serie": serie,
         "avisos": conferencia_yfinance(serie, relacao.get("conferencia_yfinance")),
     }
+
+
+# --- Calendário anual de pregões para a lente de qualidade (F3-P14b) -----------------------
+# Contrato: `docs/decisoes/calendario-proventos-3.md`. Pregão = data com negócio no mercado à
+# vista do COTAHIST guardado (F3-4a); o ano Y só está coberto pela carga do arquivo anual
+# `COTAHIST_A{Y}` gerado em ou depois de 31/12/Y, ou do último pregão de dezembro guardado
+# (decisão 44, BUG-3-41), ou, no ano ainda aberto, até a data de geração (inclusive: o arquivo
+# gerado em D traz o pregão de D). Carga sem data de geração não
+# cobre; o ano vem do nome do arquivo guardado (`cargas_cotahist.arquivo`).
+
+MOTIVO_CALENDARIO_SEM_ANO = "calendário anual B3 sem a carga do COTAHIST anual de {ano}"
+MOTIVO_CALENDARIO_GERACAO = (
+    "calendário anual B3: COTAHIST anual de {ano} gerado em {geracao}, antes de {fim}"
+)
+MOTIVO_CALENDARIO_VAZIO = "calendário anual B3 sem pregões no intervalo"
+MOTIVO_CALENDARIO_BANCO = "calendário anual B3: banco único indisponível"
+MERCADO_A_VISTA = "010"  # o de `b3_cotahist`, sem importar o provedor (rede) aqui
+
+
+def _ano_do_arquivo(arquivo: object) -> int | None:
+    nome = str(arquivo or "").upper()
+    if not (nome.startswith("COTAHIST_A") and nome.endswith(".ZIP")):
+        return None
+    ano = nome[len("COTAHIST_A") : -len(".ZIP")]
+    return int(ano) if len(ano) == 4 and ano.isdigit() else None
+
+
+def _ate_o_ultimo_pregao(necessario: date, pregoes: set[date]) -> date:
+    """Decisão 44 (BUG-3-41): no último dia do mês, a cobertura vai até o último pregão do mês.
+
+    O último pregão é o maior guardado no mês até `necessario`, por qualquer carga do COTAHIST
+    (31/12 não tem pregão; o arquivo anual sai no último). Fora do fim do mês, ou sem pregão
+    guardado no mês, vale o próprio dia.
+    """
+    if (necessario + timedelta(days=1)).month == necessario.month:
+        return necessario
+    do_mes = [
+        p
+        for p in pregoes
+        if (p.year, p.month) == (necessario.year, necessario.month) and p <= necessario
+    ]
+    return max(do_mes, default=necessario)
+
+
+def calendario_anual(
+    pregoes: Iterable[date], cargas: Iterable[Mapping], inicio: date, fim: date
+) -> dict | Abstencao:
+    """Calendário de `inicio` a `fim` (inclusive) para `calendario_proventos_b3`, ou o motivo.
+
+    `cargas`: as do COTAHIST (`arquivo`, `data_geracao` ISO, `coleta`, `hash_sha256`). Cada ano
+    do intervalo precisa de uma carga do arquivo anual cuja geração alcance `fim` naquele ano
+    (o ano todo, se gerado em ou depois de 31/12); quando o fim é o último dia de um mês, basta
+    a geração no último pregão guardado do mês (decisão 44); vale a carga de geração mais nova, e no empate
+    a primeira na ordem recebida. Os pregões são
+    os de `pregoes` dentro do intervalo.
+    """
+    melhores: dict[int, Mapping] = {}
+    for carga in cargas:
+        ano = _ano_do_arquivo(carga.get("arquivo"))
+        geracao = str(carga.get("data_geracao") or "")
+        if ano is not None and geracao > str(
+            melhores.get(ano, {}).get("data_geracao") or ""
+        ):
+            melhores[ano] = carga
+    usadas = []
+    guardados = {p for p in pregoes if inicio <= p <= fim}
+    for ano in range(inicio.year, fim.year + 1):
+        carga = melhores.get(ano)
+        if carga is None:
+            return Abstencao(MOTIVO_CALENDARIO_SEM_ANO.format(ano=ano))
+        necessario = _ate_o_ultimo_pregao(min(fim, date(ano, 12, 31)), guardados)
+        if str(carga["data_geracao"]) < necessario.isoformat():
+            return Abstencao(
+                MOTIVO_CALENDARIO_GERACAO.format(
+                    ano=ano, geracao=carga["data_geracao"], fim=necessario.isoformat()
+                )
+            )
+        usadas.append(carga)
+    dentro = sorted(guardados)
+    if not dentro:
+        return Abstencao(MOTIVO_CALENDARIO_VAZIO)
+    return {
+        "fonte": "B3, COTAHIST anual: "
+        + "; ".join(f"{c['arquivo']} (sha256 {c['hash_sha256']})" for c in usadas),
+        "coleta": max(str(c["coleta"]) for c in usadas),
+        "inicio": inicio.isoformat(),
+        "fim": fim.isoformat(),
+        "pregoes": [p.isoformat() for p in dentro],
+    }
+
+
+def calendario_do_banco(conn, inicio: date, fim: date) -> dict | Abstencao:
+    """`calendario_anual` com os pregões e as cargas do COTAHIST do banco único."""
+    if conn is None:
+        return Abstencao(MOTIVO_CALENDARIO_BANCO)
+    pregoes = [
+        date.fromisoformat(d)
+        for (d,) in conn.execute(
+            "SELECT DISTINCT data FROM precos WHERE tipo_mercado = ? AND data BETWEEN ? AND ?",
+            (MERCADO_A_VISTA, inicio.isoformat(), fim.isoformat()),
+        )
+    ]
+    cargas = [
+        {"arquivo": a, "data_geracao": g, "coleta": c, "hash_sha256": h}
+        for a, g, c, h in conn.execute(
+            "SELECT arquivo, data_geracao, coleta, hash_sha256 FROM cargas_cotahist "
+            "ORDER BY arquivo, data_geracao, hash_sha256"
+        )
+    ]
+    return calendario_anual(pregoes, cargas, inicio, fim)

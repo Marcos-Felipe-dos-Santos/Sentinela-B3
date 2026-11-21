@@ -1,7 +1,9 @@
 import math
 import numbers
 import time
+from datetime import UTC, datetime
 from typing import Any, Dict, Optional
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -15,6 +17,7 @@ from peers_engine import PeersEngine
 from ai_core import SentinelaAI
 from config import APP_VERSION
 from data_quality import DataQualityReport
+from sentinela.services.analyze_asset import AnalysisService
 from sentinela.services.asset_classifier import AssetClassifier
 
 st.set_page_config(page_title=f"Sentinela B3 {APP_VERSION}", layout="wide", page_icon="🦅")
@@ -255,45 +258,32 @@ if modo == "Terminal":
         status_box = st.empty()
         status_box.info(f"Analisando {ticker}...")
         with st.container():
-            # A. Dados Básicos
-            dados = market.buscar_dados_ticker(ticker)
-            if not dados or 'erro' in dados:
-                st.error("Ativo não encontrado."); st.stop()
-            
-            # B. Detecção FII
-            # CORRIGIDO: Yahoo retorna quote_type='EQUITY' para FIIs BR (não MUTUALFUND)
-            # Usar whitelist como critério primário + fallback de sufixo 11
-            is_fii = asset_classifier.is_fii(ticker, dados)
-            
-            # C. Motores Específicos
-            if is_fii:
-                analise = fii_engine.analisar(dados)
-                # CORRIGIDO: guard para None (fii_engine pode retornar None se sem dados)
-                if analise is None:
+            as_of = datetime.now(UTC)
+            servico = AnalysisService(
+                market,
+                val_engine,
+                fii_engine,
+                tech_engine,
+                peers_engine=peers_engine,
+                ai_engine=ai_engine,
+                asset_classifier=asset_classifier,
+                hoje=as_of.astimezone(ZoneInfo("America/Sao_Paulo")).date(),
+            )
+            resultado = servico.analisar(ticker, as_of)
+            dados = resultado.raw
+            if not resultado.success:
+                if not dados or "erro" in dados:
+                    st.error("Ativo não encontrado.")
+                elif resultado.is_fii:
                     st.error("FII sem dados suficientes para análise.")
-                    st.stop()
-                peers_data = {}
-            else:
-                analise = val_engine.processar(dados)
-                if analise is None: st.error("Erro Valuation"); st.stop()
-                peers_data = peers_engine.comparar(ticker)
-            
-            # D. Análise Técnica
-            hist = dados.get('historico', pd.DataFrame())
-            tech_data = tech_engine.calcular_indicadores(hist)
-            
-            # E. IA e Persistência
-            from sentinela.domain.apresentacao import mesclar_analise
-
-            dados = mesclar_analise(dados, analise)
-            dados["tech"] = tech_data
-
-            ia_resp = ai_engine.analisar(ticker, dados)
-            dados['analise_ia'] = ia_resp['content']
-            
-            # CORREÇÃO: Não salvar histórico pesado no banco
-            dados_salvar = {k: v for k, v in dados.items() if k != 'historico'}
-            db.salvar_analise(dados_salvar)
+                else:
+                    st.error("Erro Valuation")
+                st.stop()
+            analise = resultado.extra["analise_motor"]
+            peers_data = resultado.peers
+            hist = dados.get("historico", pd.DataFrame())
+            tech_data = dados["tech"]
+            ia_resp = resultado.extra["resposta_ia"]
             status_box.empty()
             
             # --- RENDERIZAÇÃO ---
@@ -545,20 +535,4 @@ elif modo == "Config":
     st.title("⚙️ Sistema")
     
     st.write("---")
-    st.subheader("Zona de Perigo")
-    
-    # Confirmação em dois passos restaurada
-    if st.button("⚠️ RESETAR BANCO DE DADOS", type="primary"):
-        st.session_state['reset_confirm'] = True
-        
-    if st.session_state.get('reset_confirm'):
-        st.warning("Tem certeza? Isso apaga TODO o histórico e carteira. Irreversível.")
-        c1, c2 = st.columns(2)
-        if c1.button("Sim, apagar tudo"):
-            db.reset_db()
-            st.success("Sistema resetado.")
-            st.session_state.clear()
-            st.rerun()
-        if c2.button("Cancelar"):
-            st.session_state['reset_confirm'] = False
-            st.rerun()
+    st.info("O banco único preserva o histórico de análises e os dados locais.")

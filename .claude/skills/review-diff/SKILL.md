@@ -10,8 +10,9 @@ Revise o stage com foco em: $ARGUMENTS
 
 Pré-condição: o item já está no stage (passo 8 de `docs/loop/protocolo.md`): código,
 `docs/loop/diario.md` e `docs/loop/fila.md` juntos. Você não tem Bash; o estado do
-repositório vem injetado abaixo. Use Read, Grep e Glob só para ler o código ao redor
-e o item na fila.
+repositório vem injetado abaixo. O item é a linha alterada de `docs/loop/fila.md` dentro do
+diff; não abra a fila nem o diário (leitura por trecho, protocolo). Use Read, Grep e Glob
+só para ler o código ao redor.
 
 ## Estado do repositório
 

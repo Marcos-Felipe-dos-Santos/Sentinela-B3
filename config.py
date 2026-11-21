@@ -119,18 +119,56 @@ _taxa_real_cache: dict = {}
 
 
 def _carregar_taxa_real(
-    instante: datetime, janela: tuple[date, date] | None
+    instante: datetime,
+    janela: tuple[date, date] | None,
+    coleta: datetime | None = None,
 ) -> dict | None:
     from sentinela.data.providers.macro import MacroProvider
 
-    return MacroProvider().registro(instante, janela)
+    return MacroProvider().registro(instante, janela, coleta=coleta)
+
+
+def _conexao_series_macro():
+    """Conexão com o banco único (F3-1c), com as migrações aplicadas (o `caminho_padrao`
+    cria o banco vazio se não houver nenhum); `None` se ele não abrir ou recusar a
+    migração (versão desconhecida, migração alterada)."""
+    import sqlite3
+
+    from sentinela.data.store import unico
+
+    try:
+        return sqlite3.connect(unico.caminho_padrao())
+    except (RuntimeError, OSError, ValueError, sqlite3.Error):
+        return None
+
+
+def _taxa_real_do_banco(instante: datetime, janela: tuple[date, date] | None) -> dict:
+    """Registro de uma data passada pelo `series_macro`; sem banco ou tabela, abstém."""
+    import sqlite3
+    from contextlib import closing
+
+    from sentinela.data.providers.macro import registro_do_banco
+
+    conn = _conexao_series_macro()
+    if conn is None:
+        return {"abstencao": "banco único indisponível para a data passada"}
+    with closing(conn):
+        try:
+            return registro_do_banco(conn, instante, janela)
+        except sqlite3.Error as erro:
+            return {"abstencao": f"series_macro indisponível: {erro}"}
+
+
+def _dia_sp(instante: datetime) -> date:
+    return instante.astimezone(ZoneInfo("America/Sao_Paulo")).date()
 
 
 def get_taxa_real(
     *, as_of: datetime | None = None, janela: tuple[date, date] | None = None
 ) -> dict | None:
     """Registro observado até as_of; ausência não usa contingência numérica."""
-    instante = as_of if as_of is not None else datetime.now(UTC)
+    agora = datetime.now(UTC)
+    instante = as_of if as_of is not None else agora
     if instante.tzinfo is None or instante.utcoffset() is None:
         return None
     chave = (janela, instante.astimezone(ZoneInfo("America/Sao_Paulo")).date())
@@ -142,7 +180,15 @@ def get_taxa_real(
         edicao_devida = proxima is not None and datetime.fromisoformat(proxima) <= instante
         if 0 <= idade < _TAXA_REAL_TTL and not edicao_devida:
             return registro
-    registro = _carregar_taxa_real(instante, janela)
+    # F3-1c: numa data de dia anterior ao de hoje, o registro sai só do que está em
+    # `series_macro` (insumos gravados por data, com coleta e hash); no mesmo dia, o corte é
+    # a própria coleta, como na 2B.
+    passado = _dia_sp(instante) < _dia_sp(agora)
+    registro = (
+        _taxa_real_do_banco(instante, janela)
+        if passado
+        else _carregar_taxa_real(instante, janela)
+    )
     # F2B-51: a abstenção não fica no cache; a próxima análise consulta de novo.
     if registro is not None and "abstencao" not in registro:
         _taxa_real_cache[chave] = (instante, registro)
@@ -225,24 +271,48 @@ class MacroContext:
 
     # ── Indicadores dinâmicos ──────────────────────────────────────────────────
 
-    def __init__(self, selic: float | None = None):
-        # selic explícito: útil em testes (evita chamada BCB). Sem arg: usa get_selic_atual().
-        self._selic: float = selic if selic is not None else get_selic_atual()
+    def __init__(
+        self,
+        selic: float | None = None,
+        as_of: date | None = None,
+        provedor=None,
+        instante: datetime | None = None,
+    ):
+        # selic explícito: útil em testes (evita chamada BCB). Sem arg, a Selic é lida sob
+        # demanda por get_selic_atual(), com o cache de 24 h e o fallback dela (E-6, F3-1a).
+        # Com as_of (F3-1b), Selic, CDI e IPCA vêm da série completa do SGS vigente naquela
+        # data; ausência com as_of passado abstém (None), sem fallback fixo.
+        if isinstance(as_of, datetime):
+            raise TypeError("as_of do MacroContext é date (dia de Brasília), não datetime")
+        if instante is not None and instante.utcoffset() is None:
+            raise ValueError("instante da coleta exige fuso horário")
+        self._selic: float | None = selic
         self._cdi:      float | None = None
         self._ipca_12m: float | None = None
+        self.as_of = as_of
+        self._provedor = provedor
+        self._instante = instante
+        self._por_data: dict[str, dict] = {}
 
     @property
-    def selic(self) -> float:
-        return self._selic
+    def selic(self) -> float | None:
+        if self._selic is not None:
+            return self._selic
+        if self.as_of is not None:
+            return self._valor_por_data("selic", SELIC_FALLBACK)
+        return get_selic_atual()
 
     @property
-    def selic_liquida(self) -> float:
+    def selic_liquida(self) -> float | None:
         """Selic líquida de IR para FIIs: Selic × 0.85."""
-        return self._selic * self.FII_FATOR_IR
+        selic = self.selic
+        return None if selic is None else selic * self.FII_FATOR_IR
 
     @property
-    def cdi(self) -> float:
+    def cdi(self) -> float | None:
         """CDI anualizado base 252 (BCB SGS série 12). Fallback: CDI_FALLBACK."""
+        if self.as_of is not None:
+            return self._valor_por_data("cdi", CDI_FALLBACK)
         if self._cdi is None:
             d = self._fetch_bcb(12)        # CDI diário % a.d. como decimal
             if d is not None:
@@ -252,11 +322,93 @@ class MacroContext:
         return self._cdi
 
     @property
-    def ipca_12m(self) -> float:
+    def ipca_12m(self) -> float | None:
         """IPCA acumulado últimos 12 meses (BCB SGS série 433). Fallback: IPCA_12M_FALLBACK."""
+        if self.as_of is not None:
+            return self._valor_por_data("ipca_12m", IPCA_12M_FALLBACK)
         if self._ipca_12m is None:
             self._ipca_12m = self._fetch_ipca_acumulado()
         return self._ipca_12m
+
+    # ── Por data (F3-1b) ───────────────────────────────────────────────────────
+
+    def _instante_coleta(self) -> datetime:
+        if self._instante is None:
+            self._instante = datetime.now(UTC)
+        return self._instante
+
+    def _hoje(self) -> date:
+        return self._instante_coleta().astimezone(ZoneInfo("America/Sao_Paulo")).date()
+
+    @staticmethod
+    def _hoje_no_relogio() -> date:
+        return datetime.now(ZoneInfo("America/Sao_Paulo")).date()
+
+    def registro_por_data(self, nome: str) -> dict:
+        """Valor e data vigentes em as_of, ou `{"abstencao": motivo}`.
+
+        Com coleta do provedor, o registro leva também a `proveniencia` (BUG-3-06).
+        """
+        if nome not in self._por_data:
+            from sentinela.data import macro_por_data
+            from sentinela.data.providers.macro import MacroProvider
+
+            serie = {
+                "selic": macro_por_data.SELIC_META,
+                "cdi": macro_por_data.CDI,
+                "ipca_12m": macro_por_data.IPCA,
+            }[nome]
+            hoje = self._hoje()
+            if self.as_of > hoje:
+                registro = {"abstencao": "as_of posterior à data da coleta"}
+            else:
+                provedor = self._provedor if self._provedor is not None else MacroProvider()
+                dados = provedor.serie_sgs(serie, hoje, self._instante_coleta())
+                if "abstencao" in dados:
+                    registro = dados
+                elif nome == "ipca_12m" and self.as_of >= dados["coleta"]:
+                    # na data da coleta, o que está na série já saiu: sem calendário
+                    registro = macro_por_data.ipca_12m(
+                        dados["observacoes"], self.as_of, dados["coleta"]
+                    )
+                elif nome == "ipca_12m":
+                    # Decisão 31 (F3-1c-a): data real de divulgação pelo calendário do IBGE.
+                    agenda = provedor.publicacoes_ipca(self._instante_coleta())
+                    if "abstencao" in agenda:
+                        registro = {"abstencao": agenda["abstencao"]}
+                    else:
+                        registro = macro_por_data.ipca_12m(
+                            dados["observacoes"],
+                            self.as_of,
+                            dados["coleta"],
+                            agenda["publicacoes"],
+                        )
+                        registro = {**registro, "calendario": agenda["proveniencia"]}
+                else:
+                    calculo = getattr(macro_por_data, nome)
+                    registro = calculo(dados["observacoes"], self.as_of)
+                # BUG-3-06: a proveniência da coleta (fonte, data, hash e aviso de cada
+                # janela) acompanha o valor e a abstenção calculada.
+                if "proveniencia" in dados:
+                    registro = {**registro, "proveniencia": dados["proveniencia"]}
+            self._por_data[nome] = registro
+        return self._por_data[nome]
+
+    def _valor_por_data(self, nome: str, fallback: float) -> float | None:
+        registro = self.registro_por_data(nome)
+        if "valor" in registro:
+            return registro["valor"]
+        # Fallback existente só para as_of = hoje, no relógio e na coleta; data passada
+        # abstém (F3-1b), mesmo com instante de coleta injetado no passado.
+        if self.as_of == self._hoje() == self._hoje_no_relogio():
+            return fallback
+        return None
+
+    def motivo(self, nome: str) -> str | None:
+        """Motivo da abstenção por data de `selic`, `cdi` ou `ipca_12m`; None sem as_of."""
+        if self.as_of is None:
+            return None
+        return self.registro_por_data(nome).get("abstencao")
 
     def cost_of_equity_real(self) -> float | None:
         """Custo real do F2B-30, sem contingência nem prêmio duplicado."""
@@ -301,7 +453,7 @@ class MacroContext:
             return IPCA_12M_FALLBACK
 
 
-# Instância global — engines importam MACRO em vez de literais
+# Instância global — engines importam MACRO em vez de literais; o import não faz rede.
 MACRO = MacroContext()
 
 

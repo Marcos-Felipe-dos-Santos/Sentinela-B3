@@ -14,17 +14,15 @@ Suíte em 09/11/2026: 3525 passed, 1 skipped, 8 xfailed.
 
 ## Fase atual
 
-**Entre fases: a 2C (Qualidade e apresentação) foi concluída** (tag `v2-fase-2c`;
-histórico em `docs/loop/historico/fase-2c/`). A **Fase 3 (Tempo como entrada)** ainda
-não tem fila ativa: os itens migrados da 2C estão registrados para a proposta da Fase 3.
-O mantenedor trabalha num branch local por fase e só publica no fim de cada fase.
-Baseie seu branch sempre na `main` mais recente.
+**Fase 3 (Tempo como entrada) ativa** no branch `v2/fase-3`, em três metades
+(3-a fundação e dívidas, 3-b histórico ponto-no-tempo, 3-c backtest).
+Executores alternados Claude Code e Codex. O mantenedor trabalha num branch
+local por fase e só publica nos checkpoints. Baseie seu branch sempre na
+`main` mais recente.
 
-Até a Fase 3 ser ativada, nenhum arquivo está travado por fase. Ainda assim, PR que toque
-`sentinela/methods/`, `sentinela/data/`, os motores (`valuation_engine.py`,
-`fii_engine.py`, `market_engine.py`), `config.py` ou `tests/fixtures/` precisa de
-aprovação do mantenedor antes de abrir. A lista de arquivos travados da Fase 3 entra aqui
-na ativação.
+Arquivos travados nesta fase: `config.py`, `database.py`, `backtesting/`,
+`sentinela/data/`, `sentinela/services/`, `app.py`, `limpar_banco.py` e
+`auditar_recomendacoes.py`. Nenhum PR pode tocá-los até o fim da fase.
 
 ## Regra fundamental: especificação externa
 
@@ -110,11 +108,18 @@ Decisão do mantenedor de 15/10/2026. Registro e detalhe em `tests/regressao/REA
 
 ---
 
+## Ambiente
+
+- **Nunca no `/tmp`** (instrução do Marcos, 11/11/2026; DD-46): o `/tmp` do WSL é tmpfs (RAM) e o `/tmp/pytest-of-<usuário>` chegou a 7,8 GB, derrubando a mutação. Todo pytest roda com `TMPDIR=$HOME/.cache/sentinela-testes-<executor>` e `--basetemp=$HOME/.cache/sentinela-testes-<executor>/pytest`; o mutmut, com o mesmo `TMPDIR` e `--max-children 2` (se cair por memória, um módulo de cada vez). A pasta `$HOME/.cache/sentinela-testes-<executor>` é do executor, fica fora do repositório e pode ser limpa por ele antes de cada suíte (não é resíduo do Marcos); crie-a antes do primeiro uso (`mkdir -p`).
+
+---
+
 ## Comandos
 
 ```bash
-python -m pytest tests/ -x --tb=short
-python -m mutmut run "<modulo>*"        # mutmut 3; configuração em [tool.mutmut] do pyproject.toml
+T=$HOME/.cache/sentinela-testes-<executor>; mkdir -p $T    # nunca o /tmp (tmpfs)
+TMPDIR=$T python -m pytest tests/ -x --tb=short --basetemp=$T/pytest
+TMPDIR=$T python -m mutmut run --max-children 2 "<modulo>*"   # mutmut 3; configuração em [tool.mutmut]
 python -m mutmut export-cicd-stats      # mortos e sobreviventes, para o mutation score
 ruff check .
 ```
@@ -131,7 +136,7 @@ Toda tarefa traz critério explícito no ticket. Sem ele, **não comece** — pe
 4. O diff toca apenas os arquivos previstos
 5. **Para tarefas de teste: mutation score ≥ 80% no módulo alvo, medido com o mutmut 3**
 
-**Suíte verde não é suficiente.** `app.py`, `auditoria.py` e `limpar_banco.py`
+**Suíte verde não é suficiente.** `app.py` e `auditoria.py`
 têm 0% de cobertura. Se sua mudança toca código sem cobertura, escreva o teste —
 e confirme que ele falha quando você quebra o código de propósito.
 
@@ -171,8 +176,8 @@ verificá-lo. Reporte a divergência; não a "conserte".
   ou R$ 100 mil (FII). Incompletude/falha de coleta produz aviso, sem tratar ausência como zero.
 - Duas camadas de orquestração: `app.py` (roda) e `sentinela/services/`
   (implementada, não conectada). Não adicione a mesma feature nas duas
-- Importar `config` dispara uma chamada HTTP ao Banco Central. A suíte só fica sem
-  rede com a fixture de Selic do `tests/conftest.py` (criada no item F0-2)
+- Importar `config` não faz rede desde o F3-1a (E-6, regressão BUG-3-01): a Selic é lida
+  sob demanda por `get_selic_atual`, e o `tests/conftest.py` semeia esse cache
 - `BRAPI_TOKEN` é lido em `brapi_provider.py:64` e, segundo o levantamento, falta no `.env.example` (o loop não lê `.env*`; não verificado)
 
 ---

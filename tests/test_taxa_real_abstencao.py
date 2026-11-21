@@ -8,15 +8,24 @@ from sentinela.reports import rastreabilidade
 INSTANTE = datetime(2026, 10, 20, 15, tzinfo=UTC)
 
 
+class _Relogio(datetime):
+    """`config.datetime` parado em INSTANTE: dia anterior ao de hoje iria ao banco (F3-1c)."""
+
+    @classmethod
+    def now(cls, tz=None):
+        return INSTANTE.astimezone(tz) if tz else INSTANTE.replace(tzinfo=None)
+
+
 def test_abstencao_nao_fica_no_cache(monkeypatch):
     chamadas = []
 
-    def carregar(instante, janela):
+    def carregar(instante, janela, coleta=None):
         chamadas.append(instante)
         return {"abstencao": "desatualizada"}
 
     monkeypatch.setattr(config, "_carregar_taxa_real", carregar)
     monkeypatch.setattr(config, "_taxa_real_cache", {})
+    monkeypatch.setattr(config, "datetime", _Relogio)  # INSTANTE é "hoje" (F3-1c)
     assert config.get_taxa_real(as_of=INSTANTE) == {"abstencao": "desatualizada"}
     assert config.get_taxa_real(as_of=INSTANTE) == {"abstencao": "desatualizada"}
     assert len(chamadas) == 2
@@ -26,12 +35,13 @@ def test_abstencao_nao_fica_no_cache(monkeypatch):
 def test_registro_valido_fica_no_cache(monkeypatch):
     chamadas = []
 
-    def carregar(instante, janela):
+    def carregar(instante, janela, coleta=None):
         chamadas.append(instante)
         return {"custo_capital_real": 0.12, "pib": {}}
 
     monkeypatch.setattr(config, "_carregar_taxa_real", carregar)
     monkeypatch.setattr(config, "_taxa_real_cache", {})
+    monkeypatch.setattr(config, "datetime", _Relogio)  # INSTANTE é "hoje" (F3-1c)
     config.get_taxa_real(as_of=INSTANTE)
     config.get_taxa_real(as_of=INSTANTE)
     assert len(chamadas) == 1

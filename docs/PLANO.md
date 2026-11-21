@@ -375,6 +375,7 @@ desses bugs nem ativação da proposta.
 | F3-10 | Resumo e arquivamento |
 
 **Gate:** `as_of` = hoje reproduz o resultado atual; backtest reprodutível; universo com deslistadas; limitações registradas na proveniência.
+**Situação (19/11/2026):** concluída no branch `v2/fase-3`, aguardando o aceite no checkpoint; gate demonstrado e limitações em `docs/loop/historico/fase-3/pr-fase-3.md`.
 **Decisões:** definição do universo; profundidade da série (desde 2011, quando começa o ITR aberto, ou menos); tratamento de reapresentações antigas.
 
 ### Fase 4 — Operação diária, rastreabilidade e risco [D6, D9]
@@ -485,6 +486,7 @@ O ciclo completo, com os comandos, está em `docs/loop/ciclo-de-fase.md` (desde 
 
 - **Orquestrador do loop e junior-dev:** Sonnet.
 - **senior-reviewer:** Opus, por item. Se o limite semanal apertar, Sonnet por item e um Opus por fase, sobre o diff inteiro.
+- **revisor-leve:** Sonnet, somente leitura, no `/review-diff-leve` dos itens `docs` e `levantamento` (F3-0g).
 - **fable-architect:** só no item de planejamento de cada fase.
 - **scout:** Haiku.
 - **Expectativa no Pro:** esperas de limite fazem parte. O loop retoma sozinho até duas vezes seguidas; confira uma vez por dia.

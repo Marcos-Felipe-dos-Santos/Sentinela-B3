@@ -98,10 +98,16 @@ def _texto_inadimplencia(dados, instante):
     )
 
 
-def _bpp_disponivel(proveniencia, instante):
-    """Entrega do BPP antes do dia do as_of e coleta até o instante (D16/D17)."""
+def _bpp_disponivel(proveniencia, instante, por_publicacao=False):
+    """Entrega do BPP antes do dia do as_of e coleta até o instante (D16/D17).
+
+    Numa data passada (`por_publicacao`, decisão 40), a prova é só a entrega: a coleta fica na
+    proveniência e deixa de ser critério. Sem data de entrega legível, abstém.
+    """
     try:
         entrega = date.fromisoformat(str(proveniencia["data_entrega"]))
+        if por_publicacao:
+            return entrega < instante.astimezone(FUSO).date()
         coleta = datetime.fromisoformat(str(proveniencia["data_coleta"]))
         return entrega < instante.astimezone(FUSO).date() and coleta <= instante
     except (TypeError, KeyError, ValueError):
@@ -123,6 +129,7 @@ class ValuationEngine:
         *,
         classe,
         modelo,
+        as_of: datetime | None = None,
     ):
         """Converte os dados já normalizados da V1 em MethodInputs (uma única vez)."""
         p, pl, pvp = _finito(p), _finito(pl), _finito(pvp)
@@ -133,7 +140,7 @@ class ValuationEngine:
         if p is not None and pvp is not None:
             vpa = _finito(p / pvp) if pvp > 0 else 0.0
         return MethodInputs(
-            as_of=date.today(),
+            as_of=date.today() if as_of is None else as_of.astimezone(FUSO).date(),
             preco=None if p is None else BRL(p),
             pl=None if pl is None else Ratio(pl),
             pvp=None if pvp is None else Ratio(pvp),
@@ -194,6 +201,7 @@ class ValuationEngine:
                 as_of=instante,
                 classe=str(getattr(classe, "value", classe) or "").strip().upper(),
                 modelo=str(getattr(modelo, "value", modelo) or "").strip().lower(),
+                por_publicacao=dados.get("disponibilidade_por_publicacao") is True,
             )
             if "lentes" not in resultado:
                 motivo = (
@@ -265,7 +273,9 @@ class ValuationEngine:
             )
             return _abstencao_de_escopo(motivo, classe)
         if "modelo_bpp_proveniencia" in dados and not _bpp_disponivel(
-            dados["modelo_bpp_proveniencia"], instante
+            dados["modelo_bpp_proveniencia"],
+            instante,
+            dados.get("disponibilidade_por_publicacao") is True,
         ):
             return _abstencao_de_escopo(MOTIVO_BPP_INDISPONIVEL, classe)
 
@@ -405,6 +415,7 @@ class ValuationEngine:
             lpa=lpa,
             classe=AssetType(classe),
             modelo=ModeloDemonstracao(modelo),
+            as_of=instante,
         )
         if instante.tzinfo is None or instante.utcoffset() is None:
             entradas_gordon = gordon_cvm.Abstencao("as_of exige fuso horário")
