@@ -384,7 +384,7 @@ Exceções comprovadas, que não reativam método/score histórico:
 
 TTL de Selic/taxa-real, prêmio de ações, normalizaçãoDY, liquidez, constantes com leitores ativos FII/perfil/divergência e spread/calibração permanecem. Um nome sem leitor externo pode ter uso interno: `SELIC_CACHE_TTL` e `_TAXA_REAL_TTL` continuam lidos pelo próprio config e não são resíduo.
 
-Comandos: `python -m vulture . vulture_whitelist.py --min-confidence 60 --exclude 'venv,mutants,outputs,/home/marcos/projetos/Sentinela_B3/data/*'`; busca por palavra inteira nos `.py` de `git ls-files`, com verificação do próprio config. Logs antes/depois e lista em `/tmp/2c69-*`; fora do versionamento.
+Comandos: `python -m vulture . vulture_whitelist.py --min-confidence 60 --exclude 'venv,mutants,outputs,$PWD/data/*'`; busca por palavra inteira nos `.py` de `git ls-files`, com verificação do próprio config. Logs antes/depois e lista em `/tmp/2c69-*`; fora do versionamento.
 
 Resultado global Vulture60%:30→18achados, exatamente as12declarações retiradas; sem achados novos. Ruff completo161→161; gates CI e data/methods verdes. Suíte3525PASS/1skip/8xfail, warning antigo. Nenhuma asserção removida ou enfraquecida para retirar constante.
 

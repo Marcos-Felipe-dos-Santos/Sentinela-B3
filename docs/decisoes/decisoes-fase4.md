@@ -79,3 +79,21 @@ roda no fim de cada bloco, não só no fim da fase.
 - A regra da decisão 48: achado novo que não seja resultado errado, vazamento de futuro ou perda de
   dado vai para depois (`docs/loop/ideias.md` ou a proposta da fase seguinte), não entra no bloco em
   curso.
+
+## Adendo de 23/11/2026 — decisões do Marcos sobre a proposta
+
+Prevalece sobre o texto acima onde diverge.
+
+- **A1 · Ordem do L2.** A ficha FII 1.4 (decisão 52) é escrita no início do bloco 1 e auditada em
+  paralelo; o `[DECISÃO]` da ficha e o código do FII vão para depois do item da decisão 55 (L4).
+- **A2 · Faixa do P/VP do FII.** A faixa do `FiiNav` é aposentada: sem alertas de prêmio ou desconto.
+  O P/VP continua só como número de contexto descritivo, inclusive quando a lente de rendimento
+  abstém.
+- **A3 · L6-B.** Autorizada a coleta nova da B3 para os cinco tickers de companhia ativa sem coleta
+  (AESB3, CESP6, ENBR3, JBSS3, OIBR3); vira item do bloco 1. A companhia sem relação na B3 vira
+  limitação declarada.
+- **A4 · Caminhos locais.** O levantamento (`docs/decisoes/levantamento-dados-f4.md`) foi editado só
+  para trocar os links locais do autor por caminhos relativos ao repositório; nenhum arquivo
+  versionado guarda caminho local da máquina do Marcos.
+- **A5 · `BRAPI_TOKEN`.** O `.env.example` tem a linha (conferido pelo Marcos); a frase de que ela
+  falta sai do `AGENTS.md` e do `CLAUDE.md` no item de documentação do bloco 0.
