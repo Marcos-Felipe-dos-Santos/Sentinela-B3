@@ -47,3 +47,14 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Resíduos:** evidências em `outputs/F4-A01/` e cache de mutação em `mutants/`.
 - **Decisões que ficaram para o Marcos:** nenhuma sobre o item.
 - **Para o Marcos revisar:** o DY de saída quando o Informe e a cascata discordam e o predicado aplicado ao golden.
+
+### F4-A02 — fix: map every preferred class ISIN to its species
+- **Executor:** codex (GPT-6)
+- **Status:** sucesso
+- **O que foi feito:** o mapeamento compartilhado reconhece `ACNPC` a `ACNPH` como PNC a PNH, as classes do índice oficial. As regressões passam pelo retorno total com COTAHIST e proventos produzidos pela B3 simulada, pelo fator de desdobramento e pela janela de proventos. A unit `CDAM` fica no F4-D04.
+- **Dificuldades:** a primeira coleta do mutmut reaproveitou estatísticas de uma instrumentação de outro módulo.
+- **Como resolvi:** limpei o cache local autorizado de mutantes e rodei a coleta completa com apenas o módulo de proventos instrumentado e dois filhos.
+- **Testes:** BUG-4-03, 18 xfails estritos antes → 18 passam. Regressões e fatores juntos, 120 passam. Gate preliminar, 5259 passed, 1 skipped, 24 xfailed. Mutmut 941/974 (96,61%), com zero sem associação a testes. Golden `1103fcadbe3a745d…` intacto.
+- **Resíduos:** evidências em `outputs/F4-A02/` e cache de mutação em `mutants/`.
+- **Decisões que ficaram para o Marcos:** nenhuma sobre o item.
+- **Para o Marcos revisar:** os seis códigos complementares da B3 e a distinção entre as classes no retorno.

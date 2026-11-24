@@ -50,7 +50,18 @@ FOLGA_SEM_PREGAO = timedelta(days=7)
 # R$ por evento conferido: o yfinance publica seis casas por evento (TAEE11, 20/10/2026: B3
 # R$ 3,0064572, yfinance R$ 3,006456); o mínimo de R$ 0,000001 é o do marcador da 2B, §2.3.
 TOLERANCIA_CONFERENCIA = 1e-6
-ESPECIE_DO_ISIN = {"ACNOR": "ON", "ACNPR": "PN", "ACNPA": "PNA", "ACNPB": "PNB"}
+ESPECIE_DO_ISIN = {
+    "ACNOR": "ON",
+    "ACNPR": "PN",
+    "ACNPA": "PNA",
+    "ACNPB": "PNB",
+    "ACNPC": "PNC",
+    "ACNPD": "PND",
+    "ACNPE": "PNE",
+    "ACNPF": "PNF",
+    "ACNPG": "PNG",
+    "ACNPH": "PNH",
+}
 # Decisão 33 (b): o complemento traz 11 casas e a relação, em geral, 4; o valor confere se
 # |relação − complemento arredondado a 4 casas| ≤ 0,00005. Empate arredonda para cima.
 CASAS_COMPLEMENTO = Decimal("0.0001")
