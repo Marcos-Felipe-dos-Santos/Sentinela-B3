@@ -83,3 +83,14 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Resíduos:** nenhum.
 - **Decisões que ficaram para o Marcos:** nenhuma sobre o item.
 - **Para o Marcos revisar:** afirmações metodológicas, cobertura parcial do histórico e próximos passos.
+
+### F4-A04 — fix: keep historical real-rate reads out of the network cache
+- **Executor:** codex (GPT-6)
+- **Status:** sucesso
+- **O que foi feito:** a leitura histórica de `get_taxa_real` volta ao banco antes de acessar o cache. A rede corrente mantém o TTL de 24 h e a invalidação pela edição do Focus. O argumento opcional `hoje` deixa o chamador determinar o corte sem consultar o relógio quando também fornece `as_of`. No produtor histórico do serviço, a data escolhida pelo serviço já leva ao `MotorHistorico`, que lê `series_macro` diretamente.
+- **Dificuldades:** a auditoria descreveu abstenção histórica cacheada, mas a condição anterior já excluía abstenções. A regressão confirmou cache de registros históricos válidos e leitura de um registro de rede ao revisitar um dia passado.
+- **Como resolvi:** decisão delegada DD-94: referência de hoje nas chamadas isoladas da taxa → aceitar dia explícito e manter o relógio como referência de compatibilidade quando o chamador legado omite o dia (classe 4, desempates 4 e 5; alternativas: tornar o dia obrigatório e quebrar chamadas existentes, ou manter só o relógio). O serviço histórico conserva seu leitor próprio.
+- **Testes:** BUG-4-05, 1 passed e 3 xfailed estritos antes → 4 passed. Contexto macro, série histórica, relógio do serviço e taxa corrente, 92 passed. A recuperação após carga tem controle dedicado. Suíte preliminar 5272 passed, 1 skipped, 24 xfailed e golden `1103fcadbe3a745d…` intacto. Mutmut 54/58 (93,10%) em `get_taxa_real` e 283/332 (85,24%) em `config.py`, incluindo seis sem cobertura. Na mutação, a sonda de logging em subprocesso importou o checkout original para manter o mesmo teste sem instrumentação fora do runner.
+- **Resíduos:** evidências em `outputs/F4-A04/` e cache de mutação em `mutants/`.
+- **Decisões que ficaram para o Marcos:** ratificação da decisão delegada no checkpoint.
+- **Para o Marcos revisar:** origem da taxa numa nova leitura histórica após carga.

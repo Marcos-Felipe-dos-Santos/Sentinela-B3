@@ -158,14 +158,23 @@ def _dia_sp(instante: datetime) -> date:
 
 
 def get_taxa_real(
-    *, as_of: datetime | None = None, janela: tuple[date, date] | None = None
+    *,
+    as_of: datetime | None = None,
+    janela: tuple[date, date] | None = None,
+    hoje: date | None = None,
 ) -> dict | None:
-    """Registro observado até as_of; ausência não usa contingência numérica."""
-    agora = datetime.now(UTC)
-    instante = as_of if as_of is not None else agora
+    """Taxa observada até as_of; o serviço pode fornecer o dia de referência."""
+    instante = datetime.now(UTC) if as_of is None else as_of
     if instante.tzinfo is None or instante.utcoffset() is None:
         return None
-    chave = (janela, instante.astimezone(ZoneInfo("America/Sao_Paulo")).date())
+    dia = _dia_sp(instante)
+    if hoje is None:
+        hoje = dia if as_of is None else _dia_sp(datetime.now(UTC))
+    # O banco pode receber novas cargas entre leituras. Seu resultado não usa o TTL da rede.
+    if dia < hoje:
+        return _taxa_real_do_banco(instante, janela)
+
+    chave = (janela, dia)
     anterior = _taxa_real_cache.get(chave)
     if anterior is not None:
         coleta, registro = anterior
@@ -174,15 +183,7 @@ def get_taxa_real(
         edicao_devida = proxima is not None and datetime.fromisoformat(proxima) <= instante
         if 0 <= idade < _TAXA_REAL_TTL and not edicao_devida:
             return registro
-    # F3-1c: numa data de dia anterior ao de hoje, o registro sai só do que está em
-    # `series_macro` (insumos gravados por data, com coleta e hash); no mesmo dia, o corte é
-    # a própria coleta, como na 2B.
-    passado = _dia_sp(instante) < _dia_sp(agora)
-    registro = (
-        _taxa_real_do_banco(instante, janela)
-        if passado
-        else _carregar_taxa_real(instante, janela)
-    )
+    registro = _carregar_taxa_real(instante, janela)
     # F2B-51: a abstenção não fica no cache; a próxima análise consulta de novo.
     if registro is not None and "abstencao" not in registro:
         _taxa_real_cache[chave] = (instante, registro)
