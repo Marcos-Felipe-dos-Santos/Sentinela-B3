@@ -138,3 +138,24 @@ Prevalece sobre o texto acima onde diverge.
    nem o perfil do Windows do autor nos arquivos versionados.
 8. **R2:** os achados da auditoria do último bloco vão para a fila da fase seguinte; o F4-9
    (arquivamento) fica dentro do bloco 2, que será detalhado depois.
+
+## Adendo de 24/11/2026 — ativação dos blocos 0 e 1
+
+A segunda rodada da auditoria DOCUMENTO do Codex (`docs/loop/auditorias/documento-fase4-codex-2.md`)
+aprovou os blocos 0 e 1. O Marcos atualizou a "Fase atual" do `AGENTS.md` com as permissões e
+ativou a fila. Prevalece sobre o texto acima onde diverge.
+
+1. **F4-A00a, primeiro item do bloco 0.** O log da aplicação sai da pasta do projeto para
+   `~/.local/state/sentinela-b3/` (configurável por variável de ambiente), com rotação por tamanho
+   (10 MB × 3); nenhum caminho de log dentro do repositório; teste. O Marcos já moveu os logs
+   antigos. O loop não altera as próprias permissões: lista no diário as linhas de negação de
+   leitura do log que o Marcos deve acrescentar ao `.claude/settings.json` e ao Codex.
+2. **Saída do Jules** (desligado em 31/12/2026): sai da divisão de trabalho no `AGENTS.md` (fora da
+   "Fase atual") e no `CLAUDE.md`; a D31 e o F5-1 passam para o Codex. Item `docs:` no bloco 0
+   (F4-A15b).
+3. **Rodadas de auditoria:** a rodada 1 é completa; da segunda em diante, a auditoria olha só o
+   diff, e só bloqueio reabre o item; ressalva vai para `docs/loop/pendencias.md`. Registrada no
+   protocolo.
+4. **Assuntos do bloco 2, sem item agora:** linha de base de medição de tokens; saída de testes em
+   duas camadas; `CLAUDE.md` e `AGENTS.md` enxutos, com regras por pasta; mutação só no diff
+   (mutmut 3.8); piloto de sessão nova por item (`claude -p`).
