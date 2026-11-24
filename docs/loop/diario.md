@@ -70,3 +70,16 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Resíduos:** evidências em `outputs/F4-A03/` e cache de mutação em `mutants/`.
 - **Decisões que ficaram para o Marcos:** ratificação das decisões delegadas no checkpoint.
 - **Para o Marcos revisar:** o motivo conservador de abstenção quando a identidade do evento não pode ser resolvida.
+
+### F4-A00b — docs: rewrite the README for phase 4
+- **Executor:** codex (GPT-6)
+- **Status:** sucesso
+- **O que foi feito:** README proposto pelo Marcos atualizado com a ampliação histórica da Fase 4, modo offline, selo do CI, mais de 5.000 testes e auditoria cruzada entre Claude, Codex e Gemini. A cobertura parcial e seus limites são vinculados a `docs/loop/historico/fase-3/pr-fase-3.md`, seção de cobertura por lente, com o recorte da sonda explicitado.
+- **Fontes conferidas:** Gordon em `docs/metodologia/gordon.md` §1 e `docs/metodologia/taxa-real.md` §1, com `sentinela/methods/gordon.py` (`Gordon._calcular`) e `sentinela/data/taxas.py` (`calcular`). Bazin em `docs/metodologia/bazin.md` §§2 e 4, `sentinela/methods/bazin.py` (`Bazin._calcular`), `valuation_engine.py` (perfil e parâmetros) e `config.py` (`BAZIN_DY_MIN`). Lynch em `docs/metodologia/lynch.md` (decisão de 28/10 e exemplo dos quatro intervalos, com crescimento em pontos percentuais) e `sentinela/methods/lynch.py` (`Lynch._calcular`).
+- **Fontes conferidas:** FII em `docs/metodologia/fii.md` §§3 e 6a, `config.py` (`FII_SPREAD_TIJOLO`) e `fii_engine.py` (`FIIEngine._calcular_rendimento`). A constante calibrada foi mantida em 25/10. Rede em `tests/conftest.py` (`_connect_bloqueado` e `_sem_rede`), com exceção de sockets Unix locais. Preço em `market_engine.py` (`_buscar_yfinance` e `_buscar_brapi`) e `brapi_provider.py` (`regularMarketPrice`). O histórico usa o COTAHIST em `sentinela/services/historico.py` (`MotorHistorico._buscar_yfinance`).
+- **Dificuldades:** o preço de hoje admite contingências sem data de fechamento, e o bloqueio da suíte atua sobre `socket.connect` no processo Python de teste.
+- **Como resolvi:** o README descreve a prioridade e as contingências do preço, o alcance do guardião de rede e a calibração registrada na ficha do FII. A revisão leve precisou a unidade do crescimento de Lynch e a limitação do recuo histórico, registrada no resumo da Fase 3 e no BUG-3-50.
+- **Testes:** alteração documental. Conferência de links locais versionados, termos vetados e gate completo do item.
+- **Resíduos:** nenhum.
+- **Decisões que ficaram para o Marcos:** nenhuma sobre o item.
+- **Para o Marcos revisar:** afirmações metodológicas, cobertura parcial do histórico e próximos passos.
