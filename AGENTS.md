@@ -14,20 +14,26 @@ Suíte em 09/11/2026: 3525 passed, 1 skipped, 8 xfailed.
 
 ## Fase atual
 
-**Fase 3 (Tempo como entrada) concluída** em 20/11/2026: merge na `main`
-(PR #28) e tag `v2-fase-3`. Resumo e limitações declaradas em
-`docs/loop/historico/fase-3/pr-fase-3.md`.
+**Fase 4 ativa** no branch `v2/fase-4` (ativação em 24/11/2026), só com os
+**blocos 0 e 1** de `docs/loop/fila.md`: bloco 0, correções do app; bloco 1,
+dados históricos (prazo de 2 semanas). O bloco 2 (a Fase 4 original) será
+detalhado e auditado no checkpoint do bloco 1. Decisões em
+`docs/decisoes/decisoes-fase4.md`. Executores alternados Claude Code e Codex.
+O mantenedor trabalha num branch local por fase e só publica nos checkpoints.
 
-**Fase 4 (operação diária) em preparação.** A proposta da fila está em
-`docs/loop/fila-fase4-proposta.md`, com as heranças da Fase 3 (F4-H01 a
-F4-H16). Ela passa por auditoria e pelas decisões do mantenedor antes da
-ativação; nenhum trabalho da Fase 4 começa antes disso. Executores
-alternados Claude Code e Codex. O mantenedor trabalha num branch local por
-fase e só publica nos checkpoints. Baseie seu branch sempre na `main` mais
-recente.
+Arquivos travados nesta fase, com as exceções abaixo: `config.py`,
+`database.py`, `fii_engine.py`, `sentinela/methods/**` e esta seção.
 
-Até a ativação da Fase 4, nenhum PR altera código de produção: só
-documentação.
+Exceções autorizadas pelo Marcos (decisões de 23/11/2026):
+- `fii_engine.py`: só nos itens F4-A01, F4-A07 e F4-A07b, este depois da
+  ficha FII aprovada.
+- `config.py`: só `get_taxa_real` e o cache da taxa real (F4-A04); nunca
+  `MacroContext` nem `_normalizar_dy`.
+- `docs/loop/**`: operação normal da fila (fila, diário, pendências,
+  passagem, auditorias, protocolo quando o item pedir).
+- `sentinela/methods/**`: só em item cuja ficha esteja aprovada pelo Marcos
+  antes do código.
+- `logging_config` e permissões de leitura do log: item F4-A00a.
 
 ## Regra fundamental: especificação externa
 
