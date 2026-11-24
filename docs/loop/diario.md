@@ -116,3 +116,15 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Resíduos:** evidências em `outputs/F4-A06/` e cache de mutação em `mutants/`.
 - **Decisões que ficaram para o Marcos:** nenhuma sobre o item.
 - **Para o Marcos revisar:** os controles de ITUB3 para pendências da PN, da ON e de identidade ausente.
+
+### F4-A07 — fix: keep the FII price-to-book context when the yield lens abstains
+- **Executor:** codex (GPT-6)
+- **Status:** sucesso
+- **O que foi feito:** P/VP e Selic líquida usam o mesmo cálculo de contexto descritivo na saída com valor e na saída com abstenção, conforme a ficha do FII 1.3 §3. A lente continua sem número e sem distância quando se abstém. A faixa do P/VP continua reservada ao F4-A07b.
+- **Dificuldades:** as saídas de abstenção retornavam antes do bloco de contexto.
+- **Como resolvi:** a saída final recebe o contexto quando a análise ainda não o incluiu. O P/VP inválido e a Selic não finita ficam sem número. O método de rendimento e os motivos de abstenção foram preservados. Na revisão 1, o teste com a fonte corrente proibida demonstrou o acesso adicional na abstenção histórica.
+- **Decisão delegada:** DD-96: Selic líquida no contexto novo de uma abstenção histórica → manter P/VP e Selic líquida nula quando o motor histórico não demonstra Selic, sem consultar SGS corrente (classe 2, desempates 1 e 4; alternativas: consultar a fonte corrente, ou ampliar a fronteira histórica antes do F4-H09). Revisão cruzada pendente.
+- **Testes:** BUG-4-08, 4 xfails estritos antes → 4 passam. Revisão 1: xfail estrito da fonte corrente histórica → 5 passam. Golden atualizado pelo predicado do item em 81 casos de FII abstidos, somente para acrescentar `pvp` e `selic_liquida`, com zero casos fora do predicado. Suíte preliminar 5301 passed, 1 skipped, 24 xfailed. Mutmut 355/396 (89,65%) no módulo, 32/33 em `analisar`, 29/32 em `_contexto_descritivo` e 222/256 em `_analisar_lentes`. Novo SHA256 `1759c55f7e5995f54075cc78cf64e0ea7d0580089ec68902ee3fe153cc84b1d8`.
+- **Resíduos:** evidências em `outputs/F4-A07/` e cache de mutação em `mutants/`.
+- **Decisões que ficaram para o Marcos:** nenhuma sobre o item. A ficha da faixa P/VP tem decisão própria no bloco 1.
+- **Para o Marcos revisar:** o contexto de FII de papel, fundo de fundos e Informe ausente.

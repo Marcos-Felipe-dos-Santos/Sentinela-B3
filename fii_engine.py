@@ -64,14 +64,39 @@ class FIIEngine:
             ),
         )
 
+    def _contexto_descritivo(
+        self, dados: dict, instante: datetime, *, consultar_selic: bool = True
+    ) -> dict[str, float | None]:
+        """P/VP e Selic líquida de referência para o resultado descritivo do FII."""
+        try:
+            pvp = float(dados.get("pvp") or 0)
+        except (TypeError, ValueError):
+            pvp = 0.0
+        if pvp <= 0 or not math.isfinite(pvp):
+            pvp = None
+        selic_liquida = None
+        if consultar_selic:
+            selic = MacroContext(
+                as_of=instante.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+            ).selic
+            if isinstance(selic, (int, float)) and math.isfinite(selic):
+                selic_liquida = selic * MACRO.FII_FATOR_IR
+        return {"pvp": pvp, "selic_liquida": selic_liquida}
+
     def analisar(self, dados: dict, as_of: datetime | None = None) -> dict | None:
         instante = as_of if as_of is not None else datetime.now(UTC)
         resultado = self._analisar_lentes(dados, as_of=instante)
-        return (
-            finalizar(resultado, dados, instante)
-            if isinstance(resultado, dict)
-            else resultado
-        )
+        if resultado is None:
+            return None
+        if "pvp" not in resultado:
+            # O contexto adicional na abstenção histórica não abre fonte corrente.
+            consultar_selic = dados.get("disponibilidade_por_publicacao") is not True
+            resultado.update(
+                self._contexto_descritivo(
+                    dados, instante, consultar_selic=consultar_selic
+                )
+            )
+        return finalizar(resultado, dados, instante)
 
     def _analisar_lentes(self, dados: dict, as_of: datetime) -> dict | None:
         if not dados:
@@ -160,13 +185,6 @@ class FIIEngine:
                 }
             )
 
-        # P/VP: o oficial da CVM chega pela cascata (F2A-11). Sem P/VP positivo e finito
-        # (ausente, zero, negativo, NaN ou infinito; F2A-42), a lente não é calculada, não
-        # pontua e a saída traz `pvp` nulo.
-        pvp = float(dados.get("pvp") or 0)
-        if pvp <= 0 or not math.isfinite(pvp):
-            pvp = None
-
         # ── Rendimento do FII (F2B-2; ficha FII 1.1) ─────────────────────────
         # Preço justo = rendimento de 12 meses do Informe ÷ (NTN-B real + spread), em
         # sentinela/methods/fii_yield.py. Selic líquida permanece contexto nominal,
@@ -196,17 +214,9 @@ class FIIEngine:
                 }
             )
 
-        # ── Score ─────────────────────────────────────────────────────────────
-        selic = MacroContext(
-            as_of=instante.astimezone(ZoneInfo("America/Sao_Paulo")).date()
-        ).selic
+        contexto = self._contexto_descritivo(dados, instante)
+        pvp = contexto["pvp"]
         dy_efetivo = dy
-        # Selic não finita fica sem a comparação, em vez de levar NaN à saída (F2A-24).
-        selic_liquida = (
-            selic * MACRO.FII_FATOR_IR
-            if isinstance(selic, (int, float)) and math.isfinite(selic)
-            else None
-        )
         # O patrimônio e a taxa nominal permanecem contexto, sem pontos ou sinais.
         if pvp is not None:
             self._faixa_pvp(pvp, as_of=instante)
@@ -219,8 +229,7 @@ class FIIEngine:
                 "metodos_usados": f"{_FII_YIELD.nome}: R${preco_justo:.2f}",
                 "dy": dy,
                 "dy_efetivo": dy_efetivo,
-                "pvp": pvp,
-                "selic_liquida": selic_liquida,
+                **contexto,
                 "avisos_rendimento": list(
                     dados["rendimento_fii_cvm"].get("avisos", ())
                 ),
