@@ -293,12 +293,21 @@ def _evento_de_acoes_na_janela(
     especies: Iterable[str],
     inicio: date,
     referencia: date,
+    dia_as_of: date,
+    isins_emissor: Iterable[str],
 ) -> str | None:
-    """Rótulo e data do evento em ações que alcança a janela; sem calendário, conservador."""
+    """Rótulo e data de um evento atribuível e disponível que alcança a janela."""
     alvo = set(especies)
+    isins = frozenset(isins_emissor)
     for evento in eventos_acoes:
-        data_com = ler_data(evento.get("lastDatePrior"))
+        aprovacao = ler_data(evento.get("approvedOn"))
+        if aprovacao is not None and aprovacao >= dia_as_of:
+            continue
         isin = str(evento.get("isinCode") or "")
+        # Sem ISIN legível, a identidade do evento não pode ser descartada.
+        if isins and len(isin) == 12 and isin not in isins:
+            continue
+        data_com = ler_data(evento.get("lastDatePrior"))
         especie = ESPECIE_DO_ISIN.get(isin[6:11])
         if especie is not None and especie not in alvo:
             continue
@@ -353,6 +362,7 @@ def serie_12_meses(
     eh_unit: bool = False,
     acoes_por_unit: object = None,
     eventos_acoes: Iterable[Mapping] = (),
+    isins_emissor: Iterable[str] = (),
     dinheiro_complemento: Iterable[Mapping] = (),
     pregoes: Iterable[date] | None = None,
 ) -> dict | Abstencao:
@@ -372,7 +382,11 @@ def serie_12_meses(
     calendario = frozenset(pregoes) if pregoes is not None else None
     datas_com: list[date] = []
     eventos: set[Evento] = set()
+    especies_na_relacao: set[str] = set()
     for registro in registros:
+        aprovacao = ler_data(registro.get("dateApproval"))
+        if aprovacao is not None and aprovacao >= dia_as_of:
+            continue
         data_com = ler_data(registro.get("lastDatePriorEx"))
         if data_com is None:
             return Abstencao("insumo inválido: data com do provento, tipo ou unidade")
@@ -381,6 +395,7 @@ def serie_12_meses(
         if classe is None:
             # F2B-54 (BUG-2B-34): espécie ilegível não comprova a série, nem com D zero.
             return Abstencao(MOTIVO_ESPECIE_ILEGIVEL)
+        especies_na_relacao.add(classe)
         if classe not in componentes:
             continue
         dentro = _na_janela(data_com, inicio, referencia, calendario)
@@ -388,11 +403,8 @@ def serie_12_meses(
             return Abstencao(f"{MOTIVO_CALENDARIO}: data com {data_com.isoformat()}")
         if not dentro:
             continue
-        aprovacao = ler_data(registro.get("dateApproval"))
         if aprovacao is None:
             return Abstencao(MOTIVO_DISPONIBILIDADE)
-        if aprovacao > dia_as_of:
-            continue
         rotulo = _texto(registro.get("corporateAction"))
         natureza = NATUREZAS.get(rotulo or "")
         if natureza is None:
@@ -413,12 +425,11 @@ def serie_12_meses(
     # F2B-53 (decisões do Marcos de 20/10/2026; ficha Bazin 1.1): toda série, com ou sem
     # provento, exige ao menos um registro da espécie (ou de cada componente da unit) na
     # relação, em qualquer data. Registros UNT são só conferência e não contam.
-    especies_na_relacao = {_texto(r.get("typeStock")) for r in registros}
     for classe in componentes:
         if classe not in especies_na_relacao:
             return Abstencao(f"{MOTIVO_ESPECIE_SEM_REGISTRO}: {classe}")
     evento_acoes = _evento_de_acoes_na_janela(
-        eventos_acoes, componentes, inicio, referencia
+        eventos_acoes, componentes, inicio, referencia, dia_as_of, isins_emissor
     )
     if evento_acoes is not None:
         return Abstencao(f"{MOTIVO_EVENTO_ACOES}: {evento_acoes}")
@@ -580,6 +591,7 @@ def entradas(dados: Mapping, instante: datetime) -> dict | Abstencao:
         eh_unit=dados.get("classe_ativo") == "UNIT",
         acoes_por_unit=dados.get("acoes_por_unit"),
         eventos_acoes=relacao.get("eventos_acoes") or (),
+        isins_emissor=relacao.get("isins_emissor") or (),
         dinheiro_complemento=relacao.get("dinheiro_complemento") or (),
         pregoes=None if pregoes is None else [date.fromisoformat(p) for p in pregoes],
     )

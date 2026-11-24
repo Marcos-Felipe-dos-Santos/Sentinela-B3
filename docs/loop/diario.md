@@ -58,3 +58,15 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Resíduos:** evidências em `outputs/F4-A02/` e cache de mutação em `mutants/`.
 - **Decisões que ficaram para o Marcos:** nenhuma sobre o item.
 - **Para o Marcos revisar:** os seis códigos complementares da B3 e a distinção entre as classes no retorno.
+
+### F4-A03 — fix: exclude same-day approvals and other issuers' events from the 12-month dividends
+- **Executor:** codex (GPT-6)
+- **Status:** sucesso
+- **O que foi feito:** proventos sem hora aprovados em D ficam fora da janela do Bazin. O filtro de eventos em ações usa a mesma fronteira de aprovação e os ISINs do emissor recebidos no bloco de proventos. Proventos aprovados em D ou depois ficam fora antes de validar os campos e de provar a cobertura temporal e por espécie.
+- **Dificuldades:** o teste unitário preexistente afirmava que aprovação em D entrava na janela. A revisão 1 encontrou registros excluídos que ainda podiam causar abstenção ou demonstrar cobertura.
+- **Como resolvi:** decisão delegada DD-92: teste unitário preexistente da janela aceitava aprovação no próprio D → conferir D e D+1 excluídos, com D−1 incluído como controle, no mesmo teste (classe 4, desempates 4 e 6; alternativas: mudar apenas o esperado de D ou transferir toda a cobertura ao BUG-4-04).
+- **Identidade:** decisão delegada DD-93: evento sem ISIN completo e conjunto de ISINs do emissor conhecido → conservar a abstenção quando o evento ainda pode atingir a janela; excluir por identidade só um ISIN completo ausente do conjunto (classe 3, desempate 1; alternativas: tratar ISIN vazio ou incompleto como alheio, ou exigir ISIN em todo evento). Revisão cruzada pendente.
+- **Testes:** BUG-4-04, 2 passed e 4 xfailed estritos antes → 6 passed. Antes da correção da revisão 1, 3 novos xfails estritos → 9 passed no BUG-4-04. Região afetada, e2e e equivalência, 133 passed e 1 skipped. Gate preliminar, 5268 passed, 1 skipped, 24 xfailed, golden `1103fcadbe3a745d…` intacto. Mutmut: 960/1000 (96,00%) no módulo e 193/196, 51/54 e 153/156 nas funções alteradas.
+- **Resíduos:** evidências em `outputs/F4-A03/` e cache de mutação em `mutants/`.
+- **Decisões que ficaram para o Marcos:** ratificação das decisões delegadas no checkpoint.
+- **Para o Marcos revisar:** o motivo conservador de abstenção quando a identidade do evento não pode ser resolvida.

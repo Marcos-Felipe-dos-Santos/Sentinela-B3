@@ -205,13 +205,15 @@ def test_data_com_invalida_abstem():
     )
 
 
-def test_provento_aprovado_depois_do_as_of_nao_entra():
+def test_provento_aprovado_no_corte_ou_depois_nao_entra():
     s = _serie(
         [_r("10/12/2025", "0,3"), _r("10/09/2026", "0,7", dateApproval="20/10/2026")]
     )
     assert s["d_bruto_12m"] == pytest.approx(0.3)
     no_dia = _serie([_r("10/09/2026", "0,7", dateApproval="19/10/2026")])
-    assert no_dia["d_bruto_12m"] == pytest.approx(0.7)
+    assert no_dia["d_bruto_12m"] == 0
+    na_vespera = _serie([_r("10/09/2026", "0,7", dateApproval="18/10/2026")])
+    assert na_vespera["d_bruto_12m"] == pytest.approx(0.7)
 
 
 def test_zero_informado_e_valido_e_milhar_com_ponto():
