@@ -25,3 +25,14 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Decisão delegada:** decisão delegada DD-91: aplicação do aceite de log externo ao caminho configurável → resolver o caminho antes de criar a pasta e recusar destino dentro da raiz do repositório (classe 4, desempate 6; alternativas: aceitar o destino informado, que permitiria log no repositório, ou voltar em silêncio ao padrão).
 - **Decisões que ficaram para o Marcos:** nenhuma sobre o item. Para negar a leitura, adicionar em `.claude/settings.json`, dentro de `permissions.deny`, a entrada `"Read(//home/marcos/.local/state/sentinela-b3/**)"`. No Codex gerenciado, adicionar em `requirements.toml` a seção `[permissions.filesystem]` com `deny_read = ["/home/marcos/.local/state/sentinela-b3"]` ou incluir o caminho na lista já existente. Se usar `SENTINELA_LOG_DIR`, aplicar as duas entradas ao diretório absoluto efetivo.
 - **Para o Marcos revisar:** negação de leitura no perfil que executa cada agente.
+
+### F4-A00 — test: run today's analysis end to end through the real market engine
+- **Executor:** codex (GPT-6)
+- **Status:** sucesso
+- **O que foi feito:** matriz da análise do dia para ABEV3, TAEE11 e HGLG11, com serviço, cascata, coletores e motores reais. O teste reaproveita o relógio, o índice semeado e os dublês da borda do BUG-3-63. Os provedores reais leem arquivos locais remontados de recortes oficiais de DFP e Informe Mensal. O HTTP reproduz as respostas públicas da B3 para ABEV3 e HGLG11, do Tesouro e da ANBIMA. O contrato do yfinance registra preço, ações em circulação e proventos de TAEE11 com fonte e hash.
+- **Dificuldades:** o registro do yfinance da unit não traz a série de fechamentos. O cenário contém uma DFP por companhia e omite o GetDetail da unit e o IPCA do Gordon.
+- **Como resolvi:** o dublê do yfinance expõe somente o fechamento registrado e os proventos; a matriz exige os motivos exatos de cada abstenção. A revisão 1 identificou dublês internos dos provedores herdados da regressão. Eles foram substituídos pelos provedores reais com caches semeados e dublês de HTTP e yfinance. As lentes numéricas usam tolerância relativa de 1e-6. O FII com Informe válido e DY ausente na cascata tem um caso em xfail estrito, limitado à abstenção exata do achado 1 (F4-A01).
+- **Testes:** módulo e contratos: 32 passed e 1 xfailed. A sonda do carimbo fez os casos da ação e do FII falharem ao repor o relógio da coleta em lugar do instante do clique (`outputs/F4-A00/mutante-carimbo.txt`). Nenhum módulo de produção mudou.
+- **Resíduos:** evidência da sonda em `outputs/F4-A00/` e sonda no cache de testes do executor.
+- **Decisões que ficaram para o Marcos:** teste manual da R1 no checkpoint.
+- **Para o Marcos revisar:** a matriz e o caso em xfail do FII.

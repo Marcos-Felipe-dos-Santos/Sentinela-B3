@@ -1,0 +1,13 @@
+{
+  "fonte": "https://www.anbima.com.br/feriados/fer_nacionais/2026.asp",
+  "arquivo_original": "2026.asp",
+  "data_coleta": "2026-11-21T02:19:03.697112+00:00",
+  "sha256_original": "698a5061d02b5c0a7550955946e589ed33bae5c6fa3d4cd74c7ae4264215575e",
+  "recorte": "Células das datas da tabela de feriados nacionais em 2026.",
+  "membros": {
+    "2026.asp": "<td>1/1/26</td>\n<td>16/2/26</td>\n<td>17/2/26</td>\n<td>3/4/26</td>\n<td>21/4/26</td>\n<td>1/5/26</td>\n<td>4/6/26</td>\n<td>7/9/26</td>\n<td>12/10/26</td>\n<td>2/11/26</td>\n<td>15/11/26</td>\n<td>20/11/26</td>\n<td>25/12/26</td>"
+  },
+  "sha256_membros": {
+    "2026.asp": "34eb13d3f1baf4d99ead74c0a95d5a2461d81d0bd3215e2c634fee746f6d990a"
+  }
+}
