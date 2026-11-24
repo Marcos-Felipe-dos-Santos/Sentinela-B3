@@ -148,9 +148,11 @@ class FIIEngine:
                 "— dado suspeito. Desconsiderado."
             )
 
-        # ── FALLBACK: sem DY confiável não podemos calcular valuation ─────────
-        # F2C-3: abstenção sem valor, distância ou score; motivo explícito na lente.
-        if dy == 0 or not dy_confiavel:
+        # BUG-4-02: a lente corrente pode usar o Informe mesmo sem DY da cascata.
+        # No caminho por publicação, o MotorHistorico já faz a derivação no corte.
+        dy_invalido = dy == 0 or not dy_confiavel
+        historico = dados.get("disponibilidade_por_publicacao") is True
+        if historico and dy_invalido:
             return _com_aviso(
                 {
                     "perfil": "FII",
@@ -173,6 +175,16 @@ class FIIEngine:
         rendimento = self._calcular_rendimento(dados, p, instante)
         if isinstance(rendimento, MethodResult):
             preco_justo = rendimento.valor.valor
+            if not historico:
+                dy = dados["rendimento_fii_cvm"]["dy"]
+        elif dy_invalido:
+            rendimento = None
+            return _com_aviso(
+                {
+                    "perfil": "FII",
+                    "metodos_usados": "Dados insuficientes (DY ausente ou inválido)",
+                }
+            )
         else:
             # Lente não calculada (fora do escopo, sem Informe elegível, sem NTN-B ou spread,
             # resultado não finito): o resultado do DY inválido, com o motivo.

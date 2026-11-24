@@ -36,3 +36,14 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Resíduos:** evidência da sonda em `outputs/F4-A00/` e sonda no cache de testes do executor.
 - **Decisões que ficaram para o Marcos:** teste manual da R1 no checkpoint.
 - **Para o Marcos revisar:** a matriz e o caso em xfail do FII.
+
+### F4-A01 — fix: read the FII yield lens from the CVM report, not the cascade dividend yield
+- **Executor:** codex (GPT-6)
+- **Status:** sucesso
+- **O que foi feito:** na análise corrente, a lente avalia o Informe Mensal mesmo com DY ausente, zero ou inválido na cascata. Quando a lente é elegível, o DY e o DY efetivo da saída vêm das entradas do Informe. O caminho por publicação mantém o DY selecionado por `MotorHistorico._dy_do_informe`. O e2e do F4-A00 passa também com DY ausente na cascata.
+- **Dificuldades:** a sonda do logging em subprocesso falhou durante a coleta da primeira mutação, com módulos de apoio instrumentados.
+- **Como resolvi:** executei o mutmut 3.8 com a configuração do projeto, dois filhos e só o motor FII instrumentado, mantendo a seleção da suíte e copiando `logging_config.py` como apoio. O candidato do golden foi gerado fora do fixture versionado, com o guardião de rede da suíte, e comparado antes de ser aplicado.
+- **Testes:** BUG-4-02, 1 passed e 4 xfailed antes, 7 passed depois, incluindo dois testes de preservação histórica. Regressão, e2e e equivalência em conjunto 15 passed e 1 skipped. Suíte preliminar 5241 passed, 1 skipped, 24 xfailed. Mutmut: 331/371 (89,22%) no módulo e 242/278 (87,05%) na função alterada. Golden atualizado pelo predicado (ii): 32 diferenças nos campos `dy` e `dy_efetivo` de FIIs, zero casos fora do predicado. Novo SHA256 `1103fcadbe3a745d9644c9fb98a9714052d7643132b408bb3f050bc6593d7011`.
+- **Resíduos:** evidências em `outputs/F4-A01/` e cache de mutação em `mutants/`.
+- **Decisões que ficaram para o Marcos:** nenhuma sobre o item.
+- **Para o Marcos revisar:** o DY de saída quando o Informe e a cascata discordam e o predicado aplicado ao golden.

@@ -210,15 +210,6 @@ def test_lentes_da_analise_de_hoje(cascata, borda, ticker):
         assert raw["b3_fundo"]["coleta"] == AGORA.isoformat()
 
 
-class _DefeitoF4A01(AssertionError):
-    """A lente depende do DY da cascata mesmo com Informe válido."""
-
-
-@pytest.mark.xfail(
-    strict=True,
-    raises=_DefeitoF4A01,
-    reason="F4-A01 (achado 1): Dados insuficientes (DY ausente ou inválido)",
-)
 def test_fii_de_hoje_com_informe_valido_e_sem_dy_da_cascata(
     cascata, borda, monkeypatch
 ):
@@ -230,8 +221,5 @@ def test_fii_de_hoje_com_informe_valido_e_sem_dy_da_cascata(
     monkeypatch.setattr(market_engine.yf, "Ticker", TickerSemDY)
     raw = cascata.analisar("HGLG11", as_of=AGORA, use_ai=False).raw
     lente = raw["lentes"]["Rendimento do FII"]
-    if lente["abstencao"] == "Dados insuficientes (DY ausente ou inválido)":
-        assert lente["valor"] is None
-        raise _DefeitoF4A01(lente["abstencao"])
     assert lente["abstencao"] is None
     assert lente["valor"] == pytest.approx(RENDIMENTO, rel=TOLERANCIA)
