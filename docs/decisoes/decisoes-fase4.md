@@ -159,3 +159,9 @@ ativou a fila. Prevalece sobre o texto acima onde diverge.
 4. **Assuntos do bloco 2, sem item agora:** linha de base de medição de tokens; saída de testes em
    duas camadas; `CLAUDE.md` e `AGENTS.md` enxutos, com regras por pasta; mutação só no diff
    (mutmut 3.8); piloto de sessão nova por item (`claude -p`).
+
+**Exceções autorizadas pelo Marcos em 24/11/2026.** O F4-A00a pode editar em `config.py`
+somente o bloco de `logging.basicConfig` e vizinhos (linhas 15 a 22 na ativação). O F4-A11
+pode editar `database.py` somente para validar `adicionar_posicao` e tratar erros SQLite em
+`remover_posicao`, sem alterar esquema nem dados. O Marcos registrou as duas exceções em
+"Fase atual" no `AGENTS.md`; a alteração dele entra no commit do F4-A00a.

@@ -8,18 +8,12 @@ from zoneinfo import ZoneInfo
 import requests
 from dotenv import load_dotenv
 
+from logging_config import configurar_logging
 from sentinela.data import taxas as _taxas
 
 load_dotenv()
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("sentinela.log", encoding='utf-8'),
-        logging.StreamHandler()
-    ]
-)
+configurar_logging()
 logger = logging.getLogger("Config")
 
 # ==========================================

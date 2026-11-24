@@ -33,7 +33,10 @@ Exceções autorizadas pelo Marcos (decisões de 23/11/2026):
   passagem, auditorias, protocolo quando o item pedir).
 - `sentinela/methods/**`: só em item cuja ficha esteja aprovada pelo Marcos
   antes do código.
-- `logging_config` e permissões de leitura do log: item F4-A00a.
+- `config.py`: também o bloco de configuração do logging
+  (`logging.basicConfig` e vizinhos), só no item F4-A00a.
+- `database.py`: só no item F4-A11 (validação de `adicionar_posicao` e erros
+  SQLite em `remover_posicao`), sem mudar esquema nem dados.
 
 ## Regra fundamental: especificação externa
 
