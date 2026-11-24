@@ -1,42 +1,83 @@
 # Sentinela B3
 
-Plataforma educacional e local para estudar ações e FIIs da B3 com dados oficiais. **Não é recomendação de investimento.**
+[![CI](https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3/actions/workflows/ci.yml/badge.svg)](https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3/actions/workflows/ci.yml)
+![Python 3.13](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-local--first-003B57?logo=sqlite&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-interface-FF4B4B?logo=streamlit&logoColor=white)
+![Testes](https://img.shields.io/badge/testes-mais%20de%205.000%20testes-2ea44f)
 
-**Status: V2 em desenvolvimento ativo — Fase 3 de 8 concluída na branch de desenvolvimento, em revisão antes do merge.** A interface disponível hoje usa Streamlit; a interface FastAPI + HTMX está planejada para a Fase 7.
+Plataforma local para estudar **ações e FIIs da B3** com **dados oficiais**, métodos de valuation documentados e análise **em datas passadas**, com corte pelas informações disponíveis na data.
 
-## Da V1 para a V2
+> **Projeto educacional para estudo de ativos.**
 
-A V1 reuniu coleta de dados, análise de ativos, indicadores, gráficos e armazenamento local numa aplicação Streamlit. Ela tornou o projeto utilizável e deu uma base para medir a evolução. A V2 preserva esse uso local enquanto refaz a origem dos dados, os contratos dos métodos e a forma de apresentar resultados.
+## Em 30 segundos
 
-As lentes agora aparecem **separadas**: cada uma mostra seu valor e premissas, ou um motivo explícito para se abster. Não há score nem valor único agregado. A V2 usa documentos e séries da **CVM, B3, BCB, IBGE e Tesouro**; registra a versão e a data em que a informação estava disponível; e permite estudar uma data passada pelo caminho ponto no tempo. Regressões, um golden de comportamento e testes de mutação ajudam a detectar mudanças acidentais. A [metodologia](docs/metodologia/README.md) registra o que cada lente calcula e onde se abstém.
+- **Dados oficiais:** demonstrações e cadastro da **CVM**, cotações e proventos da **B3**, séries do **BCB**, **IBGE** e **Tesouro Direto**.
+- **Seis lentes de valuation separadas.** Cada uma mostra o valor, as premissas e a distância ao preço, ou diz por que se absteve. As lentes são exibidas individualmente, sem pontuação agregada.
+- **Ponto no tempo:** `analisar(ticker, as_of)` responde com o que se sabia naquela data, pela data de publicação de cada documento.
+- **Backtest ponto no tempo** com retorno total e um universo que inclui empresas deslistadas.
+- **Mais de 5.000 testes**, regressões registradas, golden de comportamento e teste de mutação.
 
-## O que a V2 já entregou
+## O que ele calcula
 
-| Fase | Entrega verificada | Registro |
+| Lente | Ideia | Insumos principais |
 |---|---|---|
-| **1 · Fundação** | Tipos de unidade, contrato e registro dos métodos; fórmulas extraídas dos motores da V1. O golden de extração comparou **2.247 casos**. | [Resumo da Fase 1](docs/loop/historico/fase-1/pr-fase-1.md) |
-| **2A · Dados corretos** | Referência oficial de ticker, emissor e classe; demonstrações CVM, números por ação, série de **cinco exercícios** e TTM, proveniência e liquidez pelo COTAHIST. | [Resumo da Fase 2A](docs/loop/historico/fase-2a/pr-fase-2a.md) |
-| **2B · Taxa e escopo** | Taxa real, lentes de Gordon, Bazin, FII e bancos com insumos documentados; regras de escopo pelo modelo das demonstrações e liquidez mínima. | [Resumo da Fase 2B](docs/loop/historico/fase-2b/pr-fase-2b.md) |
-| **2C · Qualidade e apresentação** | Graham e Lynch revistos; lentes independentes com abstenção e distância ao preço; quadro descritivo de qualidade de **cinco exercícios**, sem nota única. | [Resumo da Fase 2C](docs/loop/historico/fase-2c/pr-fase-2c.md) |
-| **3 · Tempo como entrada** | A data vira entrada: `analisar(ticker, as_of)` numa data passada lê só o banco único, com DFP, FCA, Informe de FII, COTAHIST, proventos da B3 e séries macro carregados ponto no tempo; a disponibilidade é a data de publicação. Universo histórico com deslistadas e backtest ponto no tempo com retorno total, relatório por lente, data e motivo de abstenção, e banda neutra só como proposta. A sonda final, refeita no checkpoint em oito datas de 2018 a 2025, mediu a cobertura por lente, ano e horizonte: Gordon com valor em até 44 ações por data, Bazin em até 20, Graham só em 2025 (43), Lynch em 1 ação só em 2025, Bancos em até 3 bancos por data só de 2023 a 2025, e a lente do FII sem número em nenhuma data (o complemento da B3 do fundo é fonte só corrente e fica desligado no histórico, então a continuidade dos eventos de cota não se demonstra), com o retorno total do FII também sem ligação. Contra a sonda anterior, nenhum retorno perdido e 1.085 recuperados nos três horizontes (440 em 12 meses, 355 em 24 e 290 em 36). Limitações declaradas, com destino na Fase 4: no Informe de FII, arquivo vigente vazio ou malformado deixa recuar ao ano anterior; na CVM, período cuja versão vigente em D está no índice sem números nos arquivos abertos (reapresentada depois de D ou retida por conflito de carga) recua em silêncio ao período anterior, e a versão ainda é a maior entregue antes de D, não a última entrega; e a lente do FII sem prova de ponta a ponta. | [Resumo da Fase 3](docs/loop/historico/fase-3/pr-fase-3.md) |
+| **Graham** | √(22,5 × LPA médio × VPA) | Cinco exercícios contíguos da CVM, LPA corrigido pelo IPCA |
+| **Bazin** | Proventos de 12 meses ÷ 6% | Proventos brutos da B3. Perfil de renda, com DY bruto confiável de pelo menos 5% |
+| **Lynch** | LPA × crescimento em pontos percentuais | Crescimento anual composto do LPA em quatro intervalos entre cinco exercícios, com teto de 25% |
+| **Gordon** | Dividendo descontado a taxa real | Proventos dos controladores na DVA, custo de capital pela taxa real da cesta de NTN-B mais 5 pontos percentuais e crescimento real limitado pela projeção do PIB real |
+| **FII (tijolo)** | Rendimento ÷ taxa exigida | Rendimentos do Informe Mensal da CVM e taxa real da NTN-B mais o spread calibrado e fixado na ficha |
+| **Bancos** | P/VP justificado | ROE real, crescimento e custo de capital reais, VPA da CVM |
 
-Na branch de desenvolvimento, o gate do checkpoint de **20/11/2026** registrou **5.210 testes passando, 1 ignorado e 24 falhas esperadas estritas**, todas limitações declaradas da Fase 3. Esse número descreve a branch naquele ponto, não a `main` publicada. Bugs confirmados e seus destinos ficam no [registro de regressões](tests/regressao/README.md).
+Além das lentes:
 
-## Próximos passos
+- **Qualidade:** quadro descritivo de cinco exercícios (ROE, lucro, margem, alavancagem, proventos), sem nota única.
+- **Liquidez:** presença e volume nos últimos 63 pregões, pelo COTAHIST.
+- **Contexto técnico:** RSI, MACD, Bollinger e médias móveis, que nunca entram no valor.
+- **Explicação por IA, opcional:** Groq, Gemini ou Ollama local.
 
-| Fase | Direção prevista |
-|---|---|
-| **4** | Primeiro, as limitações herdadas da Fase 3; depois, operação diária por CLI, fechamento, rastreabilidade, backup e descrição de risco da carteira, sem alocação sugerida. A fila está em [proposta](docs/loop/fila-fase4-proposta.md), sem efeito até a aprovação. |
-| **5** | Fatos relevantes e estudo de evento para medir se notícias acrescentam informação. |
-| **6** | Vitrine técnica: documentação consolidada, página de metodologia e limpeza do núcleo. |
-| **7** | Interface FastAPI + HTMX com paridade funcional com a V1. |
-| **8** | IA nas telas para explicar premissas e limitações; expansão de notícias condicionada ao estudo da Fase 5. |
+Cada lente tem uma [ficha metodológica](docs/metodologia/README.md) com fórmula, insumos, hipóteses, exemplo calculado à mão e sensibilidade.
 
-O [plano da V2](docs/PLANO.md) descreve dependências e critérios. A fila ativa define a execução; as fases futuras ainda não são entregas.
+## Decisões de projeto
 
-## Instalar e rodar localmente
+- **Abstenção explícita.** Quando falta um insumo, a lente mostra o motivo da abstenção.
+- **Taxa real nas lentes de desconto.** O desconto usa a taxa real da cesta de NTN-B, e o crescimento fica no mesmo regime.
+- **Corte histórico pela disponibilidade.** A data de publicação orienta o corte quando está demonstrada. O resumo da Fase 3 documenta as fontes cobertas e os casos em que a falta de números da versão vigente ainda pode levar ao uso de um período anterior.
+- **Métodos isolados.** As fórmulas trabalham com os insumos recebidos. Testes verificam o isolamento de rede, banco, relógio e leitura de arquivos.
 
-Requer **Python 3.13**. No Linux ou WSL2:
+## Como funciona
+
+```mermaid
+flowchart LR
+    A["Fontes oficiais<br/>CVM · B3 · BCB · IBGE · Tesouro"] --> B["Ingestão com proveniência<br/>data de publicação e versão"]
+    B --> C[("SQLite único<br/>com migrações")]
+    C --> D["analisar(ticker, as_of)"]
+    D --> E["Lentes independentes<br/>valor ou abstenção"]
+    E --> F["Interface Streamlit"]
+    D --> G["Backtest ponto no tempo"]
+```
+
+Na análise de hoje, o preço prioriza o último fechamento disponível no histórico do yfinance. Se ele faltar, usa a cotação informada pelo yfinance ou, na falta de preço válido, pela brapi. Na análise histórica, o fechamento vem do COTAHIST armazenado no banco local.
+
+A cobertura histórica ainda é parcial. Na sonda da Fase 3, Graham e Lynch só tiveram valor nas observações de 2025 e a lente de rendimento do FII ficou sem valor em todo o recorte. O bloco 1 da Fase 4 amplia os dados históricos. O [resumo da Fase 3](docs/loop/historico/fase-3/pr-fase-3.md) traz os números de cobertura e as limitações.
+
+## Status
+
+**V2 em desenvolvimento ativo.** A Fase 3 foi concluída em 20/11/2026 (tag `v2-fase-3`). A Fase 4 está em andamento.
+
+| Fase | Entrega | Resumo |
+|---|---|---|
+| 1 · Fundação | Tipos de unidade, contrato dos métodos e golden de extração | [Fase 1](docs/loop/historico/fase-1/pr-fase-1.md) |
+| 2A · Dados corretos | Índice oficial de tickers, demonstrações da CVM, cinco exercícios, TTM e liquidez | [Fase 2A](docs/loop/historico/fase-2a/pr-fase-2a.md) |
+| 2B · Taxa e escopo | Taxa real, lentes de Gordon, Bazin, FII e bancos, regras de escopo | [Fase 2B](docs/loop/historico/fase-2b/pr-fase-2b.md) |
+| 2C · Qualidade e apresentação | Graham e Lynch revistos, lentes separadas, quadro de qualidade | [Fase 2C](docs/loop/historico/fase-2c/pr-fase-2c.md) |
+| 3 · Tempo como entrada | Análise ponto no tempo, banco único, universo com deslistadas e backtest | [Fase 3](docs/loop/historico/fase-3/pr-fase-3.md) |
+
+Os próximos passos incluem as correções da análise atual, a ampliação dos dados históricos no bloco 1 da Fase 4 e um modo offline. O plano também prevê operação diária pela linha de comando com rastreabilidade e backup, estudo de eventos com fatos relevantes da CVM, uma interface em FastAPI + HTMX e explicações por IA nas telas condicionadas ao resultado do estudo. O [plano da V2](docs/PLANO.md) traz critérios e dependências, e o resumo de cada fase lista as limitações conhecidas.
+
+## Rodar localmente
+
+Requer **Python 3.13**. No Linux ou no WSL2:
 
 ```bash
 git clone https://github.com/Marcos-Felipe-dos-Santos/Sentinela-B3.git
@@ -47,9 +88,9 @@ python -m pip install -r requirements.txt
 streamlit run app.py
 ```
 
-A interface local abre em `http://localhost:8501`. O arquivo [`.env.example`](.env.example) documenta integrações opcionais; configure apenas as que usar e mantenha credenciais fora do Git. A aplicação depende da disponibilidade das fontes para coletar dados novos. A interface usa Streamlit enquanto a migração da Fase 7 não acontece.
+A interface abre em `http://localhost:8501`. O [`.env.example`](.env.example) lista as integrações opcionais. Configure só as que for usar e mantenha as chaves fora do Git.
 
-## Desenvolvimento e testes
+## Qualidade e testes
 
 ```bash
 python -m pip install -r requirements-dev.txt
@@ -57,8 +98,24 @@ python -m pytest tests/ --tb=short -rxX
 ruff check --select E9,F63,F7,F82 .
 ```
 
-O [CI](.github/workflows/ci.yml) roda pytest e Ruff. Cada correção de bug confirmado começa com uma [regressão](tests/regressao/README.md) que falha antes e passa depois; bugs abertos ficam em `xfail` estrito. O [golden](tests/fixtures/golden_motores.jsonl) detecta alterações de comportamento no conjunto de casos protegido (os motores rodam com uma data de análise fixa sobre entradas sintéticas; o caminho histórico é coberto por testes próprios), e as [regras de contribuição](AGENTS.md) exigem mutação de pelo menos **80%** nos módulos alvo dos itens de teste. A [auditoria cruzada](docs/loop/auditoria-externa.md) usa uma família de modelo diferente da do executor.
+- A suíte tem **mais de 5.000 testes**. As falhas esperadas documentam limitações conhecidas.
+- **Regressões:** todo bug confirmado vira um teste que falha antes da correção e passa depois ([registro](tests/regressao/README.md)).
+- **Golden:** um conjunto protegido de casos detecta mudança acidental de comportamento.
+- **Mutação:** pelo menos 80% nos módulos de cálculo tocados.
+- Nos testes Python, a suíte intercepta `socket.connect` e falha em tentativas de conexão que não usam sockets Unix locais.
+- **[CI](.github/workflows/ci.yml)** com pytest e Ruff a cada push.
 
-Consulte a [fila e o diário](docs/loop/), o [histórico das fases](docs/loop/historico/), os [ADRs](docs/adr/) e as [fichas metodológicas](docs/metodologia/) para critérios, decisões e limites de cada entrega.
+## Como é desenvolvido
+
+Claude Code e Codex executam o trabalho com regras explícitas.
+
+- A fila tem critérios de aceite verificáveis, um commit por item e diário de execução.
+- O diff passa por revisão antes de cada commit.
+- Claude, Codex e Gemini participam da auditoria cruzada. O auditor pertence a uma família diferente da do executor.
+- A ficha metodológica precisa de aprovação antes da implementação da fórmula.
+
+O processo está documentado em [`docs/loop/`](docs/loop/), e as decisões de arquitetura em [`docs/adr/`](docs/adr/).
+
+---
 
 Desenvolvido por **Marcos Felipe dos Santos**.
