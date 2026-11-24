@@ -105,3 +105,14 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Resíduos:** evidências em `outputs/F4-A05/` e cache de mutação em `mutants/`.
 - **Decisões que ficaram para o Marcos:** ratificação da decisão delegada no checkpoint.
 - **Para o Marcos revisar:** descarte da unit alheia e preservação da abstenção para evento próprio sem espécie.
+
+### F4-A06 — fix: filter unproven dividends and events by the ticker's species in backtest returns
+- **Executor:** codex (GPT-6)
+- **Status:** sucesso
+- **O que foi feito:** o retorno de um ticker com identidade demonstrada ignora pendências de proventos de outra espécie e pendências de eventos de outro ISIN. Permanecem as abstenções por pendência do próprio papel, informação ausente ou impossível de comparar e os cortes de horizonte existentes.
+- **Dificuldades:** havia três ramos que podiam abster antes da conferência de identidade: provento sem prova, evento sem prova e evento sem data ex.
+- **Como resolvi:** apliquei o filtro de identidade aos três ramos e preservei os motivos que já descreviam cada abstenção. Na revisão 1, mantive também a abstenção quando a espécie ou o ISIN chegam com espaços nas extremidades ou em branco.
+- **Testes:** BUG-4-07, 12 passed e 3 xfailed estritos antes → 15 passed. Revisão 1: seis casos novos de espaços em xfail estrito antes → 21 passaram no BUG-4-07. Retornos e regressões focadas, 91 passed. Suíte preliminar 5296 passed, 1 skipped, 24 xfailed. Golden `1103fcadbe3a745d…` intacto. Mutmut 2087/2180 (95,73%) no módulo e 479/494 (96,96%) em `_retornos`.
+- **Resíduos:** evidências em `outputs/F4-A06/` e cache de mutação em `mutants/`.
+- **Decisões que ficaram para o Marcos:** nenhuma sobre o item.
+- **Para o Marcos revisar:** os controles de ITUB3 para pendências da PN, da ON e de identidade ausente.

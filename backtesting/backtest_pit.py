@@ -611,6 +611,12 @@ class BacktestPIT:
                             break
                         proventos.append({"data_ex": ex, "valor": valor / cotado})
                 for item in relacao.get("sem_prova", []):
+                    especie_declarada = str(item.get("especie") or "").strip()
+                    if especie_esperada is not None and especie_declarada not in (
+                        "",
+                        especie_esperada,
+                    ):
+                        continue
                     data_com = item.get("data_com")
                     try:
                         data_com = date.fromisoformat(data_com) if data_com else None
@@ -627,6 +633,9 @@ class BacktestPIT:
             )
             eventos, motivo_evento = [], None
             for evento in eventos_lidos["sem_prova"]:
+                isin_declarado = str(evento.get("isin") or "").strip()
+                if isin is not None and isin_declarado not in ("", isin):
+                    continue
                 try:
                     data_com = date.fromisoformat(evento["data_com"])
                 except (KeyError, TypeError, ValueError):
@@ -637,6 +646,9 @@ class BacktestPIT:
             for evento in eventos_lidos["eventos"]:
                 ex = evento.get("data_ex")
                 if ex is None:
+                    isin_declarado = str(evento.get("isin") or "").strip()
+                    if isin is not None and isin_declarado not in ("", isin):
+                        continue
                     try:
                         data_com = date.fromisoformat(evento["data_com"])
                     except (KeyError, TypeError, ValueError):
