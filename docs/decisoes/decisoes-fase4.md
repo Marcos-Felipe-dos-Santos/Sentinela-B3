@@ -93,7 +93,48 @@ Prevalece sobre o texto acima onde diverge.
   (AESB3, CESP6, ENBR3, JBSS3, OIBR3); vira item do bloco 1. A companhia sem relação na B3 vira
   limitação declarada.
 - **A4 · Caminhos locais.** O levantamento (`docs/decisoes/levantamento-dados-f4.md`) foi editado só
-  para trocar os links locais do autor por caminhos relativos ao repositório; nenhum arquivo
-  versionado guarda caminho local da máquina do Marcos.
+  para trocar os links locais do autor por caminhos relativos ao repositório. A afirmação original
+  de que nenhum arquivo versionado guardava caminho local estava errada (o grep cobria só a home
+  do WSL, não o perfil do Windows): os restantes saem no F4-A20 (adendo 2, item 7).
 - **A5 · `BRAPI_TOKEN`.** O `.env.example` tem a linha (conferido pelo Marcos); a frase de que ela
   falta sai do `AGENTS.md` e do `CLAUDE.md` no item de documentação do bloco 0.
+
+## Adendo 2 de 23/11/2026 — decisões do Marcos sobre a auditoria DOCUMENTO do Codex
+
+Sobre `docs/loop/auditorias/documento-fase4-codex.md` (rodada 1, "ajustar antes de ativar").
+Prevalece sobre o texto acima onde diverge.
+
+1. **Ativação só dos blocos 0 e 1.** O bloco 2 vira uma lista de assuntos; a proposta detalhada
+   dele, com aceites e arquivos, é escrita e auditada (DOCUMENTO) no checkpoint do bloco 1.
+   **Desvio do ciclo:** a ativação acontece no próprio `v2/fase-4`, sem nova volta pela `main`
+   (o ciclo de fase, etapas 2 e 3, previa corrigir a proposta na `main` e criar o branch depois).
+2. **Permissões.** A "Fase atual" do `AGENTS.md` é do Marcos e será atualizada por ele na ativação,
+   liberando para os blocos 0 e 1: `fii_engine.py` (F4-A01, A07, A07b), `config.py` só em
+   `get_taxa_real` (F4-A04), `docs/loop/**` para a operação da fila e `sentinela/methods/**` só com
+   ficha aprovada. O F4-A15 não toca na "Fase atual". O F4-D15 vem sempre antes do F4-D16,
+   inclusive na regra de prazo.
+3. **Ficha antes do código**, cada uma com auditoria FICHA e `[DECISÃO]` do Marcos: F4-A07b (ficha
+   FII com o P/VP só descritivo, aprovada junto da 1.4); F4-D12 (Graham e Lynch com o FRE, com a
+   regra de escala pelo LPA da DRE); F4-D14 (BPP/DRE individual, com o critério que distingue prova
+   de ausência de controladas de falta de evidência no BPA); L3 (aceites apontando para a regra
+   escrita de identidade e para a ficha de Bazin/retorno, sem repetir a regra no motor).
+4. **Decisão 53, complemento.** O aceite geral do L3 fixa o código CVM do ativo no índice na data,
+   preserva as condições não alteradas da decisão 33 e protege contra raiz reciclada (BUG-3-60).
+   F4-D04 ganha o retorno de referência pela composição da unit e o caso de código CVM divergente;
+   F4-D10 explicita a guarda por código CVM e o corte pelo anúncio; F4-D11 ganha o caso negativo de
+   código CVM diferente e a coleta sob a raiz nova. **Exceção ao teste vermelho:** no F4-D07 e no
+   F4-D08, se a causa já estiver resolvida por item anterior, o teste pode nascer verde e fica como
+   regressão, com o registro no diário.
+5. **Correções do achado 5 do Codex, aceitas por inteiro,** mais: F4-A03 com evento próprio
+   aprovado em D ou depois; F4-A09/A10 com o cenário do IF.data/Bancos; F4-A11 com booleano e erro
+   SQLite (ou adiamento registrado); F4-A12 com teste no texto e no JSON; F4-A19 com proventos no
+   plano e, no checkpoint do bloco 0, a criação de um item de regeneração ou a lacuna declarada.
+6. **Pacote de decisões só dos blocos 0 e 1,** com opções, recomendação e padrão provisório: a
+   regeneração da Qualidade no golden (padrão: só o plano no F4-A19; decide no checkpoint do bloco 0)
+   e os parâmetros do L2 (vão na ficha 1.4).
+7. **Caminhos pessoais:** item novo no bloco 0 (F4-A20) que remove os caminhos do Windows/WSL do
+   autor de todos os arquivos versionados; em `scripts/auditar.py`, o destino vira configurável
+   (variável de ambiente com padrão em `outputs/`). Aceite: o grep não acha a pasta do WSL, a home
+   nem o perfil do Windows do autor nos arquivos versionados.
+8. **R2:** os achados da auditoria do último bloco vão para a fila da fase seguinte; o F4-9
+   (arquivamento) fica dentro do bloco 2, que será detalhado depois.
