@@ -162,3 +162,29 @@ def test_sem_isins_do_emissor_demonstrados_abstem(isins):
     assert fatores_da_relacao(d, documentos(), AS_OF_SINTETICO) == {
         "abstencao": "ISINs do emissor não demonstrados para os eventos em ações"
     }
+
+
+@pytest.mark.parametrize("isin_alheio", ["BRTAEECDAM10", "BRTSTAACNPZ7"])
+def test_evento_alheio_com_isin_legivel_e_especie_sem_mapa_nao_abstem(
+    isin_alheio: str,
+) -> None:
+    # CDAM de unit e código sintético ACNPZ com dígito correto (ISO 6166).
+    proprio = _desdobramento("BRTESTACNOR0")
+    alheio = _desdobramento(isin_alheio)
+    entrada = dados_sinteticos([alheio, proprio])
+
+    resultado = fatores_da_relacao(entrada, documentos(), AS_OF_SINTETICO)
+
+    assert resultado.get("fatores") == FATORES, resultado
+    (par,) = [e for e in resultado["evidencias"] if e["eventos"]]
+    assert [e["isinCode"] for e in par["eventos"]] == ["BRTESTACNOR0"]
+
+
+def test_evento_proprio_com_isin_legivel_e_especie_sem_mapa_abstem() -> None:
+    isin_proprio = "BRTSTAACNPZ7"
+    entrada = dados_sinteticos([_desdobramento(isin_proprio)])
+    entrada["proventos_b3"]["isins_emissor"] = [isin_proprio]
+
+    assert fatores_da_relacao(entrada, documentos(), AS_OF_SINTETICO) == {
+        "abstencao": "espécie do evento em ações não demonstrada"
+    }

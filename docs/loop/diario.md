@@ -94,3 +94,14 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Resíduos:** evidências em `outputs/F4-A04/` e cache de mutação em `mutants/`.
 - **Decisões que ficaram para o Marcos:** ratificação da decisão delegada no checkpoint.
 - **Para o Marcos revisar:** origem da taxa numa nova leitura histórica após carga.
+
+### F4-A05 — fix: discard other issuers' events before checking their species
+- **Executor:** codex (GPT-6)
+- **Status:** sucesso
+- **O que foi feito:** um ISIN legível ausente do conjunto do emissor permite descartar o evento antes da data com e da conversão de espécie. O evento próprio ainda precisa ter espécie demonstrada. O caso de ISIN ilegível continua conservador, com o tratamento legado preservado.
+- **Dificuldades:** o BUG-3-60 protegido tem um código de 12 caracteres sem dígito verificador correto. O comprimento sozinho o confundiria com um ISIN legível.
+- **Como resolvi:** decisão delegada DD-95: legibilidade do ISIN para descarte antecipado → exigir a estrutura e o dígito verificador da ISO 6166, mais ausência no conjunto do próprio emissor (classe 3, desempates 1 e 5; alternativas: aceitar só comprimento, ou exigir espécie mapeada antes do descarte). Fonte: diretrizes ISO 6166 da ANNA, https://anna-web.org/identifiers/. Revisão cruzada pendente.
+- **Testes:** BUG-4-06, 14 passed e 2 xfailed estritos antes → 16 passed no arquivo protegido, com adição exclusiva dos novos casos. Teste focado dos fatores e regressões, 116 passed. Suíte preliminar 5275 passed, 1 skipped, 24 xfailed. Golden `1103fcadbe3a745d…` intacto. Mutmut 530/570 (92,98%) no módulo, 124/147 em `_fator_do_par` e 38/39 em `_isin_legivel`.
+- **Resíduos:** evidências em `outputs/F4-A05/` e cache de mutação em `mutants/`.
+- **Decisões que ficaram para o Marcos:** ratificação da decisão delegada no checkpoint.
+- **Para o Marcos revisar:** descarte da unit alheia e preservação da abstenção para evento próprio sem espécie.

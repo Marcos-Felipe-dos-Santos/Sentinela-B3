@@ -19,6 +19,7 @@ Não coleta fontes, não lê relógio e não transforma falta de evento em fator
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Mapping, Sequence
 from datetime import date, datetime
 from itertools import pairwise
@@ -81,6 +82,18 @@ def _isins_do_emissor(relacao: Mapping) -> frozenset[str]:
     return frozenset(isins)
 
 
+def _isin_legivel(isin: str) -> bool:
+    """Confere a estrutura e o dígito verificador do ISIN (ISO 6166)."""
+    if re.fullmatch(r"[A-Z]{2}[A-Z0-9]{9}[0-9]", isin) is None:
+        return False
+    digitos = "".join(str(int(caractere, 36)) for caractere in isin)
+    total = 0
+    for posicao, digito in enumerate(reversed(digitos)):
+        produto = int(digito) * (1 + posicao % 2)
+        total += produto // 10 + produto % 10
+    return total % 10 == 0
+
+
 def _fator_do_par(
     eventos: Sequence,
     componentes: Mapping,
@@ -95,12 +108,15 @@ def _fator_do_par(
     evidencia = []
     for bruto in eventos:
         evento = _mapa(bruto, "evento em ações")
+        isin = evento.get("isinCode")
+        if isinstance(isin, str) and isin not in isins and _isin_legivel(isin):
+            continue
         data_com = pb.ler_data(evento.get("lastDatePrior"))
         if data_com is None:
             raise ValueError("data com do evento em ações inválida")
         if data_com < inicio or data_com > fim:
             continue
-        isin, emitido = evento.get("isinCode"), evento.get("assetIssued")
+        emitido = evento.get("assetIssued")
         if not isinstance(isin, str) or not isinstance(emitido, str):
             raise TypeError("espécie do evento em ações não demonstrada")
         classe = pb.ESPECIE_DO_ISIN.get(isin[6:11])
@@ -114,8 +130,8 @@ def _fator_do_par(
         ):
             continue
         if isin not in isins:
-            # a raiz pode ser de outro emissor (decisão 51): o evento dele é descartado; o sem
-            # ISIN atribuível já abstém acima (C3-03b)
+            # Mantém o descarte legado quando a série reconhece a espécie do código.
+            # Códigos sem espécie e sem ISIN demonstrado já abstêm acima (C3-03b).
             continue
         if data_com in (inicio, fim):
             raise ValueError(
