@@ -175,3 +175,11 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Resíduos:** evidências em `outputs/F4-A10/` e cache de mutação em `mutants/`.
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** os nomes dos rótulos (`as_of_analise` e `baixado_em`) e a subclasse só de leitura.
+
+### F4-A08 (ressalva) — test: complete the delivery index in the negative annual-period fixtures
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** decisão 1 do Marcos de 25/11. Os três casos negativos de `test_exercicio_anual_e_periodo_completo_encerrado` (`tests/test_cvm_fronteiras_2c.py`) recebem no índice de entregas a mesma linha dos positivos, com `DT_RECEB` 2026-06-15, anterior ao corte de 26/10/2026. As asserções não mudam. Desde o F4-A08 eles passavam por falta de entrega e não pela regra de período que testam.
+- **Testes:** 5 passed nos casos parametrizados. Mutação manual em `cvm_provider.exercicio_anual_mais_recente` (`outputs/F4-A08/mutacao-manual-negativos.txt`): sem `fim > referencia`, falha o caso 2026-01-01..2026-12-31; sem `_meses(inicio, fim) != 12`, falham 2026-01-01..2026-09-30 e 2025-03-02..2026-02-28; sem a regra inteira, falham os três. Código de produção intocado.
+- **Resíduos:** evidência em `outputs/F4-A08/`.
+- **Decisões que ficaram para o Marcos:** nenhuma. A ressalva do F4-A08 em `docs/loop/pendencias.md` está fechada.
