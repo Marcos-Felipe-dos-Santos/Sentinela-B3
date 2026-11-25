@@ -221,3 +221,10 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Testes:** suíte com 5339 passed, 1 skipped, 24 xfailed, igual ao HEAD. Mutação (`mutants/` apagado antes; `outputs/F4-A11b/mutacao.txt`): `isin_legivel` 38/39. O sobrevivente (`total -=` em vez de `+=`) é equivalente, porque a soma negada também é múltipla de 10 nos mesmos casos.
 - **Resíduos:** evidências em `outputs/F4-A11b/` e cache de mutação em `mutants/`.
 - **Decisões que ficaram para o Marcos:** nenhuma.
+
+### F4-A11c — fix: require a valid ISIN check digit before discarding a dividend-boundary event as foreign
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** [!] — parada da política §3 (teste protegido)
+- **O que foi feito:** a correção foi tentada no diretório de trabalho e revertida: `if isins and isin not in isins and isin_legivel(isin)`, no lugar do teste de 12 caracteres, em `proventos_b3._evento_de_acoes_na_janela`. A suíte deu 1 failed e 5338 passed. Só falha `tests/regressao/test_bug_4_04_corte_e_emissor_da_janela_b3.py::test_evento_de_outro_emissor_da_mesma_especie_fica_fora`.
+- **Dificuldades:** o ISIN "de outro emissor" da fixture, `BRALHEACNOR0`, tem dígito verificador inválido. Pela regra pedida ele é ilegível, e o evento conserva a abstenção em vez de ser descartado. Manter o teste exige trocar o literal por `BRALHEACNOR9`, o único dígito válido, com a asserção igual. O arquivo é regressão protegida.
+- **Decisões que ficaram para o Marcos:** autorizar a troca desse literal na BUG-4-04, como no precedente do F4-A08. Com a autorização, o item segue: regressão xfail estrita (ISIN alheio de 12 caracteres com dígito inválido conserva a abstenção), correção, mutação e commit. Patch da tentativa em `outputs/F4-A11c/correcao-tentativa.patch`.
