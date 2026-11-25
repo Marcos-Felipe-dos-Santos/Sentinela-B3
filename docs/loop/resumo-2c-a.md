@@ -118,7 +118,7 @@ São nove escolhas/ratificações operacionais, não nove novas regras econômic
 
 ## Auditoria Claude do primeiro lote e destino F2C-10
 
-Relatório fornecido pelo Marcos: `C:\Users\marcos\Downloads\auditoria-2c-a-lote1-claude-relatorio.md`, lido pelo caminho WSL equivalente. Cobriu de8ef7402 a ca295a7, 31commits; veredito permite seguir e não substitui a auditoria final destes últimos itens ou a auditoria FICHA. Não se atribui a ele aprovação do7/8/9 ou de fichas futuras.
+Relatório fornecido pelo Marcos: `<Downloads do Windows>/auditoria-2c-a-lote1-claude-relatorio.md`, lido pelo caminho WSL equivalente. Cobriu de8ef7402 a ca295a7, 31commits; veredito permite seguir e não substitui a auditoria final destes últimos itens ou a auditoria FICHA. Não se atribui a ele aprovação do7/8/9 ou de fichas futuras.
 
 **Ressalva com destino explícito F2C-10:** evidências FNET de BTCI11/TRPL11 guardam páginas inteiras em base64, incluindo scripts de telemetria não executados pelo consumidor. Na limpeza futura, guardar só o trecho necessário das evidências oficiais, mantendo **o hash da página original** como proveniência; vincular o trecho ao documento/fundo/campos e preservar integridade verificável, sem trocar o hash original pelo do fragmento. Atualizar os leitores/testes de evidência no próprio item, sem perder a verificação cadastral. Nenhuma evidência é removida neste resumo.
 

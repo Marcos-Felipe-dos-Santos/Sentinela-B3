@@ -23,7 +23,7 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Testes:** baseline de ativação 5220 passed, 1 skipped, 24 xfailed. BUG-4-01 reproduzido com xfail estrito em `outputs/F4-A00a/regressao-antes.txt`, seguido de PASS. Gate final 5224 passed, 1 skipped, 24 xfailed, Ruff CI e Ruff completo do gate limpos, golden `500645a3263ad25e…` intacto. Mutmut 56/60, 93,3%, em `outputs/F4-A00a/mutacao-r3.txt`. Busca em produção por `FileHandler` e arquivos `.log` encontrou a configuração rotativa.
 - **Resíduos:** evidências locais em `outputs/F4-A00a/` e cache do mutmut em `mutants/`.
 - **Decisão delegada:** decisão delegada DD-91: aplicação do aceite de log externo ao caminho configurável → resolver o caminho antes de criar a pasta e recusar destino dentro da raiz do repositório (classe 4, desempate 6; alternativas: aceitar o destino informado, que permitiria log no repositório, ou voltar em silêncio ao padrão).
-- **Decisões que ficaram para o Marcos:** nenhuma sobre o item. Para negar a leitura, adicionar em `.claude/settings.json`, dentro de `permissions.deny`, a entrada `"Read(//home/marcos/.local/state/sentinela-b3/**)"`. No Codex gerenciado, adicionar em `requirements.toml` a seção `[permissions.filesystem]` com `deny_read = ["/home/marcos/.local/state/sentinela-b3"]` ou incluir o caminho na lista já existente. Se usar `SENTINELA_LOG_DIR`, aplicar as duas entradas ao diretório absoluto efetivo.
+- **Decisões que ficaram para o Marcos:** nenhuma sobre o item. Para negar a leitura, adicionar em `.claude/settings.json`, dentro de `permissions.deny`, a entrada `"Read(//home/<usuário>/.local/state/sentinela-b3/**)"`. No Codex gerenciado, adicionar em `requirements.toml` a seção `[permissions.filesystem]` com `deny_read = ["/home/<usuário>/.local/state/sentinela-b3"]` ou incluir o caminho na lista já existente. Se usar `SENTINELA_LOG_DIR`, aplicar as duas entradas ao diretório absoluto efetivo.
 - **Para o Marcos revisar:** negação de leitura no perfil que executa cada agente.
 
 ### F4-A00 — test: run today's analysis end to end through the real market engine
@@ -352,3 +352,15 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
   - O documento lista os insumos que faltam (seis números por exercício, identidade e o `calendario_proventos_b3`) e as opções (A) enriquecer o apoio comum, (B) família nova de 12 casos e (C) lacuna declarada.
   - Para a (B), recomendada, traz os casos, os arquivos de uma futura regeneração e o predicado: as 2291 linhas antigas ficam idênticas e só entram as novas.
 - **Decisões que ficaram para o Marcos:** P1, no checkpoint do bloco 0. Sem decisão, vale (c), a lacuna declarada.
+
+### F4-A20 — chore: remove the author's local paths from tracked files
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** adendo 2, item 7.
+  - Os caminhos pessoais do Windows e do WSL do autor viraram descrições genéricas (`<Downloads do Windows>`, `<pasta do usuário no Windows>`, `/home/<usuário>/`) em `docs/decisoes/ressalva-cotahist-fii-2c.md`, `docs/loop/pendencias.md`, `docs/loop/resumo-2c-a.md` e `docs/loop/historico/fase-2b/fila.md`. Nos dois comandos de `docs/loop/workflow-multiagente.md`, viraram `/mnt/c/Users/<usuário>/Downloads`.
+  - O `git grep` também achou `docs/loop/diario.md`, nas entradas de negação de leitura do Claude Code e do Codex, e esse arquivo foi tratado igual. Só o caminho mudou, sem mudar o sentido.
+  - Em `scripts/auditar.py`, a pasta fixa do Windows saiu. O destino é `--saida`; senão, a variável `SENTINELA_AUDITORIA_DESTINO`; senão, `outputs/auditorias/`. A frase sobre o destino em `docs/loop/ciclo-de-fase.md` acompanha.
+  - Para manter a saída no Downloads, o Marcos define `SENTINELA_AUDITORIA_DESTINO=/mnt/c/Users/<usuário>/Downloads`.
+- **Testes:** três casos novos em `tests/test_script_auditar.py`: o padrão, a variável com o `--saida` tendo precedência, e a variável vazia voltando ao padrão. Os 46 do arquivo passam. Ao fim, `git grep -n -I -i -E 'wsl[$]|/home/marco[s]|C:.Users.marco[s]|/mnt/c/Users/marco[s]'` não acha nada nos arquivos versionados. Suíte com 5373 passed, 1 skipped, 24 xfailed.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** definir a variável no ambiente, se quiser a saída no Downloads.

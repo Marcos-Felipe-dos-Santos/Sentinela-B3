@@ -605,3 +605,27 @@ def test_exportacao_recusa_tar_que_sai_da_pasta(monkeypatch, tmp_path):
     with pytest.raises(tarfile.OutsideDestinationError):
         auditar.exportar_arvore("e" * 40, destino)
     assert not (tmp_path / "fora.txt").exists()
+
+
+def test_destino_padrao_e_outputs_auditorias(monkeypatch):
+    """F4-A20: sem `--saida` nem variável, a saída fica em `outputs/auditorias/`."""
+    monkeypatch.delenv("SENTINELA_AUDITORIA_DESTINO", raising=False)
+
+    assert auditar.pasta_saida(SimpleNamespace(saida=None)) == Path(
+        "outputs/auditorias"
+    )
+
+
+def test_destino_pela_variavel_e_saida_explicita_tem_precedencia(monkeypatch, tmp_path):
+    monkeypatch.setenv("SENTINELA_AUDITORIA_DESTINO", str(tmp_path / "destino"))
+
+    assert auditar.pasta_saida(SimpleNamespace(saida=None)) == tmp_path / "destino"
+    assert auditar.pasta_saida(SimpleNamespace(saida="outra")) == Path("outra")
+
+
+def test_variavel_vazia_volta_ao_padrao(monkeypatch):
+    monkeypatch.setenv("SENTINELA_AUDITORIA_DESTINO", "  ")
+
+    assert auditar.pasta_saida(SimpleNamespace(saida=None)) == Path(
+        "outputs/auditorias"
+    )

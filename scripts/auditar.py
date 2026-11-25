@@ -21,12 +21,14 @@ MODO: documento | ficha | fase | fechamento (o fechamento não vai ao Gemini).
   anexar no app do Gemini, que não lê o repositório nem anexos maiores.
 - prompt: só imprime o prompt preenchido.
 
-Saída: /mnt/c/Users/marcos/Downloads, se existir; senão outputs/auditorias/ (fora do git).
+Saída: --saida; senão a pasta da variável de ambiente SENTINELA_AUDITORIA_DESTINO; senão
+outputs/auditorias/ (fora do git).
 Os modelos dos prompts ficam em docs/loop/prompts/. Nada é escrito no repositório fora de outputs/.
 """
 
 import argparse
 import io
+import os
 import re
 import shutil
 import subprocess
@@ -38,7 +40,7 @@ from pathlib import Path
 FASES = ["0", "1", "2a", "2b", "2c", "3", "4", "5", "6", "7", "8"]
 MODOS = ["documento", "ficha", "fase", "fechamento"]
 PROMPTS = Path("docs/loop/prompts")
-SAIDA_WINDOWS = Path("/mnt/c/Users/marcos/Downloads")
+DESTINO_ENV = "SENTINELA_AUDITORIA_DESTINO"
 SAIDA_LOCAL = Path("outputs/auditorias")
 # O app do Gemini cortou anexos de ~450 KB (teste de 14/10/2026).
 MAX_CHARS_POR_PARTE = 350_000
@@ -333,7 +335,8 @@ def validar(a):
 def pasta_saida(a):
     if a.saida:
         return Path(a.saida)
-    return SAIDA_WINDOWS if SAIDA_WINDOWS.is_dir() else SAIDA_LOCAL
+    destino = os.environ.get(DESTINO_ENV, "").strip()
+    return Path(destino) if destino else SAIDA_LOCAL
 
 
 def rotulo(a):
@@ -805,7 +808,7 @@ def main():
         p.add_argument("--foco", help="substitui a 1ª prioridade do prompt")
         p.add_argument(
             "--saida",
-            help="pasta de saída (padrão: Downloads do Windows ou outputs/auditorias)",
+            help=f"pasta de saída (padrão: ${DESTINO_ENV} ou outputs/auditorias)",
         )
         if nome == "prompt":
             p.add_argument(

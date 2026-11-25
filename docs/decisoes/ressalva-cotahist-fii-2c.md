@@ -4,7 +4,7 @@
 
 O fechamento da2B registrou a frase `CVMFIIProvider._preco_cotahist` sem cobertura/idade (`docs/loop/historico/fase-2b/auditoria-externa.md`, linha50). O símbolo não existe em `cvm_fii_provider.py`, nem no histórico desse arquivo: `git log --all -S _preco_cotahist -- cvm_fii_provider.py` não retorna commit. A busca global no código, excluindo mutantes, também não localiza produtor ou leitor. Não se implementa uma proteção para um caminho inexistente.
 
-Foi conferido o pacote de entrada doGemini em `/mnt/c/Users/marcos/Downloads/gemini-fase-2b/parte-04.md`, seção `ARQUIVO: cvm_fii_provider.py` (linha3407 do contêiner,314linhas de fonte). Não contém `_preco_cotahist` ou import COTAHIST nesse arquivo. Nas demais partes, a busca literal também não encontra o símbolo. O pacote é entrada de auditoria, não o parecer completo; não se atribui ao auditor uma explicação que não está disponível. A frase é preservada como origem do levantamento, não como fato técnico confirmado.
+Foi conferido o pacote de entrada doGemini em `<Downloads do Windows>/gemini-fase-2b/parte-04.md`, seção `ARQUIVO: cvm_fii_provider.py` (linha3407 do contêiner,314linhas de fonte). Não contém `_preco_cotahist` ou import COTAHIST nesse arquivo. Nas demais partes, a busca literal também não encontra o símbolo. O pacote é entrada de auditoria, não o parecer completo; não se atribui ao auditor uma explicação que não está disponível. A frase é preservada como origem do levantamento, não como fato técnico confirmado.
 
 ## Caminhos efetivos
 

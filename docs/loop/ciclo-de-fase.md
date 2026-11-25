@@ -18,7 +18,7 @@
 
 ## 2. Etapa por etapa
 
-Nos comandos, `N` é a fase em minúsculas (`2b`, `2c`, `3`...). Todos rodam na raiz do repositório, no WSL, com a venv ativa (`source venv/bin/activate`). O `scripts/auditar.py` preenche os prompts de `docs/loop/prompts/` com a fase, a tag-base e o histórico certos, e grava a saída na pasta Downloads do Windows (ou em `outputs/auditorias/`, se ela não existir). Rodada repetida não sobrescreve: ganha `-2`, `-3`. Para só ver o prompt: `python scripts/auditar.py prompt <modo> --fase N ...`.
+Nos comandos, `N` é a fase em minúsculas (`2b`, `2c`, `3`...). Todos rodam na raiz do repositório, no WSL, com a venv ativa (`source venv/bin/activate`). O `scripts/auditar.py` preenche os prompts de `docs/loop/prompts/` com a fase, a tag-base e o histórico certos, e grava a saída em `outputs/auditorias/`, ou na pasta da variável de ambiente `SENTINELA_AUDITORIA_DESTINO` (por exemplo, a pasta Downloads do Windows), ou na do `--saida`. Rodada repetida não sobrescreve: ganha `-2`, `-3`. Para só ver o prompt: `python scripts/auditar.py prompt <modo> --fase N ...`.
 
 ### Etapa 1. Proposta
 Já vem pronta: o penúltimo item de cada fila é o `levantamento` que propõe a próxima.

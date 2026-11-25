@@ -70,7 +70,7 @@ O pacote traz este arquivo, as quatro skills e o script `instalar_multiagente.py
 - registra a revisão da D30 no ADR-0003.
 
 ```bash
-python3 -m zipfile -e /mnt/c/Users/marcos/Downloads/sentinela-multiagente.zip .
+python3 -m zipfile -e /mnt/c/Users/<usuário>/Downloads/sentinela-multiagente.zip .
 python3 instalar_multiagente.py && rm instalar_multiagente.py
 git status --short
 ```
@@ -167,7 +167,7 @@ cd /tmp/sentinela-auditoria
 agy -p "Leia docs/loop/auditoria-externa.md e siga-o no modo <MODO> sobre <escopo>. Não edite arquivos." > ~/auditoria-agy.txt 2>&1
 cd ~/projetos/Sentinela_B3
 git worktree remove --force /tmp/sentinela-auditoria
-cp ~/auditoria-agy.txt /mnt/c/Users/marcos/Downloads/
+cp ~/auditoria-agy.txt /mnt/c/Users/<usuário>/Downloads/
 ```
 A cópia não tem `data/` (fora do git). Se a auditoria precisar recalcular com os arquivos da CVM, copie só os arquivos necessários para dentro dela.
 
