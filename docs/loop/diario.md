@@ -379,3 +379,16 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
   - Liberar o bloco 1, que começa a contar o prazo de 2 semanas.
   - A nota do F4-A18 sobre a exceção `max_age_days`.
 - **Revisões cruzadas pendentes, pelo codex:** DD-97 (F4-A09) e DD-98 (F4-A11).
+
+### Checkpoint do bloco 0 — resultado da R2 e fila curta
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** registro
+- **Auditoria R2:**
+  - Codex: veredito "não pode seguir", com quatro bloqueadores (versão da DFP, download concorrente, ISIN inválido por espécie no Bazin e OHLC parcial na auditoria técnica) e ressalvas. Relatório salvo sem edição em `docs/loop/auditorias/bloco0-codex.md`.
+  - Claude (chat), sobre os 10 commits do codex: sem bloqueador, com uma observação (provento sem `dateApproval` legível). Registro em `docs/loop/auditorias/bloco0-claude-chat.md`.
+- **Decisões do Marcos (25/11):**
+  - Fila curta F4-C01 a F4-C09, cada `fix:` com teste vermelho antes.
+  - P1 = opção (B), no F4-C10, com o predicado aprovado.
+  - `max_age_days` ratificado.
+  - Depois da fila, a segunda rodada só do diff, pela outra família de quem corrigiu. Se limpa, o checkpoint é marcado e o bloco 1 liberado.
+- **Nota:** o relatório do Codex tem links com o caminho local do autor, e o `git grep` do F4-A20 volta a achá-lo. Foi mantido sem edição, por instrução do Marcos (pendência registrada).
