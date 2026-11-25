@@ -27,6 +27,11 @@ def test_ultimo_exercicio_nao_civil_chega_ao_motor(tmp_path, monkeypatch):
             )
             frame["DT_INI_EXERC"] = "2025-03-01"
             z.writestr(nome, frame.to_csv(sep=";", index=False).encode("latin-1"))
+        z.writestr(
+            "dfp_cia_aberta_2026.csv",
+            "CNPJ_CIA;DT_REFER;VERSAO;CD_CVM;CATEG_DOC;DT_RECEB\n"
+            "11.111.111/0001-11;2026-02-28;1;9999;DFP;2026-05-15\n",
+        )
     os.utime(destino, (AS_OF.timestamp(), AS_OF.timestamp()))
     baixar = p.baixar_dfp
     monkeypatch.setattr(

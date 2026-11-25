@@ -4,6 +4,7 @@ Metadados CVM definem início/fim/referência; hipóteses e contas sintéticas e
 sem rede ou método de valuation como esperado.
 """
 
+import zipfile
 from datetime import date
 from types import SimpleNamespace
 
@@ -11,7 +12,7 @@ import pytest
 import requests
 
 from cvm_provider import CVMProvider
-from tests.test_cvm_series import CD_CVM, _Hoje, _ind, _zip
+from tests.test_cvm_series import CD_CVM, CNPJ, _Hoje, _ind, _zip
 from tests.test_market_engine import _engine
 
 
@@ -41,6 +42,14 @@ def test_exercicio_anual_e_periodo_completo_encerrado(
         )
     ]
     caminho = _zip(tmp_path / "dfp.zip", "dfp", 2026, dre, [])
+    with zipfile.ZipFile(caminho, "a") as z:
+        indice = "CNPJ_CIA;DT_REFER;VERSAO;CD_CVM;CATEG_DOC;DT_RECEB\n"
+        if (inicio, fim) in (
+            ("2025-03-01", "2026-02-28"),
+            ("2025-04-01", "2026-03-31"),
+        ):
+            indice += f"{CNPJ};{fim};1;{CD_CVM};DFP;2026-06-15\n"
+        z.writestr("dfp_cia_aberta_2026.csv", indice)
     p = CVMProvider(cache_dir=str(tmp_path / "cache"))
     monkeypatch.setattr(p, "baixar_dfp", lambda ano: caminho)
     assert p.exercicio_anual_mais_recente(CD_CVM, date(2026, 10, 26)) == esperado

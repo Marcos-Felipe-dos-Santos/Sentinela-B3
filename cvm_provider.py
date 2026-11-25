@@ -1125,10 +1125,9 @@ class CVMProvider:
         return saida
 
     def exercicio_anual_mais_recente(self, cd_cvm: int, referencia: date) -> int:
-        """Inclui exercício não civil encerrado neste ano, se demonstrado pela DFP.
+        """Inclui exercício não civil encerrado com DFP entregue antes da referência.
 
-        Só disponibilidade anual da série informativa; não altera o exercício dos
-        métodos vigentes. Falha de consulta não prova ausência do documento.
+        Sem índice de entregas, a série anual se abstém por falta de prova.
         """
         try:
             arquivo = self.baixar_dfp(referencia.year)
@@ -1139,11 +1138,31 @@ class CVMProvider:
         dre = self.parsear_demonstrativo(
             arquivo, "DRE_con", include_cd_cvm=True, include_versao=True, include_periodo=True
         )
+        try:
+            entregas = self._entregas(arquivo)
+        except StopIteration as exc:
+            raise OSError("DFP sem índice de entregas") from exc
         da_companhia = dre[dre["CD_CVM"] == cd_cvm]
         for _, linha in da_companhia.iterrows():
             inicio = date.fromisoformat(str(linha["DT_INI_EXERC"]))
             fim = date.fromisoformat(str(linha["DT_FIM_EXERC"]))
-            if fim.year == referencia.year and fim <= referencia and series_cvm._meses(inicio, fim) == 12:
+            if (
+                fim.year != referencia.year
+                or fim > referencia
+                or series_cvm._meses(inicio, fim) != 12
+            ):
+                continue
+            entrega = proveniencia.entrega_no_indice(
+                entregas,
+                {chave: str(linha[chave]) for chave in ("CNPJ_CIA", "DT_REFER", "VERSAO")},
+            )
+            if entrega is None:
+                continue
+            try:
+                recebida = date.fromisoformat(entrega)
+            except ValueError:
+                continue
+            if recebida < referencia:
                 return fim.year
         return referencia.year - 1
 

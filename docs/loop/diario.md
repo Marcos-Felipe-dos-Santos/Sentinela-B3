@@ -128,3 +128,14 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Resíduos:** evidências em `outputs/F4-A07/` e cache de mutação em `mutants/`.
 - **Decisões que ficaram para o Marcos:** nenhuma sobre o item. A ficha da faixa P/VP tem decisão própria no bloco 1.
 - **Para o Marcos revisar:** o contexto de FII de papel, fundo de fundos e Informe ausente.
+
+### F4-A08 — fix: require the annual filing delivered before the reference date
+- **Executor:** codex (GPT-6) até a mutação; claude-code (Opus 5.5) na retomada, mutação, gate, revisão e commit
+- **Status:** sucesso
+- **O que foi feito:** a promoção do exercício não civil exige uma DFP identificada por CNPJ, referência e versão no índice, com `DT_RECEB` anterior ao corte. Entrega em D ou posterior mantém o exercício anterior. Um ZIP sem índice gera a abstenção explícita “DFP sem índice de entregas”.
+- **Dificuldades:** o BUG-2C-66 e dois casos equivalentes exigiam selecionar 2026 usando ZIPs sintéticos sem índice, o que bloqueou a primeira rodada.
+- **Como resolvi:** na decisão de 24/11, Marcos autorizou completar o índice sintético no formato oficial da CVM em `test_ultimo_exercicio_nao_civil_chega_ao_motor` (BUG-2C-66) e nos casos fevereiro e março de `test_exercicio_anual_e_periodo_completo_encerrado` (`tests/test_cvm_fronteiras_2c.py`). As três fixtures passaram a demonstrar `DT_RECEB` anterior ao corte e preservam todas as asserções.
+- **Testes:** BUG-4-09, 1 passed e 3 xfailed estritos antes → 4 passed. Região focada, 27 passed. Gate preliminar, 5305 passed, 1 skipped, 24 xfailed. Golden `1759c55f7e5995f5…` igual. A primeira medição reaproveitou estatísticas de outro módulo e foi descartada. Rodada limpa (claude-code, `mutants/` apagado antes) em `exercicio_anual_mais_recente`: 80/88 = 90,9%. Dos oito sobreviventes, quatro mostravam casos faltando (período incompleto entregue; `continue` trocado por `break` nas linhas sem prova). Dois testes novos na regressão BUG-4-09 matam os quatro, conferidos com o mutante aplicado à mão. Os outros quatro são equivalentes: o padrão `None` do `getattr` no 404, já existente, e o corte `fim ≤ referência`, implícito em `DT_RECEB < referência`. Regressão BUG-4-09 com 6 casos. Gate final no stage (claude-code): 5307 passed, 1 skipped, 24 xfailed, Ruff verde, golden `1759c55f7e5995f5…` igual; o aviso de arquivos fora da linha do item cobre as três fixtures autorizadas e a regressão nova.
+- **Resíduos:** evidências em `outputs/F4-A08/` e cache de mutação em `mutants/`.
+- **Decisões que ficaram para o Marcos:** nenhuma sobre o item.
+- **Para o Marcos revisar:** a abstenção explícita por ZIP sem índice e a seleção só após o dia de entrega.
