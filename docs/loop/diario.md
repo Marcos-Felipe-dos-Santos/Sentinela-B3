@@ -614,3 +614,16 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
   - A unificação dos dígitos das fixtures próprias ficou como pendência para o bloco 2.
   - O `rm` foi aceito como desvio.
 - **Decisões que ficaram para o Marcos:** autorizar `BRLRE2ACNPR6` no lugar de `BRLRENACNPR8` como `ISIN_DO_OUTRO` do BUG-3-60, com as asserções iguais.
+
+### F4-C11 (conclusão) — fix: never take a stock event species from an unreadable ISIN in the share factors
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** BUG-4-22, pelas decisões do Marcos de 25/11. Em `fatores_acoes_b3._fator_do_par`, um evento em ações na janela de reconciliação com ISIN ilegível **fora** do conjunto do emissor abstém com "espécie do evento em ações não demonstrada", pelo `pb.isin_legivel`, sem duplicar. O ISIN do conjunto do emissor tem a identidade provada pela pertença (leitura confirmada; a diferença em relação ao Bazin está em `pendencias.md`).
+- **Fixture protegida:** `ISIN_DO_OUTRO` do BUG-3-60 passou de `BRLRENACNPR9` (dígito inválido) a `BRLRE2ACNPR6`, com as asserções iguais. O `BRLRENACNPR8`, autorizado antes, é o **ISIN real da PN da própria Renner** (fixture oficial da B3): todo ISIN legível com o corpo `BRLRENACNPR` tem esse dígito, e por isso ele não serve como "outro emissor".
+- **Testes:**
+  - Regressão BUG-4-22 (`tests/regressao/test_bug_4_22_isin_ilegivel_nos_fatores.py`): evento próprio mais um alheio ilegível na janela (`BRALHEACNPA0` e `BRALHEACNOR0`) abstém. Os 2 casos nasceram xfail estritos (`outputs/F4-C11/regressao-antes.txt`). O controle confirma que o alheio legível continua descartado.
+  - Mutação manual (`outputs/F4-C11/alternativa-BRLRE2ACNPR6.txt`): com a correção, os 16 casos do BUG-3-60 passam; sem os dois descartes por emissor, os dois casos do outro emissor falham.
+  - Suíte: 5423 passed, 1 skipped, 24 xfailed.
+  - Mutação (`outputs/F4-C11/mutacao.txt`): `_fator_do_par` 130/154 = 84,4%. Os sobreviventes são do código anterior: chaves de deduplicação, textos de erro, guardas do fator acumulado e `continue` → `break`.
+- **Resíduos:** evidências em `outputs/F4-C11/` e cache de mutação em `mutants/`.
+- **Decisões que ficaram para o Marcos:** nenhuma. A segunda rodada da R2 (`python scripts/auditar.py codex fase --fase 4 --desde 2eac281`) passa a incluir este commit.

@@ -106,6 +106,10 @@ def _fator_do_par(
         emitido = evento.get("assetIssued")
         if not isinstance(isin, str) or not isinstance(emitido, str):
             raise TypeError("espécie do evento em ações não demonstrada")
+        if isin not in isins and not pb.isin_legivel(isin):
+            # BUG-4-22: ISIN ilegível fora do emissor não prova a espécie nem outro emissor; o do
+            # emissor tem a identidade provada pela pertença ao conjunto (decisão de 25/11/2026).
+            raise ValueError("espécie do evento em ações não demonstrada")
         classe = pb.ESPECIE_DO_ISIN.get(isin[6:11])
         if classe is None:
             raise ValueError("espécie do evento em ações não demonstrada")

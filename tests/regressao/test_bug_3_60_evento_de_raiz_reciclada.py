@@ -38,7 +38,7 @@ from test_fatores_acoes_b3 import documentos
 from sentinela.data.fatores_acoes_b3 import fatores_da_relacao
 from sentinela.data.providers import b3_proventos
 
-ISIN_DO_OUTRO = "BRLRENACNPR9"  # PN de outro emissor que usou a mesma raiz
+ISIN_DO_OUTRO = "BRLRE2ACNPR6"  # PN de outro emissor que usou a mesma raiz
 CD_CVM_DO_OUTRO = 99990
 SEM_EVENTO = "base incompatível sem evento oficial B3 no par documental"
 FATORES = {"2021": 2, "2022": 2, "2023": 1, "2024": 1, "2025": 1}
