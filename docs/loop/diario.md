@@ -342,3 +342,13 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Como resolvi:** a exceção fica, com o motivo aqui e no inventário.
 - **Testes:** vulture e deptry rodados de novo, com saída igual à de antes (`outputs/F4-A18/`). Suíte com 5370 passed, 1 skipped, 24 xfailed.
 - **Decisões que ficaram para o Marcos:** nenhuma.
+
+### F4-A19 — docs: plan quality coverage in the motor golden
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** levantamento do achado 12 em `docs/decisoes/golden-qualidade-4.md`, sem regenerar nada. A contagem sobre o golden (`1759c55f7e5995f5…`) corrige a leitura do achado:
+  - 1924 dos 2003 casos de ações já têm cinco exercícios observados (identidade do `enriquecer_janelas`).
+  - Os cinco indicadores estão vazios em todos os 9620 exercícios. O golden fixa só os motivos de abstenção, nenhum valor.
+  - O documento lista os insumos que faltam (seis números por exercício, identidade e o `calendario_proventos_b3`) e as opções (A) enriquecer o apoio comum, (B) família nova de 12 casos e (C) lacuna declarada.
+  - Para a (B), recomendada, traz os casos, os arquivos de uma futura regeneração e o predicado: as 2291 linhas antigas ficam idênticas e só entram as novas.
+- **Decisões que ficaram para o Marcos:** P1, no checkpoint do bloco 0. Sem decisão, vale (c), a lacuna declarada.
