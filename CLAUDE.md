@@ -5,7 +5,7 @@ Python + Streamlit (V1; interface FastAPI + HTMX prevista para a Fase 7), local-
 **Não é consultoria financeira.**
 
 > Fonte primária para Claude Code. `AGENTS.md` é a versão para agentes externos
-> (Jules) e é subconjunto deste arquivo — os dois nunca podem se contradizer.
+> (Codex e outros) e é subconjunto deste arquivo — os dois nunca podem se contradizer.
 > Roteiro: `docs/PLANO.md`. Decisões: `docs/adr/` (0001 e 0002).
 > Auditoria red team de 9/9/2026: `docs/auditoria/2026-09-red-team.md` (IDs normalizados no F0-0).
 > Execução em loop: `docs/loop/protocolo.md` e `docs/loop/fila.md`.
@@ -330,17 +330,22 @@ As Fases 3 a 8 dependem das propostas D5–D13 do ADR-0002.
 
 ---
 
-## Divisão com o Jules
+## Divisão de trabalho
 
-O Jules nunca escreve código cujo comportamento correto ainda está sendo decidido.
+O Jules sai da divisão de trabalho em 31/12/2026 (adendo do Marcos de 24/11/2026): os tickets
+triviais com especificação externa completa e arquivo único (D31) e o coletor do IPE (F5-1)
+passam ao Codex. Papéis de cada agente: `docs/loop/workflow-multiagente.md`.
 
-| Frente | Jules |
+Por ticket, fora do loop, o Codex nunca escreve código cujo comportamento correto ainda está
+sendo decidido.
+
+| Frente | Codex, por ticket |
 |---|---|
-| Revisão de PR de fase | sim |
+| Revisão de PR de fase | auditoria externa (D30) |
 | Testes com spec externa | escreve; gate = mutation score |
 | Coletor do IPE (F5-1) | código + teste |
 | Fila mecânica (infra) | código + teste de regressão, fora dos arquivos travados |
-| `methods/`, valuation, FastAPI | nunca |
+| `methods/`, valuation, FastAPI | nunca por ticket; só como executor do loop |
 
 Arquivos travados por fase: `docs/PLANO.md`, seção 8.
 

@@ -107,10 +107,9 @@ Três perguntas, com o Claude no chat: o que travou o loop? que achado da audito
 |---|---|---|
 | Claude Code | executar a fila | modelos por papel: `docs/PLANO.md`, seção 9 |
 | Claude no chat | conferir auditorias, preparar decisões, montar pacotes | mande arquivos, não colagens longas |
-| Codex | auditar em todas as etapas; executar quando o Claude esgota | `scripts/auditar.py codex` roda em sandbox só de leitura |
+| Codex | auditar em todas as etapas; executar quando o Claude esgota; tarefas triviais de um arquivo (D31) desde a saída do Jules em 31/12/2026 | `scripts/auditar.py codex` roda em sandbox só de leitura |
 | Gemini 4 Argon, no app (Google AI Pro) | auditoria da fase; desempate em ficha | só pelo pacote de texto: o app corta anexos acima de ~450 KB e não lê o zip do GitHub. Sem gasto além do plano: nada de API |
 | Antigravity (`agy`) | auditor de reserva | cópia descartável do repositório |
-| Jules | tarefas triviais de um arquivo (D31) | — |
 
 ## 4. Bugs e regressão
 

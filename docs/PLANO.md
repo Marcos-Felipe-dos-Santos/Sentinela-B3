@@ -398,7 +398,7 @@ desses bugs nem ativação da proposta.
 
 | Item | Quem | Entrega |
 |---|---|---|
-| F5-1 | Jules | Coletor do IPE: fatos relevantes, CNPJ → ticker, incremental |
+| F5-1 | Codex | Coletor do IPE: fatos relevantes, CNPJ → ticker, incremental |
 | F5-2 | Loop | Estudo de evento com os cinco anos que o IPE aberto oferece: retorno anormal contra o Ibovespa por janela e tipo de documento, com significância; relatório em `docs/estudos/` |
 | F5-3 | Marcos | Go/no-go dos estágios 2–4, registrado em ADR |
 | F5-4 | Loop | Limpeza: extrações e notebooks exploratórios que não entraram no relatório |
@@ -418,7 +418,7 @@ Depois, a vitrine: README reescrito; página de metodologia gerada do `registry.
 
 ### Fase 7 — Interface FastAPI + HTMX
 
-Mantenedor e loop; nunca o Jules.
+Mantenedor e loop; nunca por ticket externo (D31).
 
 | Item | Entrega |
 |---|---|
@@ -456,7 +456,9 @@ O ciclo completo, com os comandos, está em `docs/loop/ciclo-de-fase.md` (desde 
 
 ## 8. Divisão de trabalho
 
-| Frente | Marcos | Loop (Claude Code) | Jules |
+O Jules sai em 31/12/2026 (adendo de 24/11/2026); a coluna de tickets passa ao Codex.
+
+| Frente | Marcos | Loop (Claude Code) | Codex, por ticket |
 |---|---|---|---|
 | Decisões de metodologia, taxa, janelas e limiares | decide | prepara dossiê | — |
 | Código das Fases 0–4 | revisa no checkpoint | implementa | — |
@@ -468,7 +470,7 @@ O ciclo completo, com os comandos, está em `docs/loop/ciclo-de-fase.md` (desde 
 | Interface (Fase 7) | decide telas | implementa | nunca |
 | PR da fase | aprova o merge | — | revisa |
 
-**Arquivos travados por fase.** Enquanto a fase estiver em andamento, o Jules não abre PR que toque nestes arquivos:
+**Arquivos travados por fase.** Enquanto a fase estiver em andamento, nenhum ticket externo (D31) abre PR que toque nestes arquivos:
 
 | Fase | Arquivos |
 |---|---|
@@ -607,7 +609,7 @@ O núcleo financeiro custou cerca de um mês: a linha de corte passou de feverei
 | Desdobramento entre a demonstração e o preço | Eventos societários explícitos (F3-4), com testes de casos conhecidos |
 | Loop cimentando comportamento errado | Mutação, `[DECISÃO]` e protocolo |
 | Limpeza apagar algo usado de forma dinâmica | Categoria *investigar*, lista de exceções, rede de caracterização e remoção só por `git rm` |
-| Jules e loop no mesmo arquivo | Arquivos travados por fase (seção 8) |
+| Ticket externo (D31) e loop no mesmo arquivo | Arquivos travados por fase (seção 8) |
 | Perda de dados no WSL | Push por fase; backup do banco (F4-5) |
 
 ## 14. Adiado conscientemente

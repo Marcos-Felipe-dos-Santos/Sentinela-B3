@@ -297,3 +297,17 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
   - **Contagem da suíte:** 5370 passed, 1 skipped, 24 xfailed, na seção "Estado da fase" do `CLAUDE.md` (data de 25/11), no comando da suíte e no cabeçalho do `AGENTS.md`, fora da "Fase atual". O `AGENTS.md` ainda trazia a contagem de 09/11 e contradizia o `CLAUDE.md`. A "Fase atual" não foi tocada.
 - **Testes:** suíte com 5370 passed, 1 skipped, 24 xfailed; só docstrings e textos mudaram.
 - **Decisões que ficaram para o Marcos:** nenhuma.
+
+### F4-A15b — docs: retire Jules from the work split
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** adendo do Marcos de 24/11, item 2 (o Jules sai em 31/12/2026). O Jules sai da divisão de trabalho, e os tickets triviais da D31 e o coletor do IPE (F5-1) passam ao Codex. Arquivos alterados:
+  - `CLAUDE.md`: o cabeçalho cita "Codex e outros", e a seção "Divisão com o Jules" virou "Divisão de trabalho", com a coluna "Codex, por ticket" e a nota datada.
+  - `AGENTS.md`: só o cabeçalho, fora da "Fase atual".
+  - `docs/PLANO.md`: F5-1 com "Codex"; Fase 7 com "nunca por ticket externo"; seção 8 com nota datada, a coluna de tickets passando ao Codex e os arquivos travados valendo para ticket externo; linha de risco "ticket externo e loop no mesmo arquivo".
+  - ADR 0003: só uma nota datada na D31.
+  - `docs/loop/workflow-multiagente.md` e `docs/loop/ciclo-de-fase.md`: sai a linha do Jules como executor, entra a nota datada, e o Codex recebe os tickets da D31.
+- **Dificuldades:** a busca por "Jules" fora dos históricos ainda acha menções sem data em arquivos fora da lista do item: `docs/loop/auditoria-externa.md` e a descrição da skill `verificar-entrega`.
+- **Como resolvi:** respeitei a lista de arquivos e registrei as duas em `docs/loop/pendencias.md`, para item próprio. As linhas de itens concluídos do PLANO e as ADRs antigas são registro histórico e não mudaram. O `CLAUDE.md` e o `AGENTS.md` não se contradizem.
+- **Testes:** suíte com 5370 passed, 1 skipped, 24 xfailed; só documentação.
+- **Decisões que ficaram para o Marcos:** nenhuma.

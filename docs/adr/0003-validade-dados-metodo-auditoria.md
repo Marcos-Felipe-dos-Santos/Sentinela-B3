@@ -114,6 +114,8 @@ O resultado vai para `docs/loop/historico/fase-N/auditoria-externa.md`. Achado *
 
 **D31 — Jules reduzido.** O Jules fica restrito a tickets triviais com especificação externa completa e arquivo único. Tickets com valores de referência numéricos passam ao loop, com o valor tirado da ficha.
 
+> Nota de 25/11/2026 (adendo do Marcos de 24/11/2026, item 2): o Jules sai em 31/12/2026, e os tickets desta decisão passam ao Codex.
+
 **D32 — Escopo verificável.** "Todos os listados" vira meta com denominador explícito e lista de exclusões. "Qualquer data" ganha intervalo temporal definido na Fase 3, junto com o D17 (primeira data com proveniência completa e tratamento das datas anteriores); até lá, nenhum texto promete histórico para qualquer data.
 
 - **Universo inicial:** as 45 ações do mapa regenerado no F1-15 e os 30 FIIs de `cvm_fii_map.py` (os cinco que `docs/decisoes/fontes-fase2a.md` registra fora da listagem no período entram como **casos históricos**: servem para testar abstenção e histórico estrito, mas não contam no denominador da cobertura atual), mais estes casos difíceis, se não estiverem lá: os 12 bancos ativos do F2A-16; as units do índice (KLBN11, SANB11, TAEE11, ENGI11, BRBI11, IGTI11); uma holding com minoritários relevantes (CSAN3); uma empresa com reapresentação de DFP (escolhida no F2A-32); FIIs de papel e de tijolo. A lista fechada vai para `docs/decisoes/universo-inicial.md` no F2A-35.

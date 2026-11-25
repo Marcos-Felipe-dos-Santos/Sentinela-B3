@@ -20,7 +20,8 @@
 | **Codex CLI** | ChatGPT Plus | auditor externo (modos FASE, PR, DOCUMENTO, FICHA) | executor quando a cota do Claude acaba | auditar item que ele mesmo executou |
 | **Gemini 4 Argon, no app do Gemini** | Google AI Pro | pesquisa (CPC, manuais da CVM, layout da B3) e segunda opinião em fichas metodológicas | desempate quando Claude e Codex divergem | escrever no repositório (o app não tem acesso a ele) |
 | **Antigravity CLI** (`agy`) | Google AI Pro | terceiro auditor, quando Codex executou e o Claude está sem cota | — | executar itens da fila (fica para depois do piloto) |
-| **Jules** | Google AI Pro | tickets triviais com especificação completa e arquivo único (D31) | — | cálculo, valores de referência numéricos |
+
+O Jules sai da divisão em 31/12/2026 (adendo do Marcos de 24/11/2026): os tickets triviais da D31 e o coletor do IPE (F5-1) passam ao Codex.
 
 Sobre o Gemini 4 Argon (conferido em 14/10/2026):
 - no plano Pro, está disponível **só no app do Gemini** (e no AI Mode da busca);
@@ -265,7 +266,7 @@ No checkpoint da 2B, decida: manter o `ai-memory`, manter só a passagem por arq
 - Dois executores no mesmo item, ou ao mesmo tempo no mesmo branch.
 - Auditor da mesma família no checkpoint.
 - `--yolo`, `--dangerously-skip-permissions` ou `approval_policy = "never"` antes do piloto dar certo.
-- Jules em item de cálculo ou com valor de referência numérico.
+- Ticket da D31 em item de cálculo ou com valor de referência numérico.
 - Colar dado da carteira em qualquer prompt deste projeto.
 - Tratar uma resposta da memória como decisão: decisão está em ADR, ficha ou fila.
 

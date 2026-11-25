@@ -1,6 +1,6 @@
 # AGENTS.md — Sentinela B3
 
-> Instruções para agentes de IA externos (Jules, Codex, Copilot).
+> Instruções para agentes de IA externos (Codex, Copilot; o Jules sai em 31/12/2026).
 > Autocontido: não assuma acesso a nenhum outro arquivo de instrução.
 
 ## Projeto
