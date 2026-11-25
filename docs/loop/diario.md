@@ -271,3 +271,16 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Mutação:** não se aplica, como no F4-A12. O `auditoria.py` está em `also_copy` e não é instrumentado pelo mutmut; os xfails acima mostram a falha da regra antiga.
 - **Resíduos:** evidências em `outputs/F4-A13/`.
 - **Decisões que ficaram para o Marcos:** nenhuma.
+
+### F4-A14 — refactor: reuse the technical engine in the audit script
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** achado 17 do Gemini, segunda parte. A partir de 30 pregões, `auditoria.auditar_tecnica` delega o momento do RSI e a tendência a `TechnicalEngine().calcular_indicadores`, o motor do app. Ele compara o RSI e as médias sem arredondar, pela mesma regra do script, e o rótulo do momento perde o complemento do motor (`split`), que tem "(Oportunidade)" e "(Alto Risco)". Abaixo de 30 pregões o motor devolve valores neutros, e o script mantém o próprio momento; a tendência fica "Indefinida", como já ficava sem média de 50 pregões. O RSI e as médias exibidos continuam calculados no script.
+- **Dificuldades:** na revisão 1, a primeira versão delegava também o RSI e as médias. A revisão viu que o motor arredonda pelo NumPy (`round` sobre `np.float64`), que diverge do arredondamento do texto: a média de uma série constante em 16,055 sai 16,06 no motor e 16,05 no script, como conferido. Além disso, o motor devolve 0 no lugar de média indisponível. A delegação só vale onde a saída é idêntica (aceite), então ela ficou restrita ao momento e à tendência.
+- **Testes:**
+  - Caracterização nova, `tests/test_auditoria_tecnica.py`, escrita e verde no código anterior (`outputs/F4-A14/caracterizacao-antes.txt`, 18 passed). Ela fixa o registro (em JSON, que preserva `NaN`) e o SHA-256 do texto sem cores para séries de 0, 1, 14, 29, 30, 31, 49, 50, 199, 200 e 260 pregões, preços constantes (40 e 260), queda (RSI 0), média em empate decimal (16,055 × 60) e `NaN` no último fechamento. Depois da delegação, passa sem mudar.
+  - Um teste amarra o limiar `PREGOES_MOTOR_TECNICO` ao do motor (neutro abaixo, calculado a partir dele).
+  - Nenhum teste existente mudou. Suíte: 5370 passed, 1 skipped, 24 xfailed.
+- **Mutação:** não se aplica, como no F4-A12. O `auditoria.py` está em `also_copy` e não é instrumentado.
+- **Resíduos:** gerador e saídas da caracterização em `outputs/F4-A14/`.
+- **Decisões que ficaram para o Marcos:** nenhuma. Fica a ressalva de vocabulário: o motor técnico ainda emite "Sobrevendido (Oportunidade)" e "Sobrecomprado (Alto Risco)" (`technical_engine.py`), fora deste item (linha em `pendencias.md`).

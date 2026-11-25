@@ -66,6 +66,7 @@ hdr  = lambda s: f"\n{BLD}{CYN}{'═'*60}\n  {s}\n{'═'*60}{RST}"
 sub  = lambda s: f"\n{BLD}── {s} ──{RST}"
 
 PASTA_SAIDA = Path("outputs") / "auditoria"
+PREGOES_MOTOR_TECNICO = 30  # abaixo disso, TechnicalEngine devolve valores neutros
 FLAG_CARTEIRA = "--com-carteira"
 
 # ─── Relatório JSON (populado ao longo da execução) ───────────────────────────
@@ -362,17 +363,24 @@ def auditar_tecnica(ticker: str, dados: dict):
     ma50_ok  = not (ma50  != ma50)   # not NaN
     ma200_ok = not (ma200 != ma200)
 
-    print(f"\n  RSI (14) : {rsi:.1f}  → {'Sobrecomprado' if rsi>70 else ('Sobrevendido' if rsi<30 else 'Neutro')}")
+    if n >= PREGOES_MOTOR_TECNICO:
+        # Momento e tendência do mesmo motor do app (F4-A14), que compara o RSI e as
+        # médias sem arredondar. RSI e médias exibidos seguem daqui: o motor os
+        # arredonda pelo NumPy, que diverge do arredondamento do texto (16,055 → 16,06).
+        from technical_engine import TechnicalEngine
+
+        indicadores = TechnicalEngine().calcular_indicadores(hist)
+        momento = indicadores['momento'].split(" ")[0]
+        tend = indicadores['tendencia']
+    else:
+        # Série curta: o motor devolve valores neutros; sem média de 50 nem de 200.
+        momento = 'Sobrecomprado' if rsi > 70 else ('Sobrevendido' if rsi < 30 else 'Neutro')
+        tend = "Indefinida"
+
+    print(f"\n  RSI (14) : {rsi:.1f}  → {momento}")
     print(f"  MA50     : {'R$ '+f'{ma50:.2f}'  if ma50_ok  else warn('NaN (< 50 pregões)')}")
     print(f"  MA200    : {'R$ '+f'{ma200:.2f}' if ma200_ok else warn('NaN (< 200 pregões)')}")
     print(f"  Preço    : R$ {preco:.2f}")
-
-    if ma200_ok:
-        tend = "Alta (Longo Prazo)" if preco > ma200 else "Baixa (Longo Prazo)"
-    elif ma50_ok:
-        tend = "Alta (Curto Prazo)" if preco > ma50  else "Baixa (Curto Prazo)"
-    else:
-        tend = "Indefinida"
     print(f"  Tendência: {tend}")
 
     _rel['tickers'][ticker]['tecnica'] = {
