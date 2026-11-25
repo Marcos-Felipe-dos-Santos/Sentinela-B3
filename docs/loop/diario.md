@@ -587,3 +587,19 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
   - DD-99, o caso de contrato da auditoria no F4-C07;
   - DD-100, a caracterização sem mudança de código no F4-C08.
 - **Depois:** se a rodada vier limpa, marcar o checkpoint do bloco 0 e liberar o bloco 1.
+
+### F4-C11 — fix: never take a stock event species from an unreadable ISIN in the share factors
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** [!] — parada da política §3 (teste protegido)
+- **O que foi feito:** decisão do Marcos de 25/11, item entrado antes da segunda rodada. Em `fatores_acoes_b3._fator_do_par`, um ISIN ilegível fora do conjunto do emissor, dentro da janela de reconciliação, era descartado pela espécie ou pelo descarte legado do C3-03b. A correção de duas linhas o faz abster com "espécie do evento em ações não demonstrada", o mesmo motivo do C3-03b para ISIN não atribuível. Ela foi aplicada, rodada e revertida.
+  - Regressão BUG-4-22: um evento próprio mais um alheio ilegível na janela (`BRALHEACNPA0` e `BRALHEACNOR0`). Os 2 casos nasceram xfail estritos (`outputs/F4-C11/regressao-antes.txt`) e passam com a correção. O controle mostra que o alheio legível continua descartado.
+- **Dificuldades:** a leitura estrita (nenhum ISIN ilegível dá espécie) derruba 49 testes, pelas fixtures com ISINs próprios de dígito inválido, inclusive cinco regressões protegidas. Adotei a leitura restrita ao defeito da pendência: só o ISIN ilegível fora do conjunto do emissor. Mesmo assim, caem dois casos da regressão protegida BUG-3-60, cujo ISIN "do outro emissor", `BRLRENACNPR9`, tem dígito inválido.
+- **Decisões que ficaram para o Marcos:**
+  - Autorizar a troca só desse dígito (`BRLRENACNPR8`), com as asserções iguais.
+  - Confirmar a leitura restrita da regra.
+- **Nota de processo:** um patch com nome errado, que eu mesmo tinha acabado de criar em `outputs/`, foi apagado (`rm`). Era arquivo não rastreado; o correto fica em `outputs/F4-C11/`.
+
+### Checkpoint do bloco 0 — pedido da segunda rodada da R2 (atualização)
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** atualização do pedido de `57ef435`
+- **O que mudou:** o F4-C11 entra antes da segunda rodada, por decisão do Marcos de 25/11, e está em `[!]`. A segunda rodada cobre o intervalo desde `2eac281` até o commit do F4-C11, quando ele sair: `python scripts/auditar.py codex fase --fase 4 --desde 2eac281`. A revisão cruzada formal pedida continua a mesma: DD-97, DD-98, DD-99 e DD-100. O Marcos aceitou o F4-C08 fechado por caracterização (DD-100), registrado em `pendencias.md`.
