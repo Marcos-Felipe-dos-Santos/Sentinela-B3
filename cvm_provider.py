@@ -1132,25 +1132,56 @@ class CVMProvider:
     def exercicio_anual_mais_recente(self, cd_cvm: int, referencia: date) -> int:
         """Inclui exercício não civil encerrado com DFP entregue antes da referência.
 
-        Sem índice de entregas, a série anual se abstém por falta de prova.
+        Sem índice de entregas, a série anual se abstém por falta de prova. Só o ano: sem
+        exercício do ano comprovado, o anterior (as datas passadas leem pelo recorte, F3-3d).
         """
-        return self.exercicio_e_versao_mais_recente(cd_cvm, referencia)[0]
+        arquivo = self._dfp_do_ano(referencia.year)
+        achado = (
+            None
+            if arquivo is None
+            else self._versao_comprovada(arquivo, cd_cvm, referencia, referencia.year)
+        )
+        return achado[0] if achado else referencia.year - 1
 
     def exercicio_e_versao_mais_recente(
         self, cd_cvm: int, referencia: date
-    ) -> tuple[int, str | None]:
-        """O exercício e a versão da DFP comprovados no corte (BUG-4-15).
+    ) -> tuple[int, str]:
+        """O exercício e a versão da DFP comprovados no corte (BUG-4-15, BUG-4-23).
 
         Entre as versões do exercício encerrado com `DT_RECEB < referencia` (corte diário, sem
-        hora), a maior. Sem exercício do ano comprovado, o ano anterior, com versão `None`: a
-        leitura segue a regra anterior para ele.
+        hora), a maior. Sem exercício do ano comprovado, o anterior, também com a versão
+        comprovada no corte; sem versão comprovada nele, `ValueError` e a leitura se abstém.
         """
+        arquivo = self._dfp_do_ano(referencia.year)
+        if arquivo is not None:
+            achado = self._versao_comprovada(
+                arquivo, cd_cvm, referencia, referencia.year
+            )
+            if achado is not None:
+                return achado
+        anterior = referencia.year - 1
+        achado = self._versao_comprovada(
+            self.baixar_dfp(anterior), cd_cvm, referencia, anterior
+        )
+        if achado is None:
+            raise ValueError(
+                f"DFP do exercício anterior ({anterior}) sem versão entregue antes do corte"
+            )
+        return achado
+
+    def _dfp_do_ano(self, ano: int) -> Path | None:
+        """O ZIP anual da DFP; `None` só quando a fonte atesta a ausência (404)."""
         try:
-            arquivo = self.baixar_dfp(referencia.year)
+            return self.baixar_dfp(ano)
         except OSError as exc:
             if getattr(getattr(exc, "response", None), "status_code", None) == 404:
-                return referencia.year - 1, None
+                return None
             raise
+
+    def _versao_comprovada(
+        self, arquivo: Path, cd_cvm: int, referencia: date, ano: int
+    ) -> tuple[int, str] | None:
+        """A maior versão do exercício encerrado em `ano` com `DT_RECEB < referencia`."""
         dre = self.parsear_demonstrativo(
             arquivo, "DRE_con", include_cd_cvm=True, include_versao=True, include_periodo=True
         )
@@ -1164,7 +1195,7 @@ class CVMProvider:
             inicio = date.fromisoformat(str(linha["DT_INI_EXERC"]))
             fim = date.fromisoformat(str(linha["DT_FIM_EXERC"]))
             if (
-                fim.year != referencia.year
+                fim.year != ano
                 or fim > referencia
                 or series_cvm._meses(inicio, fim) != 12
             ):
@@ -1185,7 +1216,7 @@ class CVMProvider:
         if comprovadas:
             dt_refer, _, versao = max(comprovadas)
             return date.fromisoformat(dt_refer).year, versao
-        return referencia.year - 1, None
+        return None
 
     def pl_inicial_do_documento(
         self,

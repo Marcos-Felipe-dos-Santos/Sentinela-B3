@@ -636,3 +636,18 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
   - Os bloqueios do Bazin e do relatório técnico estão fechados.
 - **Revisões cruzadas:** DD-97 contestada, com a regra atualizada pelo Marcos; DD-98 e DD-99 conferem; a DD-100 já tinha o aceite do Marcos.
 - **Decisões do Marcos (25/11):** F4-C12 e F4-C13 na fila. As ressalvas vão para `pendencias.md`, para o bloco 2. Depois, a terceira rodada só sobre o diff dos dois itens, com o comando exato entregue ao Marcos antes de rodar.
+
+### F4-C12 — fix: carry the proven DFP version when the selector falls back to the previous year
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** BUG-4-23, bloqueio 1 da segunda rodada da R2.
+  - `CVMProvider.exercicio_e_versao_mais_recente` cobre também o recuo. Sem exercício do ano corrente comprovado, inclusive quando o ZIP do ano dá 404, procura no ZIP do exercício anterior a maior versão com `DT_RECEB < D`. Sem versão comprovada, levanta `ValueError` ("DFP do exercício anterior (...) sem versão entregue antes do corte"): a série se abstém e o snapshot fica sem CVM (`cvm_disponivel = False`).
+  - A busca passou para `_versao_comprovada(arquivo, cd_cvm, referencia, ano)`, com o mesmo laço, agora parametrizado pelo ano, e o tratamento do 404 para `_dfp_do_ano`.
+  - `exercicio_anual_mais_recente`, que devolve só o ano e serve às datas passadas (que leem pelo recorte do F3-3d), mantém a regra: sem exercício do ano comprovado, o anterior.
+- **Testes:**
+  - Regressão BUG-4-23 (`tests/regressao/test_bug_4_23_dfp_ano_anterior_fora_do_corte.py`), com corte em 16/06/2026 e o exercício 2025 com V1 entregue em 15/06 (R$ 100 mil) e V2 em 16/06 (R$ 900 mil). O seletor devolve (2025, "1"), e a cascata de hoje lê a V1 no snapshot e na série (antes, R$ 900 mil). Sem versão comprovada, abstém. Esses 3 casos nasceram xfail estritos (`outputs/F4-C12/regressao-antes.txt`).
+  - O controle confirma que a API só do ano continua recuando.
+  - Revisão 1: entraram dois testes, a cascata de hoje sem versão comprovada (`cvm_disponivel = False`, série abstida com o motivo, sem lucro) e o recuo com o ZIP do ano em 404. O efeito sazonal apontado pela revisão foi para decisão do Marcos em `pendencias.md`: de janeiro até a entrega da DFP do ano anterior, a análise de hoje fica sem CVM.
+  - Suíte: 5429 passed, 1 skipped, 24 xfailed.
+- **Mutação** (`outputs/F4-C12/mutacao-resumo.txt`): `exercicio_e_versao_mais_recente` 28/28; `exercicio_anual_mais_recente` 19/19; `_versao_comprovada` 79/80; `_dfp_do_ano` 15/17. Os sobreviventes, `getattr` sem padrão no 404 e `fim >= referencia`, que é equivalente no corte diário, são do código movido.
+- **Decisões que ficaram para o Marcos:** uma, o efeito sazonal de janeiro a março na análise de hoje, em `pendencias.md`.
