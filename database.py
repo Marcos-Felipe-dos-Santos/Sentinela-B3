@@ -1,13 +1,35 @@
 import json
 import logging
+import math
+import numbers
 import sqlite3
 from contextlib import closing
 from datetime import datetime
 
 from sentinela.data.store import unico
+from sentinela.domain import ticker as dominio_ticker
 from sentinela.domain.apresentacao import adaptar_leitura
 
 logger = logging.getLogger("Database")
+
+
+def _posicao_valida(ticker: object, qtd: object, preco: object) -> str:
+    """O ticker normalizado da posição; entrada inválida, `ValueError` (BUG-4-11).
+
+    Ticker pela lista permitida (`sentinela/domain/ticker.py`); quantidade inteira, não nula
+    e não booleana; preço real, finito e positivo, também na redução.
+    """
+    normalizado = dominio_ticker.validar(ticker)
+    if isinstance(qtd, bool) or not isinstance(qtd, numbers.Integral) or qtd == 0:
+        raise ValueError(f"quantidade inválida: {qtd!r}")
+    if (
+        isinstance(preco, bool)
+        or not isinstance(preco, numbers.Real)
+        or not math.isfinite(preco)
+        or preco <= 0
+    ):
+        raise ValueError(f"preço inválido: {preco!r}")
+    return normalizado
 
 class DatabaseManager:
     # TODO: Considerar tabela cache_fundamentos para guardar última coleta válida
@@ -55,14 +77,25 @@ class DatabaseManager:
                     ON analises (data_analise)
                 """)
 
-    def adicionar_posicao(self, ticker: str, qtd: int, preco: float) -> None:
+    def adicionar_posicao(self, ticker: str, qtd: int, preco: float) -> bool:
         """Adiciona ou reduz uma posição da carteira pela regra do custo médio.
 
         Compra (`qtd` > 0) recalcula o preço médio pela média ponderada; redução parcial
         (`qtd` < 0) mantém o preço médio (F3-P02, BUG-2B-51). Zeragem e redução maior que
         a posição removem a linha, como antes.
+
+        Entrada inválida levanta `ValueError` sem gravar (BUG-4-11). Erro do SQLite vai para
+        o log, como em `salvar_analise`, e devolve `False`; sem erro, `True`.
         """
-        ticker = ticker.upper().strip()
+        ticker = _posicao_valida(ticker, qtd, preco)
+        try:
+            self._gravar_posicao(ticker, qtd, preco)
+        except sqlite3.Error as e:
+            logger.error(f"Erro ao gravar a posição {ticker}: {e}")
+            return False
+        return True
+
+    def _gravar_posicao(self, ticker: str, qtd: int, preco: float) -> None:
         with closing(self._get_conn()) as conn:
             with conn:
                 cursor = conn.cursor()
@@ -102,16 +135,24 @@ class DatabaseManager:
             cursor.execute("SELECT * FROM carteira_real")
             return [dict(row) for row in cursor.fetchall()]
 
-    def remover_posicao(self, ticker: str) -> None:
-        """Remove completamente uma posição da carteira pelo ticker."""
+    def remover_posicao(self, ticker: str) -> bool:
+        """Remove completamente uma posição da carteira pelo ticker.
+
+        Erro do SQLite vai para o log, como em `salvar_analise`, e devolve `False` (BUG-4-11).
+        """
         ticker = ticker.upper().strip()
-        with closing(self._get_conn()) as conn:
-            with conn:
-                conn.execute(
-                    "DELETE FROM carteira_real WHERE ticker = ?",
-                    (ticker,)
-                )
-                logger.info(f"Posição removida: {ticker}")
+        try:
+            with closing(self._get_conn()) as conn:
+                with conn:
+                    conn.execute(
+                        "DELETE FROM carteira_real WHERE ticker = ?",
+                        (ticker,)
+                    )
+        except sqlite3.Error as e:
+            logger.error(f"Erro ao remover a posição {ticker}: {e}")
+            return False
+        logger.info(f"Posição removida: {ticker}")
+        return True
 
     def salvar_analise(self, dados: dict) -> None:
         """Persiste ou atualiza a análise de um ticker no banco."""

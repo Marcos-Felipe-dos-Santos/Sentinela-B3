@@ -471,10 +471,17 @@ elif modo == "Carteira":
             q = c2.number_input("Qtd", min_value=1, step=1)
             p = c3.number_input("Preço", min_value=0.01)
             if st.form_submit_button("Salvar"):
-                db.adicionar_posicao(t, q, p)
-                st.success("Salvo!")
-                time.sleep(0.5)
-                st.rerun()
+                try:
+                    salvo = db.adicionar_posicao(t, q, p)
+                except ValueError as erro:
+                    st.error(f"Posição não salva: {erro}")
+                else:
+                    if salvo:
+                        st.success("Salvo!")
+                        time.sleep(0.5)
+                        st.rerun()
+                    else:
+                        st.error("Posição não salva: erro no banco de dados.")
     
     carteira = db.listar_carteira()
     if carteira:
@@ -518,10 +525,12 @@ elif modo == "Carteira":
             ).upper().strip()
             if st.button("Remover", key="btn_remover"):
                 if ticker_remover:
-                    db.remover_posicao(ticker_remover)
-                    st.success(f"{ticker_remover} removido da carteira.")
-                    time.sleep(0.5)
-                    st.rerun()
+                    if db.remover_posicao(ticker_remover):
+                        st.success(f"{ticker_remover} removido da carteira.")
+                        time.sleep(0.5)
+                        st.rerun()
+                    else:
+                        st.error("Remoção não feita: erro no banco de dados.")
                 else:
                     st.warning("Digite o ticker antes de remover.")
         

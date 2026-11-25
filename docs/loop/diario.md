@@ -191,3 +191,25 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
   - Decisão 2 (DD-93): a validação do ISIN com dígito verificador no `proventos_b3` entra na fila em dois itens, F4-A11b e F4-A11c, logo depois do F4-A11. O pedido era de um item, mas exige mover `_isin_legivel` para `proventos_b3` (o `fatores_acoes_b3` já importa `proventos_b3`, e o inverso criaria ciclo), e mover é refactor. Refactor e mudança de comportamento não podem ir no mesmo commit. A observação da DD-93 em `docs/loop/pendencias.md` aponta para os itens.
   - Decisão 3: **desvio de processo.** O commit `bf73c5a` (`docs: record the cross-review of delegated decisions DD-93, DD-95 and DD-96`) foi feito sem o `/review-diff-leve` que o protocolo exige para itens `docs`. O conteúdo é só documentação (as três revisões cruzadas em `pendencias.md`), e não houve reabertura.
 - **Decisões que ficaram para o Marcos:** nenhuma.
+
+### F4-A11 — fix: validate tickers and prices before storing portfolio positions
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** BUG-4-11 (achado 14 do Gemini).
+  - `database.adicionar_posicao` valida a entrada antes de abrir o banco, por `_posicao_valida`. O ticker passa por `sentinela.domain.ticker.validar` (lista permitida). A quantidade é inteira, não nula e não booleana. O preço é real, finito e positivo, também na redução. Entrada inválida levanta `ValueError` com o motivo, sem gravar linha.
+  - `adicionar_posicao` e `remover_posicao` tratam `sqlite3.Error` como `salvar_analise`: registram no log e devolvem `False`; sem erro, `True`. A gravação ficou em `_gravar_posicao`, com o corpo anterior sem mudança.
+  - Aba Carteira (`app.py`): mostra o motivo do `ValueError` ou o erro do banco, e só diz "Salvo!" ou "removido" quando gravou. Esquema e dados intactos.
+- **Dificuldades:**
+  - `tests/test_database_posicoes.py` usava `TST3`, que fica fora do padrão da B3 e passa a ser recusado.
+  - `tests/test_app_analysis_service.py` fixa por hash todo o trecho de renderização do `app.py`, inclusive a aba Carteira.
+- **Como resolvi:**
+  - Em `test_database_posicoes.py` (na lista do item), o ticker virou `TSTA3`, e o caso de quantidade zero passa a exigir `ValueError`, continuando sem gravar.
+  - O hash `RENDER_ANTERIOR` foi atualizado com comentário datado (DD-98). O `git diff app.py` tem só os dois blocos da aba Carteira.
+- **Decisão delegada:** DD-98, em `docs/loop/pendencias.md`. Falta a revisão cruzada.
+- **Testes:**
+  - BUG-4-11 (`tests/regressao/test_bug_4_11_posicao_invalida_na_carteira.py`): 15 casos nasceram xfail estritos (`outputs/F4-A11/regressao-antes.txt`): ticker vazio, só espaços, sem dígito, fora do padrão; quantidade `True`, 2,5 e zero; preço `NaN`, infinito, zero, negativo e `True`; redução com preço `NaN`; erro SQLite simulado na inclusão e na remoção. Depois da revisão de mutação entraram a mensagem de cada `ValueError`, o retorno `True` e a remoção bem-sucedida, que apaga só o ticker normalizado. Agora são 17 passed.
+  - Suíte: 5339 passed, 1 skipped, 24 xfailed.
+  - Mutação (`mutants/` apagado antes; `outputs/F4-A11/mutacao-r2.txt`): `_posicao_valida` 17/17; `adicionar_posicao` 16/16; `remover_posicao` 12/14, com os dois sobreviventes de maiúsculas e minúsculas no SQL; `_gravar_posicao` 42/55. Os 13 sobreviventes de `_gravar_posicao` são equivalentes: 8 de maiúsculas e minúsculas no SQL, 2 de chave do `sqlite3.Row` (que ignora maiúsculas e minúsculas) e 3 de `qtd == 0`, que não chega mais ali. Nas quatro funções tocadas, 87/102 = 85,3%. Na primeira rodada (`mutacao.txt`), `remover_posicao` estava em 3/14 por falta de teste da remoção bem-sucedida.
+- **Resíduos:** evidências em `outputs/F4-A11/` e cache de mutação em `mutants/`.
+- **Decisões que ficaram para o Marcos:** nenhuma. O tratamento do erro SQLite na remoção só exigiu a mensagem no `app.py`; nada foi adiado.
+- **Para o Marcos revisar:** a DD-98 (hash da renderização) e o `ValueError` como contrato da entrada inválida.
