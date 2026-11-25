@@ -430,3 +430,15 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Revisão 1 (PODE COMMITAR):** o IF.data passa a remover o próprio temporário também na falha (`try/finally`), como a CVM. Saiu um dublê de relógio que nenhum teste usava. O limite da janela entre a conferência e a releitura do ZIP pelo consumidor foi declarado em `pendencias.md`. A mutação do `_buscar` não foi refeita depois do `try/finally`, que só limpa o temporário.
 - **Resíduos:** evidências em `outputs/F4-C02/` e cache de mutação em `mutants/`.
 - **Decisões que ficaram para o Marcos:** nenhuma.
+
+### F4-C01 a F4-C03 — andamento da fila curta
+- **F4-C01** (`5aebcf1`) e **F4-C02** (`b2785ad`) concluídos (seções acima).
+
+### F4-C03 — fix: never discard a stock event by species from an unreadable ISIN
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** [!] — parada da política §3 (teste protegido)
+- **O que foi feito:**
+  - A regressão BUG-4-17 foi escrita e conferida: com o alvo ON, um ISIN ilegível de aparência PNA ou PN, com ou sem conjunto do emissor, liberava o DY, e os 4 casos nasceram xfail estritos (`outputs/F4-C03/regressao-antes.txt`).
+  - A correção é uma linha: a espécie só vem de ISIN legível. Ela foi aplicada, rodada e revertida.
+- **Dificuldades:** com a correção, a suíte deu 7 failed. Seis são da regressão protegida BUG-4-03, que usa os ISINs sintéticos `BRTESTACNP{C..H}0`, com dígito verificador inválido, esperando o descarte por espécie. O sétimo é `tests/test_proventos_b3.py` (`BRXXXXACNPR1`).
+- **Decisões que ficaram para o Marcos:** autorizar a troca só dos dígitos verificadores nesses literais, pelos válidos listados em `pendencias.md`, com as asserções iguais. Com a autorização, o item segue: a regressão volta de `outputs/F4-C03/` para `tests/regressao/`, aplica-se `outputs/F4-C03/correcao-tentativa.patch`, trocam-se os literais e seguem-se a mutação, o gate, a revisão e o commit.
