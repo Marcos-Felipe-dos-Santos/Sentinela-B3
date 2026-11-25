@@ -627,3 +627,12 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
   - Mutação (`outputs/F4-C11/mutacao.txt`): `_fator_do_par` 130/154 = 84,4%. Os sobreviventes são do código anterior: chaves de deduplicação, textos de erro, guardas do fator acumulado e `continue` → `break`.
 - **Resíduos:** evidências em `outputs/F4-C11/` e cache de mutação em `mutants/`.
 - **Decisões que ficaram para o Marcos:** nenhuma. A segunda rodada da R2 (`python scripts/auditar.py codex fase --fase 4 --desde 2eac281`) passa a incluir este commit.
+
+### Checkpoint do bloco 0 — resultado da segunda rodada da R2
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** registro
+- **Auditoria:** Codex, segunda rodada só do diff (`2eac281..f681c56`), com veredito "não pode seguir". O relatório está em `docs/loop/auditorias/bloco0-codex-2.md`, conferido para caminhos locais (nenhum, porque o auditor já citou caminhos relativos).
+  - Bloqueios: (1) a versão da DFP se perde quando o seletor recua para o exercício anterior; (2) a CVM pode consumir o ZIP de outra execução depois da conferência do hash.
+  - Os bloqueios do Bazin e do relatório técnico estão fechados.
+- **Revisões cruzadas:** DD-97 contestada, com a regra atualizada pelo Marcos; DD-98 e DD-99 conferem; a DD-100 já tinha o aceite do Marcos.
+- **Decisões do Marcos (25/11):** F4-C12 e F4-C13 na fila. As ressalvas vão para `pendencias.md`, para o bloco 2. Depois, a terceira rodada só sobre o diff dos dois itens, com o comando exato entregue ao Marcos antes de rodar.
