@@ -547,3 +547,9 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
   - `test_banco_sem_pl_na_2_03_nao_gera_patrimonio_nem_alavancagem` volta a conferir o que o nome promete: `divida_liq_ebitda` e `div_liq_patrimonio` ausentes no banco, cada um com seu motivo. Os valores foram conferidos antes de afirmar.
 - **Testes:** suíte com 5418 passed, 1 skipped, 24 xfailed. Nenhum código de produção mudou.
 - **Decisões que ficaram para o Marcos:** nenhuma.
+
+### F4-C09 (complemento) — docs: rewrap the data quality module docstring
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** no `14029b7`, uma linha da docstring do módulo `data_quality.py` emendou no texto seguinte e passou de 110 caracteres. O parágrafo foi só requebrado, sem mudar o texto.
+- **Decisões que ficaram para o Marcos:** nenhuma.
