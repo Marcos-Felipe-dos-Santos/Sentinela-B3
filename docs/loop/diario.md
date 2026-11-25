@@ -324,3 +324,10 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Mutação:** não se aplica. O item só remove código, e não há linha nova a mutar.
 - **Resíduos:** saídas do inventário em `outputs/F4-A16/`; entrada nova em `docs/limpeza/inventario.md`.
 - **Decisões que ficaram para o Marcos:** nenhuma.
+
+### F4-A17 — chore: remove duplicated lens checks in FII engine tests
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** achado 13 do Gemini. Saíram as duas chamadas consecutivas idênticas de `verificar_lentes`, uma em `tests/test_fii_engine.py` e outra em `tests/test_fii_engine_rendimento.py`. Em `tests/test_fii_engine_pvp.py`, as chamadas seguidas recebem argumentos diferentes (`resultado`, `_analisar(pvp=1.0)`, `negativo`, `_analisar(pvp=0.8)`) e ficam. Nenhuma asserção distinta mudou.
+- **Testes:** os três arquivos têm 27 passed antes e depois. Suíte com 5370 passed, 1 skipped, 24 xfailed.
+- **Decisões que ficaram para o Marcos:** nenhuma.

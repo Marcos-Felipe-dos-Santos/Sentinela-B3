@@ -42,7 +42,6 @@ def test_fii_engine_missing_optional_values(engine):
     # Will fallback due to missing dy
     assert result["metodos_usados"] == "Dados insuficientes (DY ausente ou inválido)"
     verificar_lentes(result)
-    verificar_lentes(result)
 
 
 def test_fii_engine_vacancy_adjustment(engine):

@@ -79,7 +79,6 @@ def test_abstencoes_da_lente(ajuste, motivo):
     # F2B-62 (BUG-2B-50): sem valor nem upside numéricos; score contextual 50, neutro.
     assert not {"fair_value", "upside"} & set(r)
     verificar_lentes(r)
-    verificar_lentes(r)
     assert r["metodos_usados"] == f"Dados insuficientes (Rendimento do FII: {motivo})"
 
 
