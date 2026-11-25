@@ -1,9 +1,11 @@
+import hashlib
 import logging
 import os
 import time
 import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path
+from uuid import uuid4
 
 import requests
 
@@ -21,12 +23,19 @@ def is_fresh(path: Path) -> bool:
     age = datetime.now() - datetime.fromtimestamp(path.stat().st_mtime)
     return age < timedelta(days=_CACHE_TTL_DAYS)
 
+def _limpar_temporarios(tmp_path: Path, dest: Path) -> None:
+    """Remove o temporário deste download e o de nome fixo deixado por versões anteriores."""
+    for temporario in (tmp_path, dest.with_suffix('.tmp')):
+        temporario.unlink(missing_ok=True)
+
+
 def baixar_arquivo(url: str, dest: Path) -> Path:
     if is_fresh(dest):
         logger.debug("Cache válido: %s", dest)
         return dest
 
-    tmp_path = dest.with_suffix('.tmp')
+    # BUG-4-16: temporário próprio deste download; outro download do mesmo destino não o toca.
+    tmp_path = dest.with_name(f"{dest.name}.{uuid4().hex}.tmp")
 
     for attempt in range(1, _MAX_RETRIES + 1):
         try:
@@ -35,10 +44,12 @@ def baixar_arquivo(url: str, dest: Path) -> Path:
                 resp.raise_for_status()
 
                 # Baixa em chunks para o arquivo temporário
+                resumo = hashlib.sha256()
                 with open(tmp_path, 'wb') as f:
                     for chunk in resp.iter_content(chunk_size=8192):
                         if chunk:
                             f.write(chunk)
+                            resumo.update(chunk)
 
             # Valida o ZIP
             with zipfile.ZipFile(tmp_path) as zf:
@@ -48,7 +59,7 @@ def baixar_arquivo(url: str, dest: Path) -> Path:
 
             # Substituição atômica
             os.replace(tmp_path, dest)
-            proveniencia.marcar_baixado(dest)
+            proveniencia.marcar_baixado(dest, resumo.hexdigest())
             return dest
 
         except (requests.RequestException, ConnectionError) as e:
@@ -59,8 +70,7 @@ def baixar_arquivo(url: str, dest: Path) -> Path:
                 and e.response.status_code == 404
             ):
                 # Ausência declarada pela fonte não se resolve repetindo a chamada.
-                if tmp_path.exists():
-                    tmp_path.unlink()
+                _limpar_temporarios(tmp_path, dest)
                 raise
             if attempt < _MAX_RETRIES:
                 sleep_time = _BACKOFF_FACTOR ** (attempt - 1)
@@ -69,11 +79,9 @@ def baixar_arquivo(url: str, dest: Path) -> Path:
             else:
                 logger.error("Falha final ao baixar %s após %d tentativas.", url, _MAX_RETRIES)
                 # Remove o temp file antes de subir o erro se ainda existir
-                if tmp_path.exists():
-                    tmp_path.unlink()
+                _limpar_temporarios(tmp_path, dest)
                 raise
         except Exception:
             # Para BadZipFile, apenas deleta o tmp e repassa
-            if tmp_path.exists():
-                tmp_path.unlink()
+            _limpar_temporarios(tmp_path, dest)
             raise

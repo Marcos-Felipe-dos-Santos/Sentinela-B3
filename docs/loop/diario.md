@@ -408,3 +408,25 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Revisão 1 (PODE COMMITAR, com médios):** o médio 1 podia dar resultado errado e foi fechado antes do commit (decisão 48). Se a versão comprovada sumiu do arquivo, por exemplo num novo download entre o seletor e o snapshot (DD-34), `calcular_indicadores` levanta `ValueError` e o exercício se abstém, em vez de ler as outras versões. O mesmo vale sem a coluna `VERSAO`. Entraram dois testes: versão ausente abstém, e a cascata retira a chave interna. O ternário encadeado do `_serie_cvm` virou `extra_serie`. Suíte: 5379 passed, 1 skipped, 24 xfailed. Mutação refeita nas duas funções alteradas (`outputs/F4-C01/mutacao-r2.txt`): `calcular_indicadores` 501/549 = 91,3%; `_serie_cvm` 208/235 = 88,5%. A linha da BUG-4-15 foi acrescentada em `tests/regressao/README.md`. Limite conhecido, em `pendencias.md`: o TTM de hoje (`acumulados_ttm`) ainda agrupa todas as versões; a janela contábil casa pela versão da série e, sem ela, fica sem valor.
 - **Resíduos:** evidências em `outputs/F4-C01/` e cache de mutação em `mutants/`.
 - **Decisões que ficaram para o Marcos:** nenhuma. A pergunta 1 do relatório (admitir entrega em D com hora oficial) ficou no padrão pedido: corte diário, sem hora.
+
+### F4-C02 — fix: give each download its own temporary file and record its content hash
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** BUG-4-16, bloqueador 2 da R2 do bloco 0, que corrige a DD-97.
+  - O download da CVM (`cvm_download.baixar_arquivo`) e o do IF.data (`IFDataProvider._buscar`) gravam num temporário próprio (`<destino>.<uuid>.tmp`).
+  - `proveniencia.marcar_baixado(caminho, sha256)` registra o hash dos bytes que a própria execução escreveu, calculado durante a gravação, e não o `stat` depois de publicar.
+  - `_lido_na_execucao` só dá a coleta da execução ao arquivo cujo hash atual é igual ao marcado. Se outra execução publicou o mesmo destino no intervalo, o registro volta à hora real.
+  - Na falha (404 ou erro final), `_limpar_temporarios` remove o temporário do download e o de nome fixo deixado por versões anteriores. Isso mantém intacto `tests/test_cvm_download.py::test_404_preserva_cache_antigo_e_limpa_temporario`, que semeia esse resto.
+- **Testes:** regressão BUG-4-16 (`tests/regressao/test_bug_4_16_download_concorrente_no_as_of.py`). A execução A roda dentro de `coleta_da_execucao`, e a B num contexto vazio, intercalada por dublês de `os.replace`/`Path.replace` e do corpo da resposta, com bytes distintos.
+  - CVM: B publica entre a publicação e a marcação de A, e A não aceita o arquivo de B. Num download intercalado ao meio, A termina com os próprios bytes e sem temporário sobrando.
+  - IF.data: a mesma interferência, e temporários distintos entre dois downloads.
+  - Os 4 casos nasceram xfail estritos. Na primeira versão, o caso da CVM passava por um motivo errado (B achava o cache válido e não baixava). Corrigido, ele foi conferido vermelho no código anterior e verde no novo (`outputs/F4-C02/regressao-antes-final.txt`).
+  - O controle confirma que o download sequencial da própria execução continua no as_of.
+  - Suíte: 5384 passed, 1 skipped, 24 xfailed.
+- **Mutação** (`mutants/` apagado antes; `outputs/F4-C02/mutacao.txt`):
+  - `marcar_baixado` 5/5; `_lido_na_execucao` 24/25 (o sobrevivente é o fuso de formatação, equivalente); `_limpar_temporarios` 5/5.
+  - `baixar_arquivo` 75/108, ou 75/86 = 87,2% sem os 22 mutantes de log.
+  - `IFDataProvider._buscar` 50/69, ou 50/64 = 78,1% sem os 5 de log, e 50/56 = 89,3% sem os 8 equivalentes de codificação (`utf-8`/`UTF-8`/`None`, `ensure_ascii`), já que o hash é do que foi gravado. Os demais sobreviventes são de código anterior (`timeout`, `chunk_size`, `stream`, `parents`).
+- **Revisão 1 (PODE COMMITAR):** o IF.data passa a remover o próprio temporário também na falha (`try/finally`), como a CVM. Saiu um dublê de relógio que nenhum teste usava. O limite da janela entre a conferência e a releitura do ZIP pelo consumidor foi declarado em `pendencias.md`. A mutação do `_buscar` não foi refeita depois do `try/finally`, que só limpa o temporário.
+- **Resíduos:** evidências em `outputs/F4-C02/` e cache de mutação em `mutants/`.
+- **Decisões que ficaram para o Marcos:** nenhuma.

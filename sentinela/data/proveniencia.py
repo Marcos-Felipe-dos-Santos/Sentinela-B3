@@ -55,7 +55,7 @@ _BLOCO_HASH = 1 << 20
 class _Execucao:
     instante: datetime
     as_of: datetime
-    baixados: dict[str, tuple[int, int]] = field(default_factory=dict)
+    baixados: dict[str, str] = field(default_factory=dict)
 
 
 _EXECUCAO: ContextVar[_Execucao | None] = ContextVar("coleta_da_execucao", default=None)
@@ -81,12 +81,16 @@ def coleta_da_execucao(
         _EXECUCAO.reset(marca)
 
 
-def marcar_baixado(caminho: Path) -> None:
-    """Registra, na execução em curso, o arquivo que ela acabou de baixar."""
+def marcar_baixado(caminho: Path, sha256: str) -> None:
+    """Registra, na execução em curso, o arquivo que ela baixou, pelo hash do que gravou.
+
+    O hash é o do conteúdo que a própria execução escreveu, não o do arquivo publicado: se
+    outra execução publicar o mesmo destino depois, o conteúdo difere e a coleta desta
+    execução não vale para ele (BUG-4-16).
+    """
     execucao = _EXECUCAO.get()
     if execucao is not None:
-        stat = Path(caminho).stat()
-        execucao.baixados[str(Path(caminho).resolve())] = (stat.st_mtime_ns, stat.st_size)
+        execucao.baixados[str(Path(caminho).resolve())] = sha256
 
 
 def _lido_na_execucao(caminho: Path, registro: Proveniencia) -> Proveniencia:
@@ -94,8 +98,8 @@ def _lido_na_execucao(caminho: Path, registro: Proveniencia) -> Proveniencia:
     execucao = _EXECUCAO.get()
     if execucao is None:
         return registro
-    stat = caminho.stat()
-    if execucao.baixados.get(str(caminho.resolve())) != (stat.st_mtime_ns, stat.st_size):
+    marcado = execucao.baixados.get(str(caminho.resolve()))
+    if marcado is None or marcado != hash_sha256(caminho):
         return registro
     coleta = execucao.instante.astimezone(UTC).isoformat(timespec="seconds")
     return ProvenienciaDaExecucao(

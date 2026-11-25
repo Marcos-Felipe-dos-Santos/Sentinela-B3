@@ -27,6 +27,7 @@ import json
 import logging
 import math
 import re
+import uuid
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime
@@ -358,12 +359,15 @@ class IFDataProvider:
             raise
         if valor:
             self.cache_dir.mkdir(parents=True, exist_ok=True)
-            temporario = arquivo.with_suffix(".tmp")
-            temporario.write_text(
-                json.dumps(valor, ensure_ascii=False), encoding="utf-8"
-            )
-            temporario.replace(arquivo)
-            proveniencia.marcar_baixado(arquivo)
+            # BUG-4-16: temporário próprio e identidade pelo conteúdo gravado aqui.
+            temporario = arquivo.with_name(f"{arquivo.name}.{uuid.uuid4().hex}.tmp")
+            conteudo = json.dumps(valor, ensure_ascii=False).encode("utf-8")
+            try:
+                temporario.write_bytes(conteudo)
+                temporario.replace(arquivo)
+            finally:
+                temporario.unlink(missing_ok=True)
+            proveniencia.marcar_baixado(arquivo, hashlib.sha256(conteudo).hexdigest())
             self._registrar(caminho)
         return valor
 
