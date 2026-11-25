@@ -16,6 +16,7 @@ from apoio_bancos import INFLACAO, NTNB, PL_INICIAL, VPA, enriquecer_bancos
 from apoio_bazin import enriquecer_bazin
 from apoio_fii import enriquecer_fii
 from apoio_gordon import AS_OF_GORDON, enriquecer_gordon
+from apoio_qualidade import enriquecer_qualidade
 
 import fii_engine
 import valuation_engine
@@ -59,6 +60,9 @@ def executar(caso):
                         teto=caso.get("teto_pib_cenario", 0.02),
                     )
                 )
+                if "qualidade" in caso:
+                    # F4-C10 (P1 = opção B): insumos do quadro de Qualidade.
+                    entrada = enriquecer_qualidade(entrada, caso["qualidade"])
             with (
                 patch.object(valuation_engine, "DISTRESSED_TICKERS", DISTRESSED),
             ):
@@ -597,6 +601,46 @@ def _acoes_taxa_bazin():
     return casos
 
 
+def _acoes_qualidade():
+    """F4-C10 (P1 = opção B): os 12 casos de `docs/decisoes/golden-qualidade-4.md`, §4."""
+    base = {
+        "ticker": "TSTQ3",
+        "preco_atual": 20.0,
+        "pl": 10.0,
+        "pvp": 1.5,
+        "dy": 0.06,
+        "roe": 0.14,
+        "especie": "ON",
+    }
+    casos = []
+    for variante in (
+        "empresa-completa",
+        "banco-completo",
+        "unit",
+        "sem-lucro",
+        "pl-inicial-zero",
+        "sem-ebitda",
+        "receita-zero",
+        "calendario-curto",
+        "relacao-abstida",
+        "entrega-depois-do-as_of",
+        "por-publicacao",
+        "perimetro-misto",
+    ):
+        entrada = dict(base)
+        if variante == "unit":
+            entrada.update(
+                ticker="TSTQ11",
+                classe_ativo="UNIT",
+                especie="UNT",
+                acoes_por_unit={"ON": 1, "PN": 2},
+            )
+        caso = _acao(f"qualidade-{variante}", entrada)
+        caso["qualidade"] = variante
+        casos.append(caso)
+    return casos
+
+
 def _casos_liquidez():
     """F2A-10: só inclusões, com a mesma regra explícita por classe."""
     casos = []
@@ -709,6 +753,7 @@ def montar_casos():
         + _acoes_preco_nao_finito()
         + _acoes_gordon_real()
         + _acoes_taxa_bazin()
+        + _acoes_qualidade()
         + _fii_fronteiras()
         + _fii_selic_e_vacancia()
         + _fii_aleatorios()

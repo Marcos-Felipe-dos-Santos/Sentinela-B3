@@ -226,7 +226,7 @@ def _entrada_golden(caso):
                 vpa=caso["banco"]["vpa"],
             )
         taxa = caso.get("taxa_real") or {"ntnb": 0.07, "inflacao": 0.055}
-        return enriquecer_bazin(
+        entrada = enriquecer_bazin(
             enriquecer_gordon(
                 entrada,
                 ntnb=taxa["ntnb"],
@@ -234,6 +234,12 @@ def _entrada_golden(caso):
                 teto=caso.get("teto_pib_cenario", 0.02),
             )
         )
+        if "qualidade" in caso:
+            # F4-C10: o mesmo gancho do `golden_motores.executar`.
+            from apoio_qualidade import enriquecer_qualidade
+
+            entrada = enriquecer_qualidade(entrada, caso["qualidade"])
+        return entrada
     return (
         entrada
         if caso.get("sem_informe")

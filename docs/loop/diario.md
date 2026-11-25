@@ -553,3 +553,25 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Status:** sucesso
 - **O que foi feito:** no `14029b7`, uma linha da docstring do módulo `data_quality.py` emendou no texto seguinte e passou de 110 caracteres. O parágrafo foi só requebrado, sem mudar o texto.
 - **Decisões que ficaram para o Marcos:** nenhuma.
+
+### F4-C10 — test: add a quality family to the motor golden
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** P1 = opção (B), pela decisão do Marcos de 25/11. O golden dos motores ganha a família de Qualidade de `docs/decisoes/golden-qualidade-4.md` (§4 e §5):
+  - `tests/apoio_qualidade.py`: completa a `serie_cvm` do `enriquecer_janelas` (2021 a 2025) com os seis números por exercício, CNPJ, modelo e perímetro. Acrescenta à relação da B3 um provento por ano em 10/06, fora da janela de 12 meses do Bazin, e o calendário de pregões. As 12 variantes do §4 saem por parâmetro.
+  - `tests/golden_motores.py`: `_acoes_qualidade()` depois de `_acoes_taxa_bazin()`, e um gancho em `executar` para os casos com a chave `qualidade`.
+  - `tests/test_qualidade_golden_valores.py`: os valores dos dois casos completos (empresa e banco), calculados à mão e verdes antes da geração. ROE de 0,10 a 0,14, média 0,12, desvio √0,0002 = 1,4142 p.p.; margem de 0,12 a 0,16; alavancagem 0,5; proventos 1,1, 1,2, 1,3, 1,0 e 1,5. No banco, margem e alavancagem saem "não aplicável ao modelo banco".
+  - Os outros 10 casos se comportam como o plano descreve:
+    - unit com proventos 3× (1 ON + 2 PN);
+    - abstenção só do indicador e do ano afetados (sem lucro, PL inicial zero, sem EBITDA, receita zero);
+    - proventos de 2025 abstidos pelo calendário curto, e todos abstidos com a relação abstida;
+    - cobertura 4/5 com a entrega depois do as_of;
+    - 5/5 por publicação;
+    - `comparavel = False` com o perímetro misto.
+- **Conferência antes de gerar:** as saídas dos 10 casos foram lidas contra `qualidade._janela` e `_fonte`. A entrega em 21/10 é posterior ao dia de D (20/10), então o exercício sai da janela; a coleta por publicação vale mesmo depois do as_of. Na revisão 1, o teste do banco passou a afirmar também os lucros e a cobertura 5/5, e o provento de 2020 ganhou comentário. A coleta anterior à entrega na variante de entrega foi para `pendencias.md`.
+- **Golden:** pelo predicado aprovado, as 2291 linhas antigas ficaram byte a byte iguais e na mesma ordem, e entraram só as 12 novas. O SHA passou de `1759c55f…` para `6ad83081…`, registrado em `docs/decisoes/predicados-golden-4.md`. Evidências em `outputs/F4-C10/`: o golden anterior e os dois SHAs.
+- **Dificuldades:** `tests/test_analysis_service_as_of.py` (`_entrada_golden`) repete o montador de entradas do golden e passou a falhar no primeiro caso de Qualidade.
+- **Como resolvi:** acrescentei o mesmo gancho, sem mudar nenhuma asserção. O arquivo não estava na lista do §5.
+- **Testes:** suíte de 5418 para 5420 passed, 1 skipped, 24 xfailed. Os 12 casos novos rodam dentro dos testes existentes do golden.
+- **Mutação:** não se aplica. O item só acrescenta casos de teste e apoio, sem código de produção.
+- **Decisões que ficaram para o Marcos:** nenhuma.
