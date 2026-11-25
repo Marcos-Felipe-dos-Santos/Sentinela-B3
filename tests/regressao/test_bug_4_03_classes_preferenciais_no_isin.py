@@ -23,6 +23,8 @@ from sentinela.data.providers import b3_proventos
 from sentinela.data.store import migracoes
 
 pytestmark = pytest.mark.parametrize("sufixo", list("CDEFGH"))
+# Dígito verificador ISO 6166 válido de cada ISIN sintético (decisão do Marcos de 25/11/2026).
+DIGITO = {"C": "8", "D": "6", "E": "4", "F": "1", "G": "9", "H": "7"}
 
 
 def test_retorno_total_reinveste_o_provento_da_classe(
@@ -43,7 +45,7 @@ def test_retorno_total_reinveste_o_provento_da_classe(
 
 
 def test_fator_reconhece_o_desdobramento_da_classe(sufixo: str) -> None:
-    isin = f"BRTESTACNP{sufixo}0"
+    isin = f"BRTESTACNP{sufixo}{DIGITO[sufixo]}"
     entrada = dados([evento(isin=isin)])
     entrada["especie"] = f"PN{sufixo}"
     entrada["proventos_b3"]["isins_emissor"] = [isin]
@@ -78,7 +80,11 @@ def test_janela_de_on_nao_abstem_por_evento_da_preferencial(sufixo: str) -> None
         referencia=date(2026, 10, 19),
         dia_as_of=AS_OF.date(),
         especie="ON",
-        eventos_acoes=[evento(isin=f"BRTESTACNP{sufixo}0", lastDatePrior="15/04/2026")],
+        eventos_acoes=[
+            evento(
+                isin=f"BRTESTACNP{sufixo}{DIGITO[sufixo]}", lastDatePrior="15/04/2026"
+            )
+        ],
     )
 
     assert not isinstance(janela, proventos_b3.Abstencao), janela

@@ -442,3 +442,17 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
   - A correção é uma linha: a espécie só vem de ISIN legível. Ela foi aplicada, rodada e revertida.
 - **Dificuldades:** com a correção, a suíte deu 7 failed. Seis são da regressão protegida BUG-4-03, que usa os ISINs sintéticos `BRTESTACNP{C..H}0`, com dígito verificador inválido, esperando o descarte por espécie. O sétimo é `tests/test_proventos_b3.py` (`BRXXXXACNPR1`).
 - **Decisões que ficaram para o Marcos:** autorizar a troca só dos dígitos verificadores nesses literais, pelos válidos listados em `pendencias.md`, com as asserções iguais. Com a autorização, o item segue: a regressão volta de `outputs/F4-C03/` para `tests/regressao/`, aplica-se `outputs/F4-C03/correcao-tentativa.patch`, trocam-se os literais e seguem-se a mutação, o gate, a revisão e o commit.
+
+### F4-C03 (retomada) — fix: never discard a stock event by species from an unreadable ISIN
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** BUG-4-17, bloqueador 3 da R2 do bloco 0, depois da autorização do Marcos de 25/11. Em `proventos_b3._evento_de_acoes_na_janela`, a espécie só vem de ISIN legível (`isin_legivel`). ISIN ilegível nunca descarta o evento por espécie e, dentro da janela, abstém com o motivo do evento.
+- **Dificuldades:** as fixtures tinham **dígito verificador inválido**: os ISINs sintéticos `BRTESTACNP{C..H}0` da regressão protegida BUG-4-03 e `BRXXXXACNPR1` de `tests/test_proventos_b3.py`.
+- **Como resolvi:** pela autorização, só os dígitos foram trocados, com as asserções iguais. No BUG-4-03, um mapa `DIGITO` dá C8, D6, E4, F1, G9 e H7 nos dois testes que montam o literal. Em `test_proventos_b3.py`, `BRXXXXACNPR0`.
+- **Testes:**
+  - Mutação manual (`outputs/F4-C03/mutacao-manual-especie.txt`): sem o descarte por espécie, falham os seis casos do BUG-4-03 e o de `test_proventos_b3.py`. Eles testam a espécie, e não o ISIN ilegível.
+  - Regressão BUG-4-17 (`tests/regressao/test_bug_4_17_isin_invalido_outra_especie_bazin.py`): ISINs ilegíveis de aparência PNA e PN, com e sem conjunto do emissor, abstêm com o motivo do evento. Esses 4 nasceram xfail estritos (`outputs/F4-C03/regressao-antes.txt`). Os controles seguem: ISIN legível de PNA, sem conjunto do emissor, descartado pela espécie (corrigido na revisão 1, porque o arranjo do BUG-4-04 descartava pelo emissor), e ISIN do emissor da mesma espécie abstendo. A falha da mesma família nos fatores foi registrada em `pendencias.md`.
+  - Suíte: 5390 passed, 1 skipped, 24 xfailed.
+  - Mutação (`outputs/F4-C03/mutacao.txt`): `_evento_de_acoes_na_janela` 53/56 = 94,6%. Os três sobreviventes são do código anterior: dois `continue` → `break` e o `"XXXX"` equivalente.
+- **Resíduos:** evidências em `outputs/F4-C03/` e cache de mutação em `mutants/`.
+- **Decisões que ficaram para o Marcos:** nenhuma.

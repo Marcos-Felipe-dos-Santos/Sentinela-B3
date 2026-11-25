@@ -272,7 +272,7 @@ def test_duplicata_identica_conta_uma_vez():
             {
                 "label": "BONIFICACAO",
                 "lastDatePrior": "23/12/2025",
-                "isinCode": "BRXXXXACNPR1",
+                "isinCode": "BRXXXXACNPR0",
             },
             False,
         ),

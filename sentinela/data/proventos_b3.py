@@ -322,7 +322,8 @@ def _evento_de_acoes_na_janela(
         if isins and isin not in isins and isin_legivel(isin):
             continue
         data_com = ler_data(evento.get("lastDatePrior"))
-        especie = ESPECIE_DO_ISIN.get(isin[6:11])
+        # A espécie só vem de ISIN legível: um ISIN ilegível nunca descarta o evento (BUG-4-17).
+        especie = ESPECIE_DO_ISIN.get(isin[6:11]) if isin_legivel(isin) else None
         if especie is not None and especie not in alvo:
             continue
         if data_com is None or inicio - FOLGA_SEM_PREGAO < data_com < referencia:
