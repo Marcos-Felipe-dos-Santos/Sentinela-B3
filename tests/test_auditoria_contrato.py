@@ -103,3 +103,24 @@ def test_prompt_historico_identifica_original_sem_recalculo(monkeypatch):
     prompt = auditoria._rel["tickers"]["TSTA3"]["prompt"]["prompt_completo"]
     assert "Registro histórico" in prompt and "23.45" in prompt and "87" in prompt
     assert "COMPRA" in prompt
+
+
+def test_banco_unico_indisponivel_vira_erro_sem_ler_banco_antigo(monkeypatch, tmp_path):
+    """F4-A12: com só o banco antigo no disco, a auditoria registra o erro e não o lê."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "sentinela_v6.db").write_bytes(b"")
+    monkeypatch.setattr(auditoria, "_rel", {"banco": {}})
+
+    auditoria.auditar_banco()
+
+    assert "banco único sentinela_store.db ausente" in auditoria._rel["banco"]["erro"]
+    assert not (tmp_path / "sentinela_store.db").exists()
+
+
+def test_carteira_vazia_registra_contagem_zero(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(auditoria, "_rel", {"banco": {}})
+
+    auditoria.auditar_banco(com_carteira=True)
+
+    assert auditoria._rel["banco"]["carteira"] == {"posicoes": 0}

@@ -4,15 +4,18 @@ SENTINELA B3 — SCRIPT DE AUDITORIA INTERNA
 Expõe tudo que a UI esconde: dados brutos do scraper, os resultados e motivos do contrato
 de valuation, o prompt exato enviado à IA, e o conteúdo real do banco.
 
-Ao terminar, salva DOIS arquivos na mesma pasta:
+Lê o banco único (`sentinela.data.store.unico.caminho_padrao()`) e, ao terminar, salva DOIS
+arquivos em `outputs/auditoria/` (relativo ao diretório corrente; o git ignora `outputs/`):
   • auditoria_YYYYMMDD_HHMMSS.txt  — relatório legível (sem cores)
   • auditoria_YYYYMMDD_HHMMSS.json — dados estruturados para análise
+As posições da carteira saem só como contagem; `--com-carteira` as inclui (BUG-4-13).
 
 Uso:
     python auditoria.py                  # audita PETR4, ITUB4, WEGE3
     python auditoria.py VALE3 BBAS3      # audita tickers específicos
     python auditoria.py --db-only        # só inspeciona o banco
     python auditoria.py --selic          # só testa a Selic
+    python auditoria.py --db-only --com-carteira   # inclui as posições da carteira
 """
 
 import sys
@@ -24,6 +27,9 @@ import math
 import logging
 import sqlite3
 from datetime import datetime
+from pathlib import Path
+
+from sentinela.data.store import unico
 
 # ─── ANSI strip ───────────────────────────────────────────────────────────────
 _ANSI = re.compile(r'\x1b\[[0-9;]*m')
@@ -59,7 +65,8 @@ warn = lambda s: f"{YLW}⚠ {s}{RST}"
 hdr  = lambda s: f"\n{BLD}{CYN}{'═'*60}\n  {s}\n{'═'*60}{RST}"
 sub  = lambda s: f"\n{BLD}── {s} ──{RST}"
 
-DB_PATH = "sentinela_v6.db"
+PASTA_SAIDA = Path("outputs") / "auditoria"
+FLAG_CARTEIRA = "--com-carteira"
 
 # ─── Relatório JSON (populado ao longo da execução) ───────────────────────────
 _rel: dict = {
@@ -439,18 +446,21 @@ def auditar_prompt(ticker: str, dados: dict, fv: float = 0, upside: float = 0, a
 # 6. BANCO DE DADOS
 # ══════════════════════════════════════════════════════════════════════════════
 
-def auditar_banco():
+def auditar_banco(com_carteira: bool = False):
+    """Inspeciona o banco único; posições da carteira só com `com_carteira` (BUG-4-13)."""
     print(hdr("6. BANCO DE DADOS"))
 
-    if not os.path.exists(DB_PATH):
-        print(warn(f"  Banco {DB_PATH!r} não encontrado no diretório atual."))
-        _rel['banco'] = {"erro": "arquivo não encontrado"}
+    try:
+        db_path = unico.caminho_padrao()
+    except RuntimeError as e:
+        print(warn(f"  Banco único indisponível: {e}"))
+        _rel['banco'] = {"erro": str(e)}
         return
 
-    tamanho_mb = os.path.getsize(DB_PATH) / 1024 / 1024
-    print(f"  Arquivo: {DB_PATH}  ({tamanho_mb:.2f} MB)")
+    tamanho_mb = os.path.getsize(db_path) / 1024 / 1024
+    print(f"  Arquivo: {db_path}  ({tamanho_mb:.2f} MB)")
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     cur  = conn.cursor()
 
@@ -469,17 +479,19 @@ def auditar_banco():
     print(sub("Carteira"))
     cur.execute("SELECT * FROM carteira_real")
     cart = cur.fetchall()
-    cart_json = []
-    if cart:
+    cart_json = {"posicoes": len(cart)}
+    if cart and com_carteira:
         total_inv = sum(r['quantidade'] * r['preco_medio'] for r in cart)
         print(f"  {len(cart)} posições — Total investido: R$ {total_inv:,.2f}")
+        cart_json["itens"] = []
         for r in cart:
-            linha = dict(r)
-            cart_json.append(linha)
+            cart_json["itens"].append(dict(r))
             print(
                 f"    {r['ticker']:<8} {r['quantidade']:>6} × "
                 f"R${r['preco_medio']:>9.2f}  (desde {r['data_aporte']})"
             )
+    elif cart:
+        print(f"  {len(cart)} posições (detalhe só com {FLAG_CARTEIRA}).")
     else:
         print("  Carteira vazia.")
 
@@ -532,7 +544,7 @@ def auditar_banco():
     conn.close()
 
     _rel['banco'] = {
-        "arquivo":    DB_PATH,
+        "arquivo":    db_path,
         "tamanho_mb": round(tamanho_mb, 3),
         "tabelas":    tabelas,
         "indices":    indices,
@@ -597,7 +609,8 @@ def main():
     sys.stdout = _tee
 
     ts    = datetime.now().strftime('%Y%m%d_%H%M%S')
-    fname = f"auditoria_{ts}"
+    PASTA_SAIDA.mkdir(parents=True, exist_ok=True)
+    fname = PASTA_SAIDA / f"auditoria_{ts}"
 
     args = [a for a in sys.argv[1:] if a]
 
@@ -613,14 +626,14 @@ def main():
     _rel['meta'] = {
         "timestamp":  datetime.now().isoformat(),
         "versao":     f"Sentinela B3 {APP_VERSION}",
-        "db_path":    DB_PATH,
+        "db_path":    "banco único (sentinela.data.store.unico)",
         "tickers":    [],
         "modo":       "full",
     }
 
     if '--db-only' in args:
         _rel['meta']['modo'] = 'db-only'
-        auditar_banco()
+        auditar_banco(com_carteira=FLAG_CARTEIRA in args)
     elif '--selic' in args:
         _rel['meta']['modo'] = 'selic-only'
         auditar_selic()
@@ -634,7 +647,7 @@ def main():
         _rel['meta']['tickers'] = tickers
 
         auditar_selic()
-        auditar_banco()
+        auditar_banco(com_carteira=FLAG_CARTEIRA in args)
 
         for ticker in tickers:
             print(f"\n\n{'█'*60}")

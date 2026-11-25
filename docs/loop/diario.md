@@ -242,3 +242,21 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
   - Mutação (`mutants/` apagado antes; `outputs/F4-A11c/mutacao.txt`): `_evento_de_acoes_na_janela` 50/53 = 94,3%. Os três sobreviventes estão no código anterior: dois `continue` → `break` (aprovação futura e espécie) e o padrão `"XXXX"` do ISIN ausente, que é equivalente.
 - **Resíduos:** evidências em `outputs/F4-A11c/` e cache de mutação em `mutants/`.
 - **Decisões que ficaram para o Marcos:** nenhuma. As ressalvas (1) e (2) do F4-A11 vão para o bloco 2, por decisão de 25/11.
+
+### F4-A12 — fix: read the single store and write audit output under outputs
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** BUG-4-13 (achado 15 do Gemini).
+  - `auditoria.auditar_banco` lê `unico.caminho_padrao()`. Com só os bancos antigos no disco, o `RuntimeError` dele vira erro no relatório, sem ler o banco antigo nem criar o único.
+  - O `.txt` e o `.json` vão para `outputs/auditoria/`, relativo ao diretório corrente, como o banco. Assim a regressão protegida BUG-2C-29, que faz `chdir` para o `tmp_path`, continua gravando fora do repositório.
+  - A carteira sai só como contagem (`{"posicoes": N}` no JSON e "N posições" no texto). Com `--com-carteira`, o texto e o JSON (`itens`) trazem as posições, ainda em `outputs/`.
+  - O `DB_PATH` saiu. `meta.db_path` diz "banco único", e `banco.arquivo` traz o caminho lido.
+  - Efeito colateral do `caminho_padrao()`: sem nenhum banco no diretório corrente, a auditoria cria o único pelo esquema das migrações. Num banco único existente, aplica as migrações pendentes, como o app. Antes ela só lia (ressalva em `pendencias.md`).
+- **Testes:**
+  - Regressão BUG-4-13 (`tests/regressao/test_bug_4_13_auditoria_banco_unico_e_saida.py`): banco único temporário em `tmp_path`, sob o `--basetemp` do executor e fora do `/tmp`, com duas posições fictícias e `main()` em `--db-only`. Ela confere os dois arquivos: nenhum relatório no diretório corrente, só a contagem, e nenhum ticker ou preço no texto e no JSON. Com a flag, as posições aparecem. Os 2 casos nasceram xfail estritos (`outputs/F4-A12/regressao-antes.txt`).
+  - Casos novos em `tests/test_auditoria_contrato.py`: banco único ausente com banco antigo vira erro, sem criar o único; carteira vazia registra contagem zero.
+  - Suíte: 5348 passed, 1 skipped, 24 xfailed.
+- **Mutação:** não rodou (`outputs/F4-A12/mutacao.txt`). O `auditoria.py` está em `also_copy` no `[tool.mutmut]`: é copiado, mas não instrumentado. Ele é um script, não módulo de cálculo nem de fronteira, e o mínimo de 80% não se aplica. Mudar a configuração do mutmut fica fora deste item.
+- **Resíduos:** evidências em `outputs/F4-A12/`.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** o nome da flag `--com-carteira`.
