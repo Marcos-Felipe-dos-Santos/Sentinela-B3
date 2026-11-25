@@ -364,3 +364,18 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Testes:** três casos novos em `tests/test_script_auditar.py`: o padrão, a variável com o `--saida` tendo precedência, e a variável vazia voltando ao padrão. Os 46 do arquivo passam. Ao fim, `git grep -n -I -i -E 'wsl[$]|/home/marco[s]|C:.Users.marco[s]|/mnt/c/Users/marco[s]'` não acha nada nos arquivos versionados. Suíte com 5373 passed, 1 skipped, 24 xfailed.
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** definir a variável no ambiente, se quiser a saída no Downloads.
+
+### [DECISÃO] Checkpoint do bloco 0 — pedido de auditoria R2
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** parada no `[DECISÃO]`; a auditoria ainda não rodou
+- **Intervalo:** `769e385..d5bf7de` (de `chore: activate phase 4 queue`, exclusivo, até o F4-A20). São 30 commits: 20 com `Executor: claude-code`, 10 com `Executor: codex` e nenhum sem a linha.
+- **Auditoria cruzada (decisão 23; seleção por autoria), uma rodada por família:**
+  - Commits do claude-code, auditados pelo Codex: `python scripts/auditar.py codex fase --fase 4 --desde 769e385`.
+  - Commits do codex, auditados pelo Claude: `python scripts/auditar.py claude fase --fase 4 --desde 769e385`.
+  - Cada família audita só os commits da outra. O claude-code não audita o próprio trabalho.
+- **Saída:** `outputs/auditorias/`, ou a pasta de `SENTINELA_AUDITORIA_DESTINO` (F4-A20). O veredito e o caminho do relatório entram no diário por um commit `docs:` próprio, fora do intervalo auditado.
+- **Decisões do Marcos neste checkpoint:**
+  - P1, a regeneração da Qualidade no golden (`docs/decisoes/golden-qualidade-4.md`, recomendação (B); sem decisão, vale (c)).
+  - Liberar o bloco 1, que começa a contar o prazo de 2 semanas.
+  - A nota do F4-A18 sobre a exceção `max_age_days`.
+- **Revisões cruzadas pendentes, pelo codex:** DD-97 (F4-A09) e DD-98 (F4-A11).
