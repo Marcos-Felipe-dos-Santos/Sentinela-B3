@@ -629,3 +629,12 @@ def test_variavel_vazia_volta_ao_padrao(monkeypatch):
     assert auditar.pasta_saida(SimpleNamespace(saida=None)) == Path(
         "outputs/auditorias"
     )
+
+
+@pytest.mark.parametrize("para", ["codex", "claude", "gemini"])
+def test_prompt_pede_caminhos_relativos_ao_repositorio(prompts, para):
+    """Decisão de 25/11/2026: o relatório versionado não traz caminho local do autor."""
+    texto, _ = auditar.montar_prompt(_args(), para)
+
+    assert "caminho relativo à raiz do repositório" in texto
+    assert "nunca por caminho absoluto" in texto

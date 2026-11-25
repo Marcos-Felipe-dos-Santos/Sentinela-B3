@@ -456,3 +456,14 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
   - Mutação (`outputs/F4-C03/mutacao.txt`): `_evento_de_acoes_na_janela` 53/56 = 94,6%. Os três sobreviventes são do código anterior: dois `continue` → `break` e o `"XXXX"` equivalente.
 - **Resíduos:** evidências em `outputs/F4-C03/` e cache de mutação em `mutants/`.
 - **Decisões que ficaram para o Marcos:** nenhuma.
+
+### Caminhos locais nos relatórios copiados (decisão 2 do Marcos de 25/11/2026)
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:**
+  - Em `docs/loop/auditorias/bloco0-codex.md`, os 40 links com o caminho local do autor viraram caminhos relativos ao repositório. O topo ganhou a linha "Editado só para remover caminhos locais do autor (25/11/2026)", e nada mais mudou.
+  - A regra entrou em `docs/loop/protocolo.md`: toda cópia versionada de relatório passa por essa limpeza.
+  - `scripts/auditar.py` passa a anexar a todo prompt a instrução de citar arquivos por caminho relativo à raiz do repositório (`CAMINHOS_RELATIVOS`).
+  - A pendência foi fechada, e o `git grep -n -I -i -E 'wsl[$]|/home/marco[s]|C:.Users.marco[s]|/mnt/c/Users/marco[s]'` voltou a zero.
+- **Testes:** `tests/test_script_auditar.py` ganhou o caso do prompt das três famílias com a instrução. Suíte de 5390 para 5393 passed, 1 skipped, 24 xfailed. Os links relativos à raiz não navegam no GitHub a partir de `docs/loop/auditorias/`; a decisão pediu caminhos relativos à raiz, e a privacidade era o objetivo.
+- **Decisões que ficaram para o Marcos:** nenhuma.

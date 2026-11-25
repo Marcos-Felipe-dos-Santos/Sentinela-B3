@@ -44,6 +44,11 @@ DESTINO_ENV = "SENTINELA_AUDITORIA_DESTINO"
 SAIDA_LOCAL = Path("outputs/auditorias")
 # O app do Gemini cortou anexos de ~450 KB (teste de 14/10/2026).
 MAX_CHARS_POR_PARTE = 350_000
+# Decisão do Marcos de 25/11/2026: o relatório pode ser versionado; sem caminho local do autor.
+CAMINHOS_RELATIVOS = (
+    "\n\nCite arquivos sempre por caminho relativo à raiz do repositório (por exemplo, "
+    "`market_engine.py:1220`), nunca por caminho absoluto da máquina.\n"
+)
 # Arquivo maior fica fora do pacote, listado no 05-git.
 MAX_BYTES_POR_ARQUIVO = 300_000
 
@@ -272,6 +277,7 @@ def montar_prompt(a, para, selecao=None):
     v = contexto(a)
     v["ACESSO"] = preencher(ACESSO[para], v)
     texto = preencher((PROMPTS / f"{a.modo}.md").read_text(encoding="utf-8"), v)
+    texto += CAMINHOS_RELATIVOS
     sobra = re.findall(r"\{[A-Z_]+\}", texto)
     if sobra:
         sys.exit(f"Marcadores sem valor no prompt: {sorted(set(sobra))}")
