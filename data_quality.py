@@ -2,8 +2,10 @@
 
 Nota sobre validacao_cruzada(): o market_engine.py guarda o que cada fonte entregou em
 `dados['valores_por_fonte']` e a fonte de cada múltiplo em `field_provenance` (F2A-5).
-Os checks de P/L e P/VP derivados só rodam entre fontes diferentes: com o múltiplo e o valor
-por ação da mesma fonte, a comparação seria identidade. LPA e VPA da CVM vêm dos
+Os checks de P/L e P/VP derivados deixam de rodar só quando se comprova que o múltiplo e o
+valor por ação vieram da mesma fonte (a comparação seria identidade). Sem a proveniência
+registrada (fonte do múltiplo ausente ou valor da fonte não guardado), a origem não está
+demonstrada e o check roda, como antes; fontes distintas comprovadas também rodam. LPA e VPA da CVM vêm dos
 controladores e das ações da Composição do Capital do mesmo documento, e o LPA dos
 métodos é o divulgado (F2A-36/37); a conferência é LPA recalculado × LPA básico divulgado e
 ações da CVM × yfinance. No FII, o P/VP do Informe é comparado com o P/VP de cada fonte de

@@ -538,3 +538,12 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
   O item vira um teste de caracterização que fixa a abstenção, e o título do commit passa de `fix:` a `test:`.
 - **Testes:** `tests/test_provento_sem_aprovacao.py`, com 7 casos: aprovação vazia, nula, ausente, com data impossível, com texto e em formato ISO abstêm com o motivo; fora da janela, nada muda. Na mutação manual sem a guarda (`outputs/F4-C08/caracterizacao.txt`), os 6 casos de abstenção falham. Suíte: 5418 passed, 1 skipped, 24 xfailed. O teste fixa o caminho de `entradas`; `relacao_ate` e o backtest foram conferidos na leitura do código, sem trava própria neste item. A linha da fila guarda a definição original (`fix:`, arquivos previstos); o commit sai como `test:`.
 - **Decisões que ficaram para o Marcos:** a DD-100 aguarda a revisão cruzada. Se o auditor tiver um caso concreto, ele vira item novo.
+
+### F4-C09 — docs: distinguish missing provenance in data quality and test bank leverage fields
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** ressalvas da R2 sobre o F4-A15 e o F4-A16.
+  - A docstring do módulo `data_quality.py` distingue os casos. Os checks de P/L e P/VP derivados deixam de rodar só quando se comprova a mesma fonte (identidade). Sem a proveniência registrada, a origem não está demonstrada e o check roda, como `_mesma_fonte` faz. Fontes distintas comprovadas também rodam.
+  - `test_banco_sem_pl_na_2_03_nao_gera_patrimonio_nem_alavancagem` volta a conferir o que o nome promete: `divida_liq_ebitda` e `div_liq_patrimonio` ausentes no banco, cada um com seu motivo. Os valores foram conferidos antes de afirmar.
+- **Testes:** suíte com 5418 passed, 1 skipped, 24 xfailed. Nenhum código de produção mudou.
+- **Decisões que ficaram para o Marcos:** nenhuma.

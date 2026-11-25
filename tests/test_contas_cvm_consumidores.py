@@ -42,6 +42,10 @@ def test_banco_sem_pl_na_2_03_nao_gera_patrimonio_nem_alavancagem(
     assert ind["patrimonio_liquido"] is None
     assert ind["pl_controladores"] is None
     assert ind["roe"] is None
+    # Sem PL nem dívida financeira demonstrados, nenhuma alavancagem (F4-C09).
+    assert ind["divida_liq_ebitda"] is None
+    assert ind["div_liq_patrimonio"] is None
+    assert set(ind["alavancagem_motivos"]) == {"divida_liq_ebitda", "div_liq_patrimonio"}
 
 
 def test_empresa_nao_financeira_segue_igual(tmp_path, monkeypatch):
