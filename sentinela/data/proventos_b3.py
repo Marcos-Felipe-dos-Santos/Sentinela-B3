@@ -36,6 +36,7 @@ Função pura: sem rede, sem relógio, sem `config`.
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -116,6 +117,18 @@ class Evento:
     valor: float
     data_com: date
     aprovacao: date | None
+
+
+def isin_legivel(isin: str) -> bool:
+    """Confere a estrutura e o dígito verificador do ISIN (ISO 6166)."""
+    if re.fullmatch(r"[A-Z]{2}[A-Z0-9]{9}[0-9]", isin) is None:
+        return False
+    digitos = "".join(str(int(caractere, 36)) for caractere in isin)
+    total = 0
+    for posicao, digito in enumerate(reversed(digitos)):
+        produto = int(digito) * (1 + posicao % 2)
+        total += produto // 10 + produto % 10
+    return total % 10 == 0
 
 
 def _texto(bruto: object) -> str | None:

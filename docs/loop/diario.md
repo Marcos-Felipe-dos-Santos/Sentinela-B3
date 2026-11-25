@@ -213,3 +213,11 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Resíduos:** evidências em `outputs/F4-A11/` e cache de mutação em `mutants/`.
 - **Decisões que ficaram para o Marcos:** nenhuma. O tratamento do erro SQLite na remoção só exigiu a mensagem no `app.py`; nada foi adiado.
 - **Para o Marcos revisar:** a DD-98 (hash da renderização) e o `ValueError` como contrato da entrada inválida.
+
+### F4-A11b — refactor: share the ISIN check digit validation from the dividends boundary
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** decisão 2 do Marcos de 25/11, primeira parte. `_isin_legivel` saiu de `sentinela/data/fatores_acoes_b3.py` e virou `proventos_b3.isin_legivel`, com o mesmo corpo (estrutura e dígito verificador, ISO 6166). O `fatores_acoes_b3` a chama por `pb.isin_legivel`, e o `import re` foi junto. Nenhum teste mudou e nenhum comportamento mudou: o `proventos_b3` ainda não usa a função, o que fica para o F4-A11c.
+- **Testes:** suíte com 5339 passed, 1 skipped, 24 xfailed, igual ao HEAD. Mutação (`mutants/` apagado antes; `outputs/F4-A11b/mutacao.txt`): `isin_legivel` 38/39. O sobrevivente (`total -=` em vez de `+=`) é equivalente, porque a soma negada também é múltipla de 10 nos mesmos casos.
+- **Resíduos:** evidências em `outputs/F4-A11b/` e cache de mutação em `mutants/`.
+- **Decisões que ficaram para o Marcos:** nenhuma.
