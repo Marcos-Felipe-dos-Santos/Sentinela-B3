@@ -526,3 +526,15 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
   - Suíte: 5411 passed, 1 skipped, 24 xfailed.
 - **Mutação:** não se aplica (`auditoria.py` em `also_copy`).
 - **Decisões que ficaram para o Marcos:** nenhuma. A DD-99 aguarda a revisão cruzada.
+
+### F4-C08 — test: pin the abstention for dividends without a readable approval date
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso, sem mudança de código (DD-100)
+- **O que foi feito:** a observação da auditoria do Claude (chat) não se reproduziu. Nos caminhos que somam proventos, o provento na janela sem `dateApproval` legível já leva à abstenção:
+  - `serie_12_meses` e `entradas`, com `MOTIVO_DISPONIBILIDADE`;
+  - `relacao_ate`, que só retira da relação os aprovados em D ou depois, de modo que o ilegível chega à série;
+  - o backtest, pelo `sem_prova` do `proventos_ate`.
+
+  O item vira um teste de caracterização que fixa a abstenção, e o título do commit passa de `fix:` a `test:`.
+- **Testes:** `tests/test_provento_sem_aprovacao.py`, com 7 casos: aprovação vazia, nula, ausente, com data impossível, com texto e em formato ISO abstêm com o motivo; fora da janela, nada muda. Na mutação manual sem a guarda (`outputs/F4-C08/caracterizacao.txt`), os 6 casos de abstenção falham. Suíte: 5418 passed, 1 skipped, 24 xfailed. O teste fixa o caminho de `entradas`; `relacao_ate` e o backtest foram conferidos na leitura do código, sem trava própria neste item. A linha da fila guarda a definição original (`fix:`, arquivos previstos); o commit sai como `test:`.
+- **Decisões que ficaram para o Marcos:** a DD-100 aguarda a revisão cruzada. Se o auditor tiver um caso concreto, ele vira item novo.
