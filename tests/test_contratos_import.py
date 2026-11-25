@@ -2,7 +2,7 @@
 
 `sentinela/methods/` e os módulos de `sentinela/domain/` que ele importa não
 importam rede, banco, relógio, arquivo, log, motores da V1, provedores nem o
-`config` (que faz rede no import), e não chamam relógio nem `open`.
+`config` (constantes e contexto macro da V1), e não chamam relógio nem `open`.
 """
 
 import ast

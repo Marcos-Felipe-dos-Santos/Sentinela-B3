@@ -1,11 +1,13 @@
 """Relatório de qualidade de dados de ativos financeiros (análise heurística).
 
-Nota sobre validacao_cruzada(): a comparação ideal seria fonte-a-fonte
-(CVM={x} vs Yahoo={y}), mas market_engine.py não preserva valores pré-merge.
-Os checks implementados são verificações de consistência entre campos derivados
-(e.g., preco/lpa vs pl declarado), que detectam os mesmos bugs práticos.
-Para comparação direta por fonte, seria necessário guardar _raw_source_values
-no market_engine — fora do escopo desta sessão.
+Nota sobre validacao_cruzada(): o market_engine.py guarda o que cada fonte entregou em
+`dados['valores_por_fonte']` e a fonte de cada múltiplo em `field_provenance` (F2A-5).
+Os checks de P/L e P/VP derivados só rodam entre fontes diferentes: com o múltiplo e o valor
+por ação da mesma fonte, a comparação seria identidade. LPA e VPA da CVM vêm dos
+controladores e das ações da Composição do Capital do mesmo documento, e o LPA dos
+métodos é o divulgado (F2A-36/37); a conferência é LPA recalculado × LPA básico divulgado e
+ações da CVM × yfinance. No FII, o P/VP do Informe é comparado com o P/VP de cada fonte de
+mercado (F2B-16).
 
 Mapeamento de confiança usa lowercase para fontes (alinha com market_engine.py).
 """
@@ -205,7 +207,7 @@ class DataQualityReport:
     def validacao_cruzada(self) -> list[str]:
         """Verifica consistência entre campos derivados. Retorna lista de alertas.
 
-        Checks implementados (não comparação direta entre fontes — ver docstring do módulo):
+        Checks implementados (entre fontes diferentes quando há registro — ver docstring do módulo):
         1. DY > 25%: possível bug Yahoo (retornou como % em vez de decimal)
         2. P/L derivado (preço/LPA) diverge > 10% do P/L declarado
         3. P/VP derivado (preço/VPA) diverge > 10% do P/VP declarado

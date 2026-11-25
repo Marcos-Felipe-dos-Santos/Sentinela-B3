@@ -12,13 +12,13 @@ Python + Streamlit (V1; interface FastAPI + HTMX prevista para a Fase 7), local-
 
 ---
 
-## Estado da fase — 24/11/2026
+## Estado da fase — 25/11/2026
 
 A Fase 3 foi fechada (PR #28, tag `v2-fase-3`; correção BUG-3-63 no PR #29). A Fase 4 está ativa no
 branch `v2/fase-4`, só nos blocos 0 (correções do app) e 1 (dados históricos): fila em
 `docs/loop/fila.md`, decisões em `docs/decisoes/decisoes-fase4.md`; permissões da fase na "Fase atual"
 do `AGENTS.md`. Limitações da Fase 3 (24 xfails estritos) seguem declaradas.
-Suíte: **5220 passed, 1 skipped, 24 xfailed**.
+Suíte: **5370 passed, 1 skipped, 24 xfailed**.
 A seção “Fase atual” do `AGENTS.md` é mantida exclusivamente pelo Marcos.
 
 ---
@@ -46,7 +46,7 @@ inglês (Conventional Commits, seção Git).
 ```bash
 streamlit run app.py                               # app (V1)
 T=$HOME/.cache/sentinela-testes-<executor>; mkdir -p $T   # nunca o /tmp (tmpfs)
-TMPDIR=$T python -m pytest tests/ -x --tb=short --basetemp=$T/pytest   # suíte (5220 passed, 1 skipped, 24 xfailed)
+TMPDIR=$T python -m pytest tests/ -x --tb=short --basetemp=$T/pytest   # suíte (5370 passed, 1 skipped, 24 xfailed)
 python -m pytest tests/test_x.py::test_y -v        # teste único
 python -m pytest tests/ --cov=. --cov-report=term-missing
 TMPDIR=$T python -m mutmut run --max-children 2 "technical_engine*"           # mutação de um módulo (config em [tool.mutmut])
@@ -104,9 +104,10 @@ métodos nos motores, mais `bancos.py`, a lente de bancos do motor de ações de
 (extraídos na Fase 1 e atualizados nas Fases 2A/2B/2C); `services/asset_classifier.py` (`app.py`,
 `market_engine.py`) e `domain/provenance.py`
 e `enums.py` (`market_engine.py`, `valuation_engine.py`). `sentinela/reports/rastreabilidade.py`
-roda por linha de comando (`python -m`); o app reutiliza a apresentação do quadro de qualidade. **NÃO conectados** (só os testes
-importam): `domain/models.py` (usado por `services/analyze_asset.py` e
-`repositories/`), `services/analyze_asset.py` (`AnalysisService.analyze` é outra orquestração) e `repositories/`. Não adicione a mesma feature nas duas camadas.
+roda por linha de comando (`python -m`); o app reutiliza a apresentação do quadro de qualidade. Desde o F3-6b o `app.py`
+analisa por `services/analyze_asset.py` (`AnalysisService.analisar(ticker, as_of)`, que devolve o `AnalysisResult` de
+`domain/models.py`); `AnalysisService.analyze` é só a compatibilidade da API antiga. **NÃO conectado** (só os testes
+importam): `repositories/`. Não adicione a mesma feature em duas camadas.
 
 **`backtesting/`** — fundamentos sintéticos não são evidência. Sem score agregado,
 `simular_analise_mensal` retorna `INDISPONIVEL` no caminho de análise elegível; abstenções
@@ -132,7 +133,7 @@ formato da B3 devolve `None` antes de qualquer fonte (F2A-12).
 7. liquidez       → COTAHIST, fora do prompt
 8. taxa real      → cesta Tesouro + prêmio; IPCA da janela contábil e teto PIB Focus
 9. contexto das janelas → IPCA de fim de exercício e fatores oficiais B3 para Graham/Lynch
-10. cache SQLite (7d) → fundamentos_incompletos (campo obrigatório faltando depois de todas as fontes)
+10. fundamentos_incompletos   → campo obrigatório faltando depois de todas as fontes (o cache de 7 dias saiu no F3-9b, DD-85)
 ```
 
 Fundamentos: CVM > brapi > yfinance. A alavancagem (`divida_liq_ebitda`) vem só da CVM.
@@ -385,7 +386,7 @@ Decisão do Marcos de 15/10/2026. Registro e detalhe em `tests/regressao/README.
   nunca passa por `|safe` no template
 - Interface web só em `127.0.0.1`, com autoescape e CSRF nas escritas
 - Env: `GROQ_API_KEY`, `GEMINI_API_KEY`, `BRAPI_TOKEN`
-  (o último lido em `brapi_provider.py:64`; segundo o levantamento, ausente do `.env.example` — não verificado pelo loop)
+  (o último lido em `brapi_provider.py:64`)
 - Assinatura Google AI Pro **não** é cota da API Gemini — verificar antes de
   desenhar features de IA em cima do `ai_core`
 

@@ -8,7 +8,7 @@
 Plataforma educacional de análise de ações e FIIs da B3.
 Python 3.13 + Streamlit (interface FastAPI + HTMX prevista para a Fase 7), local-first, SQLite.
 **Não é consultoria financeira.**
-Suíte em 09/11/2026: 3525 passed, 1 skipped, 8 xfailed.
+Suíte em 25/11/2026: 5370 passed, 1 skipped, 24 xfailed.
 
 ---
 
@@ -188,11 +188,12 @@ verificá-lo. Reporte a divergência; não a "conserte".
   IF.data é selecionado pelo modelo BPP banco; alavancagem inaplicável não gera aviso para banco.
 - Liquidez: 63 pregões, presença ≥ 80%, volume mediano diário ≥ R$ 500 mil (ações/units)
   ou R$ 100 mil (FII). Incompletude/falha de coleta produz aviso, sem tratar ausência como zero.
-- Duas camadas de orquestração: `app.py` (roda) e `sentinela/services/`
-  (implementada, não conectada). Não adicione a mesma feature nas duas
+- O `app.py` analisa por `sentinela/services/analyze_asset.py` desde o F3-6b
+  (`AnalysisService.analisar(ticker, as_of)`); `sentinela/repositories/` não está conectado
+  (só os testes o importam). Não adicione a mesma feature em duas camadas
 - Importar `config` não faz rede desde o F3-1a (E-6, regressão BUG-3-01): a Selic é lida
   sob demanda por `get_selic_atual`, e o `tests/conftest.py` semeia esse cache
-- `BRAPI_TOKEN` é lido em `brapi_provider.py:64` e, segundo o levantamento, falta no `.env.example` (o loop não lê `.env*`; não verificado)
+- `BRAPI_TOKEN` é lido em `brapi_provider.py:64`
 
 ---
 

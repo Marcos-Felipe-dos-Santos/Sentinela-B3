@@ -284,3 +284,16 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Mutação:** não se aplica, como no F4-A12. O `auditoria.py` está em `also_copy` e não é instrumentado.
 - **Resíduos:** gerador e saídas da caracterização em `outputs/F4-A14/`.
 - **Decisões que ficaram para o Marcos:** nenhuma. Fica a ressalva de vocabulário: o motor técnico ainda emite "Sobrevendido (Oportunidade)" e "Sobrecomprado (Alto Risco)" (`technical_engine.py`), fora deste item (linha em `pendencias.md`).
+
+### F4-A15 — docs: align agent and project instructions with the code after phase 3
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** achado 16 (parte confirmada), pedido do Marcos de 23/11 e F4-H11. Cada frase foi conferida contra o código:
+  - **Camadas:** o `app.py` analisa por `AnalysisService.analisar(ticker, as_of)` desde o F3-6b (`app.py:262-272`), e o serviço devolve o `AnalysisResult` de `domain/models.py`. `AnalysisService.analyze` é só a compatibilidade da API antiga. Só `sentinela/repositories/` segue sem leitor de produção (busca por import: só testes e `vulture_whitelist.py`). Corrigido no `CLAUDE.md` e no `AGENTS.md`.
+  - **`BRAPI_TOKEN`:** sai a frase de que ele falta no `.env.example` (conferido pelo Marcos em 23/11; o loop não lê `.env*`). Fica só a leitura em `brapi_provider.py:64`, conferida.
+  - **Passo 10 do fluxo de dados:** sem o "cache SQLite (7d)", que saiu no F3-9b (`market_engine.py:636`). O passo agora é só `fundamentos_incompletos`.
+  - **`data_quality.py`:** a docstring do módulo dizia que o `market_engine` não preserva valores pré-merge. Ele os guarda em `valores_por_fonte` (`market_engine.py:331`), e os checks 2 e 3 só rodam entre fontes diferentes (`_mesma_fonte`). A docstring agora descreve isso e a origem do LPA e do VPA da CVM (controladores e Composição do Capital do mesmo documento, LPA divulgado nos métodos). A docstring de `validacao_cruzada` foi ajustada. Nenhum código mudou.
+  - **`tests/test_contratos_import.py`:** só a docstring, sem a frase de que o `config` faz rede no import (não faz desde o F3-1a).
+  - **Contagem da suíte:** 5370 passed, 1 skipped, 24 xfailed, na seção "Estado da fase" do `CLAUDE.md` (data de 25/11), no comando da suíte e no cabeçalho do `AGENTS.md`, fora da "Fase atual". O `AGENTS.md` ainda trazia a contagem de 09/11 e contradizia o `CLAUDE.md`. A "Fase atual" não foi tocada.
+- **Testes:** suíte com 5370 passed, 1 skipped, 24 xfailed; só docstrings e textos mudaram.
+- **Decisões que ficaram para o Marcos:** nenhuma.
