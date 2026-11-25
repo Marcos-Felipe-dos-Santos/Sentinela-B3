@@ -22,6 +22,7 @@ from sentinela.data import (
     gordon_cvm,
     liquidez,
     normalizacao,
+    proveniencia,
     proventos_b3,
     series_cvm,
 )
@@ -558,70 +559,74 @@ class MarketEngine:
         # BUG-3-63: o instante das coletas é decidido uma vez, no início da execução; a cascata
         # que passa da meia-noite não troca a regra no meio do caminho.
         dados['_instante_coleta'] = self._instante_da_coleta(as_of)
+        # BUG-4-10: o arquivo que a própria execução baixa hoje é lido nela no mesmo instante;
+        # numa data passada, ou sem as_of, vale o mtime real.
+        hoje = as_of is not None and not self._data_passada(as_of)
+        with proveniencia.coleta_da_execucao(dados['_instante_coleta'] if hoje else None):
 
-        classifier = getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER)
+            classifier = getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER)
 
-        # 0. Índice oficial: classe, CNPJ, CD_CVM e atributos do ticker.
-        self._aplicar_referencia(ticker, dados)
-        if dados.get('_sem_referencia'):
-            # F2B-17: o aviso vale para qualquer classe, sem depender da etapa da CVM.
-            dados['riscos_dados'].append(RISCO_SEM_REFERENCIA)
-        if 'classe_ativo' not in dados:
-            # F2A-43: fora do índice (ou sem ele), a classe é a do classificador (final 11 sem
-            # dado oficial vira UNKNOWN), para a guarda de escopo do motor de ações valer.
-            dados['classe_ativo'] = classifier.classify(ticker, dados).value
+            # 0. Índice oficial: classe, CNPJ, CD_CVM e atributos do ticker.
+            self._aplicar_referencia(ticker, dados)
+            if dados.get('_sem_referencia'):
+                # F2B-17: o aviso vale para qualquer classe, sem depender da etapa da CVM.
+                dados['riscos_dados'].append(RISCO_SEM_REFERENCIA)
+            if 'classe_ativo' not in dados:
+                # F2A-43: fora do índice (ou sem ele), a classe é a do classificador (final 11 sem
+                # dado oficial vira UNKNOWN), para a guarda de escopo do motor de ações valer.
+                dados['classe_ativo'] = classifier.classify(ticker, dados).value
 
-        # 1. yfinance: always first for price, history and fallback basics.
-        self._buscar_yfinance(ticker, dados)
+            # 1. yfinance: always first for price, history and fallback basics.
+            self._buscar_yfinance(ticker, dados)
 
-        # 2. Brapi: cotação recente + complemento de fundamentos.
-        self._buscar_brapi(ticker, dados)
+            # 2. Brapi: cotação recente + complemento de fundamentos.
+            self._buscar_brapi(ticker, dados)
 
-        # 3. CVM: fundamentos oficiais das demonstrações financeiras.
-        #    Roda após brapi para ter a última palavra nos campos que provê.
-        if as_of is None:
-            self._buscar_cvm(ticker, dados)
-        else:
-            self._buscar_cvm(ticker, dados, as_of=as_of)
+            # 3. CVM: fundamentos oficiais das demonstrações financeiras.
+            #    Roda após brapi para ter a última palavra nos campos que provê.
+            if as_of is None:
+                self._buscar_cvm(ticker, dados)
+            else:
+                self._buscar_cvm(ticker, dados, as_of=as_of)
 
-        if not dados.get('fonte_preco'):
-            return None
+            if not dados.get('fonte_preco'):
+                return None
 
-        self._buscar_ifdata(dados, as_of=as_of if as_of is not None else datetime.now(UTC))
-        if as_of is None:
-            self._buscar_cvm_fii(ticker, dados)
-        else:
-            self._buscar_cvm_fii(ticker, dados, as_of=as_of)
-        if as_of is None:
-            self._buscar_rendimento_fii(ticker, dados)
-        else:
-            self._buscar_rendimento_fii(ticker, dados, as_of=as_of)
-        if as_of is None:
-            self._buscar_proventos_b3(ticker, dados)
-        else:
-            self._buscar_proventos_b3(ticker, dados, as_of=as_of)
-        self._buscar_liquidez(ticker, dados)
-        self._buscar_taxa_real(dados, as_of=as_of)
-        if as_of is None:
-            self._contexto_janelas(dados, datetime.now(UTC))
-        else:
-            self._contexto_janelas(dados, as_of, coletado_em=self._coleta_de(dados, as_of))
+            self._buscar_ifdata(dados, as_of=as_of if as_of is not None else datetime.now(UTC))
+            if as_of is None:
+                self._buscar_cvm_fii(ticker, dados)
+            else:
+                self._buscar_cvm_fii(ticker, dados, as_of=as_of)
+            if as_of is None:
+                self._buscar_rendimento_fii(ticker, dados)
+            else:
+                self._buscar_rendimento_fii(ticker, dados, as_of=as_of)
+            if as_of is None:
+                self._buscar_proventos_b3(ticker, dados)
+            else:
+                self._buscar_proventos_b3(ticker, dados, as_of=as_of)
+            self._buscar_liquidez(ticker, dados)
+            self._buscar_taxa_real(dados, as_of=as_of)
+            if as_of is None:
+                self._contexto_janelas(dados, datetime.now(UTC))
+            else:
+                self._contexto_janelas(dados, as_of, coletado_em=self._coleta_de(dados, as_of))
 
-        dados.pop('_instante_coleta', None)  # marca interna da execução, fora do retrato
+            dados.pop('_instante_coleta', None)  # marca interna da execução, fora do retrato
 
-        # F2A-23: estimativas manuais de FII não são aplicadas.
+            # F2A-23: estimativas manuais de FII não são aplicadas.
 
-        # F2A-22: o Fundamentus saiu da cascata; a falta de campo obrigatório depois de
-        # todas as fontes vira `fundamentos_incompletos` (o cache de 7 dias saiu no F3-9b, DD-85).
-        obrigatorios_faltando = list_missing_required_fields(dados, classifier)
-        dados['fundamentos_incompletos'] = bool(obrigatorios_faltando)
-        dados['campos_faltantes'] = obrigatorios_faltando + list_missing_market_fields(dados)
-        dados['dados_parciais'] = bool(dados['campos_faltantes'])
-        dados.setdefault('ticker', ticker)
-        self._attach_field_provenance(dados)
-        dados['valores_coletados'] = _retrato(dados)
-        dados.pop('_sem_referencia', None)
-        return dados
+            # F2A-22: o Fundamentus saiu da cascata; a falta de campo obrigatório depois de
+            # todas as fontes vira `fundamentos_incompletos` (o cache de 7 dias saiu no F3-9b, DD-85).
+            obrigatorios_faltando = list_missing_required_fields(dados, classifier)
+            dados['fundamentos_incompletos'] = bool(obrigatorios_faltando)
+            dados['campos_faltantes'] = obrigatorios_faltando + list_missing_market_fields(dados)
+            dados['dados_parciais'] = bool(dados['campos_faltantes'])
+            dados.setdefault('ticker', ticker)
+            self._attach_field_provenance(dados)
+            dados['valores_coletados'] = _retrato(dados)
+            dados.pop('_sem_referencia', None)
+            return dados
 
     def _aplicar_referencia(self, ticker: str, dados: dict[str, Any]) -> None:
         """Copia para `dados` o registro do ticker no índice oficial, com a fonte.

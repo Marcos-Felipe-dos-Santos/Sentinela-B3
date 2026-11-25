@@ -139,3 +139,25 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Resíduos:** evidências em `outputs/F4-A08/` e cache de mutação em `mutants/`.
 - **Decisões que ficaram para o Marcos:** nenhuma sobre o item.
 - **Para o Marcos revisar:** a abstenção explícita por ZIP sem índice e a seleção só após o dia de entrega.
+
+### F4-A09 — fix: count a download of this run as available at today's as_of
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** o `MarketEngine` abre `proveniencia.coleta_da_execucao` só na análise de hoje, com o instante da execução, `min(as_of, relógio)` do BUG-3-63. O `baixar_arquivo` (ZIP da CVM e do Informe) e o `_buscar` do IF.data marcam o arquivo que acabaram de baixar. Para esse arquivo, com o mesmo `mtime` e tamanho, o `registrar_arquivo`, leitura de todas as guardas de coleta, devolve a coleta no instante da execução, e só dentro dela. O arquivo e o registro lateral guardam o `mtime` real. O cache de outra execução depois do as_of continua barrado. Numa data passada, ou sem as_of, nada muda.
+- **Dificuldades:** a revisão 1 aprovou o primeiro desenho, mas apontou que carimbar o `mtime` deixava o instante adiantado no cache compartilhado. Uma análise concorrente com as_of entre o carimbo e o download real aceitaria o arquivo. Isso é vazamento de futuro e foi corrigido no próprio item (decisão 48). Os dublês dos testes usam `baixar_arquivo(url, destino)` com dois argumentos, o que impede mudar a assinatura.
+- **Como resolvi:** a leitura da execução fica num ponto só, em `sentinela/data/proveniencia.py` (DD-97). O arquivo não está na lista do item, mas está no F4-A10 e não é travado. O instante chega por `ContextVar`, sem mudar assinaturas. `cvm_provider.py` e `cvm_fii_provider.py`, listados no item, não precisaram mudar: os dois baixam pelo `baixar_arquivo` e registram pelo `registrar_arquivo`. Em produção, o `IFDataProvider` do motor não tem calendário de publicação, e a inadimplência continua abstida por “calendário oficial de publicação IF.data indisponível”. Por isso, o cenário de banco roda com o calendário sintético dos testes.
+- **Decisão delegada:** DD-97, em `docs/loop/pendencias.md`. Revisão cruzada pendente.
+- **Testes:** BUG-4-10 (`tests/regressao/test_bug_4_10_download_da_execucao_no_as_of.py`), com o `MarketEngine.buscar_dados_ticker` real, as etapas fora do teste inertes e o relógio do motor 3 s depois do clique.
+  - Correção, quatro casos: ZIP da CVM vencido, Informe vencido, IF.data do banco e outra execução lendo o mesmo ZIP pela hora real. Os três primeiros nasceram xfail estritos (`outputs/F4-A09/regressao-antes.txt`). O quarto, acrescentado na revisão, falha no HEAD e no primeiro desenho (`regressao-antes-r2.txt`).
+  - Guardas, quatro casos, verdes antes e depois: ZIP de outra execução depois do as_of; data passada; IF.data de outra execução com a fonte fora do ar, com o texto exato “inadimplência IF.data não informada: coleta não demonstrada até o as_of”; e a lente Bancos igual com e sem a coleta. O último só compara abstenções, porque o dublê da CVM não fornece DVA, PL nem base acionária. Ele prova que o IF.data não muda a saída da lente nesse caminho, mas não a prova com número.
+  - Contagem: de 4 passed e 3 xfailed para 8 passed. Região afetada: 313 passed.
+  - Mutação, rodada limpa com o desenho final (`mutants/` apagado antes; `outputs/F4-A09/mutacao-r2.txt`):
+    - código novo: `marcar_baixado` 7/7; `_lido_na_execucao` 18/19. O sobrevivente formata o instante em outro fuso e mantém o mesmo instante.
+    - `registrar_arquivo`, 72/93 = 77,4%. Os 21 sobreviventes estão no código anterior ao item: 20 em parâmetros do temporário e do JSON lateral (`encoding`, `dir`, `prefix`, `suffix`, `delete`, `indent`, `ensure_ascii`) e o mutante 16 na comparação do motivo. Sem os 20 equivalentes de formato, 72/73 = 98,6%.
+    - `buscar_dados_ticker`, 180/216 = 83,3%.
+    - `baixar_arquivo`, 60/93; sem os 22 mutantes de mensagem de log, 60/71 = 84,5%.
+    - `IFDataProvider._buscar`, 46/68; sem os 5 de log, 46/63 = 73,0%. Sem mais 11 equivalentes (`utf-8`/`UTF-8`, `encoding=None` com locale UTF-8, `ensure_ascii` com o JSON relido igual, sufixo `.TMP`), 46/52 = 88,5%. Os sobreviventes restantes (`timeout`, `chunk_size`, `stream`, `parents` do `mkdir`, texto do `ValueError`) são de código anterior ao item.
+  - Gate no stage: 5315 passed, 1 skipped, 24 xfailed, Ruff verde, golden `1759c55f7e5995f5…` igual. O aviso de arquivo fora da linha do item cobre `sentinela/data/proveniencia.py` (DD-97) e a regressão nova.
+- **Resíduos:** evidências em `outputs/F4-A09/` e cache de mutação em `mutants/`.
+- **Decisões que ficaram para o Marcos:** nenhuma sobre o item. A inadimplência em produção depende de um calendário oficial de publicação do IF.data, que não existe (L7).
+- **Para o Marcos revisar:** a leitura por execução na proveniência (DD-97) e a marcação do COTAHIST baixado hoje, sem efeito.

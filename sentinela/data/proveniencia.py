@@ -5,7 +5,9 @@ o dado, quando a fonte o entregou, quando foi coletado, de qual documento e vers
 veio e o hash do conteúdo. Sem a data de entrega, o campo fica `None` com o motivo; a data
 da coleta nunca ocupa o lugar dela.
 
-A data da coleta é a do arquivo local (mtime, em UTC): o módulo não lê relógio nem rede.
+A data da coleta é a do arquivo local (mtime, em UTC): o módulo não lê relógio nem rede. O arquivo
+baixado pela própria análise de hoje é lido, só nela, no instante das coletas da execução
+(`coleta_da_execucao`, BUG-4-10); o arquivo e o registro ao lado guardam o mtime real.
 """
 
 from __future__ import annotations
@@ -14,7 +16,10 @@ import hashlib
 import json
 import logging
 import re
-from dataclasses import asdict, dataclass, replace
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import asdict, dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -44,6 +49,51 @@ MOTIVO_ENTREGA_ILEGIVEL = (
 )
 _DATA_ISO = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _BLOCO_HASH = 1 << 20
+
+
+@dataclass
+class _Execucao:
+    instante: datetime
+    baixados: dict[str, tuple[int, int]] = field(default_factory=dict)
+
+
+_EXECUCAO: ContextVar[_Execucao | None] = ContextVar("coleta_da_execucao", default=None)
+
+
+@contextmanager
+def coleta_da_execucao(instante: datetime | None) -> Iterator[None]:
+    """Arquivo baixado dentro do bloco é lido como coletado em `instante` (BUG-4-10).
+
+    Na análise de hoje, o download acontece dentro da análise: o arquivo baixado agora entra no
+    instante das coletas da execução, `min(as_of, relógio)` (BUG-3-63). Só esta execução o lê
+    assim; o arquivo, o registro ao lado e as outras execuções ficam com o mtime real. Sem
+    instante (data passada ou sem as_of), nada muda.
+    """
+    marca = _EXECUCAO.set(None if instante is None else _Execucao(instante))
+    try:
+        yield
+    finally:
+        _EXECUCAO.reset(marca)
+
+
+def marcar_baixado(caminho: Path) -> None:
+    """Registra, na execução em curso, o arquivo que ela acabou de baixar."""
+    execucao = _EXECUCAO.get()
+    if execucao is not None:
+        stat = Path(caminho).stat()
+        execucao.baixados[str(Path(caminho).resolve())] = (stat.st_mtime_ns, stat.st_size)
+
+
+def _lido_na_execucao(caminho: Path, registro: Proveniencia) -> Proveniencia:
+    """O registro com a coleta da execução, se foi ela que baixou este mesmo arquivo."""
+    execucao = _EXECUCAO.get()
+    if execucao is None:
+        return registro
+    stat = caminho.stat()
+    if execucao.baixados.get(str(caminho.resolve())) != (stat.st_mtime_ns, stat.st_size):
+        return registro
+    coleta = execucao.instante.astimezone(UTC).isoformat(timespec="seconds")
+    return replace(registro, data_coleta=min(coleta, registro.data_coleta))
 
 
 @dataclass(frozen=True)
@@ -153,7 +203,7 @@ def registrar_arquivo(
         and existente.data_entrega == entrega
         and existente.motivo_sem_entrega == (None if entrega is not None else motivo)
     ):
-        return existente
+        return _lido_na_execucao(caminho, existente)
     stat = caminho.stat()
     registro = Proveniencia(
         periodo_referencia=periodo,
@@ -193,7 +243,7 @@ def registrar_arquivo(
     finally:
         if temporario is not None:
             temporario.unlink(missing_ok=True)
-    return registro
+    return _lido_na_execucao(caminho, registro)
 
 
 def registrar_sem_falhar(

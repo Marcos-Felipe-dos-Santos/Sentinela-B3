@@ -7,6 +7,8 @@ from pathlib import Path
 
 import requests
 
+from sentinela.data import proveniencia
+
 logger = logging.getLogger(__name__)
 
 _CACHE_TTL_DAYS = 7
@@ -46,6 +48,7 @@ def baixar_arquivo(url: str, dest: Path) -> Path:
 
             # Substituição atômica
             os.replace(tmp_path, dest)
+            proveniencia.marcar_baixado(dest)
             return dest
 
         except (requests.RequestException, ConnectionError) as e:

@@ -331,7 +331,8 @@ class IFDataProvider:
     def _buscar(self, caminho: str, *, as_of: datetime) -> list[dict]:
         """Cache por caminho; validade contra `as_of` explícito, com fuso, nunca relógio.
 
-        Coleta é o mtime real do arquivo local; `as_of` não é gravado como coleta.
+        Coleta é o mtime real do arquivo local; `as_of` não é gravado como coleta. O arquivo
+        baixado pela análise de hoje é lido nela no instante da execução (BUG-4-10).
         Resposta vazia não é persistida. Na falha da rede, a cópia antiga continua
         disponível com aviso e com a proveniência original.
         """
@@ -362,6 +363,7 @@ class IFDataProvider:
                 json.dumps(valor, ensure_ascii=False), encoding="utf-8"
             )
             temporario.replace(arquivo)
+            proveniencia.marcar_baixado(arquivo)
             self._registrar(caminho)
         return valor
 
