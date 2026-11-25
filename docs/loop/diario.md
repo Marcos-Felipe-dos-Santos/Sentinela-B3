@@ -493,3 +493,17 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
   - Suíte: 5402 passed, 1 skipped, 24 xfailed.
 - **Mutação** (`outputs/F4-C05/mutacao.txt`): `adicionar_posicao` 19/19; `_gravar_posicao` 45/58, com os mesmos 13 equivalentes do F4-A11 (8 de maiúsculas e minúsculas no SQL, 2 de chave do `sqlite3.Row`, 3 de `qtd == 0`). A guarda nova foi morta.
 - **Decisões que ficaram para o Marcos:** nenhuma.
+
+### F4-C06 — fix: keep the original download instant when the B3 relation comes from cache
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** BUG-4-20, ressalva da R2 sobre o F4-A10.
+  - O `coletar` da relação de proventos (`b3_proventos`) e o do complemento do fundo (`b3_fundos`) registram `obtida_em`, o instante real da consulta à fonte, só quando de fato a consultam. O cache em memória devolve esse instante original. Na `Relacao` é um campo `compare=False`; no registro do fundo, uma chave que o motor retira antes de gravar `b3_fundo`.
+  - O instante vem do relógio do motor (`relogio=`), passado por `MarketEngine._coletar_b3` só quando o provedor aceita o argumento. Os dublês antigos seguem valendo, e o teste do F4-A10 continua com o relógio do motor.
+  - `_instantes_da_consulta` grava `baixado_em = obtida_em`. Sem ele, o fim da chamada, como antes.
+  - `b3_fundos.py` ficou fora da lista literal do item, mas o aceite fala em "B3" e o fundo tinha o mesmo defeito. Na revisão 1, as docstrings dos dois provedores passaram a dizer que só `obtida_em` lê o relógio, e o teste passou a afirmar que a primeira análise consultou a fonte.
+- **Testes:**
+  - Regressão BUG-4-20 (`tests/regressao/test_bug_4_20_hora_download_b3_em_cache.py`), no arranjo do BUG-3-63: a mesma análise repetida com o relógio 30 s adiante não faz nova chamada à B3 e preserva `baixado_em` igual ao da primeira, na relação de proventos e no complemento do fundo. Os 2 casos nasceram xfail estritos (`outputs/F4-C06/regressao-antes.txt`).
+  - Suíte: 5404 passed, 1 skipped, 24 xfailed.
+- **Mutação** (`outputs/F4-C06/mutacao-resumo.txt`): `_coletar_b3` 11/13; `_instantes_da_consulta` 10/11; `b3_fundos.coletar` 37/38; `b3_proventos.coletar` 28/29. Os sobreviventes são `aceita = None` (equivalente), `aceita = True` no ramo de assinatura não introspectável e o fuso do relógio de reserva, `now(None)`, que os testes não alcançam porque o motor sempre passa o relógio.
+- **Decisões que ficaram para o Marcos:** nenhuma.

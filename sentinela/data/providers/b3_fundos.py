@@ -12,7 +12,8 @@ Comportamentos observados em 21/10/2026: código desconhecido devolve um registr
 (`fund` "ISIN GENERIC", listas vazias); fundo deslistado (MALL) devolve corpo vazio. A
 validade da resposta é conferida por `sentinela.data.fii_elegibilidade.resposta_b3_valida`;
 aqui só se lê. Cache somente da mesma coleta explícita válida; outro instante volta à
-fonte. `agora` é o instante da coleta, sem leitura de relógio.
+fonte. `agora` é o instante da coleta e a chave do cache, sem leitura de relógio; só
+`obtida_em` lê o relógio (o do motor, injetado, ou o do sistema), BUG-4-20.
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ import base64
 import json
 import re
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from sentinela.data.cache_leitura import CacheCopia, IdentidadeLeitor
@@ -48,6 +49,8 @@ def coletar(
     ticker: str,
     agora: datetime,
     obter: Callable[[str], tuple[Any, dict]] = obter_json,
+    *,
+    relogio: Callable[[], datetime] | None = None,
 ) -> dict:
     """A resposta literal, a fonte (URL, bytes, SHA-256), o código e o instante da coleta.
 
@@ -64,6 +67,8 @@ def coletar(
         "codigo": ticker[:4].upper(),
         "fonte": fonte,
         "coleta": agora.isoformat(),
+        # Instante real da consulta à fonte; o cache o preserva (BUG-4-20).
+        "obtida_em": (relogio or (lambda: datetime.now(UTC)))().isoformat(),
     }
     if resposta_b3_valida(corpo, registro["codigo"]):
         _COLETAS.guardar(chave, registro)

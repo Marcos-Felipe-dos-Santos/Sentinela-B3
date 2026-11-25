@@ -1,3 +1,4 @@
+import inspect
 import logging
 import math
 import sqlite3
@@ -396,15 +397,34 @@ class MarketEngine:
         return instante if instante is not None else self._instante_da_coleta(as_of)
 
     @staticmethod
-    def _instantes_da_consulta(dados: dict[str, Any]) -> dict[str, str]:
-        """Na análise de hoje, o clique e o instante real da consulta que acabou (F4-A10).
+    def _instantes_da_consulta(
+        dados: dict[str, Any], obtida_em: str | None = None
+    ) -> dict[str, str]:
+        """Na análise de hoje, o clique e o instante real da consulta à fonte (F4-A10).
 
-        Só registro: as guardas continuam lendo a coleta da execução (BUG-3-63).
+        `obtida_em` é o instante que o provedor registrou ao consultar a fonte, preservado na
+        leitura do cache (BUG-4-20); sem ele, o fim da chamada. Só registro: as guardas
+        continuam lendo a coleta da execução (BUG-3-63).
         """
         as_of = dados.get('_as_of_analise')
         if as_of is None:
             return {}
-        return {'as_of_analise': as_of.isoformat(), 'baixado_em': datetime.now(UTC).isoformat()}
+        return {
+            'as_of_analise': as_of.isoformat(),
+            'baixado_em': obtida_em or datetime.now(UTC).isoformat(),
+        }
+
+    @staticmethod
+    def _coletar_b3(provedor: Any, *args: Any) -> Any:
+        """`provedor.coletar(*args)` com o relógio do motor, se o provedor o aceita."""
+        coletar = provedor.coletar
+        try:
+            aceita = 'relogio' in inspect.signature(coletar).parameters
+        except (TypeError, ValueError):
+            aceita = False
+        if aceita:
+            return coletar(*args, relogio=lambda: datetime.now(UTC))
+        return coletar(*args)
 
     def __init__(self, asset_classifier: AssetClassifier | None = None) -> None:
         self.brapi = BrapiProvider()
@@ -882,8 +902,9 @@ class MarketEngine:
         if provedor is None:
             return
         try:
-            fundo = provedor.coletar(cnpj, ticker, self._coleta_de(dados, as_of))
-            dados['b3_fundo'] = {**fundo, **self._instantes_da_consulta(dados)}
+            fundo = self._coletar_b3(provedor, cnpj, ticker, self._coleta_de(dados, as_of))
+            obtida_em = fundo.pop('obtida_em', None) if isinstance(fundo, dict) else None
+            dados['b3_fundo'] = {**fundo, **self._instantes_da_consulta(dados, obtida_em)}
         except (OSError, ValueError) as exc:
             logger.warning(f"[{ticker}] complemento da B3 do fundo indisponível: {exc}")
             dados['b3_fundo'] = {
@@ -970,8 +991,8 @@ class MarketEngine:
             return
         referencia = max(anteriores)
         try:
-            relacao = provedor.coletar(dados['cd_cvm'], agora)
-            instantes = self._instantes_da_consulta(dados)
+            relacao = self._coletar_b3(provedor, dados['cd_cvm'], agora)
+            instantes = self._instantes_da_consulta(dados, getattr(relacao, 'obtida_em', None))
         except Exception as exc:
             logger.warning(f"[{ticker}] relação de proventos da B3 indisponível: {exc}")
             dados['proventos_b3'] = {

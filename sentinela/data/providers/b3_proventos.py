@@ -26,7 +26,8 @@ a quem monta uma `Relacao` à mão.
 
 Os registros voltam literais; a conta é de `sentinela.data.proventos_b3`. Cache somente
 da mesma coleta explícita completa; outro instante volta à fonte, sem criar observação.
-`agora` é o instante da coleta (sem leitura de relógio aqui).
+`agora` é o instante da coleta e a chave do cache (sem leitura de relógio); só `obtida_em`
+lê o relógio (o do motor, injetado, ou o do sistema), BUG-4-20.
 """
 
 from __future__ import annotations
@@ -37,8 +38,8 @@ import hashlib
 import json
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
-from datetime import date, datetime
+from dataclasses import dataclass, field, replace
+from datetime import UTC, date, datetime
 from typing import Any
 
 import requests
@@ -104,6 +105,8 @@ class Relacao:
     coleta: str
     isins: tuple[str, ...] = ()
     identidade: str | None = None
+    # Instante real em que a fonte foi consultada; o cache o preserva (BUG-4-20).
+    obtida_em: str | None = field(default=None, compare=False)
 
 
 _COLETAS: CacheCopia[Relacao] = CacheCopia()
@@ -113,13 +116,22 @@ def coletar(
     cd_cvm: int | str,
     agora: datetime,
     obter: Callable[[str], tuple[Any, dict]] = obter_json,
+    *,
+    relogio: Callable[[], datetime] | None = None,
 ) -> Relacao:
-    """Reutiliza somente a mesma coleta explícita; outra observação volta à fonte."""
+    """Reutiliza somente a mesma coleta explícita; outra observação volta à fonte.
+
+    `obtida_em` é o instante real da consulta à fonte, pelo `relogio` (o do motor) ou pelo
+    relógio do sistema; a leitura do cache devolve o instante original (BUG-4-20).
+    """
     chave = (str(cd_cvm), agora.isoformat(), IdentidadeLeitor(obter))
     existente = _COLETAS.buscar(chave)
     if existente is not None:
         return existente
     relacao = _coletar_sem_cache(cd_cvm, agora, obter)
+    relacao = replace(
+        relacao, obtida_em=(relogio or (lambda: datetime.now(UTC)))().isoformat()
+    )
     if type(relacao.total) is int and relacao.total == len(relacao.registros):
         _COLETAS.guardar(chave, relacao)
     return relacao
