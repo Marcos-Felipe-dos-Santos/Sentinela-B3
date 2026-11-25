@@ -74,7 +74,7 @@ def test_evento_do_proprio_emissor_aprovado_no_corte_ou_depois_fica_fora(
 
 
 def test_evento_de_outro_emissor_da_mesma_especie_fica_fora() -> None:
-    resultado = _entradas(evento=_evento("BRALHEACNOR0", "01/10/2026"))
+    resultado = _entradas(evento=_evento("BRALHEACNOR9", "01/10/2026"))
 
     assert not isinstance(resultado, pb.Abstencao), resultado
     assert resultado["dy"] == pytest.approx(0.15)

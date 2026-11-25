@@ -317,8 +317,9 @@ def _evento_de_acoes_na_janela(
         if aprovacao is not None and aprovacao >= dia_as_of:
             continue
         isin = str(evento.get("isinCode") or "")
-        # Sem ISIN legível, a identidade do evento não pode ser descartada.
-        if isins and len(isin) == 12 and isin not in isins:
+        # Sem ISIN legível (estrutura e dígito verificador), a identidade do evento não pode
+        # ser descartada (BUG-4-12).
+        if isins and isin not in isins and isin_legivel(isin):
             continue
         data_com = ler_data(evento.get("lastDatePrior"))
         especie = ESPECIE_DO_ISIN.get(isin[6:11])

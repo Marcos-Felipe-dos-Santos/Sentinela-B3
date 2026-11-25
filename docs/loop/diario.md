@@ -228,3 +228,17 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **O que foi feito:** a correção foi tentada no diretório de trabalho e revertida: `if isins and isin not in isins and isin_legivel(isin)`, no lugar do teste de 12 caracteres, em `proventos_b3._evento_de_acoes_na_janela`. A suíte deu 1 failed e 5338 passed. Só falha `tests/regressao/test_bug_4_04_corte_e_emissor_da_janela_b3.py::test_evento_de_outro_emissor_da_mesma_especie_fica_fora`.
 - **Dificuldades:** o ISIN "de outro emissor" da fixture, `BRALHEACNOR0`, tem dígito verificador inválido. Pela regra pedida ele é ilegível, e o evento conserva a abstenção em vez de ser descartado. Manter o teste exige trocar o literal por `BRALHEACNOR9`, o único dígito válido, com a asserção igual. O arquivo é regressão protegida.
 - **Decisões que ficaram para o Marcos:** autorizar a troca desse literal na BUG-4-04, como no precedente do F4-A08. Com a autorização, o item segue: regressão xfail estrita (ISIN alheio de 12 caracteres com dígito inválido conserva a abstenção), correção, mutação e commit. Patch da tentativa em `outputs/F4-A11c/correcao-tentativa.patch`.
+
+### F4-A11c (retomada) — fix: require a valid ISIN check digit before discarding a dividend-boundary event as foreign
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** BUG-4-12, decisão do Marcos de 25/11 que resolveu o `[!]`. `proventos_b3._evento_de_acoes_na_janela` só descarta como alheio o ISIN fora do conjunto do emissor quando `isin_legivel` o confirma (estrutura e dígito verificador), a mesma função do `fatores_acoes_b3`. ISIN de 12 caracteres com dígito inválido é ilegível e conserva a abstenção, pela DD-93. Efeito colateral conservador: um ISIN alheio que chegue em minúsculas ou com espaço também passa a abster, como no `fatores_acoes_b3`. As duas linhas de `pendencias.md` (o `[!]` resolvido e as ressalvas do F4-A11 enviadas ao bloco 2) foram atualizadas.
+- **Dificuldades:** a fixture da regressão protegida BUG-4-04 usava como ISIN "de outro emissor" o `BRALHEACNOR0`, que tem **dígito verificador inválido**. Ela passava pelo teste antigo de 12 caracteres, e com a regra nova virava ilegível.
+- **Como resolvi:** com a autorização do Marcos, só esse literal foi trocado por `BRALHEACNOR9`, o único dígito válido. A asserção ficou igual.
+- **Testes:**
+  - Mutação manual (`outputs/F4-A11c/mutacao-manual-filtro.txt`): sem o filtro de emissor, falham o teste da BUG-4-04 com o literal novo e o caso do ISIN alheio legível. O teste confere "outro emissor", e não "ISIN ilegível".
+  - Regressão BUG-4-12 (`tests/regressao/test_bug_4_12_isin_sem_digito_verificador_no_bazin.py`): ISIN alheio com dígito inválido (`…R0`, `…R1` e um com minúsculas) abstém, com o motivo "evento em ações na janela sem reconciliação" e o rótulo do evento, sem descarte silencioso. Esses 3 nasceram xfail estritos (`outputs/F4-A11c/regressao-antes.txt`). Junto, o ISIN alheio legível continua descartado, e o ISIN do emissor continua abstendo.
+  - Suíte: 5344 passed, 1 skipped, 24 xfailed.
+  - Mutação (`mutants/` apagado antes; `outputs/F4-A11c/mutacao.txt`): `_evento_de_acoes_na_janela` 50/53 = 94,3%. Os três sobreviventes estão no código anterior: dois `continue` → `break` (aprovação futura e espécie) e o padrão `"XXXX"` do ISIN ausente, que é equivalente.
+- **Resíduos:** evidências em `outputs/F4-A11c/` e cache de mutação em `mutants/`.
+- **Decisões que ficaram para o Marcos:** nenhuma. As ressalvas (1) e (2) do F4-A11 vão para o bloco 2, por decisão de 25/11.
