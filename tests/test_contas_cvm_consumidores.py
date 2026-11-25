@@ -40,7 +40,6 @@ def test_banco_sem_pl_na_2_03_nao_gera_patrimonio_nem_alavancagem(
 ):
     ind = _calcular(tmp_path, monkeypatch, dre=BANCO_DRE, bpp=BANCO_BPP)
     assert ind["patrimonio_liquido"] is None
-    assert ind["divida_pl"] is None
     assert ind["pl_controladores"] is None
     assert ind["roe"] is None
 
@@ -67,9 +66,6 @@ def test_empresa_nao_financeira_segue_igual(tmp_path, monkeypatch):
     }
     for campo, valor in esperado.items():
         assert ind[campo] == pytest.approx(valor), campo
-    assert ind["divida_pl"] == pytest.approx(
-        (1_223_389_000 - 417_587_000) / 417_587_000
-    )
     assert ind["margem_liquida"] == pytest.approx(110_605_000 / 497_549_000)
     assert ind["roe"] == pytest.approx(110_129_000 / (417_587_000 - 1_801_000))
     assert ind.get("contas_abstidas", {}) == {}

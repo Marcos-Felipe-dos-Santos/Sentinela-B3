@@ -311,3 +311,16 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Como resolvi:** respeitei a lista de arquivos e registrei as duas em `docs/loop/pendencias.md`, para item próprio. As linhas de itens concluídos do PLANO e as ADRs antigas são registro histórico e não mudaram. O `CLAUDE.md` e o `AGENTS.md` não se contradizem.
 - **Testes:** suíte com 5370 passed, 1 skipped, 24 xfailed; só documentação.
 - **Decisões que ficaram para o Marcos:** nenhuma.
+
+### F4-A16 — chore: drop the unused debt-to-equity indicator
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** achado 11 do Gemini. A busca por `divida_pl` nos `.py` confirma que nenhum código de produção a lê: o `market_engine` só a cita num comentário, dizendo que não a mapeia. A chave e o cálculo saíram de `CVMProvider.calcular_indicadores`, junto com a menção na docstring.
+- **Asserções removidas, com o motivo:** as três afirmavam o valor ou a ausência da chave removida.
+  - `tests/test_cvm_provider.py`: `divida_pl == (passivo − PL)/PL`.
+  - `tests/test_contas_cvm_consumidores.py`: `divida_pl is None` no banco e o valor na Petrobras. As outras asserções dos dois testes, inclusive PL, ROE e margem, ficam.
+- **O que não mudou:** `tests/test_market_engine.py` e `tests/test_market_engine_acoes_cvm.py` não têm asserção sobre a chave, só dublês que a carregam; ficam intactos. `tests/test_financeiro_pre_refactor.py` (seção B, `_CVM_TO_MARKET`) também não muda e continua verde.
+- **Testes:** suíte com 5370 passed, 1 skipped, 24 xfailed. A contagem é igual porque nenhum teste saiu, só asserções. Golden igual.
+- **Mutação:** não se aplica. O item só remove código, e não há linha nova a mutar.
+- **Resíduos:** saídas do inventário em `outputs/F4-A16/`; entrada nova em `docs/limpeza/inventario.md`.
+- **Decisões que ficaram para o Marcos:** nenhuma.

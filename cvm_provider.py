@@ -522,8 +522,7 @@ class CVMProvider:
 
         Indicadores: ativo_total, ativo_circulante, passivo_total,
         passivo_circulante, patrimonio_liquido, receita_liquida, ebit,
-        lucro_liquido, roe, margem_liquida, divida_pl (passivo total − PL, sobre o PL; sem uso
-        na cascata) e, pelo F2A-8, divida_liquida, ebitda, divida_liq_ebitda,
+        lucro_liquido, roe, margem_liquida e, pelo F2A-8, divida_liquida, ebitda, divida_liq_ebitda,
         div_liq_patrimonio, alavancagem_motivos e alavancagem_regime.
 
         `modelo` é o modelo de demonstração (`contas_cvm.modelo_do_setor`). Cada conta é lida
@@ -679,7 +678,6 @@ class CVMProvider:
                     "lucro_liquido":      lucro,
                     "roe":                None,
                     "margem_liquida":     None,
-                    "divida_pl":          None,
                     "cvm_dt_refer":       metadata.get("cvm_dt_refer"),
                     "cvm_versao":         metadata.get("cvm_versao"),
                     "cnpj":               cnpj,
@@ -712,10 +710,6 @@ class CVMProvider:
                     ),
                 }
                 ind["roe"] = roe_ctrl
-
-                if pl and pl != 0:
-                    if passivo_total is not None:
-                        ind["divida_pl"] = (passivo_total - pl) / pl
 
                 if receita and receita != 0 and lucro is not None:
                     ind["margem_liquida"] = lucro / receita

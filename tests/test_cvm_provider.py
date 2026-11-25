@@ -132,7 +132,6 @@ def test_calcular_indicadores_mock(tmp_path, monkeypatch):
     assert ind["lucro_liquido"]      == pytest.approx(lucro)
     assert ind["roe"]                == pytest.approx(lucro / pl)
     assert ind["margem_liquida"]     == pytest.approx(lucro / 500_000.0)
-    assert ind["divida_pl"]          == pytest.approx((700_000.0 - pl) / pl)
 
 
 # ---------------------------------------------------------------------------
