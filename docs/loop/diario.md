@@ -161,3 +161,17 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Resíduos:** evidências em `outputs/F4-A09/` e cache de mutação em `mutants/`.
 - **Decisões que ficaram para o Marcos:** nenhuma sobre o item. A inadimplência em produção depende de um calendário oficial de publicação do IF.data, que não existe (L7).
 - **Para o Marcos revisar:** a leitura por execução na proveniência (DD-97) e a marcação do COTAHIST baixado hoje, sem efeito.
+
+### F4-A10 — feat: record the click instant and the actual download time in provenance
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** na análise de hoje, a proveniência de cada coleta da execução traz dois instantes rotulados: `as_of_analise`, o clique, e `baixado_em`, o instante real do download.
+  - **Arquivos** (ZIP da CVM, Informe e relatórios do IF.data): o `registrar_arquivo`, lido dentro de `proveniencia.coleta_da_execucao`, devolve um `ProvenienciaDaExecucao` para o arquivo que a própria execução baixou. É uma subclasse com os dois campos, em que `baixado_em` é o `mtime` real, preservado desde o F4-A09. O registro gravado ao lado do arquivo continua um `Proveniencia`, sem os campos novos, e o cache de outra execução não os ganha.
+  - **B3** (relação de proventos e complemento do fundo): o `MarketEngine` mede o relógio logo depois da consulta e grava os dois campos ao lado da `coleta`.
+  - **Guardas:** continuam lendo só a coleta da execução (`data_coleta` e `coleta`), e nenhum valor de lente muda.
+- **Dificuldades:** `tests/test_proveniencia.py::test_registro_tem_todos_os_campos` fixa o conjunto de campos do registro gravado. Acrescentar os campos ao `Proveniencia` mudaria esse contrato.
+- **Como resolvi:** os campos ficam numa subclasse que só existe na leitura da execução. O esquema do registro persistido e o teste existente ficam intactos. Numa data passada, ou sem as_of, nada muda.
+- **Testes:** `tests/test_proveniencia_dois_instantes.py`, com 7 testes e o relógio fixo dos arranjos BUG-3-63 e BUG-4-10. Cobre B3 da ação, B3 do fundo, ZIP da CVM (no registro do arquivo e no do documento, via `do_documento` e `para_dict`), Informe, IF.data de banco (com `baixado_em` igual ao `mtime` de cada relatório e a inadimplência no contexto) e o cache de outra execução sem os campos. Os seis primeiros falhavam antes pelo campo ausente (`outputs/F4-A10/testes-antes.txt`). O sétimo, da data passada sem os campos na B3, entrou na revisão 1 e mata o mutante `_as_of_analise = as_of` sem o `if hoje`, conferido à mão. Depois, 7 passed. Suíte: 5322 passed, 1 skipped, 24 xfailed. Mutação (`mutants/` apagado antes; `outputs/F4-A10/mutacao.txt`): `_lido_na_execucao` 21/22, com o sobrevivente equivalente de fuso de formatação; `_instantes_da_consulta` 10/10; `_buscar_rendimento_fii` 95/99 = 96,0%; `_buscar_proventos_b3` 158/169 = 93,5%. Gate no stage: 5322 passed, 1 skipped, 24 xfailed, Ruff verde, golden `1759c55f7e5995f5…` igual. Revisão 1: PODE COMMITAR; os três médios de cobertura de teste foram fechados antes do commit. Ressalva baixa mantida: na B3, `baixado_em` é o fim da consulta, que pode vir do cache em memória da mesma coleta. O stage leva também a linha do F4-A09 em `docs/loop/pendencias.md`, com as ressalvas baixas da revisão 2 do item anterior.
+- **Resíduos:** evidências em `outputs/F4-A10/` e cache de mutação em `mutants/`.
+- **Decisões que ficaram para o Marcos:** nenhuma.
+- **Para o Marcos revisar:** os nomes dos rótulos (`as_of_analise` e `baixado_em`) e a subclasse só de leitura.

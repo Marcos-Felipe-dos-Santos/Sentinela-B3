@@ -395,6 +395,17 @@ class MarketEngine:
         instante = dados.get('_instante_coleta')
         return instante if instante is not None else self._instante_da_coleta(as_of)
 
+    @staticmethod
+    def _instantes_da_consulta(dados: dict[str, Any]) -> dict[str, str]:
+        """Na análise de hoje, o clique e o instante real da consulta que acabou (F4-A10).
+
+        Só registro: as guardas continuam lendo a coleta da execução (BUG-3-63).
+        """
+        as_of = dados.get('_as_of_analise')
+        if as_of is None:
+            return {}
+        return {'as_of_analise': as_of.isoformat(), 'baixado_em': datetime.now(UTC).isoformat()}
+
     def __init__(self, asset_classifier: AssetClassifier | None = None) -> None:
         self.brapi = BrapiProvider()
         self.cvm = CVMProvider()
@@ -562,7 +573,11 @@ class MarketEngine:
         # BUG-4-10: o arquivo que a própria execução baixa hoje é lido nela no mesmo instante;
         # numa data passada, ou sem as_of, vale o mtime real.
         hoje = as_of is not None and not self._data_passada(as_of)
-        with proveniencia.coleta_da_execucao(dados['_instante_coleta'] if hoje else None):
+        # F4-A10: o clique da análise de hoje, para a proveniência da coleta trazer os dois instantes.
+        dados['_as_of_analise'] = as_of if hoje else None
+        with proveniencia.coleta_da_execucao(
+            dados['_instante_coleta'] if hoje else None, as_of if hoje else None
+        ):
 
             classifier = getattr(self, 'asset_classifier', _DEFAULT_ASSET_CLASSIFIER)
 
@@ -613,6 +628,7 @@ class MarketEngine:
                 self._contexto_janelas(dados, as_of, coletado_em=self._coleta_de(dados, as_of))
 
             dados.pop('_instante_coleta', None)  # marca interna da execução, fora do retrato
+            dados.pop('_as_of_analise', None)
 
             # F2A-23: estimativas manuais de FII não são aplicadas.
 
@@ -866,7 +882,8 @@ class MarketEngine:
         if provedor is None:
             return
         try:
-            dados['b3_fundo'] = provedor.coletar(cnpj, ticker, self._coleta_de(dados, as_of))
+            fundo = provedor.coletar(cnpj, ticker, self._coleta_de(dados, as_of))
+            dados['b3_fundo'] = {**fundo, **self._instantes_da_consulta(dados)}
         except (OSError, ValueError) as exc:
             logger.warning(f"[{ticker}] complemento da B3 do fundo indisponível: {exc}")
             dados['b3_fundo'] = {
@@ -954,6 +971,7 @@ class MarketEngine:
         referencia = max(anteriores)
         try:
             relacao = provedor.coletar(dados['cd_cvm'], agora)
+            instantes = self._instantes_da_consulta(dados)
         except Exception as exc:
             logger.warning(f"[{ticker}] relação de proventos da B3 indisponível: {exc}")
             dados['proventos_b3'] = {
@@ -983,6 +1001,7 @@ class MarketEngine:
                 'nome_pregao': relacao.nome_pregao,
                 'coleta': relacao.coleta,
                 'arquivos': list(relacao.fontes),
+                **instantes,
             },
         }
         self._calendario_proventos_b3(ticker, dados)

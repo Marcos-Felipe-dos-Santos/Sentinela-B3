@@ -54,6 +54,7 @@ _BLOCO_HASH = 1 << 20
 @dataclass
 class _Execucao:
     instante: datetime
+    as_of: datetime
     baixados: dict[str, tuple[int, int]] = field(default_factory=dict)
 
 
@@ -61,15 +62,19 @@ _EXECUCAO: ContextVar[_Execucao | None] = ContextVar("coleta_da_execucao", defau
 
 
 @contextmanager
-def coleta_da_execucao(instante: datetime | None) -> Iterator[None]:
+def coleta_da_execucao(
+    instante: datetime | None, as_of: datetime | None = None
+) -> Iterator[None]:
     """Arquivo baixado dentro do bloco é lido como coletado em `instante` (BUG-4-10).
 
     Na análise de hoje, o download acontece dentro da análise: o arquivo baixado agora entra no
     instante das coletas da execução, `min(as_of, relógio)` (BUG-3-63). Só esta execução o lê
     assim; o arquivo, o registro ao lado e as outras execuções ficam com o mtime real. Sem
-    instante (data passada ou sem as_of), nada muda.
+    instante (data passada ou sem as_of), nada muda. O registro lido assim traz também o clique
+    (`as_of`, ou o próprio instante) e o `mtime` real do download (F4-A10).
     """
-    marca = _EXECUCAO.set(None if instante is None else _Execucao(instante))
+    execucao = None if instante is None else _Execucao(instante, as_of or instante)
+    marca = _EXECUCAO.set(execucao)
     try:
         yield
     finally:
@@ -93,7 +98,11 @@ def _lido_na_execucao(caminho: Path, registro: Proveniencia) -> Proveniencia:
     if execucao.baixados.get(str(caminho.resolve())) != (stat.st_mtime_ns, stat.st_size):
         return registro
     coleta = execucao.instante.astimezone(UTC).isoformat(timespec="seconds")
-    return replace(registro, data_coleta=min(coleta, registro.data_coleta))
+    return ProvenienciaDaExecucao(
+        **{**registro.para_dict(), "data_coleta": min(coleta, registro.data_coleta)},
+        as_of_analise=execucao.as_of.isoformat(),
+        baixado_em=registro.data_coleta,
+    )
 
 
 @dataclass(frozen=True)
@@ -146,6 +155,19 @@ class Proveniencia:
             data_entrega=entrega,
             motivo_sem_entrega=None if entrega is not None else motivo,
         )
+
+
+@dataclass(frozen=True)
+class ProvenienciaDaExecucao(Proveniencia):
+    """O registro do arquivo baixado pela análise de hoje, como ela o lê (F4-A10).
+
+    `data_coleta` é a coleta da execução, a que as guardas leem; `as_of_analise` é o clique da
+    análise e `baixado_em`, o instante real do download (o mtime). O registro gravado ao lado
+    do arquivo continua um `Proveniencia`, sem esses campos.
+    """
+
+    as_of_analise: str = ""
+    baixado_em: str = ""
 
 
 def hash_sha256(caminho: Path) -> str:
