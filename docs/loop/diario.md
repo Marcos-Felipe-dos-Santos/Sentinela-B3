@@ -331,3 +331,14 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **O que foi feito:** achado 13 do Gemini. Saíram as duas chamadas consecutivas idênticas de `verificar_lentes`, uma em `tests/test_fii_engine.py` e outra em `tests/test_fii_engine_rendimento.py`. Em `tests/test_fii_engine_pvp.py`, as chamadas seguidas recebem argumentos diferentes (`resultado`, `_analisar(pvp=1.0)`, `negativo`, `_analisar(pvp=0.8)`) e ficam. Nenhuma asserção distinta mudou.
 - **Testes:** os três arquivos têm 27 passed antes e depois. Suíte com 5370 passed, 1 skipped, 24 xfailed.
 - **Decisões que ficaram para o Marcos:** nenhuma.
+
+### F4-A18 — chore: drop retired manual maps from mutation and stale vulture exceptions
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** achado 18 do Gemini.
+  - `cvm_fii_map.py` e `cvm_ticker_map.py` saem do `source_paths` do mutmut. Os testes ainda os importam, então entram no `also_copy`, copiados sem mutar. Uma rodada curta de mutação (`outputs/F4-A18/mutacao-sonda.txt`) roda limpa e repete os 38/39 do F4-A11b.
+  - No `vulture_whitelist.py`, saem os comentários do F3-6 "ainda desconectada" e "sem chamador até o F3-6", trocados pelo estado atual: camada ligada desde o F3-6b, `with_warning` sem chamador de produção.
+- **Dificuldades:** o aceite cita `max_age_days` como exceção sem alvo, mas ele ainda tem alvo: os dublês de `buscar_fundamentos_cache` em `tests/test_market_engine.py:77` e `:453`. Sem a exceção, o vulture acusa as duas linhas, e o aceite exige "sem achado novo".
+- **Como resolvi:** a exceção fica, com o motivo aqui e no inventário.
+- **Testes:** vulture e deptry rodados de novo, com saída igual à de antes (`outputs/F4-A18/`). Suíte com 5370 passed, 1 skipped, 24 xfailed.
+- **Decisões que ficaram para o Marcos:** nenhuma.

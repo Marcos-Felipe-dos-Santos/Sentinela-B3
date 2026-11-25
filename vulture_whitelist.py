@@ -22,7 +22,7 @@ USADOS = [
     _.max_age_days,  # tests/test_market_engine.py: dublê de buscar_fundamentos_cache
     # ── sqlite3: atribuição a atributo da conexão, que o vulture não entende ──
     _.row_factory,  # auditoria.py, sentinela/repositories
-    # ── Camada sentinela/ (E-21, ainda desconectada; o F3-6 liga ao app) ──────
+    # ── Camada sentinela/ (E-21; ligada ao app pelo AnalysisService desde o F3-6b) ──
     _.fonte_preco,  # sentinela/domain/models.py: campo de dataclass lido na serialização
     _.fonte_fundamentos,  # idem
     _.roic,  # idem
@@ -31,5 +31,5 @@ USADOS = [
     _.score_final,  # idem
     _.metodos_usados,  # idem
     _.atr,  # idem
-    _.with_warning,  # sentinela/domain/provenance.py: API do domínio, sem chamador até o F3-6
+    _.with_warning,  # sentinela/domain/provenance.py: API do domínio, sem chamador de produção
 ]
