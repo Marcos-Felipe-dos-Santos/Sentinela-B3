@@ -659,24 +659,15 @@ def main():
                 _rel['tickers'][ticker] = {"erro": "dados não obtidos"}
                 continue
 
-            # Roteamento FII vs Ação — idêntico ao app.py
-            from config import FIIS_CONHECIDOS, UNITS_CONHECIDAS
-            qt = dados.get('quote_type', '')
-            is_fii = (
-                ticker in FIIS_CONHECIDOS
-                or (
-                    qt == 'MUTUALFUND'
-                    or (
-                        '11' in ticker
-                        and 'SA' not in ticker
-                        and ticker not in UNITS_CONHECIDAS
-                    )
-                )
-            )
+            # Roteamento FII vs Ação — idêntico ao app.py: classe oficial pelo
+            # AssetClassifier, nunca pelo sufixo 11 (BUG-4-14, armadilha 14)
+            from sentinela.services.asset_classifier import AssetClassifier
+
+            is_fii = AssetClassifier().is_fii(ticker, dados)
 
             if is_fii:
                 print(hdr(f"3. VALUATION — {ticker}"))
-                print(f"\n  {warn('Perfil FII detectado (quoteType='+repr(qt)+')')}")
+                print(f"\n  {warn('Perfil FII pela classe oficial do ativo')}")
                 print("  Em produção: fii_engine.analisar() é chamado em vez de val_engine.processar()")
                 analise = auditar_fii(dados)
                 fv = analise.get('fair_value')

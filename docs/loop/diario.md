@@ -260,3 +260,14 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Resíduos:** evidências em `outputs/F4-A12/`.
 - **Decisões que ficaram para o Marcos:** nenhuma.
 - **Para o Marcos revisar:** o nome da flag `--com-carteira`.
+
+### F4-A13 — fix: classify assets in the audit script by the official index
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** BUG-4-14 (achado 17 do Gemini, primeira parte). O roteamento FII × ação de `auditoria.main` usa `AssetClassifier().is_fii(ticker, dados)`, como o `app.py`. A classe vem de `dados['classe_ativo']`, depois do índice local e por fim das listas fixas; ticker terminado em 11 sem dado oficial fica `UNKNOWN`. A heurística do sufixo e do `quote_type` `MUTUALFUND` saiu, e o aviso do perfil FII não cita mais o `quoteType`.
+- **Testes:**
+  - Regressão BUG-4-14 (`tests/regressao/test_bug_4_14_auditoria_classe_pelo_indice.py`), com o arranjo da BUG-2C-29 e o `main()` real. BOVA11 com classe ETF, uma unit fora de `UNITS_CONHECIDAS` (TSTA11, classe UNIT) e um ticker 11 sem classe oficial não chamam o `FIIEngine`; os dois primeiros vão ao valuation de ações (o ETF se abstém pela classe; a unit segue o escopo de STOCK e UNIT). O caso sem classe oficial traz `quote_type` `MUTUALFUND`, para provar também a saída do segundo ramo da heurística antiga. Esses 3 nasceram xfail estritos (`outputs/F4-A13/regressao-antes.txt`). O FII com classe oficial continua no motor de FII.
+  - Suíte: 5352 passed, 1 skipped, 24 xfailed.
+- **Mutação:** não se aplica, como no F4-A12. O `auditoria.py` está em `also_copy` e não é instrumentado pelo mutmut; os xfails acima mostram a falha da regra antiga.
+- **Resíduos:** evidências em `outputs/F4-A13/`.
+- **Decisões que ficaram para o Marcos:** nenhuma.
