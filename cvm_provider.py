@@ -514,7 +514,7 @@ class CVMProvider:
 
     def calcular_indicadores(
         self, cd_cvm: int, anos: int = 5, modelo: str = "empresa", ano_final: int | None = None,
-        *, as_of: datetime | None = None
+        *, as_of: datetime | None = None, versao_final: str | None = None
     ) -> dict:
         """
         Retorna dict {ano: {indicador: valor}} para os últimos N anos, até `ano_final`
@@ -562,6 +562,17 @@ class CVMProvider:
                 # Descobre a maior VERSAO do DT_REFER mais recente
                 metadata: dict = {}
                 df_concat = pd.concat([bpa_emp, bpp_emp, dre_emp], ignore_index=True)
+                if versao_final is not None and ano == ano_final:
+                    # BUG-4-15: a versão comprovada no corte, não a maior do ZIP; se ela
+                    # sumiu do arquivo (novo download), o exercício se abstém.
+                    if "VERSAO" in df_concat.columns:
+                        df_concat = df_concat[
+                            df_concat["VERSAO"].astype(str) == versao_final
+                        ]
+                    if df_concat.empty or "VERSAO" not in df_concat.columns:
+                        raise ValueError(
+                            f"versão {versao_final} comprovada no corte ausente do arquivo"
+                        )
 
                 if not df_concat.empty and "DT_REFER" in df_concat.columns:
                     if "VERSAO" in df_concat.columns:
@@ -1123,11 +1134,22 @@ class CVMProvider:
 
         Sem índice de entregas, a série anual se abstém por falta de prova.
         """
+        return self.exercicio_e_versao_mais_recente(cd_cvm, referencia)[0]
+
+    def exercicio_e_versao_mais_recente(
+        self, cd_cvm: int, referencia: date
+    ) -> tuple[int, str | None]:
+        """O exercício e a versão da DFP comprovados no corte (BUG-4-15).
+
+        Entre as versões do exercício encerrado com `DT_RECEB < referencia` (corte diário, sem
+        hora), a maior. Sem exercício do ano comprovado, o ano anterior, com versão `None`: a
+        leitura segue a regra anterior para ele.
+        """
         try:
             arquivo = self.baixar_dfp(referencia.year)
         except OSError as exc:
             if getattr(getattr(exc, "response", None), "status_code", None) == 404:
-                return referencia.year - 1
+                return referencia.year - 1, None
             raise
         dre = self.parsear_demonstrativo(
             arquivo, "DRE_con", include_cd_cvm=True, include_versao=True, include_periodo=True
@@ -1137,6 +1159,7 @@ class CVMProvider:
         except StopIteration as exc:
             raise OSError("DFP sem índice de entregas") from exc
         da_companhia = dre[dre["CD_CVM"] == cd_cvm]
+        comprovadas: list[tuple[str, int, str]] = []
         for _, linha in da_companhia.iterrows():
             inicio = date.fromisoformat(str(linha["DT_INI_EXERC"]))
             fim = date.fromisoformat(str(linha["DT_FIM_EXERC"]))
@@ -1157,8 +1180,12 @@ class CVMProvider:
             except ValueError:
                 continue
             if recebida < referencia:
-                return fim.year
-        return referencia.year - 1
+                versao = str(linha["VERSAO"])
+                comprovadas.append((str(linha["DT_REFER"]), int(float(versao)), versao))
+        if comprovadas:
+            dt_refer, _, versao = max(comprovadas)
+            return date.fromisoformat(dt_refer).year, versao
+        return referencia.year - 1, None
 
     def pl_inicial_do_documento(
         self,
@@ -1220,11 +1247,24 @@ class CVMProvider:
             return {"valor": None, "motivo": f"PL inicial não demonstrado: {erro}"}
 
     def indicadores_da_serie(
-        self, cd_cvm: int, ano_final: int, modelo: str = "empresa"
+        self,
+        cd_cvm: int,
+        ano_final: int,
+        modelo: str = "empresa",
+        *,
+        versao_final: str | None = None,
     ) -> dict[int, dict]:
-        """`calcular_indicadores` dos cinco exercícios até `ano_final`, com os proventos da DVA."""
+        """`calcular_indicadores` dos cinco exercícios até `ano_final`, com os proventos da DVA.
+
+        `versao_final` restringe o último exercício à versão comprovada no corte (BUG-4-15).
+        """
+        extra = {} if versao_final is None else {"versao_final": versao_final}
         indicadores = self.calcular_indicadores(
-            cd_cvm, anos=series_cvm.MAX_EXERCICIOS, modelo=modelo, ano_final=ano_final
+            cd_cvm,
+            anos=series_cvm.MAX_EXERCICIOS,
+            modelo=modelo,
+            ano_final=ano_final,
+            **extra,
         )
         for ano, ind in indicadores.items():
             try:

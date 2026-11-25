@@ -392,3 +392,19 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
   - `max_age_days` ratificado.
   - Depois da fila, a segunda rodada só do diff, pela outra família de quem corrigiu. Se limpa, o checkpoint é marcado e o bloco 1 liberado.
 - **Nota:** o relatório do Codex tem links com o caminho local do autor, e o `git grep` do F4-A20 volta a achá-lo. Foi mantido sem edição, por instrução do Marcos (pendência registrada).
+
+### F4-C01 — fix: carry the delivered DFP version into today's snapshot and series
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** BUG-4-15, bloqueador 1 da R2 do bloco 0.
+  - `CVMProvider.exercicio_e_versao_mais_recente` devolve o exercício e a versão comprovados no corte: a maior `VERSAO` (com o `DT_REFER` mais recente) entre as linhas anuais encerradas com `DT_RECEB < D`, por corte diário, sem hora. Sem exercício do ano comprovado, devolve o ano anterior com versão `None`, e a leitura dele segue a regra antiga. O `exercicio_anual_mais_recente` delega e devolve só o ano.
+  - `calcular_indicadores(..., versao_final=)` restringe o último exercício a essa versão antes de escolher, e `indicadores_da_serie` a repassa, só quando há versão, para os dublês antigos continuarem valendo.
+  - Na análise de hoje, `MarketEngine._serie_cvm` usa o seletor novo e guarda a versão em `dados['_versao_dfp_final']`, que o snapshot de `_buscar_cvm` retira e consome. Numa data passada, o seletor antigo continua: o recorte por entrega (F3-3d) já tira as versões de D, e a regressão protegida BUG-3-50 substitui o seletor antigo.
+- **Testes:** regressão BUG-4-15 (`tests/regressao/test_bug_4_15_versao_dfp_fora_do_corte.py`), com V1 (entregue em 15/06, lucro 100 mil) e V2 (entregue em D = 16/06, lucro 900 mil) no mesmo ZIP.
+  - Três casos nasceram xfail estritos (`outputs/F4-C01/regressao-antes.txt`): o seletor devolve (2026, "1"); o snapshot e a série leem a V1; a cascata de hoje, com o relógio do motor em D, grava o lucro da V1. Antes da correção, a cascata lia 900 mil.
+  - O controle confirma que, sem versão, a API antiga continua lendo a V2.
+  - Suíte: 5377 passed, 1 skipped, 24 xfailed.
+  - Mutação (`mutants/` apagado antes; `outputs/F4-C01/mutacao.txt`): `exercicio_e_versao_mais_recente` 99/102 = 97,1%; `exercicio_anual_mais_recente` 5/5; `calcular_indicadores` 498/545 = 91,4%; `indicadores_da_serie` 212/245 = 86,5%; `_serie_cvm` 210/239 = 87,9%. Os sobreviventes das linhas novas ou movidas são de código anterior: texto de exceção, `getattr` do 404, `fim >= referencia` equivalente no corte diário, inicializações.
+- **Revisão 1 (PODE COMMITAR, com médios):** o médio 1 podia dar resultado errado e foi fechado antes do commit (decisão 48). Se a versão comprovada sumiu do arquivo, por exemplo num novo download entre o seletor e o snapshot (DD-34), `calcular_indicadores` levanta `ValueError` e o exercício se abstém, em vez de ler as outras versões. O mesmo vale sem a coluna `VERSAO`. Entraram dois testes: versão ausente abstém, e a cascata retira a chave interna. O ternário encadeado do `_serie_cvm` virou `extra_serie`. Suíte: 5379 passed, 1 skipped, 24 xfailed. Mutação refeita nas duas funções alteradas (`outputs/F4-C01/mutacao-r2.txt`): `calcular_indicadores` 501/549 = 91,3%; `_serie_cvm` 208/235 = 88,5%. A linha da BUG-4-15 foi acrescentada em `tests/regressao/README.md`. Limite conhecido, em `pendencias.md`: o TTM de hoje (`acumulados_ttm`) ainda agrupa todas as versões; a janela contábil casa pela versão da série e, sem ela, fica sem valor.
+- **Resíduos:** evidências em `outputs/F4-C01/` e cache de mutação em `mutants/`.
+- **Decisões que ficaram para o Marcos:** nenhuma. A pergunta 1 do relatório (admitir entrega em D com hora oficial) ficou no padrão pedido: corte diário, sem hora.
