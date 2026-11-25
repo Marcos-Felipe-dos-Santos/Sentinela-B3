@@ -603,3 +603,14 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Executor:** claude-code (Opus 5.5)
 - **Status:** atualização do pedido de `57ef435`
 - **O que mudou:** o F4-C11 entra antes da segunda rodada, por decisão do Marcos de 25/11, e está em `[!]`. A segunda rodada cobre o intervalo desde `2eac281` até o commit do F4-C11, quando ele sair: `python scripts/auditar.py codex fase --fase 4 --desde 2eac281`. A revisão cruzada formal pedida continua a mesma: DD-97, DD-98, DD-99 e DD-100. O Marcos aceitou o F4-C08 fechado por caracterização (DD-100), registrado em `pendencias.md`.
+
+### F4-C11 (retomada) — segunda parada
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** [!] — parada da política §3 (teste protegido)
+- **O que foi feito:** com as decisões do Marcos de 25/11, a correção e a regressão BUG-4-22 foram aplicadas e o literal trocado por `BRLRENACNPR8`. Um dos dois casos do BUG-3-60 continuou falhando: `BRLRENACNPR8` é o ISIN real da PN da própria Lojas Renner (fixture oficial da B3). Todo ISIN legível com o corpo `BRLRENACNPR` tem esse dígito, então o "outro emissor" passa a ser o próprio emissor. Tudo foi revertido.
+- **Alternativa conferida:** `BRLRE2ACNPR6`, legível, PN e com outro código de emissor. Com a correção, o BUG-3-60 passa inteiro; sem os dois descartes por emissor, os dois casos do outro emissor falham, como pede a condição de mutação manual do Marcos (`outputs/F4-C11/alternativa-BRLRE2ACNPR6.txt`).
+- **Registros das decisões de 25/11:**
+  - A leitura restrita foi confirmada. A diferença em relação ao Bazin e o motivo estão em `pendencias.md`: nos fatores, a pertença ao conjunto do emissor já prova a identidade; no Bazin, o conjunto pode faltar e a espécie decide o descarte.
+  - A unificação dos dígitos das fixtures próprias ficou como pendência para o bloco 2.
+  - O `rm` foi aceito como desvio.
+- **Decisões que ficaram para o Marcos:** autorizar `BRLRE2ACNPR6` no lugar de `BRLRENACNPR8` como `ISIN_DO_OUTRO` do BUG-3-60, com as asserções iguais.
