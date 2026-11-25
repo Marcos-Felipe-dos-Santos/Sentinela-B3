@@ -6,6 +6,7 @@ from unittest.mock import Mock
 import pytest
 
 import auditoria
+from sentinela.data.store import unico
 
 
 @pytest.mark.parametrize(
@@ -119,6 +120,7 @@ def test_banco_unico_indisponivel_vira_erro_sem_ler_banco_antigo(monkeypatch, tm
 
 def test_carteira_vazia_registra_contagem_zero(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
+    unico.caminho_padrao()  # F4-C07: a auditoria não cria o banco; o teste o cria antes
     monkeypatch.setattr(auditoria, "_rel", {"banco": {}})
 
     auditoria.auditar_banco(com_carteira=True)

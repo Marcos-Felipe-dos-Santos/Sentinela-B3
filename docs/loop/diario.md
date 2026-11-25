@@ -507,3 +507,22 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
   - Suíte: 5404 passed, 1 skipped, 24 xfailed.
 - **Mutação** (`outputs/F4-C06/mutacao-resumo.txt`): `_coletar_b3` 11/13; `_instantes_da_consulta` 10/11; `b3_fundos.coletar` 37/38; `b3_proventos.coletar` 28/29. Os sobreviventes são `aceita = None` (equivalente), `aceita = True` no ramo de assinatura não introspectável e o fuso do relógio de reserva, `now(None)`, que os testes não alcançam porque o motor sempre passa o relógio.
 - **Decisões que ficaram para o Marcos:** nenhuma.
+
+### F4-C07 — fix: inspect the store read-only and hide analysed tickers in the audit by default
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** BUG-4-21, ressalva da R2 sobre o F4-A12 e pergunta 2 do relatório.
+  - `auditoria.auditar_banco` deixa de chamar `unico.caminho_padrao()`, que cria e migra. Sem o `sentinela_store.db` no diretório corrente, registra o erro e não cria o arquivo. Com ele, abre só para leitura (`mode=ro`), sem migrar.
+  - A seção "Análises salvas" sai só como contagem (`{"quantidade": N}` e "N análise(s)"). Com `--com-analises`, a lista detalhada (`itens`) aparece, como a carteira com `--com-carteira`. A docstring e o uso do script acompanham.
+- **Decisão delegada:** DD-99. O caso `test_carteira_vazia_registra_contagem_zero`, do F4-A12, passa a criar o banco antes, com a asserção igual (`docs/loop/pendencias.md`).
+- **Testes:**
+  - Regressão BUG-4-21 (`tests/regressao/test_bug_4_21_auditoria_inspecao_sem_migrar.py`): sem banco, nada é criado; num banco sem as tabelas das migrações, o esquema não muda; sem a opção, nenhum ticker de análise no relatório; com ela, a lista aparece. Os 4 casos nasceram xfail estritos (`outputs/F4-C07/regressao-antes.txt`).
+  - A regressão BUG-4-13 e os casos novos do F4-A12 seguem verdes.
+  - Revisão 1 (PODE COMMITAR, com médios fechados antes do commit):
+    - Um banco existente sem as tabelas `carteira_real` e `analises` vira erro no relatório, sem migrar e sem cair.
+    - O relatório registra só o nome `sentinela_store.db`, sem o caminho local.
+    - A docstring restringe a promessa à seção do banco: no modo completo, o `MarketEngine` ainda abre o banco do app.
+    - Entraram três testes: abertura com `?mode=ro`, banco sem tabelas, e nome no relatório. O texto impresso sem ticker de análise também passou a ser conferido.
+  - Suíte: 5411 passed, 1 skipped, 24 xfailed.
+- **Mutação:** não se aplica (`auditoria.py` em `also_copy`).
+- **Decisões que ficaram para o Marcos:** nenhuma. A DD-99 aguarda a revisão cruzada.

@@ -4,11 +4,14 @@ SENTINELA B3 — SCRIPT DE AUDITORIA INTERNA
 Expõe tudo que a UI esconde: dados brutos do scraper, os resultados e motivos do contrato
 de valuation, o prompt exato enviado à IA, e o conteúdo real do banco.
 
-Lê o banco único (`sentinela.data.store.unico.caminho_padrao()`) e, ao terminar, salva DOIS
+Na seção do banco, lê o `sentinela_store.db` do diretório corrente só para leitura, sem criar
+nem migrar (no modo completo, o `MarketEngine` ainda abre o banco do app). Ao terminar, salva
+DOIS
 arquivos em `outputs/auditoria/` (relativo ao diretório corrente; o git ignora `outputs/`):
   • auditoria_YYYYMMDD_HHMMSS.txt  — relatório legível (sem cores)
   • auditoria_YYYYMMDD_HHMMSS.json — dados estruturados para análise
-As posições da carteira saem só como contagem; `--com-carteira` as inclui (BUG-4-13).
+As posições da carteira e os tickers das análises salvas saem só como contagem;
+`--com-carteira` e `--com-analises` os incluem (BUG-4-13, BUG-4-21).
 
 Uso:
     python auditoria.py                  # audita PETR4, ITUB4, WEGE3
@@ -16,6 +19,7 @@ Uso:
     python auditoria.py --db-only        # só inspeciona o banco
     python auditoria.py --selic          # só testa a Selic
     python auditoria.py --db-only --com-carteira   # inclui as posições da carteira
+    python auditoria.py --db-only --com-analises   # inclui os tickers das análises salvas
 """
 
 import sys
@@ -68,6 +72,7 @@ sub  = lambda s: f"\n{BLD}── {s} ──{RST}"
 PASTA_SAIDA = Path("outputs") / "auditoria"
 PREGOES_MOTOR_TECNICO = 30  # abaixo disso, TechnicalEngine devolve valores neutros
 FLAG_CARTEIRA = "--com-carteira"
+FLAG_ANALISES = "--com-analises"
 
 # ─── Relatório JSON (populado ao longo da execução) ───────────────────────────
 _rel: dict = {
@@ -456,21 +461,29 @@ def auditar_prompt(ticker: str, dados: dict, fv: float = 0, upside: float = 0, a
 # 6. BANCO DE DADOS
 # ══════════════════════════════════════════════════════════════════════════════
 
-def auditar_banco(com_carteira: bool = False):
-    """Inspeciona o banco único; posições da carteira só com `com_carteira` (BUG-4-13)."""
+def auditar_banco(com_carteira: bool = False, com_analises: bool = False):
+    """Inspeciona o banco único só para leitura, sem criar nem migrar (BUG-4-21).
+
+    Posições da carteira só com `com_carteira` (BUG-4-13) e tickers das análises salvas só com
+    `com_analises`; sem as opções, só as contagens.
+    """
     print(hdr("6. BANCO DE DADOS"))
 
-    try:
-        db_path = unico.caminho_padrao()
-    except RuntimeError as e:
-        print(warn(f"  Banco único indisponível: {e}"))
-        _rel['banco'] = {"erro": str(e)}
+    db_path = str(Path(unico.BANCO_UNICO).resolve())
+    if not os.path.isfile(db_path):
+        motivo = (
+            f"banco único {unico.BANCO_UNICO} ausente no diretório corrente; "
+            "a auditoria não cria nem migra o banco"
+        )
+        print(warn(f"  Banco único indisponível: {motivo}"))
+        _rel['banco'] = {"erro": motivo}
         return
 
     tamanho_mb = os.path.getsize(db_path) / 1024 / 1024
-    print(f"  Arquivo: {db_path}  ({tamanho_mb:.2f} MB)")
+    # No relatório, só o nome do banco no diretório corrente, sem o caminho local do autor.
+    print(f"  Arquivo: {unico.BANCO_UNICO}  ({tamanho_mb:.2f} MB)")
 
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(f"{Path(db_path).as_uri()}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
     cur  = conn.cursor()
 
@@ -487,6 +500,13 @@ def auditar_banco(com_carteira: bool = False):
 
     # Carteira
     print(sub("Carteira"))
+    faltando = [t for t in ("carteira_real", "analises") if t not in tabelas]
+    if faltando:
+        conn.close()
+        motivo = f"banco único sem as tabelas {', '.join(faltando)}; a auditoria não migra"
+        print(warn(f"  {motivo}"))
+        _rel['banco'] = {"arquivo": unico.BANCO_UNICO, "tabelas": tabelas, "erro": motivo}
+        return
     cur.execute("SELECT * FROM carteira_real")
     cart = cur.fetchall()
     cart_json = {"posicoes": len(cart)}
@@ -510,8 +530,11 @@ def auditar_banco(com_carteira: bool = False):
     cur.execute("SELECT ticker, data_analise, score, recomendacao, dados_completos "
                 "FROM analises ORDER BY data_analise DESC")
     analises = cur.fetchall()
-    analises_json = []
-    if analises:
+    analises_json = {"quantidade": len(analises)}
+    if analises and not com_analises:
+        print(f"  {len(analises)} análise(s) (detalhe só com {FLAG_ANALISES}).")
+    elif analises:
+        analises_json["itens"] = []
         print(f"  {len(analises)} análise(s):\n")
         for a in analises:
             entrada = {
@@ -547,14 +570,14 @@ def auditar_banco(com_carteira: bool = False):
             except Exception as e:
                 entrada['erro_json'] = str(e)
                 print(f"  {err(f'JSON corrompido: {e}')}")
-            analises_json.append(entrada)
+            analises_json["itens"].append(entrada)
     else:
         print("  Nenhuma análise ainda.")
 
     conn.close()
 
     _rel['banco'] = {
-        "arquivo":    db_path,
+        "arquivo":    unico.BANCO_UNICO,
         "tamanho_mb": round(tamanho_mb, 3),
         "tabelas":    tabelas,
         "indices":    indices,
@@ -643,7 +666,9 @@ def main():
 
     if '--db-only' in args:
         _rel['meta']['modo'] = 'db-only'
-        auditar_banco(com_carteira=FLAG_CARTEIRA in args)
+        auditar_banco(
+            com_carteira=FLAG_CARTEIRA in args, com_analises=FLAG_ANALISES in args
+        )
     elif '--selic' in args:
         _rel['meta']['modo'] = 'selic-only'
         auditar_selic()
@@ -657,7 +682,9 @@ def main():
         _rel['meta']['tickers'] = tickers
 
         auditar_selic()
-        auditar_banco(com_carteira=FLAG_CARTEIRA in args)
+        auditar_banco(
+            com_carteira=FLAG_CARTEIRA in args, com_analises=FLAG_ANALISES in args
+        )
 
         for ticker in tickers:
             print(f"\n\n{'█'*60}")
