@@ -479,3 +479,17 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
   - Suíte: 5397 passed, 1 skipped, 24 xfailed.
 - **Mutação:** não se aplica. O `auditoria.py` está em `also_copy` e não é instrumentado; os xfails acima mostram a falha anterior.
 - **Decisões que ficaram para o Marcos:** nenhuma.
+
+### F4-C05 — fix: store integral NumPy quantities as integers and reject non-finite average prices
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** BUG-4-19, ressalvas da R2 sobre o F4-A11. `database.py` foi tocado com a autorização do Marcos no checkpoint de 25/11.
+  - Depois de validada, a entrada de `adicionar_posicao` vira `int` e `float` nativos do Python, e a quantidade do NumPy é gravada como `INTEGER`.
+  - Em `_gravar_posicao`, uma média ponderada não finita levanta `ValueError` dentro da transação. A transação é desfeita e a posição anterior fica, e a aba Carteira já mostra o `ValueError`. A docstring cita os dois casos.
+- **Testes:**
+  - Regressão BUG-4-19 (`tests/regressao/test_bug_4_19_carteira_tipos_e_media.py`): `np.int64`, `np.int32` e `np.uint16` gravados como `integer`, com redução posterior funcionando; e duas compras de 2 a `1e308` rejeitadas na segunda, com a posição de 2 a `1e308` intacta. Esses 4 casos nasceram xfail estritos (`outputs/F4-C05/regressao-antes.txt`).
+  - O controle com `np.float64` como preço segue aceito.
+  - A fila previa dois arquivos de regressão. Juntei os dois achados num só (BUG-4-19), porque são do mesmo método e da mesma ressalva da R2.
+  - Suíte: 5402 passed, 1 skipped, 24 xfailed.
+- **Mutação** (`outputs/F4-C05/mutacao.txt`): `adicionar_posicao` 19/19; `_gravar_posicao` 45/58, com os mesmos 13 equivalentes do F4-A11 (8 de maiúsculas e minúsculas no SQL, 2 de chave do `sqlite3.Row`, 3 de `qtd == 0`). A guarda nova foi morta.
+- **Decisões que ficaram para o Marcos:** nenhuma.

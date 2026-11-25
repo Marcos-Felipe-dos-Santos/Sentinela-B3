@@ -84,10 +84,13 @@ class DatabaseManager:
         (`qtd` < 0) mantém o preço médio (F3-P02, BUG-2B-51). Zeragem e redução maior que
         a posição removem a linha, como antes.
 
-        Entrada inválida levanta `ValueError` sem gravar (BUG-4-11). Erro do SQLite vai para
+        Entrada inválida, ou preço médio resultante não finito, levanta `ValueError` sem
+        gravar (BUG-4-11, BUG-4-19). Erro do SQLite vai para
         o log, como em `salvar_analise`, e devolve `False`; sem erro, `True`.
         """
         ticker = _posicao_valida(ticker, qtd, preco)
+        # BUG-4-19: tipos nativos; o inteiro do NumPy seria gravado como BLOB pelo SQLite.
+        qtd, preco = int(qtd), float(preco)
         try:
             self._gravar_posicao(ticker, qtd, preco)
         except sqlite3.Error as e:
@@ -115,6 +118,11 @@ class DatabaseManager:
                             novo_pm = pm_antigo
                         else:
                             novo_pm = ((qtd_antiga * pm_antigo) + (qtd * preco)) / nova_qtd
+                            if not math.isfinite(novo_pm):
+                                # A transação desfaz tudo: a posição anterior fica (BUG-4-19).
+                                raise ValueError(
+                                    f"preço médio não finito: {novo_pm!r}"
+                                )
                         conn.execute(
                             "UPDATE carteira_real SET quantidade=?, preco_medio=? WHERE ticker=?",
                             (nova_qtd, novo_pm, ticker)
