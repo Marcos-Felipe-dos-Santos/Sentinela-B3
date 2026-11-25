@@ -575,3 +575,15 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Testes:** suíte de 5418 para 5420 passed, 1 skipped, 24 xfailed. Os 12 casos novos rodam dentro dos testes existentes do golden.
 - **Mutação:** não se aplica. O item só acrescenta casos de teste e apoio, sem código de produção.
 - **Decisões que ficaram para o Marcos:** nenhuma.
+
+### Checkpoint do bloco 0 — pedido da segunda rodada da R2
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** parada no `[DECISÃO]` do checkpoint do bloco 0; a segunda rodada ainda não rodou
+- **Fila curta concluída:** F4-C01 a F4-C10, mais a limpeza de caminhos dos relatórios (decisão 2 do Marcos de 25/11) e o requebro da docstring do F4-C09.
+- **Segunda rodada (regra de rodadas: só o diff; só bloqueador reabre):** intervalo `2eac281..6a71281`, só commits do claude-code, auditados pela outra família, o codex: `python scripts/auditar.py codex fase --fase 4 --desde 2eac281`.
+- **Revisão cruzada formal pedida ao codex nesta rodada** (decisão 3 do Marcos de 25/11): marcar "confere" ou "contesta" em `docs/loop/pendencias.md` para:
+  - DD-97, já com a correção do F4-C02;
+  - DD-98, o hash da renderização no F4-A11;
+  - DD-99, o caso de contrato da auditoria no F4-C07;
+  - DD-100, a caracterização sem mudança de código no F4-C08.
+- **Depois:** se a rodada vier limpa, marcar o checkpoint do bloco 0 e liberar o bloco 1.
