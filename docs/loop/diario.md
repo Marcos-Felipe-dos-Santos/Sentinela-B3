@@ -183,3 +183,11 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Testes:** 5 passed nos casos parametrizados. Mutação manual em `cvm_provider.exercicio_anual_mais_recente` (`outputs/F4-A08/mutacao-manual-negativos.txt`): sem `fim > referencia`, falha o caso 2026-01-01..2026-12-31; sem `_meses(inicio, fim) != 12`, falham 2026-01-01..2026-09-30 e 2025-03-02..2026-02-28; sem a regra inteira, falham os três. Código de produção intocado.
 - **Resíduos:** evidência em `outputs/F4-A08/`.
 - **Decisões que ficaram para o Marcos:** nenhuma. A ressalva do F4-A08 em `docs/loop/pendencias.md` está fechada.
+
+### Registro — docs: queue the ISIN check alignment and note a process deviation
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** decisões 2 e 3 do Marcos de 25/11.
+  - Decisão 2 (DD-93): a validação do ISIN com dígito verificador no `proventos_b3` entra na fila em dois itens, F4-A11b e F4-A11c, logo depois do F4-A11. O pedido era de um item, mas exige mover `_isin_legivel` para `proventos_b3` (o `fatores_acoes_b3` já importa `proventos_b3`, e o inverso criaria ciclo), e mover é refactor. Refactor e mudança de comportamento não podem ir no mesmo commit. A observação da DD-93 em `docs/loop/pendencias.md` aponta para os itens.
+  - Decisão 3: **desvio de processo.** O commit `bf73c5a` (`docs: record the cross-review of delegated decisions DD-93, DD-95 and DD-96`) foi feito sem o `/review-diff-leve` que o protocolo exige para itens `docs`. O conteúdo é só documentação (as três revisões cruzadas em `pendencias.md`), e não houve reabertura.
+- **Decisões que ficaram para o Marcos:** nenhuma.
