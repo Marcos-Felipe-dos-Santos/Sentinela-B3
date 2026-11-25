@@ -467,3 +467,15 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
   - A pendência foi fechada, e o `git grep -n -I -i -E 'wsl[$]|/home/marco[s]|C:.Users.marco[s]|/mnt/c/Users/marco[s]'` voltou a zero.
 - **Testes:** `tests/test_script_auditar.py` ganhou o caso do prompt das três famílias com a instrução. Suíte de 5390 para 5393 passed, 1 skipped, 24 xfailed. Os links relativos à raiz não navegam no GitHub a partir de `docs/loop/auditorias/`; a decisão pediu caminhos relativos à raiz, e a privacidade era o objetivo.
 - **Decisões que ficaram para o Marcos:** nenhuma.
+
+### F4-C04 — fix: keep the audit technical report when High or Low is invalid
+- **Executor:** claude-code (Opus 5.5)
+- **Status:** sucesso
+- **O que foi feito:** BUG-4-18, bloqueador 4 da R2 do bloco 0. `auditoria.auditar_tecnica` passa ao `TechnicalEngine` só a coluna `Close`. O momento e a tendência que o script usa dependem só dela, e o relatório nunca usou `High` e `Low`. Assim o ATR do motor não roda, e um `High` ou `Low` inválido não quebra mais o relatório, que volta a ser o de antes do `e29ade6`.
+- **Testes:**
+  - Regressão BUG-4-18 (`tests/regressao/test_bug_4_18_auditoria_tecnica_ohlc_parcial.py`): com 60 fechamentos, `High` textual, e `High` e `Low` textuais, o relatório (registro e texto) é igual ao da mesma série só com `Close`. Esses 2 casos nasceram xfail estritos, com `TypeError` (`outputs/F4-C04/regressao-antes.txt`).
+  - Os controles com `High` e `Low` válidos ou `Low` ausente, que já passavam, ficam.
+  - A caracterização do F4-A14 segue verde.
+  - Suíte: 5397 passed, 1 skipped, 24 xfailed.
+- **Mutação:** não se aplica. O `auditoria.py` está em `also_copy` e não é instrumentado; os xfails acima mostram a falha anterior.
+- **Decisões que ficaram para o Marcos:** nenhuma.

@@ -369,7 +369,9 @@ def auditar_tecnica(ticker: str, dados: dict):
         # arredonda pelo NumPy, que diverge do arredondamento do texto (16,055 → 16,06).
         from technical_engine import TechnicalEngine
 
-        indicadores = TechnicalEngine().calcular_indicadores(hist)
+        # Só o fechamento: momento e tendência dependem dele, e o relatório nunca usou
+        # High e Low (BUG-4-18: um High ou Low inválido quebrava o ATR do motor).
+        indicadores = TechnicalEngine().calcular_indicadores(hist[['Close']])
         momento = indicadores['momento'].split(" ")[0]
         tend = indicadores['tendencia']
     else:
