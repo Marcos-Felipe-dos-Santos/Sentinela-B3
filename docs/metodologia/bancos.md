@@ -8,14 +8,36 @@ foi aprovada em19/10/2026 após auditoria FICHA do Claude sobre a0.3, “pode se
 
 ### Proposta da Fase 4 — BPP individual sem controladas (F4-D01d)
 
-A [ficha por ação](por-acao.md#proposta-da-fase-4--demonstrações-individuais-f4-d01d)
-define os pares verificados, o zero demonstrado no BPA individual e a
-proveniência exigida pela decisão 55. Após auditoria FICHA e aprovação
-escrita, banco com exercício sem BPP consolidado só usa as demonstrações
-individuais se comprovar esse perímetro. O reconhecimento do modelo por
-seus próprios pares encaminha o banco à lente de bancos. Os insumos
-restantes seguem as guardas desta ficha.
+**D5, decisão do Marcos de 26/11/2026.** Depois da aprovação e da entrega do
+F4-D14, esta exceção prevalece sobre a exigência de BPP e DRE consolidados
+na tabela de insumos (§2), na matriz (§4) e no registro da §7.7. Até então,
+vale a regra consolidada. A [ficha por ação](por-acao.md#proposta-da-fase-4--demonstrações-individuais-f4-d01d)
+define seleção, pares de contas e evidências. A exceção reconhece o modelo
+banco quando a prova de fechamento passa. A elegibilidade da lente também
+exige os insumos anuais e a continuidade de perímetro.
 
+| Insumo | Regra D5 para o banco individual |
+|---|---|
+| Lucro e PL final | DRE e BPP individuais elegíveis do mesmo documento, pelos pares da ficha por ação. |
+| PL inicial e ROE | PL individual positivo do comparativo imediatamente anterior ao exercício na mesma DFP/versão, com prova documental de ausência de controladas também na abertura e de continuidade durante o exercício. |
+| DVA e payout | DVA anual da mesma DFP e intervalo, no perímetro individual comprovado, com dividendos e JCP atribuíveis ao emissor segundo as guardas da §2. DVA ausente, conflitante, de perímetro diferente ou sem atribuição demonstrável abstém. |
+| Demais insumos | VPA, ações finais, direitos, composição, taxas, crescimento e demais guardas desta ficha continuam obrigatórios. |
+
+Se o banco perdeu a última controlada no exercício, pode ser roteado como
+banco pelo documento de fechamento, mas a lente anual abstém com
+«perímetro de abertura incompatível». Se a prova de abertura faltar,
+usar «perímetro de abertura não demonstrado». O comparativo sozinho
+fornece saldo, sem prova de perímetro.
+
+**Aceite.** Repetir com a mesma classificação de banco e o mesmo PL
+final. No primeiro cenário, controlada na abertura ou falta de prova
+produz abstenção sem valor nem distância, mesmo com DVA válida. No
+segundo, provar perímetro uniforme e todos os insumos. Oráculo sintético:
+PL inicial 1.000, lucro 100, DVA com proventos atribuíveis de 50,
+PL final 1.000 e 50 ações compatíveis dão ROE 10%, payout 50% e VPA 20.
+Com IPCA zero, teto de crescimento acima de 5% e taxa real de 15%,
+crescimento de 5% dá múltiplo 0,5 e valor de R$ 10 por ação. Retirar
+a prova da DVA deve abster mesmo com a abertura demonstrada.
 
 ## 1. Fórmula, derivação e referência
 
@@ -58,6 +80,8 @@ auditor**. Não citar cap. 18 como “Book Value Multiples”. A hipótese local
 persistência e a fonte Focus do teto são adaptações, não prescrições do livro.
 
 ## 2. Insumos
+
+Para o percurso individual proposto, prevalece a tabela D5 do adendo.
 
 | Insumo | Fonte, janela, perímetro e unidade |
 |---|---|
@@ -136,7 +160,9 @@ patrimoniais reais. Não transformar diferenças históricas em lucro retido imp
 STOCK/UNIT com **modelo banco**, determinado pelas contas-raiz do **BPP
 consolidado**: PL em 2.07/2.08, identificado por descrição e tabela do modelo.
 A 2.03 isolada em banco pode ser outra rubrica: não basta encontrar seu código.
-Sem BPP consolidado, sem correspondência ou contas conflitantes: abstenção,
+Na regra vigente, sem BPP consolidado, sem correspondência ou com contas
+conflitantes: abstenção. No percurso individual proposto, vale a precedência
+da D5. Em ambos os casos,
 nunca padrão empresa por setor ausente. PL em 2.03 com estrutura de empresa
 vai a empresa, inclusive holding; estrutura de seguradora vai a seguradora,
 sem lente nesta fase. Setor “Bancos” não substitui a demonstração.
@@ -248,7 +274,8 @@ do Marcos de 19/10/2026 após auditoria da 0.2.
 declarados, sem efeito no valor e sem confundir conceitos.
 **7.6 decidida:** ROE sobre PL inicial; as demais convenções não são equivalentes.
 **7.7/[FINANCEIRAS] decidida:** modelo pelas contas-raiz do BPP consolidado,
-inclusive holdings; sem BPP consolidado, abstenção. Exigir lucro positivo,
+inclusive holdings; sem BPP consolidado, abstenção pela regra vigente,
+com exceção proposta na D5. Exigir lucro positivo,
 payout em (0,1], k>g e g<ROE. A ponte do payout sob teto é exposta na seção 1
 para conferência da auditoria, não premissa escondida. Referências não acessíveis
 continuam marcadas como pendências não bloqueantes; aprovação expressa do Marcos

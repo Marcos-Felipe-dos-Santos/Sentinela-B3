@@ -729,3 +729,8 @@ python scripts/auditar.py codex ficha --fase 4 --arquivo docs/metodologia/fii.md
 ### F4-D01c — revisão após a primeira auditoria FICHA (26/11/2026)
 - **Executor:** codex
 - **Escopo:** D4 fixa o LPA de conferência, a convergência entre classes, a primazia da unidade documental e a independência da prova de base acionária. Junta e rastreabilidade D16 registradas. Ajustado também o arredondamento do oráculo de retorno do exemplo TAEE11 após reconferência em decimal.
+
+### F4-D01d — revisão após a primeira auditoria FICHA (26/11/2026)
+- **Executor:** codex
+- **Escopo:** D5 fixa a precedência sobre tabela e matriz bancárias, a prova de perímetro de abertura e continuidade, a guarda de DVA e o aceite que separa roteamento de elegibilidade. Juntas D16 registradas.
+- **Parada:** quatro decisões seguem abertas. Rodada 2 usa somente o diff desde 800dc4b, base final da rodada 1. Só bloqueador reabre uma ficha. FII 1.4 ainda requer leitura independente pelo Claude no chat e pelo Gemini. Auditoria pendente.

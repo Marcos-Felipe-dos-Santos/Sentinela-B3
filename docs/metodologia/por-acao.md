@@ -380,6 +380,15 @@ setor do emissor não são prova substituta.
 | Empresa | `1.02.02.01.02` · Participações em Controladas |
 | Banco | `1.03.01.02` · Participações em Controladas; `1.05.03` · Participações em Controladas |
 
+**Junta D16.** Vincular índice, BPA, BPP, DRE e, quando usada, DVA do
+mesmo documento pelo CNPJ, referência e versão. Registrar fonte/arquivo,
+identificador, publicação, coleta e SHA-256, além do par da conta e do
+período de cada linha. A prova de abertura pode vir do BPA comparativo
+da mesma DFP ou de BPA elegível do exercício imediatamente anterior,
+com CNPJ, data de saldo e perímetro conferidos. A segunda fonte prova
+o perímetro, sem substituir o saldo comparativo da DFP selecionada.
+Evidência contraditória de controlada invalida a prova.
+
 ### Pares de PL e lucro
 
 Classificar a partir da estrutura do BPP individual e dos pares de contas
@@ -406,6 +415,14 @@ ou misturar bases individuais e consolidadas no mesmo documento. Registrar
 comprovou o zero e os pares de PL e lucro utilizados. Série, VPA e lentes
 conservam suas condições próprias, inclusive base acionária, contiguidade
 e comparabilidade de perímetro.
+
+**D5, decisão do Marcos de 26/11/2026.** A exceção aprovada prevalece
+sobre a exigência de consolidado na tabela e na matriz da ficha de
+bancos após o F4-D14. O ROE exige prova de perímetro individual sem
+controladas também na abertura e continuidade no exercício. Banco
+que perdeu a última controlada durante o exercício fica roteado como
+banco, com a lente anual abstida. DVA, atribuição, janela e demais
+insumos obedecem à [regra D5 de bancos](bancos.md#proposta-da-fase-4--bpp-individual-sem-controladas-f4-d01d).
 
 ### Casos de aceite do F4-D14
 
