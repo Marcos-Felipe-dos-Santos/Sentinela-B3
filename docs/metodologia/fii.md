@@ -180,14 +180,22 @@ continua usando o critério de eventos oficiais da B3 (§3a).
   `ΔVP = VP_m / VP_(m−1) − 1` e observar a direção da mudança das cotas.
   Um salto fora da banda aprovada ou indício de desdobramento, grupamento ou
   outro evento inexplicado impede a prova. Na opção que admite emissão, um
-  aumento na quantidade com VP dentro da banda e sem indício de quebra da base
-  é compatível com emissão. Registrar competência, quantidades e VPs de ambos
-  os meses. Redução de quantidade ou quebra de base sem explicação demonstrável
+  aumento com VP dentro da banda só é compatível com emissão se o PL total
+  (`Cotas_Emitidas × Valor_Patrimonial_Cotas`) subir de forma compatível com o
+  aumento das cotas. PL estável com cotas em alta abstém pelo motivo
+  «suspeita de desdobramento ou bonificação: PL sem aumento compatível».
+  Calibrar o limiar de compatibilidade nos dados reais do L2 antes do F4-D02 e
+  submetê-lo ao Marcos. Registrar competência, cotas, VP por cota e PL antes
+  e depois. Num evento de 5 cotas para cada 4, as cotas sobem 25% e VP por cota
+  e preço podem cair 20%. As duas bandas de ±25% aceitam essas variações,
+  embora `1,25 × 0,80 = 1` mantenha o PL total estável.
+  Redução de quantidade ou quebra de base sem explicação demonstrável
   abstém. O possível efeito da diluição no mês da emissão fica explícito.
 - O COTAHIST fornece o fechamento oficial da mesma cota para cobrir a defasagem
-  entre a última competência e o preço usado em D. Na opção recomendada,
-  comparar os fechamentos válidos de pregões consecutivos, a partir do último
-  fechamento até o fim da competência, com os disponíveis no corte da análise.
+  do fim da última competência do Informe até D. Na opção recomendada, usar
+  como referência o último fechamento disponível no fim da competência e
+  comparar os fechamentos válidos de pregões consecutivos até D, respeitando
+  a disponibilidade no instante do corte.
   Falta de cobertura, troca de identidade ou salto sem explicação comprovada
   deixa a continuidade indeterminada. Respeitar o corte e a base de cotação já
   usados para o preço. Registrar o intervalo conferido e, em caso de salto,
