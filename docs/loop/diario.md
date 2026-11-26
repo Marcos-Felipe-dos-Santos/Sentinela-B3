@@ -706,3 +706,13 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Executor:** claude-code
 - **Status:** redação entregue para auditoria FICHA e decisão escrita do Marcos.
 - **Escopo:** conta f de 2010 a 2019, versão com entrega anterior a D, conferência da escala pelo LPA da DRE e proveniência dos dois documentos. A ficha registra os limites do total ex-tesouraria sem espécie e o piso de cobertura do F4-D12. Graham, Lynch e o levantamento apontam para a regra operacional por ação.
+
+### F4-D01d — proposta da ficha de demonstrações individuais
+- **Executor:** claude-code
+- **Status:** redação entregue. As quatro propostas aguardam auditoria FICHA conjunta e as quatro decisões escritas do Marcos.
+- **Escopo:** prova do zero de controladas no BPA individual da mesma DFP, com pares exatos para empresa e banco conferidos nos ZIPs da CVM. PL e lucro individuais com proveniência «individual, sem controladas». Exemplos BRAP3 e ABCB4, controles negativos e os 37 pares GA2b fora da exceção.
+- **Parada solicitada:** após o F4-D01d. O script aceita um único `--arquivo`; a ficha FII é a entrada e o foco pede leitura cruzada e veredito separado para as quatro propostas. Auditoria a executar na retomada, antes de aprovar as fichas.
+
+```bash
+python scripts/auditar.py codex ficha --fase 4 --arquivo docs/metodologia/fii.md --foco 'Auditoria FICHA conjunta da Fase 4. Leia a proposta FII 1.4 em docs/metodologia/fii.md (§3d), F4-D01b em docs/decisoes/identidade-proventos-4.md e os vínculos em docs/metodologia/bazin.md e docs/metodologia/backtest.md, F4-D01c em docs/metodologia/por-acao.md, docs/metodologia/graham.md, docs/metodologia/lynch.md e docs/decisoes/acoes-por-exercicio-3.md, e F4-D01d em docs/metodologia/por-acao.md e docs/metodologia/bancos.md. Refaça as contas de exemplo, confronte fontes, cortes, proveniência, abstenções e aceites com as decisões 45, 52, 53 e 55 e dê um veredito por ficha.'
+```

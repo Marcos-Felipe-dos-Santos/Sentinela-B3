@@ -334,3 +334,75 @@ razão incompatível e falta de prova por espécie. Conferir a prioridade da
 Composição do Capital e a proveniência dos dois documentos. Se menos da
 metade das companhias com DFP passar, interromper a ligação e declarar a
 limitação conforme a fila.
+
+## Proposta da Fase 4 — demonstrações individuais (F4-D01d)
+
+**[DECISÃO] do Marcos.** A [decisão 55](../decisoes/decisoes-fase4.md) rege o
+F4-D14. A proposta aguarda auditoria FICHA e aprovação escrita.
+
+### Seleção do documento e prova de ausência de controladas
+
+A exceção se aplica à DFP do exercício sem BPP consolidado efetivamente
+entregue. A falta de números de um BPP consolidado no recorte histórico,
+por reapresentação, conflito ou documento ilegível, não equivale a ausência
+de entrega. Os 37 pares do GA2b (BUG-3-50, F4-H01) ficam fora da exceção.
+
+Usar BPA, BPP e DRE individuais do mesmo documento, comprovado pelo índice
+da DFP (`CNPJ_CIA`, `DT_REFER`, `VERSAO` e `DT_RECEB < D` no histórico).
+Exigir o exercício corrente da demonstração (`ORDEM_EXERC = ÚLTIMO`) e que
+o intervalo da DRE corresponda ao exercício das contas patrimoniais. Outro
+CNPJ, versão, exercício ou linha comparativa não prova o perímetro.
+
+No BPA individual, exigir ao menos um par aplicável abaixo, com descrição
+normalizada e valor **numérico, finito e igual a zero**. Uma linha aplicável
+não nula, inválida ou conflitante impede a prova, inclusive quando coexistir
+com uma linha zerada. Conta ausente ou documento ilegível abstém por falta
+de evidência. O total de Investimentos, a participação em coligadas e o
+setor do emissor não são prova substituta.
+
+| Modelo | BPA individual, par verificado no ZIP DFP |
+|---|---|
+| Empresa | `1.02.02.01.02` · Participações em Controladas |
+| Banco | `1.03.01.02` · Participações em Controladas; `1.05.03` · Participações em Controladas |
+
+### Pares de PL e lucro
+
+Classificar a partir da estrutura do BPP individual e dos pares de contas
+do modelo, sem inferir o modelo pelo ticker ou setor. Usar as descrições
+abaixo após a normalização de D20, com conversão monetária da DFP. A conta
+`2.03` de banco pode significar Provisões. Reconhecer o modelo de banco
+pelas suas contas, sem encaminhá-lo às lentes de empresa.
+
+| Modelo | BPP individual, PL | DRE individual, lucro |
+|---|---|---|
+| Empresa | `2.03` · Patrimônio Líquido | `3.11` · Lucro/Prejuízo do Período |
+| Banco | `2.07` · Patrimônio Líquido | `3.11` · Lucro ou Prejuízo Líquido do Período |
+
+Estes pares foram conferidos em documentos da CVM. Outro par ou modelo
+exige prova própria para entrar. Em particular, `3.09` pode ser resultado
+de operações continuadas ou lucro antes de participações. O código isolado
+não autoriza ler lucro final. A proposta conserva as guardas usuais para
+campos, modelos ou bases que não puderem ser demonstrados.
+
+Com o perímetro provado, os pares individuais de PL e lucro valem no
+perímetro do próprio emissor, sem fabricar subcontas de não controladores
+ou misturar bases individuais e consolidadas no mesmo documento. Registrar
+«individual, sem controladas», a identidade da DFP, a conta do BPA que
+comprovou o zero e os pares de PL e lucro utilizados. Série, VPA e lentes
+conservam suas condições próprias, inclusive base acionária, contiguidade
+e comparabilidade de perímetro.
+
+### Casos de aceite do F4-D14
+
+- BRAP3, DFP de 31/12/2024 V1 entregue em 25/03/2025 (CVM, ZIP anual de
+  2024): `1.02.02.01.02` igual a zero, PL `2.03` de 8.483.367 mil e lucro
+  `3.11` de 1.192.208 mil. Em corte após a entrega, conferir
+  R$ 8.483.367.000 de PL e R$ 1.192.208.000 de lucro, modelo empresa e
+  proveniência. A participação em coligadas não impede a prova.
+- ABCB4, DFP de 31/12/2025 V1 entregue em 06/02/2026 (CVM, ZIP anual de
+  2025): contas de controladas zeradas, PL `2.07` de 6.758.948 mil e lucro
+  líquido `3.11` de 1.002.000 mil. Conferir a rota de banco e a rejeição
+  da conta `2.03` como PL. O teste de modelo não pressupõe lente numérica.
+- Repetir com controladas presentes, linha ausente, valor inválido,
+  versão divergente, entrega em D e consolidado conhecido sem números.
+  Todos conservam a abstenção pertinente, inclusive os casos GA2b.

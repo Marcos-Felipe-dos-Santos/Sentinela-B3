@@ -6,6 +6,17 @@ foi aprovada em19/10/2026 após auditoria FICHA do Claude sobre a0.3, “pode se
 **Decisões:** [marcador](../decisoes/marcador-2b.md).
 **Implementação futura:** F2B-3 (método), F2B-32 (motor), F2B-4 (modelo/escopo).
 
+### Proposta da Fase 4 — BPP individual sem controladas (F4-D01d)
+
+A [ficha por ação](por-acao.md#proposta-da-fase-4--demonstrações-individuais-f4-d01d)
+define os pares verificados, o zero demonstrado no BPA individual e a
+proveniência exigida pela decisão 55. Após auditoria FICHA e aprovação
+escrita, banco com exercício sem BPP consolidado só usa as demonstrações
+individuais se comprovar esse perímetro. O reconhecimento do modelo por
+seus próprios pares encaminha o banco à lente de bancos. Os insumos
+restantes seguem as guardas desta ficha.
+
+
 ## 1. Fórmula, derivação e referência
 
 `P0/B0 = (ROE − g)/(k − g)`; valor por título = múltiplo × VPA0.
