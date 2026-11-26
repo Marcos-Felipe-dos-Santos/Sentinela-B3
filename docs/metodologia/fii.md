@@ -1,6 +1,11 @@
-# Rendimento do FII sobre NTN-B — versão 1.3
+# Rendimento do FII sobre NTN-B — proposta 1.4
 
-**Status:** versão 1.3 aprovada pelo Marcos em 25/10/2026, depois da auditoria de
+**[DECISÃO] do Marcos — FII 1.4 (F4-D01).** Proposta de 26/11/2026. Aprovação
+pendente após a auditoria FICHA conjunta do bloco 1. A versão 1.3 segue vigente
+até a aprovação. As alterações propostas estão na seção 3d e na linha de P/VP da
+tabela de insumos.
+
+**Histórico:** versão 1.3 aprovada pelo Marcos em 25/10/2026, depois da auditoria de
 fechamento da 2B: células vazias da composição e da amortização, e conflito de mesma
 versão em qualquer campo usado (seção 3c). A versão 1.2, da mesma data, aceita a
 quantidade de cotas fracionária do Informe (seção 3b). A versão 1.1 foi aprovada em
@@ -52,7 +57,8 @@ do fim do mês anterior; não confundir com fluxo pago nem com cotação.
 | s | Mediana de 5 anos do grupo tijolo contra a mesma taxa_aplicacao e mesma definição de R e preço; constante datada, depois de recalibrada no F2B-2 |
 | Tipo | Informe CVM ativo_passivo; regra de composição de universo-inicial, seção de fontes: fração >50% da soma dos ativos imobiliários identificados |
 | Eventos | Cotas_Emitidas, VP e documentos oficiais de eventos da CVM/B3/administrador, disponíveis até as_of; critério de abstenção pela §3a (B3, `fundsCall`) |
-| P/VP, Selic e vacância | Só contexto/score existente; não entram em R nem em V0 |
+| P/VP | Na proposta 1.4, só contexto descritivo, conforme §3d |
+| Selic e vacância | Contexto. Não entram em R nem em V0 |
 
 Classificação: recebíveis (CRI/CRA, LCI/LCA, letras hipotecárias, LIG) = papel;
 imóveis, terrenos, direitos reais, participações imobiliárias = tijolo; cotas de
@@ -150,6 +156,85 @@ Decisões 3 e 4 do Marcos sobre as perguntas da auditoria de fechamento do Codex
 - **Conflito de mesma versão.** Qualquer campo usado (DY, VP, cotas, amortização,
   composição) com valores diferentes em linhas da mesma versão abstém, nas duas ordens
   das linhas (BUG-2B-37, reaberto).
+
+## 3d. Proposta 1.4 — continuidade histórica e P/VP
+
+### Método e fontes
+
+A [decisão 52 e o adendo 1, A2](../decisoes/decisoes-fase4.md) autorizam a
+proposta. Na data histórica D, quando falta complemento da B3 com disponibilidade
+demonstrada na data, a prova da continuidade por cota usa o Informe Mensal da CVM
+e o COTAHIST. A fórmula continua `V0 = R_real / (y_real + s)`, com crescimento
+real zero. A composição de tijolo, a idade máxima do Informe, DY, amortização,
+recorrência, preço e taxa real seguem as guardas vigentes. A análise de hoje
+continua usando o critério de eventos oficiais da B3 (§3a).
+
+- O Informe Mensal fornece `Cotas_Emitidas` e `Valor_Patrimonial_Cotas` no
+  complemento e `Data_Entrega` no arquivo geral. Usar a maior versão numérica
+  comprovadamente entregue **antes de D** para o fundo e para cada uma das 13
+  competências consecutivas. Informes entregues em D ou depois ficam de fora.
+  Versão anterior elegível continua válida. Buraco, entrega ilegível, conflito
+  da mesma versão, VP ou quantidade não positivos ou não finitos impedem a
+  prova. Quantidade fracionária positiva e finita é válida.
+- Comparar cada par de competências adjacentes. Calcular
+  `ΔVP = VP_m / VP_(m−1) − 1` e observar a direção da mudança das cotas.
+  Um salto fora da banda aprovada ou indício de desdobramento, grupamento ou
+  outro evento inexplicado impede a prova. Na opção que admite emissão, um
+  aumento na quantidade com VP dentro da banda e sem indício de quebra da base
+  é compatível com emissão. Registrar competência, quantidades e VPs de ambos
+  os meses. Redução de quantidade ou quebra de base sem explicação demonstrável
+  abstém. O possível efeito da diluição no mês da emissão fica explícito.
+- O COTAHIST fornece o fechamento oficial da mesma cota para cobrir a defasagem
+  entre a última competência e o preço usado em D. Na opção recomendada,
+  comparar os fechamentos válidos de pregões consecutivos, a partir do último
+  fechamento até o fim da competência, com os disponíveis no corte da análise.
+  Falta de cobertura, troca de identidade ou salto sem explicação comprovada
+  deixa a continuidade indeterminada. Respeitar o corte e a base de cotação já
+  usados para o preço. Registrar o intervalo conferido e, em caso de salto,
+  os pregões e a variação.
+
+### Parâmetros pendentes do Marcos (P2)
+
+| Ponto | Opções e recomendação | Padrão conservador |
+|---|---|---|
+| Salto mensal de VP | ±25% inclusivos (`0,75 ≤ VP_m / VP_(m−1) ≤ 1,25`), ±10% inclusivos ou somente cotas constantes. Recomenda-se ±25% para admitir emissão compatível. A banda vale para as comparações mensais, inclusive com cotas constantes. | Só cotas constantes. A continuidade do VP continua exigida. |
+| Evento explicado | Admitir aumento de cotas compatível com emissão e VP contínuo, ou aceitar apenas cotas constantes. Recomenda-se admitir emissão nas condições acima. | Abster diante de qualquer mudança de quantidade. |
+| Defasagem entre Informe e D | Recomenda-se cobertura pelo COTAHIST e ausência de salto de preço incompatível. Para tornar o teste reproduzível, propõe-se para decisão sinalizar `abs(P_t/P_(t−1) − 1) > 0,25` entre pregões consecutivos. Alternativa: limite de N meses civis, a fixar pelo Marcos, respeitada a idade máxima de três meses. | Abster se faltar cobertura do intervalo ou critério aprovado para demonstrar continuidade. |
+
+O [levantamento L2](../decisoes/levantamento-dados-f4.md#l2-fii-no-histórico--detectar-emissões-pelo-informe-mensal-da-cvm-cotas_emitidas-sem-o-complemento-da-b3) estimou, antes da
+guarda da defasagem, +192 observações em 12 meses com cotas constantes e até +301
+com emissão e VP contínuo. A banda de VP de ±25% separou seis observações com
+saltos em 12 meses. O mesmo percentual para o preço é uma proposta operacional
+pendente de validação. Os números do levantamento dizem respeito à cobertura
+da lente de rendimento. O ganho efetivo será medido na sonda do bloco 1.
+
+### Abstenções e P/VP
+
+Distinguir no resultado a lacuna do Informe, o salto de VP, o evento de cotas
+inexplicado e a defasagem sem prova pelo COTAHIST. A abstenção da lente retira
+V0 e a distância ao preço. Emitir o P/VP como contexto sempre que preço e VP
+por cota sejam positivos, finitos, da mesma base e admissíveis no corte. Usar
+`P/VP = preço / VP por cota`, sem faixa, sem alerta de prêmio ou desconto e
+sem efeito na lente. Esse contexto também vale para fundos com a lente
+abstida. Dado inválido ou ausente impede o próprio P/VP.
+
+### Critérios de aceite
+
+1. No F4-D02, testar pelo produtor `fii_informe_linhas` e pelo caminho histórico
+   com 13 competências. Fundo com cotas constantes e janela válida passa. Emissão
+   com VP contínuo segue a opção aprovada. Salto de VP, desdobramento/grupamento
+   ou evento inexplicado abstêm com motivo específico. Conferir os dois limites
+   da banda aprovada, uma competência faltante, conflito de versão e entrega em
+   D. Validar separadamente a cobertura do COTAHIST, o salto de preço e a análise
+   de hoje com complemento da B3.
+2. No F4-A07b, conferir P/VP numérico com a lente abstida, ausência de faixas e
+   alertas e abstenção do próprio P/VP quando não positivo. O predicado é golden
+   igual para a retirada da faixa.
+3. No F4-D03, conferir o percurso histórico com recortes do mesmo FII de tijolo
+   pelo produtor real (COTAHIST, 13 Informes e NTN-B). Conferir a proveniência,
+   cada guarda intermediária e o valor por cálculo independente, conforme a fila.
+4. Aprovar a ficha e os parâmetros por escrito após auditoria FICHA por outra
+   família. O F4-A07b, o F4-D02 e o F4-D03 dependem dessa aprovação.
 
 ## 4. Escopo e matriz de validade
 

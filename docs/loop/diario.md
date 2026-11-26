@@ -685,3 +685,9 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Status:** bloco 0 encerrado, sem bloqueador pendente na R2. O Gemini, de outra família que o executor registrado do F4-C14, deu «Pode seguir» na quarta rodada (`docs/loop/auditorias/bloco0-gemini-4.md`, intervalo `acebb0d..f110c5c`). A terceira rodada (`outputs/auditorias/auditoria-fase-4-codex-3-relatorio.md`) detectou a perda de referência corrigida no F4-C14. A revisão do Claude (chat) sobre o F4-C13 ficou sem bloqueador e recomendou a ratificação da DD-102.
 - **Decisão do Marcos:** DD-97, DD-98, DD-99, DD-100, DD-101 e DD-102 ratificadas. Mantida a abstenção sazonal da DD-101. A sonda F4-D15 mede os quadros de Qualidade indisponíveis por data de análise e companhia, destacando essa causa. P1 já executado no F4-C10.
 - **Bloco 1:** liberado em 26/11/2026 com duas semanas, até 10/12/2026. As três ressalvas do Gemini 4 ficam no bloco 2, em `pendencias.md`.
+
+### F4-D01 — proposta da ficha FII 1.4
+- **Executor:** codex
+- **Status:** redação entregue. A fila para no [DECISÃO] do Marcos, antecipado conforme pedido de 26/11/2026.
+- **Escopo:** proposta de continuidade histórica pelo Informe Mensal da CVM e COTAHIST, opções do P2 e P/VP descritivo. A ficha distingue a banda de VP medida no L2 da proposta de limiar de preço a validar.
+- **Pendente:** preparar F4-D01b a F4-D01d quando o Marcos liberar a retomada, fazer a auditoria FICHA conjunta e obter aprovação escrita da ficha e do P2. Implementação na ordem já prevista na fila.
