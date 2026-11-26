@@ -197,15 +197,16 @@ continua usando o critério de eventos oficiais da B3 (§3a).
 
 | Ponto | Opções e recomendação | Padrão conservador |
 |---|---|---|
-| Salto mensal de VP | ±25% inclusivos (`0,75 ≤ VP_m / VP_(m−1) ≤ 1,25`), ±10% inclusivos ou somente cotas constantes. Recomenda-se ±25% para admitir emissão compatível. A banda vale para as comparações mensais, inclusive com cotas constantes. | Só cotas constantes. A continuidade do VP continua exigida. |
-| Evento explicado | Admitir aumento de cotas compatível com emissão e VP contínuo, ou aceitar apenas cotas constantes. Recomenda-se admitir emissão nas condições acima. | Abster diante de qualquer mudança de quantidade. |
-| Defasagem entre Informe e D | Recomenda-se cobertura pelo COTAHIST e ausência de salto de preço incompatível. Para tornar o teste reproduzível, propõe-se para decisão sinalizar `abs(P_t/P_(t−1) − 1) > 0,25` entre pregões consecutivos. Alternativa: limite de N meses civis, a fixar pelo Marcos, respeitada a idade máxima de três meses. | Abster se faltar cobertura do intervalo ou critério aprovado para demonstrar continuidade. |
+| Salto mensal de VP | ±25% inclusivos (`0,75 ≤ VP_m / VP_(m−1) ≤ 1,25`), ±10% inclusivos ou somente cotas constantes. O Claude recomenda ±25% para o VP. A banda vale para as comparações mensais, inclusive com cotas constantes. | Só cotas constantes. A continuidade do VP continua exigida. |
+| Evento explicado | Admitir emissão com VP contínuo e aumento compatível do PL total, ou aceitar apenas cotas constantes. O Claude recomenda a primeira opção com a guarda do PL e seu limiar calibrado antes do F4-D02. | Abster diante de qualquer mudança de quantidade. |
+| Defasagem entre Informe e D | Recomenda-se cobertura pelo COTAHIST e ausência de salto de preço incompatível. Para tornar o teste reproduzível, propõe-se para decisão sinalizar `abs(P_t/P_(t−1) − 1) > 0,25` entre pregões consecutivos. O Claude recomenda ±25% para o preço, condicionado à validação que inclui os pregões de março de 2020. Alternativa: limite de N meses civis, a fixar pelo Marcos, respeitada a idade máxima de três meses. | Abster se faltar cobertura do intervalo ou critério aprovado para demonstrar continuidade. |
 
 O [levantamento L2](../decisoes/levantamento-dados-f4.md#l2-fii-no-histórico--detectar-emissões-pelo-informe-mensal-da-cvm-cotas_emitidas-sem-o-complemento-da-b3) estimou, antes da
 guarda da defasagem, +192 observações em 12 meses com cotas constantes e até +301
 com emissão e VP contínuo. A banda de VP de ±25% separou seis observações com
 saltos em 12 meses. O mesmo percentual para o preço é uma proposta operacional
-pendente de validação. Os números do levantamento dizem respeito à cobertura
+pendente de validação, com os pregões de março de 2020 no conjunto de teste.
+Os números do levantamento dizem respeito à cobertura
 da lente de rendimento. O ganho efetivo será medido na sonda do bloco 1.
 
 ### Abstenções e P/VP
@@ -216,7 +217,9 @@ V0 e a distância ao preço. Emitir o P/VP como contexto sempre que preço e VP
 por cota sejam positivos, finitos, da mesma base e admissíveis no corte. Usar
 `P/VP = preço / VP por cota`, sem faixa, sem alerta de prêmio ou desconto e
 sem efeito na lente. Esse contexto também vale para fundos com a lente
-abstida. Dado inválido ou ausente impede o próprio P/VP.
+abstida. O VP tem idade máxima de três meses civis no corte, conforme §3.
+A saída mostra a competência e a idade do VP utilizado. Dado inválido,
+ausente ou acima dessa idade impede o próprio P/VP.
 
 ### Critérios de aceite
 
@@ -225,10 +228,17 @@ abstida. Dado inválido ou ausente impede o próprio P/VP.
    com VP contínuo segue a opção aprovada. Salto de VP, desdobramento/grupamento
    ou evento inexplicado abstêm com motivo específico. Conferir os dois limites
    da banda aprovada, uma competência faltante, conflito de versão e entrega em
-   D. Validar separadamente a cobertura do COTAHIST, o salto de preço e a análise
-   de hoje com complemento da B3.
+   D. O produtor devolve `(competência, versão, data de entrega)` em cada linha
+   e o consumidor usa exatamente esse trio, sem reeleger documentos. Testar
+   duas competências com duas versões em uma delas, uma entregue em D, e
+   conferir o trio e os números lidos do documento elegível. Se a leitura desse
+   trio falhar, abster. É a mesma classe de erro dos BUG-4-23 e BUG-4-25.
+   Testar emissão com PL compatível e o evento de 5 para 4 com PL estável e
+   motivo próprio. Validar a cobertura do COTAHIST até D, o limiar de preço com
+   pregões de março de 2020 e o caminho de hoje com complemento da B3.
 2. No F4-A07b, conferir P/VP numérico com a lente abstida, ausência de faixas e
-   alertas e abstenção do próprio P/VP quando não positivo. O predicado é golden
+   alertas, competência e idade do VP visíveis, além de abstenção para P/VP não
+   positivo ou VP com mais de três meses civis. O predicado é golden
    igual para a retirada da faixa.
 3. No F4-D03, conferir o percurso histórico com recortes do mesmo FII de tijolo
    pelo produtor real (COTAHIST, 13 Informes e NTN-B). Conferir a proveniência,

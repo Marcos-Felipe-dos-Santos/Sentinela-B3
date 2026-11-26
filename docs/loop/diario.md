@@ -691,3 +691,8 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Status:** redação entregue. A fila para no [DECISÃO] do Marcos, antecipado conforme pedido de 26/11/2026.
 - **Escopo:** proposta de continuidade histórica pelo Informe Mensal da CVM e COTAHIST, opções do P2 e P/VP descritivo. A ficha distingue a banda de VP medida no L2 da proposta de limiar de preço a validar.
 - **Pendente:** preparar F4-D01b a F4-D01d quando o Marcos liberar a retomada, fazer a auditoria FICHA conjunta e obter aprovação escrita da ficha e do P2. Implementação na ordem já prevista na fila.
+
+### F4-D01 — revisão da proposta FII 1.4 (26/11/2026)
+- **Executor:** claude-code
+- **Status:** proposta revisada a pedido do Marcos, após leitura do Claude (chat). P2 aberto.
+- **Escopo:** o exemplo 5 para 4 demonstra a falha das duas bandas isoladas. A proposta exige aumento compatível do PL total para aceitar emissão, com motivo próprio de abstenção e calibração com os dados reais do L2 antes do F4-D02. O aceite fixa o trio do Informe no produtor e no consumidor, com versão entregue em D excluída. COTAHIST do fim da última competência até D e validação de preço incluindo março de 2020. P/VP mostra competência e idade do VP, limitada a três meses.
