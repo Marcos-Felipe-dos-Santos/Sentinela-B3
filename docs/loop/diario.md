@@ -696,3 +696,8 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Executor:** claude-code
 - **Status:** proposta revisada a pedido do Marcos, após leitura do Claude (chat). P2 aberto.
 - **Escopo:** o exemplo 5 para 4 demonstra a falha das duas bandas isoladas. A proposta exige aumento compatível do PL total para aceitar emissão, com motivo próprio de abstenção e calibração com os dados reais do L2 antes do F4-D02. O aceite fixa o trio do Informe no produtor e no consumidor, com versão entregue em D excluída. COTAHIST do fim da última competência até D e validação de preço incluindo março de 2020. P/VP mostra competência e idade do VP, limitada a três meses.
+
+### F4-D01b — proposta da ficha de identidade dos proventos
+- **Executor:** claude-code
+- **Status:** redação entregue para auditoria FICHA e decisão escrita do Marcos.
+- **Escopo:** centraliza a base da decisão 33 (com DD-06, DD-90, decisões 43 e 51), a guarda de código CVM na data, os controles de raiz reciclada e as exceções C1–C7. As fichas do Bazin e do backtest apontam para a regra comum.

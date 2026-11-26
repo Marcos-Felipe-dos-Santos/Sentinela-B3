@@ -2,6 +2,14 @@
 
 **Status:** aprovada pelo Marcos em 13/11/2026 pela decisão 41, cuja condição foi cumprida na segunda auditoria FICHA Codex: “pode seguir”, FB-01 e FB-02 conferem, sem nova contestação de método (`docs/loop/auditorias/ficha-backtest-codex-2.md`, base29d14c9). As decisões 41/42 estão incorporadas: a42 corrige a expressão para cumprir retorno total bruto reinvestido na data ex, sem mudança de método. Autor metodológico: claude-code; transcrição das decisões: codex. A ficha detalha o pacote §6 (`docs/decisoes/decisoes-fase3.md`) e as decisões6/7/17 de09/11, com os números deD21. A aprovação não declara resolvidas as limitações do§11.
 
+
+### Proposta da Fase 4 — identidade do emissor
+
+A [ficha comum de identidade dos proventos](../decisoes/identidade-proventos-4.md)
+define a prova pela B3 e pelo código CVM do ativo na data para o cálculo do retorno total histórico.
+A proposta F4-D01b aguarda auditoria FICHA e aprovação escrita. Cada exceção
+passa a valer apenas quando o item correspondente for entregue.
+
 ## 1. O que o backtest é e o que não é
 
 - **É** uma descrição educacional do passado, **por lente** (Graham, Bazin, Lynch, Gordon, Bancos e FII), de como os ativos com maior e menor distância entre o valor da lente e o preço se comportaram depois. Não existe score nem classificação agregada.

@@ -8,6 +8,14 @@ ou número, conforme registro do marcador.
 **Decisões:** [marcador](../decisoes/marcador-2b.md).
 **Implementação futura:** F2B-31; limpeza de constantes sem leitor no F2B-5.
 
+
+### Proposta da Fase 4 — identidade do emissor
+
+A [ficha comum de identidade dos proventos](../decisoes/identidade-proventos-4.md)
+define a prova pela B3 e pelo código CVM do ativo na data para a seleção dos proventos do Bazin.
+A proposta F4-D01b aguarda auditoria FICHA e aprovação escrita. Cada exceção
+passa a valer apenas quando o item correspondente for entregue.
+
 ## 1. Fórmula e referência
 
 `Preço-limite do critério = D_bruto_12m / 0,06`.
