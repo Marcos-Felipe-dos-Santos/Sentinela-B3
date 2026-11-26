@@ -716,3 +716,8 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 ```bash
 python scripts/auditar.py codex ficha --fase 4 --arquivo docs/metodologia/fii.md --foco 'Auditoria FICHA conjunta da Fase 4. Leia a proposta FII 1.4 em docs/metodologia/fii.md (§3d), F4-D01b em docs/decisoes/identidade-proventos-4.md e os vínculos em docs/metodologia/bazin.md e docs/metodologia/backtest.md, F4-D01c em docs/metodologia/por-acao.md, docs/metodologia/graham.md, docs/metodologia/lynch.md e docs/decisoes/acoes-por-exercicio-3.md, e F4-D01d em docs/metodologia/por-acao.md e docs/metodologia/bancos.md. Refaça as contas de exemplo, confronte fontes, cortes, proveniência, abstenções e aceites com as decisões 45, 52, 53 e 55 e dê um veredito por ficha.'
 ```
+
+### F4-D01 — revisão após a primeira auditoria FICHA (26/11/2026)
+- **Executor:** codex
+- **Escopo:** D1/D2 fixam banda, monotonicidade de cotas, guarda calibrável de PL, cobertura de pregões e prova própria de base do P/VP. O exemplo histórico usa o fechamento de 16/10 no corte de 19/10. Corte do Informe e juntas D16 explicitados.
+- **Independência:** a ficha FII 1.4 ainda requer leitura de família diferente da do Codex. A rodada 2 será conferida pelo Claude no chat e pelo Gemini, sobre o diff e com reabertura apenas por bloqueador.

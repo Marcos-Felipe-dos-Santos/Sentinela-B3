@@ -176,46 +176,54 @@ continua usando o critério de eventos oficiais da B3 (§3a).
   Versão anterior elegível continua válida. Buraco, entrega ilegível, conflito
   da mesma versão, VP ou quantidade não positivos ou não finitos impedem a
   prova. Quantidade fracionária positiva e finita é válida.
-- Comparar cada par de competências adjacentes. Calcular
-  `ΔVP = VP_m / VP_(m−1) − 1` e observar a direção da mudança das cotas.
-  Um salto fora da banda aprovada ou indício de desdobramento, grupamento ou
-  outro evento inexplicado impede a prova. Na opção que admite emissão, um
-  aumento com VP dentro da banda só é compatível com emissão se o PL total
-  (`Cotas_Emitidas × Valor_Patrimonial_Cotas`) subir de forma compatível com o
-  aumento das cotas. PL estável com cotas em alta abstém pelo motivo
+- No histórico, `Data_Entrega < D` da §3d prevalece sobre «até as_of»
+  da §3 para todos os campos do Informe, inclusive composição e VP do P/VP.
+  Se a maior versão foi entregue em D, manter a versão anterior elegível.
+  Juntar geral e complemento pelo fundo (CNPJ), competência e versão.
+  Registrar essa junta com fonte/arquivo, identificador do documento, coleta
+  e SHA-256 do conteúdo selecionado, além do trio documental (D16).
+- **D1, decisão do Marcos de 26/11/2026.** Para cada par de competências
+  adjacentes, definir `q = Q_m/Q_(m−1) − 1`, `v = VP_m/VP_(m−1) − 1` e
+  `p = (Q_m × VP_m)/(Q_(m−1) × VP_(m−1)) − 1`. Q e VP positivos e finitos.
+  A banda é inclusiva `−0,25 ≤ v ≤ 0,25`; fora dela abstém. Com `q = 0`,
+  a banda é a guarda de VP. Com `q < 0`, qualquer redução abstém, inclusive
+  32 cotas do HGLG11. Um limite de minimis só será discutido se a sonda
+  demonstrar custo relevante de cobertura.
+- Com `q > 0`, só admitir emissão se, além da banda, `p > 0` e
+  `p/q ≥ k_PL`. Calibrar o limiar positivo `k_PL` nos casos reais do L2
+  no F4-D02 e registrar o valor e os erros observados antes de usar a regra.
+  Igualdade no limiar calibrado passa, PL estável ou em queda abstém com
   «suspeita de desdobramento ou bonificação: PL sem aumento compatível».
-  Calibrar o limiar de compatibilidade nos dados reais do L2 antes do F4-D02 e
-  submetê-lo ao Marcos. Registrar competência, cotas, VP por cota e PL antes
-  e depois. Num evento de 5 cotas para cada 4, as cotas sobem 25% e VP por cota
-  e preço podem cair 20%. As duas bandas de ±25% aceitam essas variações,
-  embora `1,25 × 0,80 = 1` mantenha o PL total estável.
-  Redução de quantidade ou quebra de base sem explicação demonstrável
-  abstém. O possível efeito da diluição no mês da emissão fica explícito.
-- O COTAHIST fornece o fechamento oficial da mesma cota para cobrir a defasagem
-  do fim da última competência do Informe até D. Na opção recomendada, usar
-  como referência o último fechamento disponível no fim da competência e
-  comparar os fechamentos válidos de pregões consecutivos até D, respeitando
-  a disponibilidade no instante do corte.
-  Falta de cobertura, troca de identidade ou salto sem explicação comprovada
-  deixa a continuidade indeterminada. Respeitar o corte e a base de cotação já
-  usados para o preço. Registrar o intervalo conferido e, em caso de salto,
-  os pregões e a variação.
+  Desdobramento, grupamento, bonificação ou troca de base documentados
+  abstêm ainda que os números passem. Registrar cotas, VP e PL dos dois
+  meses e explicitar a possível diluição em mês de emissão.
+- **D2, decisão do Marcos de 26/11/2026.** Cobrir o intervalo do fim da
+  última competência até D com o calendário de pregões da B3 e fechamentos
+  brutos do COTAHIST, no mesmo ISIN e base, disponíveis no corte. Usar o
+  último fechamento elegível até o fim da competência como âncora.
+  Exigir preço válido e negociação em cada pregão esperado do intervalo
+  até o pregão do preço de análise. Tolerância adotada para a ficha:
+  **zero pregões esperados sem negociação ou registro válido**. Uma única
+  lacuna invalida a cobertura; dia sem sessão da B3 não conta. Sem âncora,
+  com identidade divergente ou com evento que altere a base, abster.
+- Comparar pregões consecutivos. `−0,25 ≤ P_t/P_(t−1) − 1 ≤ 0,25` passa
+  pela guarda de preço. Fora da banda, só admitir evidência oficial,
+  datada e disponível no corte que explique o movimento de preço na
+  mesma base. Sem essa prova, abster. Um evento documentado de mudança
+  de base veta a continuidade mesmo dentro da banda; esta guarda não
+  ajusta desdobramento, grupamento ou bonificação. Registrar intervalo,
+  pregões faltantes, saltos e documentos de evento usados.
 
-### Parâmetros pendentes do Marcos (P2)
-
-| Ponto | Opções e recomendação | Padrão conservador |
-|---|---|---|
-| Salto mensal de VP | ±25% inclusivos (`0,75 ≤ VP_m / VP_(m−1) ≤ 1,25`), ±10% inclusivos ou somente cotas constantes. O Claude recomenda ±25% para o VP. A banda vale para as comparações mensais, inclusive com cotas constantes. | Só cotas constantes. A continuidade do VP continua exigida. |
-| Evento explicado | Admitir emissão com VP contínuo e aumento compatível do PL total, ou aceitar apenas cotas constantes. O Claude recomenda a primeira opção com a guarda do PL e seu limiar calibrado antes do F4-D02. | Abster diante de qualquer mudança de quantidade. |
-| Defasagem entre Informe e D | Recomenda-se cobertura pelo COTAHIST e ausência de salto de preço incompatível. Para tornar o teste reproduzível, propõe-se para decisão sinalizar `abs(P_t/P_(t−1) − 1) > 0,25` entre pregões consecutivos. O Claude recomenda ±25% para o preço, condicionado à validação que inclui os pregões de março de 2020. Alternativa: limite de N meses civis, a fixar pelo Marcos, respeitada a idade máxima de três meses. | Abster se faltar cobertura do intervalo ou critério aprovado para demonstrar continuidade. |
-
-O [levantamento L2](../decisoes/levantamento-dados-f4.md#l2-fii-no-histórico--detectar-emissões-pelo-informe-mensal-da-cvm-cotas_emitidas-sem-o-complemento-da-b3) estimou, antes da
-guarda da defasagem, +192 observações em 12 meses com cotas constantes e até +301
-com emissão e VP contínuo. A banda de VP de ±25% separou seis observações com
-saltos em 12 meses. O mesmo percentual para o preço é uma proposta operacional
-pendente de validação, com os pregões de março de 2020 no conjunto de teste.
-Os números do levantamento dizem respeito à cobertura
-da lente de rendimento. O ganho efetivo será medido na sonda do bloco 1.
+Validar o predicado com emissões e reorganizações reais do L2, controles
+na fronteira e pregões de março de 2020. Um desdobramento de 5 para 4 tem
+`q = 25%`, `v = −20%` e `p = 0`. Testar também uma bonificação com
+reprecificação e PL crescente que poderia passar numericamente (falso
+aceite); a evidência documental deve vetá-la. Medir falsa abstenção de
+emissão autêntica barrada pelo limiar do PL e de salto de mercado sem
+mudança de base. A redução de 32 cotas é uma abstenção deliberada.
+O levantamento anterior estimou +192 casos com cotas constantes e até
++301 com emissões em 12 meses, antes destas guardas. A sonda mede a
+cobertura efetiva.
 
 ### Abstenções e P/VP
 
@@ -226,7 +234,12 @@ por cota sejam positivos, finitos, da mesma base e admissíveis no corte. Usar
 `P/VP = preço / VP por cota`, sem faixa, sem alerta de prêmio ou desconto e
 sem efeito na lente. Esse contexto também vale para fundos com a lente
 abstida. O VP tem idade máxima de três meses civis no corte, conforme §3.
-A saída mostra a competência e a idade do VP utilizado. Dado inválido,
+A saída mostra a competência e a idade do VP utilizado. Para P/VP, a
+prova cobre o intervalo **a partir do próprio VP selecionado** até o preço,
+com a mesma identidade e base e a cobertura da D2 no histórico. Uma
+abstenção da lente por papel não impede essa prova. Quando a base for
+indeterminada, abster o próprio P/VP com o motivo «base entre VP e preço
+indeterminada». Dado inválido,
 ausente ou acima dessa idade impede o próprio P/VP.
 
 ### Critérios de aceite
@@ -244,7 +257,9 @@ ausente ou acima dessa idade impede o próprio P/VP.
    Testar emissão com PL compatível e o evento de 5 para 4 com PL estável e
    motivo próprio. Validar a cobertura do COTAHIST até D, o limiar de preço com
    pregões de março de 2020 e o caminho de hoje com complemento da B3.
-2. No F4-A07b, conferir P/VP numérico com a lente abstida, ausência de faixas e
+2. Testar separadamente o fundo de papel abstido na lente, com base
+   comprovada e P/VP mantido, e o caso de base indeterminada, com abstenção
+   do próprio P/VP e motivo específico. No F4-A07b, conferir ausência de faixas e
    alertas, competência e idade do VP visíveis, além de abstenção para P/VP não
    positivo ou VP com mais de três meses civis. O predicado é golden
    igual para a retirada da faixa.
@@ -275,7 +290,7 @@ composição nas condições da §3c; contexto inválido é indicado sem alterar
 | Preço e cada VP | abstém: não positivo | abstém | unidade/base divergente: base de cota incompatível |
 | Cada DY_m | válido como mês sem rendimento, se informado | abstém | >25% mensal: fora da faixa da fronteira atual; não confundir com validação de recorrência |
 | DY_12m e R | abstém: rendimento anual não positivo | abstém | DY_12m>25%: rendimento não confiável; 25% é teto de domínio existente, não parâmetro de valor |
-| Cotas_Emitidas | abstém: cotas não positivas | abstém | quantidade fracionária positiva e finita: válida (1.2, §3b); desdobramento/grupamento ou salto de VP incompatível: abstém; emissão com VP contínuo: contexto, sem veto |
+| Cotas_Emitidas | abstém: cotas não positivas | abstém | quantidade fracionária positiva e finita: válida (1.2, §3b); desdobramento/grupamento ou salto de VP incompatível: abstém; emissão no caminho atual: contexto; histórico pela D1 da §3d |
 | Amortização | válida sem amortização; vazia vale zero em complemento válido da mesma versão (1.3, §3c) | abstém: dado inválido | positiva: devolução de capital na janela, abstenção; NaN ou texto: dado inválido |
 | Cada posição da classificação | válido; vazia vale zero só em registro da mesma versão com posição preenchida (1.3, §3c) | abstém | soma zero, sem maioria estrita, fração >1, registro ausente, de outra versão ou todo vazio: tipo desconhecido |
 | y_real | válido | válido se >−1 e q>0 | ≤−1 ou fonte/idade inválida: taxa indisponível |
@@ -312,8 +327,11 @@ históricas ainda não conciliadas. Valores abaixo preservam a precisão publica
 
 VP final de setembro/2026: 165,476630173739 (13º VP).
 Soma dos produtos exatos = **R$ 13,240529645135538184/cota**.
-Fechamento COTAHIST **30/09/2026 R$ 147,95**, mercado 010:
-DY=**8,949327235644%**. Não usar 25/09 só por ser última linha física.
+No cenário de conferência de setembro, fechamento COTAHIST de
+30/09/2026 a R$ 147,95 (mercado 010), DY 8,949327% e P/VP 0,894084.
+No corte histórico de 19/10, o fechamento anterior foi **16/10/2026,
+R$ 156,42**, com DY de conferência **8,464729%** e P/VP aritmético
+**0,945269**. A saída operacional depende da prova da base do VP até o preço.
 
 **Continuidade conferida nos 13 VPs dos snapshots:** nas emissões apontadas,
 a quantidade aumenta, mas o VP por cota mantém a escala em R$; não ocorre a
@@ -329,14 +347,12 @@ Na série inteira, variações mensais de VP vão de −0,399431196050% a
 +2,188428301423%, sem salto de escala aparente; essa faixa é evidência do
 exemplo, **não limiar novo de elegibilidade**. Em agosto/2026, a quantidade cai
 32 cotas (45.601.745 → 45.601.713), enquanto VP varia −0,288295024200%:
-registrar a alteração como contexto, sem inferir desdobramento/grupamento de uma
-mudança no total. Sob a nova regra, **as emissões não causam abstenção do HGLG11**.
-A leitura mensal não substitui os documentos de eventos nem comprova por si as
-datas de entrega de cada versão: tais guardas continuam exigidas em produção.
-
-O rendimento reconstruído permanece **13,240529645135538184 R$/cota** e
-DY **8,949327235644%**. Sem a constante de spread recalibrada no F2B-2, ainda
-não há valor operacional; esse motivo é distinto da emissão, agora aceita.
+o caminho histórico da §3d **abstém a lente pela redução de cotas**.
+Nos três aumentos da tabela, os PLs implícitos variam +28,2503%,
++2,9589% e +4,6323%. Aceite de cada emissão fica condicionado à calibração
+da D1 e à ausência de evento incompatível. A queda de agosto precede a
+competência de setembro do VP usado no P/VP. A conferência desse P/VP
+começa no fim de setembro e tem prova própria.
 
 Para teste independente da fórmula, cenário **condicional**, não resultado do
 HGLG11: R=13,240529645135538184, y=74,38/1100, s=2 pp hipotéticos dão
@@ -479,7 +495,7 @@ cada fundo candidato, coletada em 21/10/2026.
 | 7.4 Score | inalterado na 2B, inclusive comparação existente com Selic; exceção temporária ao princípio 9 do PLANO, não misturar com fórmula de V0 |
 | 7.5 Tipo | só tijolo; demais e desconhecido abstêm até 2C |
 | 7.6 Vacância | sem fonte oficial; manter o tratamento atual, sem inventar ajuste ou pontuação nova |
-| 7.7 P/VP | pontos e score inalterados, sem entrar no valor de rendimento |
+| 7.7 P/VP | Registro histórico da 2B: pontos e score inalterados. Para a 1.4, prevalece a regra descritiva da §3d. |
 | 7.8 Tributação | spread bruto sobre bruto, sem desconto tributário adicional |
 
 **Complemento decidido pelo Marcos em 19/10/2026:** desdobramento/grupamento

@@ -288,3 +288,7 @@ Ressalvas da quarta rodada da R2 para o bloco 2, sem reabrir o F4-C14.
 1. Chamadas diretas com `dt_refer_final` e sem `versao_final` admitem uma referência sem identidade completa, sem a guarda de ausência do par. A cascata de produção fornece os dois campos.
 2. Dublês antigos de CVM sem `documento_anual_mais_recente` usam o caminho legado. Avaliar a atualização dos dublês quando precisarem verificar a identidade documental.
 3. O diário do F4-C14 remete à evidência local e omite os percentuais da mutação e a triagem do sobrevivente. O relatório Gemini 4 registra esses resultados.
+
+### 2026-11-26 · Auditoria FICHA conjunta, rodada 1 · ressalvas para o bloco 2
+
+- FII 1.4: sensibilidade da elegibilidade por guarda do L2 com denominador e taxas de erro, além do tratamento histórico da calibração do spread de 2026. A validação exigida em D1/D2 integra o F4-D02. Conferir a referência à 3ª edição de Damodaran e a edição/seção originais de Bazin.

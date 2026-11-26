@@ -165,3 +165,8 @@ somente o bloco de `logging.basicConfig` e vizinhos (linhas 15 a 22 na ativaçã
 pode editar `database.py` somente para validar `adicionar_posicao` e tratar erros SQLite em
 `remover_posicao`, sem alterar esquema nem dados. O Marcos registrou as duas exceções em
 "Fase atual" no `AGENTS.md`; a alteração dele entra no commit do F4-A00a.
+
+## Decisões do Marcos de 26/11/2026 sobre a auditoria FICHA
+
+- **D1 · Continuidade mensal do FII.** Banda inclusiva de ±25% do VP por cota, inclusive com cotas constantes. Aumento de cotas só é aceito como emissão quando o crescimento do PL total é compatível. Calibrar o limiar com os casos reais do L2 no F4-D02. Qualquer redução abstém, inclusive 32 cotas do HGLG11. Discutir de minimis só diante de custo medido na sonda. Predicado e controles na [ficha FII](../metodologia/fii.md).
+- **D2 · Defasagem e P/VP.** Cobrir por pregão, com banda inclusiva de ±25% e limite de lacuna explicitado na ficha (zero pregões esperados sem negociação). Validar com eventos reais e março de 2020. Base comprovada permite P/VP de fundo de papel. Base indeterminada abstém o próprio P/VP com motivo específico.
