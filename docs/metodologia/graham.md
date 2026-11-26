@@ -3,6 +3,17 @@
 **Status:** versão 2.1 aprovada expressamente pelo Marcos em 28/10/2026 para resolver o bloqueio do F2C-1. Substitui as exigências de reconciliação estrutural e cobertura de eventos da 2.0; mantém suas demais decisões, após auditoria Claude D30.
 **Itens que dependem:** F2C-1 e consumidores autorizados da 2C-b. D19–D25/D28. Direção aprovada: pacote de 26/10, §3, em `docs/decisoes/decisoes-2c.md` e fila; detalhes ratificados em 28/10/2026.
 
+### Proposta da Fase 4 — ações do FRE (F4-D01c)
+
+A [ficha por ação](por-acao.md#proposta-da-fase-4--ações-do-fre-conferidas-pela-dre-f4-d01c)
+define a exceção da decisão 45 para 2010 a 2019 sem Composição do Capital na
+DFP. Após aprovação, a janela pode usar o total ex-tesouraria do FRE com
+entrega anterior a D e escala conferida pelo LPA básico da DRE do mesmo
+exercício. A proposta aguarda auditoria FICHA e aprovação escrita. A fórmula,
+a contiguidade, a compatibilidade da base e os direitos por espécie continuam
+regidos por esta ficha.
+
+
 ## 1. Fórmula e referência
 
 Para cinco exercícios completos e contínuos, com LPA comparável na base acionária final:

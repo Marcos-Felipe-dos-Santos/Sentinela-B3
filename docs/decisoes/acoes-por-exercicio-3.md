@@ -42,7 +42,11 @@ Saídas, fora do git: `outputs/f3-8k/` (`cobertura_banco.txt`, `levantamento.py`
 - **Conferência com o FRE (conta h, resultado líquido por ação):** só cerca de 25% dos pares batem a ±0,01 (98 de 457 em 2013, 115 de 403 em 2016, 118 de 439 em 2019). A conta h do FRE é o resultado por ação total da companhia, não o LPA básico por classe da DRE; as duas não medem a mesma coisa, e essa conferência não valida nenhuma das fontes.
 - A linha de LPA dá o LPA divulgado, que os métodos já usam (D19). Para a quantidade de ações ela só serviria por divisão (lucro dos controladores ÷ LPA), que é regra nova e fica para a decisão do Marcos.
 
-## 4. Proposta para a decisão do Marcos (sem efeito até lá)
+## 4. Proposta original do levantamento (registro histórico)
+
+A decisão 45 escolheu a conta f para a ligação. A
+[proposta operacional do F4-D01c](../metodologia/por-acao.md#proposta-da-fase-4--ações-do-fre-conferidas-pela-dre-f4-d01c)
+documenta a implementação sujeita à auditoria FICHA e à aprovação escrita.
 
 1. **Fonte:** a conta f do FRE ("Número de Ações, Ex-Tesouraria") para os exercícios de 2010 a 2019, só fonte oficial.
 2. **Disponibilidade:** pela `DT_RECEB` da versão publicada nos dados abertos (a última), antes do dia de D; sem versão entregue até D, abstém. Como só a última versão é publicada, essa data pode ser posterior à da primeira entrega real (mais abstenção, nunca dado do futuro). A tabela da §2 usa o corte de 30/06 de dois anos depois só para medir a cobertura; a regra final fica com um corte só, o do dia de D.

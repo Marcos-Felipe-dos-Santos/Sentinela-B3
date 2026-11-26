@@ -701,3 +701,8 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Executor:** claude-code
 - **Status:** redação entregue para auditoria FICHA e decisão escrita do Marcos.
 - **Escopo:** centraliza a base da decisão 33 (com DD-06, DD-90, decisões 43 e 51), a guarda de código CVM na data, os controles de raiz reciclada e as exceções C1–C7. As fichas do Bazin e do backtest apontam para a regra comum.
+
+### F4-D01c — proposta da ficha de Graham e Lynch com o FRE
+- **Executor:** claude-code
+- **Status:** redação entregue para auditoria FICHA e decisão escrita do Marcos.
+- **Escopo:** conta f de 2010 a 2019, versão com entrega anterior a D, conferência da escala pelo LPA da DRE e proveniência dos dois documentos. A ficha registra os limites do total ex-tesouraria sem espécie e o piso de cobertura do F4-D12. Graham, Lynch e o levantamento apontam para a regra operacional por ação.

@@ -280,3 +280,57 @@ O FCA 2026 (versão 1) classifica a MGLU3 como "Ações Preferenciais", e a DRE 
 - A correção vale para os documentos citados na linha da tabela (FCA e DFP, com a versão), no intervalo de datas que a linha declara. Não se estende sozinha a documentos anteriores ou posteriores (histórico estrito, D17).
 
 Efeito: a MGLU3 passa a usar o LPA divulgado da ON; o F2B-13 registra o antes → depois e a cobertura do índice.
+
+## Proposta da Fase 4 — ações do FRE conferidas pela DRE (F4-D01c)
+
+**[DECISÃO] do Marcos.** A decisão 45 autoriza detalhar esta ligação. Aplicação
+pelo F4-D12 depois da auditoria FICHA e da aprovação escrita. Esta exceção
+vale para as janelas de Graham e Lynch.
+
+1. Para exercício de 2010 a 2019 sem Composição do Capital na DFP, ler a
+   conta `f` (Número de Ações, Ex-Tesouraria) do item 3.1 do FRE
+   (`informacao_financeira`). Exigir o mesmo CNPJ e exercício da DFP.
+   A Composição do Capital da DFP tem precedência. Uma composição presente
+   mas inválida ou conflitante mantém a guarda própria.
+2. A `DT_RECEB` do índice oficial deve pertencer à versão publicada que
+   efetivamente contém a conta `f` e ser estritamente anterior a D. A fonte
+   aberta guarda apenas os dados da última versão. Se ela chegou em D ou
+   depois, ou se o vínculo com o índice é ilegível, abster e registrar o
+   motivo. A data de uma versão antiga sem conteúdo disponível não serve
+   como prova para a versão atual.
+3. Exigir quantidade positiva e finita. Converter o lucro dos controladores
+   da DRE do mesmo exercício para reais pela escala monetária da DFP.
+   Usar o LPA básico divulgado na própria DRE do exercício, em reais por
+   ação, sem aplicar escala monetária ao LPA. Conferir a escala com
+   `acoes_cvm.inferir_escala` (F2A-3, armadilha 10). Para os fatores em
+   unidade e milhar, calcular `r = (lucro / (f × fator)) / LPA divulgado`,
+   escolher o fator cuja razão tem logaritmo de menor módulo e exigir
+   `0,1 ≤ r ≤ 10`. Lucro e LPA devem ser finitos, não nulos e de mesmo
+   sinal. Sem LPA básico coerente ou escala determinada, abster. A conta
+   `h` do FRE, o lucro consolidado e dados atuais não substituem essa
+   conferência.
+4. `f` é o total ex-tesouraria, sem divisão ON/PN por espécie. A quantidade
+   serve para a conferência e para a base total nas janelas que já provem
+   a comparabilidade. O LPA divulgado continua sendo o da classe.
+   Sem prova independente, o total não autoriza inferir proporções ON/PN,
+   fabricar LPA por espécie, decompor units ou equiparar seus direitos.
+   Os fatores de base, os direitos e as abstenções das lentes continuam
+   sujeitos às fichas vigentes.
+5. Registrar «ações do FRE (outro documento do lucro), conferidas pelo LPA»,
+   com a identidade, versão e entrega de cada documento, exercício, escala,
+   razão e linha de LPA usada. Se a prova falhar, registrar a abstenção com a
+   etapa que faltou.
+
+**Exemplo independente.** Com lucro dos controladores de R$ 4.000.000,
+`f = 2.000` e LPA básico divulgado de R$ 2,00, a razão em unidade é
+`(4.000.000 / 2.000) / 2 = 1.000`. Em milhar é
+`(4.000.000 / 2.000.000) / 2 = 1`. A quantidade comprovada é 2.000.000
+ações ex-tesouraria. O cálculo só é elegível se a versão do FRE tiver sido
+entregue antes de D e a DFP satisfizer as demais condições.
+
+**Aceite do F4-D12.** Exercitar a fonte com unidade e milhar, entrega em D,
+versão sem prova, quantidade inválida, LPA ausente ou de período distinto,
+razão incompatível e falta de prova por espécie. Conferir a prioridade da
+Composição do Capital e a proveniência dos dois documentos. Se menos da
+metade das companhias com DFP passar, interromper a ligação e declarar a
+limitação conforme a fila.
