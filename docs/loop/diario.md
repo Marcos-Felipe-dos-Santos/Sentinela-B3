@@ -721,3 +721,7 @@ python scripts/auditar.py codex ficha --fase 4 --arquivo docs/metodologia/fii.md
 - **Executor:** codex
 - **Escopo:** D1/D2 fixam banda, monotonicidade de cotas, guarda calibrável de PL, cobertura de pregões e prova própria de base do P/VP. O exemplo histórico usa o fechamento de 16/10 no corte de 19/10. Corte do Informe e juntas D16 explicitados.
 - **Independência:** a ficha FII 1.4 ainda requer leitura de família diferente da do Codex. A rodada 2 será conferida pelo Claude no chat e pelo Gemini, sobre o diff e com reabertura apenas por bloqueador.
+
+### F4-D01b — revisão após a primeira auditoria FICHA (26/11/2026)
+- **Executor:** codex
+- **Escopo:** D3 define par CDAM, igualdade pela DD-06, controle de dupla contagem, retorno independente com fluxos da TAEE11 e preços sintéticos, prova histórica C4 e recuperação do código de deslistada. Juntas e fronteiras de disponibilidade registradas.
