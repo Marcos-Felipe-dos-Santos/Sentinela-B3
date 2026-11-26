@@ -15,8 +15,12 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import re
-from collections.abc import Iterator
+import shutil
+import time
+import uuid
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field, replace
@@ -56,6 +60,9 @@ class _Execucao:
     instante: datetime
     as_of: datetime
     baixados: dict[str, str] = field(default_factory=dict)
+    # destino → cópia privada dos bytes que esta execução baixou (BUG-4-24)
+    copias: dict[str, Path] = field(default_factory=dict)
+    identidade: str = field(default_factory=lambda: uuid.uuid4().hex)
 
 
 _EXECUCAO: ContextVar[_Execucao | None] = ContextVar("coleta_da_execucao", default=None)
@@ -81,25 +88,87 @@ def coleta_da_execucao(
         _EXECUCAO.reset(marca)
 
 
-def marcar_baixado(caminho: Path, sha256: str) -> None:
-    """Registra, na execução em curso, o arquivo que ela baixou, pelo hash do que gravou.
+PASTA_DA_EXECUCAO = ".execucao"
+VALIDADE_DAS_COPIAS_S = 24 * 3600
 
-    O hash é o do conteúdo que a própria execução escreveu, não o do arquivo publicado: se
-    outra execução publicar o mesmo destino depois, o conteúdo difere e a coleta desta
-    execução não vale para ele (BUG-4-16).
+
+def marcar_baixado(
+    caminho: Path,
+    sha256: str,
+    temporario: Path | None = None,
+    *,
+    publicar: Callable[[], None] | None = None,
+) -> None:
+    """Vincula à execução o hash dos bytes que ela própria gravou (BUG-4-16/24).
+
+    A cópia privada usa o temporário validado. Se houver publicação pendente,
+    ela precisa terminar antes de o contexto oferecer a cópia ao consumidor.
     """
+    destino = Path(caminho)
     execucao = _EXECUCAO.get()
+    privado = None
+    if execucao is not None and temporario is not None:
+        raiz = destino.parent / PASTA_DA_EXECUCAO
+        _limpar_copias_antigas(raiz)
+        # Um novo conteúdo nunca ocupa o caminho de um ZIP já entregue ao leitor.
+        privado = raiz / execucao.identidade / sha256 / destino.name
+        privado.parent.mkdir(parents=True, exist_ok=True)
+        privado.unlink(missing_ok=True)
+        try:
+            privado.hardlink_to(temporario)
+        except OSError:
+            shutil.copy2(temporario, privado)
+    if publicar is not None:
+        publicar()
     if execucao is not None:
-        execucao.baixados[str(Path(caminho).resolve())] = sha256
+        chave = str(destino.resolve())
+        execucao.baixados[chave] = sha256
+        if privado is not None:
+            execucao.baixados[str(privado.resolve())] = sha256
+            execucao.copias[chave] = privado
 
 
-def _lido_na_execucao(caminho: Path, registro: Proveniencia) -> Proveniencia:
-    """O registro com a coleta da execução, se foi ela que baixou este mesmo arquivo."""
+def caminho_da_execucao(caminho: Path) -> Path:
+    """A cópia privada dos bytes que esta execução baixou para `caminho`, ou o próprio caminho."""
+    execucao = _EXECUCAO.get()
+    if execucao is None:
+        return caminho
+    return execucao.copias.get(str(Path(caminho).resolve()), caminho)
+
+
+def _limpar_copias_antigas(raiz: Path) -> None:
+    """Remove as cópias privadas de execuções com mais de um dia."""
+    try:
+        pastas = list(raiz.iterdir())
+    except OSError:
+        return
+    limite = time.time() - VALIDADE_DAS_COPIAS_S
+    for pasta in pastas:
+        try:
+            if pasta.is_dir() and pasta.stat().st_mtime < limite:
+                shutil.rmtree(pasta)
+        except OSError:
+            continue
+
+
+def _lido_na_execucao(
+    caminho: Path, registro: Proveniencia, consumido: str | None = None
+) -> Proveniencia:
+    """O registro com a coleta da execução, se foi ela que baixou estes mesmos bytes.
+
+    `consumido` é o hash dos bytes que o consumidor leu; se não bater com o marcado por esta
+    execução, o arquivo não é tratado como dela (BUG-4-24) e vale a coleta real.
+    """
     execucao = _EXECUCAO.get()
     if execucao is None:
         return registro
     marcado = execucao.baixados.get(str(caminho.resolve()))
-    if marcado is None or marcado != hash_sha256(caminho):
+    if (
+        marcado is None
+        or marcado != registro.hash_sha256
+        or marcado != hash_sha256(caminho)
+        or (consumido is not None and consumido != marcado)
+    ):
         return registro
     coleta = execucao.instante.astimezone(UTC).isoformat(timespec="seconds")
     return ProvenienciaDaExecucao(
@@ -213,6 +282,7 @@ def registrar_arquivo(
     periodo: str | None,
     entrega: str | None = None,
     motivo: str = MOTIVO_ARQUIVO_AGREGADO,
+    consumido: str | None = None,
 ) -> Proveniencia:
     """Grava (ou reaproveita) o registro do arquivo baixado e o devolve.
 
@@ -229,17 +299,23 @@ def registrar_arquivo(
         and existente.data_entrega == entrega
         and existente.motivo_sem_entrega == (None if entrega is not None else motivo)
     ):
-        return _lido_na_execucao(caminho, existente)
-    stat = caminho.stat()
+        return _lido_na_execucao(caminho, existente, consumido)
+    # A publicação troca o caminho, mas o arquivo aberto mantém a identidade
+    # do conteúdo para o mtime e o hash, mesmo com outra publicação concorrente.
+    with caminho.open("rb") as origem:
+        stat = os.fstat(origem.fileno())
+        resumo = hashlib.file_digest(origem, "sha256").hexdigest()
     registro = Proveniencia(
         periodo_referencia=periodo,
         data_entrega=entrega,
         motivo_sem_entrega=None if entrega is not None else motivo,
-        data_coleta=data_da_coleta(caminho),
+        data_coleta=datetime.fromtimestamp(stat.st_mtime, tz=UTC).isoformat(
+            timespec="seconds"
+        ),
         documento=documento,
         versao=None,
         fonte=fonte,
-        hash_sha256=hash_sha256(caminho),
+        hash_sha256=resumo,
     )
     lateral = caminho_lateral(caminho)
     temporario: Path | None = None
@@ -269,7 +345,7 @@ def registrar_arquivo(
     finally:
         if temporario is not None:
             temporario.unlink(missing_ok=True)
-    return _lido_na_execucao(caminho, registro)
+    return _lido_na_execucao(caminho, registro, consumido)
 
 
 def registrar_sem_falhar(
@@ -279,13 +355,16 @@ def registrar_sem_falhar(
     periodo: str | None,
     entrega: str | None = None,
     motivo: str = MOTIVO_ARQUIVO_AGREGADO,
+    consumido: str | None = None,
 ) -> Proveniencia | None:
     """`registrar_arquivo` para quem acabou de baixar: falha de disco no registro vira aviso.
 
     O download que deu certo não cai por causa do arquivo lateral.
     """
     try:
-        return registrar_arquivo(caminho, fonte, documento, periodo, entrega, motivo)
+        return registrar_arquivo(
+            caminho, fonte, documento, periodo, entrega, motivo, consumido
+        )
     except OSError as erro:
         logger.warning("Proveniência de %s não gravada: %s", caminho, erro)
         return None

@@ -32,7 +32,7 @@ def _limpar_temporarios(tmp_path: Path, dest: Path) -> None:
 def baixar_arquivo(url: str, dest: Path) -> Path:
     if is_fresh(dest):
         logger.debug("Cache válido: %s", dest)
-        return dest
+        return proveniencia.caminho_da_execucao(dest)
 
     # BUG-4-16: temporário próprio deste download; outro download do mesmo destino não o toca.
     tmp_path = dest.with_name(f"{dest.name}.{uuid4().hex}.tmp")
@@ -57,10 +57,15 @@ def baixar_arquivo(url: str, dest: Path) -> Path:
                 if bad_file:
                     raise zipfile.BadZipFile(f"Arquivo corrompido no ZIP: {bad_file}")
 
-            # Substituição atômica
-            os.replace(tmp_path, dest)
-            proveniencia.marcar_baixado(dest, resumo.hexdigest())
-            return dest
+            # Cópia privada dos bytes desta execução antes de publicar (BUG-4-24), depois a
+            # substituição atômica; o consumidor lê a cópia, não o destino compartilhado.
+            proveniencia.marcar_baixado(
+                dest,
+                resumo.hexdigest(),
+                temporario=tmp_path,
+                publicar=lambda: os.replace(tmp_path, dest),
+            )
+            return proveniencia.caminho_da_execucao(dest)
 
         except (requests.RequestException, ConnectionError) as e:
             logger.warning("Erro no download de %s: %s", url, e)

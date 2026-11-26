@@ -29,6 +29,7 @@ import math
 import re
 import uuid
 from collections.abc import Callable, Mapping
+from contextvars import ContextVar
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime
 from pathlib import Path
@@ -312,11 +313,17 @@ class IFDataProvider:
         self.cache_dir = Path(cache_dir)
         self.ttl_segundos = ttl_segundos
         self.calendario = calendario
+        # Isola a proveniência de chamadas simultâneas de capital no mesmo provedor.
+        self._registros = ContextVar[list[dict] | None](
+            "registros_ifdata", default=None
+        )
 
     def _arquivo(self, caminho: str) -> Path:
         return self.cache_dir / f"{hashlib.sha256(caminho.encode()).hexdigest()}.json"
 
-    def _registrar(self, caminho: str) -> proveniencia.Proveniencia | None:
+    def _registrar(
+        self, caminho: str, consumido: str | None = None
+    ) -> proveniencia.Proveniencia | None:
         arquivo = self._arquivo(caminho)
         if not arquivo.exists():
             return None
@@ -327,6 +334,8 @@ class IFDataProvider:
             "IF.data",
             periodo.group(1) if periodo else None,
             motivo=proveniencia.MOTIVO_SEM_ENTREGA_NA_FONTE,
+            # a coleta adiantada só vale para os bytes que o consumidor recebeu (BUG-4-24)
+            consumido=consumido,
         )
 
     def _buscar(self, caminho: str, *, as_of: datetime) -> list[dict]:
@@ -340,12 +349,22 @@ class IFDataProvider:
         if not isinstance(as_of, datetime) or as_of.utcoffset() is None:
             raise ValueError("as_of deve ser datetime com fuso")
         arquivo = self._arquivo(caminho)
+
+        def registrar(consumido: str) -> None:
+            registro = self._registrar(caminho, consumido)
+            registros = self._registros.get()
+            if registros is not None:
+                if registro is not None and registro.hash_sha256 != consumido:
+                    raise ValueError("IF.data: cache trocado após a leitura")
+                registros[caminho] = registro
+
         if arquivo.exists():
             idade = as_of.timestamp() - arquivo.stat().st_mtime
             if 0 <= idade < self.ttl_segundos:
-                valor = json.loads(arquivo.read_text(encoding="utf-8"))
+                bruto = arquivo.read_bytes()
+                valor = json.loads(bruto.decode("utf-8"))
                 if valor:
-                    self._registrar(caminho)
+                    registrar(hashlib.sha256(bruto).hexdigest())
                     return valor
         try:
             resposta = requests.get(f"{URL_BASE}/{caminho}", timeout=60)
@@ -354,8 +373,10 @@ class IFDataProvider:
         except (requests.RequestException, ValueError) as exc:
             if arquivo.exists():
                 logger.warning("IF.data indisponível, usando o cache antigo: %s", exc)
-                self._registrar(caminho)
-                return json.loads(arquivo.read_text(encoding="utf-8"))
+                bruto = arquivo.read_bytes()
+                valor = json.loads(bruto.decode("utf-8"))
+                registrar(hashlib.sha256(bruto).hexdigest())
+                return valor
             raise
         if valor:
             self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -367,8 +388,9 @@ class IFDataProvider:
                 temporario.replace(arquivo)
             finally:
                 temporario.unlink(missing_ok=True)
-            proveniencia.marcar_baixado(arquivo, hashlib.sha256(conteudo).hexdigest())
-            self._registrar(caminho)
+            consumido = hashlib.sha256(conteudo).hexdigest()
+            proveniencia.marcar_baixado(arquivo, consumido)
+            registrar(consumido)
         return valor
 
     def capital(
@@ -377,18 +399,27 @@ class IFDataProvider:
         """Capital e proveniência de cada arquivo efetivamente consultado."""
         if not isinstance(as_of, datetime) or as_of.utcoffset() is None:
             raise ValueError("as_of deve ser datetime com fuso")
-        registros = []
+        registros: list[dict] = []
+        consultados: dict[str, proveniencia.Proveniencia | None] = {}
 
         def buscar(caminho: str) -> list[dict]:
             valor = self._buscar(caminho, as_of=as_of)
-            registro = self._registrar(caminho) if valor else None
-            if registro is not None:
+            if caminho in consultados:
+                registro = consultados.pop(caminho)
+            else:
+                # Permite a proveniência de um coletor que substitui _buscar.
+                registro = self._registrar(caminho) if valor else None
+            if valor and registro is not None:
                 registros.append(registro.para_dict())
             return valor
 
-        resultado = ler_capital(
-            cnpj, data_referencia, buscar, calendario=self.calendario, as_of=as_of
-        )
+        marca = self._registros.set(consultados)
+        try:
+            resultado = ler_capital(
+                cnpj, data_referencia, buscar, calendario=self.calendario, as_of=as_of
+            )
+        finally:
+            self._registros.reset(marca)
         return replace(
             resultado, proveniencia=tuple(registros) + resultado.proveniencia
         )
