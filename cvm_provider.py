@@ -514,7 +514,8 @@ class CVMProvider:
 
     def calcular_indicadores(
         self, cd_cvm: int, anos: int = 5, modelo: str = "empresa", ano_final: int | None = None,
-        *, as_of: datetime | None = None, versao_final: str | None = None
+        *, as_of: datetime | None = None, versao_final: str | None = None,
+        dt_refer_final: str | None = None,
     ) -> dict:
         """
         Retorna dict {ano: {indicador: valor}} para os últimos N anos, até `ano_final`
@@ -562,6 +563,10 @@ class CVMProvider:
                 # Descobre a maior VERSAO do DT_REFER mais recente
                 metadata: dict = {}
                 df_concat = pd.concat([bpa_emp, bpp_emp, dre_emp], ignore_index=True)
+                if dt_refer_final is not None and ano == ano_final:
+                    # A DRE fundamentou a seleção. Uma linha do balanço, sozinha,
+                    # não confirma que o demonstrativo selecionado ainda é legível.
+                    df_concat = dre_emp[dre_emp["DT_REFER"].astype(str) == dt_refer_final]
                 if versao_final is not None and ano == ano_final:
                     # BUG-4-15: a versão comprovada no corte, não a maior do ZIP; se ela
                     # sumiu do arquivo (novo download), o exercício se abstém.
@@ -728,6 +733,10 @@ class CVMProvider:
                 resultado[ano] = ind
 
             except (OSError, KeyError, ValueError, zipfile.BadZipFile) as exc:
+                if dt_refer_final is not None and ano == ano_final:
+                    raise OSError(
+                        f"DFP comprovada ({dt_refer_final}, versão {versao_final}) indisponível"
+                    ) from exc
                 # A vigência entre versões permanece para o item GA2b.
                 # O índice só decide a abstenção do exercício final no recorte PIT; a API
                 # legada não o lê e conserva o aviso.
@@ -1146,11 +1155,17 @@ class CVMProvider:
     def exercicio_e_versao_mais_recente(
         self, cd_cvm: int, referencia: date
     ) -> tuple[int, str]:
-        """O exercício e a versão da DFP comprovados no corte (BUG-4-15, BUG-4-23).
+        """Exercício e versão para consumidores da interface anterior."""
+        ano, versao, _ = self.documento_anual_mais_recente(cd_cvm, referencia)
+        return ano, versao
 
-        Entre as versões do exercício encerrado com `DT_RECEB < referencia` (corte diário, sem
-        hora), a maior. Sem exercício do ano comprovado, o anterior, também com a versão
-        comprovada no corte; sem versão comprovada nele, `ValueError` e a leitura se abstém.
+    def documento_anual_mais_recente(
+        self, cd_cvm: int, referencia: date
+    ) -> tuple[int, str, str]:
+        """Exercício, versão e DT_REFER da DFP comprovada no corte diário.
+
+        Considera entregas com `DT_RECEB < referencia`. Sem documento anual comprovado
+        no ano corrente, tenta o anterior. Sem prova nele, a leitura se abstém.
         """
         arquivo = self._dfp_do_ano(referencia.year)
         if arquivo is not None:
@@ -1180,8 +1195,8 @@ class CVMProvider:
 
     def _versao_comprovada(
         self, arquivo: Path, cd_cvm: int, referencia: date, ano: int
-    ) -> tuple[int, str] | None:
-        """A maior versão do exercício encerrado em `ano` com `DT_RECEB < referencia`."""
+    ) -> tuple[int, str, str] | None:
+        """A referência mais recente e sua maior versão entregue antes do corte."""
         dre = self.parsear_demonstrativo(
             arquivo, "DRE_con", include_cd_cvm=True, include_versao=True, include_periodo=True
         )
@@ -1215,7 +1230,7 @@ class CVMProvider:
                 comprovadas.append((str(linha["DT_REFER"]), int(float(versao)), versao))
         if comprovadas:
             dt_refer, _, versao = max(comprovadas)
-            return date.fromisoformat(dt_refer).year, versao
+            return date.fromisoformat(dt_refer).year, versao, dt_refer
         return None
 
     def pl_inicial_do_documento(
@@ -1284,12 +1299,15 @@ class CVMProvider:
         modelo: str = "empresa",
         *,
         versao_final: str | None = None,
+        dt_refer_final: str | None = None,
     ) -> dict[int, dict]:
         """`calcular_indicadores` dos cinco exercícios até `ano_final`, com os proventos da DVA.
 
-        `versao_final` restringe o último exercício à versão comprovada no corte (BUG-4-15).
+        `versao_final` e `dt_refer_final` restringem o último exercício à DFP comprovada.
         """
         extra = {} if versao_final is None else {"versao_final": versao_final}
+        if dt_refer_final is not None:
+            extra["dt_refer_final"] = dt_refer_final
         indicadores = self.calcular_indicadores(
             cd_cvm,
             anos=series_cvm.MAX_EXERCICIOS,

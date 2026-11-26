@@ -1266,16 +1266,15 @@ class MarketEngine:
                 if as_of is None
                 else self._serie_cvm(ticker, dados, cvm, cd_cvm, modelo, as_of=as_of)
             )
-            versao_final = dados.pop('_versao_dfp_final', None)
+            documento_final = dados.pop('_documento_dfp_final', {})
             selecionar_exercicio = getattr(cvm, "exercicio_anual_mais_recente", None)
             if callable(selecionar_exercicio):
                 if ano_final is None:
                     dados["cvm_disponivel"] = False
                     return False
                 extra["ano_final"] = ano_final
-                if versao_final is not None:
-                    extra["versao_final"] = versao_final
-                # O corte já foi resolvido; a API antiga do snapshot recebe só o ano.
+                extra.update(documento_final)
+                # O corte já foi resolvido pela seleção ou pelo recorte.
                 extra.pop("as_of", None)
             historico = cvm.calcular_indicadores(cd_cvm, anos=1, **extra)
             if not historico:
@@ -1501,22 +1500,19 @@ class MarketEngine:
         )
         exercicios = []
         ano_final = None
-        # BUG-4-15: o seletor novo devolve também a versão comprovada no corte; o snapshot
-        # de `_buscar_cvm` a lê de `dados['_versao_dfp_final']`, que ele mesmo retira.
-        selecionar_versao = getattr(cvm, 'exercicio_e_versao_mais_recente', None)
+        selecionar_documento = getattr(cvm, 'documento_anual_mais_recente', None)
         try:
-            versao_final = None
-            if callable(selecionar_versao) and not self._data_passada(as_of):
+            extra_serie = {}
+            if callable(selecionar_documento) and not self._data_passada(as_of):
                 # Numa data passada, o recorte por entrega (F3-3d) já tira as versões de D.
-                ano_final, versao_final = selecionar_versao(cd_cvm, hoje)
+                ano_final, versao_final, dt_refer_final = selecionar_documento(cd_cvm, hoje)
+                extra_serie.update(versao_final=versao_final, dt_refer_final=dt_refer_final)
+                dados['_documento_dfp_final'] = extra_serie
             else:
                 ano_final = (
                     selecionar_exercicio(cd_cvm, hoje)
                     if selecionar_exercicio is not None else hoje.year - 1
                 )
-            if versao_final is not None:
-                dados['_versao_dfp_final'] = versao_final
-            extra_serie = {} if versao_final is None else {'versao_final': versao_final}
             indicadores = (
                 indicadores_da_serie(cd_cvm, ano_final, modelo, **extra_serie)
                 if indicadores_da_serie is not None else {}

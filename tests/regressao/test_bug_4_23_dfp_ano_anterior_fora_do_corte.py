@@ -88,6 +88,7 @@ def test_cascata_de_hoje_le_a_v1_no_snapshot_e_na_serie(tmp_path, monkeypatch):
     assert dados.get("lucro_liquido") == pytest.approx(LUCRO["1"] * 1_000)
     (ultimo,) = [e for e in dados["serie_cvm"]["exercicios"] if e["exercicio"] == 2025]
     assert ultimo["versao"] == "1"
+    assert ultimo["lucro_liquido"] == pytest.approx(LUCRO["1"] * 1_000)
 
 
 def test_sem_versao_comprovada_no_exercicio_anterior_abstem(tmp_path, monkeypatch):
