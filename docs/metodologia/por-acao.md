@@ -292,48 +292,63 @@ vale para as janelas de Graham e Lynch.
    (`informacao_financeira`). Exigir o mesmo CNPJ e exercício da DFP.
    A Composição do Capital da DFP tem precedência. Uma composição presente
    mas inválida ou conflitante mantém a guarda própria.
-2. A `DT_RECEB` do índice oficial deve pertencer à versão publicada que
-   efetivamente contém a conta `f` e ser estritamente anterior a D. A fonte
-   aberta guarda apenas os dados da última versão. Se ela chegou em D ou
-   depois, ou se o vínculo com o índice é ilegível, abster e registrar o
-   motivo. A data de uma versão antiga sem conteúdo disponível não serve
-   como prova para a versão atual.
-3. Exigir quantidade positiva e finita. Converter o lucro dos controladores
-   da DRE do mesmo exercício para reais pela escala monetária da DFP.
-   Usar o LPA básico divulgado na própria DRE do exercício, em reais por
-   ação, sem aplicar escala monetária ao LPA. Conferir a escala com
-   `acoes_cvm.inferir_escala` (F2A-3, armadilha 10). Para os fatores em
-   unidade e milhar, calcular `r = (lucro / (f × fator)) / LPA divulgado`,
-   escolher o fator cuja razão tem logaritmo de menor módulo e exigir
-   `0,1 ≤ r ≤ 10`. Lucro e LPA devem ser finitos, não nulos e de mesmo
-   sinal. Sem LPA básico coerente ou escala determinada, abster. A conta
-   `h` do FRE, o lucro consolidado e dados atuais não substituem essa
-   conferência.
-4. `f` é o total ex-tesouraria, sem divisão ON/PN por espécie. A quantidade
-   serve para a conferência e para a base total nas janelas que já provem
-   a comparabilidade. O LPA divulgado continua sendo o da classe.
-   Sem prova independente, o total não autoriza inferir proporções ON/PN,
-   fabricar LPA por espécie, decompor units ou equiparar seus direitos.
-   Os fatores de base, os direitos e as abstenções das lentes continuam
-   sujeitos às fichas vigentes.
-5. Registrar «ações do FRE (outro documento do lucro), conferidas pelo LPA»,
-   com a identidade, versão e entrega de cada documento, exercício, escala,
-   razão e linha de LPA usada. Se a prova falhar, registrar a abstenção com a
-   etapa que faltou.
+2. Juntar `ID_Documento` do índice oficial do FRE a `ID_DOC` da
+   seção publicada, conferindo CNPJ, referência e versão. Exigir a
+   `DT_RECEB < D` da versão que contém a conta `f`. Conciliar o mesmo
+   início e fim do exercício social com a DFP. A fonte aberta guarda
+   os dados da última versão. Entrega em D, vínculo ausente ou linha
+   `f` conflitante abstêm. Na junta, `Informacao_Financeira` deve
+   demonstrar perímetro compatível com a DRE: consolidado para DRE
+   consolidada ou individual quando a exceção individual se aplicar.
+   Campo vazio não prova perímetro.
+3. **D4, decisão do Marcos de 26/11/2026.** Exigir quantidade positiva
+   e finita e unidade documental legível. A escala declarada prevalece:
+   `Unidade` significa fator 1. Campo ausente ou unidade sem interpretação
+   documentada abstém. Usar `acoes_cvm.inferir_escala` (F2A-3,
+   armadilha 10) apenas como conferência, sem substituir a escala
+   declarada. Para fatores 1 e 1.000, calcular
+   `r = (lucro dos controladores em reais / (f × fator)) / LPA básico`.
+   Escolher a razão com menor módulo do logaritmo e exigir
+   `0,1 ≤ r ≤ 10`. Se o fator conferido divergir do declarado ou a
+   inferência falhar, abster. Lucro e LPA precisam ser finitos, não
+   nulos e de mesmo sinal; o LPA já é em reais por ação, sem conversão
+   de escala monetária.
+4. Usar LPA básico de conferência demonstrável na DRE do mesmo exercício.
+   Se houver um único referencial demonstrado para a base (por exemplo,
+   espécie única provada), aplicar a ele a conferência. Com múltiplas
+   classes e sem referencial único demonstrado, exigir LPA básico válido
+   de todas as classes documentadas e que todas produzam o mesmo fator
+   coincidente com o declarado. Abster com classe sem LPA válido,
+   referência ambígua, linhas conflitantes ou inferências divergentes.
+   Proibido selecionar a classe cuja razão mais convém. A conta `h`
+   do FRE e o lucro consolidado não substituem essa conferência.
+5. A conferência de escala só valida magnitude do total ex-tesouraria.
+   O LPA básico tem média ponderada e direitos por classe (CPC 41), já
+   `f` é saldo total sem divisão ON/PN. A prova de base acionária das
+   janelas é separada e usa os documentos de identidade, direitos,
+   composição e fatores oficiais aplicáveis. Sem essa prova, abster
+   a lente se ela depender da base. O total não fornece proporção
+   ON/PN, LPA por espécie ou decomposição de unit.
+6. Registrar «ações do FRE (outro documento do lucro), conferidas pelo
+   LPA». Para cada lado da junta (D16), guardar fonte/arquivo, CNPJ,
+   documento, referência/exercício, versão, entrega, coleta e SHA-256,
+   mais classificação do perímetro, escala documental, classes, linhas
+   de LPA e razões conferidas. Registrar a etapa que impediu a ligação.
 
-**Exemplo independente.** Com lucro dos controladores de R$ 4.000.000,
-`f = 2.000` e LPA básico divulgado de R$ 2,00, a razão em unidade é
-`(4.000.000 / 2.000) / 2 = 1.000`. Em milhar é
-`(4.000.000 / 2.000.000) / 2 = 1`. A quantidade comprovada é 2.000.000
-ações ex-tesouraria. O cálculo só é elegível se a versão do FRE tiver sido
-entregue antes de D e a DFP satisfizer as demais condições.
+**Exemplo independente.** Lucro dos controladores de R$ 4 milhões,
+`f = 2.000.000` declarado em Unidade, espécie única demonstrada e LPA de
+R$ 2 dão `r = 1` em unidade e `r = 0,001` em milhar. A escala declarada
+é confirmada. Se `f = 2.000` ainda declarar Unidade, as razões seriam
+1.000 e 1. A inferência apontaria milhar, e a ligação se abstém em vez de
+multiplicar o número declarado.
 
-**Aceite do F4-D12.** Exercitar a fonte com unidade e milhar, entrega em D,
-versão sem prova, quantidade inválida, LPA ausente ou de período distinto,
-razão incompatível e falta de prova por espécie. Conferir a prioridade da
-Composição do Capital e a proveniência dos dois documentos. Se menos da
-metade das companhias com DFP passar, interromper a ligação e declarar a
-limitação conforme a fila.
+**Aceite do F4-D12.** Testar espécie única, classes convergentes, classe
+sem LPA, classes divergentes, Unidade contradita, entrega em D, versão
+sem prova, quantidade ou LPA inválidos, intervalo/perímetro divergente e
+falta de prova de base da unit. Conferir a prioridade da Composição do
+Capital e a proveniência dos dois documentos. Se menos da metade das
+companhias com DFP passar, interromper a ligação e declarar a limitação
+conforme a fila.
 
 ## Proposta da Fase 4 — demonstrações individuais (F4-D01d)
 

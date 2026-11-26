@@ -95,7 +95,7 @@ de R$ 40 na entrada, R$ 39 na data ex comum e R$ 42 em T, sem evento
 em ações. Uma unit inicial vira
 `1 + (0,24076375464 + 0,35947457988) / 39` units.
 O retorno é o valor final dessas units dividido por 40, menos 1
-(**6,61602690063%**). Repetir com a linha UNT duplicando a representação,
+(**6,61602628525%**). Repetir com a linha UNT duplicando a representação,
 com o mesmo resultado. Esses preços são um oráculo sintético do teste.
 
 **C4, vínculo histórico.** Quando a coleta a validar vem com GetDetail

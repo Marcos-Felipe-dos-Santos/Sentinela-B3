@@ -725,3 +725,7 @@ python scripts/auditar.py codex ficha --fase 4 --arquivo docs/metodologia/fii.md
 ### F4-D01b — revisão após a primeira auditoria FICHA (26/11/2026)
 - **Executor:** codex
 - **Escopo:** D3 define par CDAM, igualdade pela DD-06, controle de dupla contagem, retorno independente com fluxos da TAEE11 e preços sintéticos, prova histórica C4 e recuperação do código de deslistada. Juntas e fronteiras de disponibilidade registradas.
+
+### F4-D01c — revisão após a primeira auditoria FICHA (26/11/2026)
+- **Executor:** codex
+- **Escopo:** D4 fixa o LPA de conferência, a convergência entre classes, a primazia da unidade documental e a independência da prova de base acionária. Junta e rastreabilidade D16 registradas. Ajustado também o arredondamento do oráculo de retorno do exemplo TAEE11 após reconferência em decimal.

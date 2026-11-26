@@ -293,3 +293,4 @@ Ressalvas da quarta rodada da R2 para o bloco 2, sem reabrir o F4-C14.
 
 - FII 1.4: sensibilidade da elegibilidade por guarda do L2 com denominador e taxas de erro, além do tratamento histórico da calibração do spread de 2026. A validação exigida em D1/D2 integra o F4-D02. Conferir a referência à 3ª edição de Damodaran e a edição/seção originais de Bazin.
 - Identidade de proventos: medir a elegibilidade por exceção e ampliar os casos integrados de retorno e fronteiras, incluindo BBDC (C7), além dos aceites já previstos no bloco 1.
+- FRE: acrescentar par real integrado FRE–DFP com hashes, exemplo de janela para cada lente, convenção detalhada para o denominador do piso de 50% e sensibilidade à média ponderada versus saldo final.
