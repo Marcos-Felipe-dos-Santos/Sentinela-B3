@@ -278,3 +278,13 @@ Auditoria sem bloqueador. DD-102 recomendada para ratificação. Ressalvas para 
 3. O COTAHIST recebe a cópia privada pelo downloader compartilhado, embora use apenas o hash do ZIP. Se o hardlink falhar (por exemplo, em drvfs/NTFS), o fallback duplica um arquivo grande por execução até a limpeza de 24 h.
 4. `IFDataProvider.__init__` cria um `ContextVar` por instância. A recomendação é declará-lo no nível do módulo. A anotação usa `list[dict]`, mas o valor passado a `set` é um `dict`.
 5. Com `_buscar` substituído, `capital()` registra com `consumido=None`, sem a guarda do hash dos bytes lidos. Esse caminho é usado por dublês de teste.
+
+### 2026-11-26 · Checkpoint do bloco 0 · decisão do Marcos
+
+DD-97 (coleta vinculada aos bytes lidos), DD-98 (hash do trecho de renderização), DD-99 (banco vazio criado pelo teste), DD-100 (caracterização do corte de aprovação), DD-101 (abstenção sazonal) e DD-102 (ZIP privado por execução e SHA-256) ratificadas. A sonda F4-D15 mede os quadros de Qualidade indisponíveis por data de análise e companhia, destacando o efeito sazonal da DD-101.
+
+Ressalvas da quarta rodada da R2 para o bloco 2, sem reabrir o F4-C14.
+
+1. Chamadas diretas com `dt_refer_final` e sem `versao_final` admitem uma referência sem identidade completa, sem a guarda de ausência do par. A cascata de produção fornece os dois campos.
+2. Dublês antigos de CVM sem `documento_anual_mais_recente` usam o caminho legado. Avaliar a atualização dos dublês quando precisarem verificar a identidade documental.
+3. O diário do F4-C14 remete à evidência local e omite os percentuais da mutação e a triagem do sobrevivente. O relatório Gemini 4 registra esses resultados.

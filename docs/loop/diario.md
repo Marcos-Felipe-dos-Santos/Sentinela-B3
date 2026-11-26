@@ -679,3 +679,9 @@ Fila ativa: `docs/loop/fila.md`. Protocolo: `docs/loop/protocolo.md`. Decisões:
 - **Complemento ao teste protegido BUG-4-23:** foi acrescentada apenas a asserção do lucro da linha de 2025 na série, preservando os literais e as asserções existentes.
 - **Verificação:** gate, mutação com dois filhos e revisão do diff, com evidências em `outputs/F4-C14/`. Golden com SHA-256 `6ad8308191a7c971e6b9e609412c49aee799b57f0b4e5af2a51117b13f361007`.
 - **Decisão delegada DD-101:** mantém a abstenção enquanto faltar prova de entrega anterior ao corte para a DFP do exercício anterior. A sonda do bloco 1 vai medir por data e companhia os quadros de Qualidade indisponíveis (`pendencias.md`).
+
+### Checkpoint do bloco 0 — 26/11/2026
+- **Executor:** codex
+- **Status:** bloco 0 encerrado, sem bloqueador pendente na R2. O Gemini, de outra família que o executor registrado do F4-C14, deu «Pode seguir» na quarta rodada (`docs/loop/auditorias/bloco0-gemini-4.md`, intervalo `acebb0d..f110c5c`). A terceira rodada (`outputs/auditorias/auditoria-fase-4-codex-3-relatorio.md`) detectou a perda de referência corrigida no F4-C14. A revisão do Claude (chat) sobre o F4-C13 ficou sem bloqueador e recomendou a ratificação da DD-102.
+- **Decisão do Marcos:** DD-97, DD-98, DD-99, DD-100, DD-101 e DD-102 ratificadas. Mantida a abstenção sazonal da DD-101. A sonda F4-D15 mede os quadros de Qualidade indisponíveis por data de análise e companhia, destacando essa causa. P1 já executado no F4-C10.
+- **Bloco 1:** liberado em 26/11/2026 com duas semanas, até 10/12/2026. As três ressalvas do Gemini 4 ficam no bloco 2, em `pendencias.md`.
